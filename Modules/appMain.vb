@@ -19,93 +19,93 @@ Public Module appMain
 
     Public CHR2 As String = Convert.ToChar(2)
     ' --- Class-level variables to store JSON data ---
-    Public machineTypesTable As JsonTable(Of MachineType)
-    Public machinesTable As JsonTable(Of Machine)
-    Public machineAttributesTable As JsonTable(Of MachineAttribute)
-    Public machineAttributeTypesTable As JsonTable(Of MachineAttributeType)
+    'Public machineTypesTable As JsonTable(Of MachineType)
+    'Public machinesTable As JsonTable(Of Machine)
+    'Public machineAttributesTable As JsonTable(Of MachineAttribute)
+    'Public machineAttributeTypesTable As JsonTable(Of MachineAttributeType)
     ' Track current machine ID
     Public currentMachineID As Integer = -1
 
-    ' Map Display → AttributeTypeID for the selected machine
-    Public currentAttributeMap As Dictionary(Of String, Integer)
-    'Public stationsTable As JsonTable(Of Station)
-    Public stationsTable As JsonTable(Of JObject)
-    Public isLoadingStations As Boolean = False
-    Public stationsDataTable As DataTable
-    Public toolSetupsTable As JsonTable(Of JObject)
-    Public toolSetupMembersTable As JsonTable(Of JObject)
-    Public toolcribtable As JsonTable(Of JObject)
-    Public machineToolTypesTable As JsonTable(Of JObject)
-    Public toolTypesTable As JsonTable(Of JObject)
-    Public isLoadingToolSetup As Boolean = False
-    Public currentSelectedStationID As Integer = -1
-    Public toolDescriptionColumnIndex As Integer = -1
-    Public currenttoolSetupID As Integer = -1
-    Public toolsetupid As Integer = -1
-    '--- Declare this at the form level ---
-    Public toolSetupParametersTable As JsonTable(Of JObject)
-    Public toolSetupParamsFile As String = Path.Combine(dataFolder, "toolSetupParameters.json")
-    Public materialTypes As JsonTable(Of MaterialType)
-    Public materialSheets As JsonTable(Of MaterialSheet)
-    Public materialInventory As JsonTable(Of MaterialInventoryItem)
+    '' Map Display → AttributeTypeID for the selected machine
+    'Public currentAttributeMap As Dictionary(Of String, Integer)
+    ''Public stationsTable As JsonTable(Of Station)
+    'Public stationsTable As JsonTable(Of JObject)
+    'Public isLoadingStations As Boolean = False
+    'Public stationsDataTable As DataTable
+    '' Public toolSetupsTable As JsonTable(Of JObject)
+    'Public toolSetupMembersTable As JsonTable(Of JObject)
+    'Public toolcribtable As JsonTable(Of JObject)
+    'Public machineToolTypesTable As JsonTable(Of JObject)
+    'Public toolTypesTable As JsonTable(Of JObject)
+    'Public isLoadingToolSetup As Boolean = False
+    'Public currentSelectedStationID As Integer = -1
+    'Public toolDescriptionColumnIndex As Integer = -1
+    'Public currenttoolSetupID As Integer = -1
+    'Public toolsetupid As Integer = -1
+    ''--- Declare this at the form level ---
+    'Public toolSetupParametersTable As JsonTable(Of JObject)
+    'Public toolSetupParamsFile As String = Path.Combine(dataFolder, "toolSetupParameters.json")
+    'Public materialTypes As JsonTable(Of MaterialType)
+    'Public materialSheets As JsonTable(Of MaterialSheet)
+    'Public materialInventory As JsonTable(Of MaterialInventoryItem)
 
 
-    ' --- Load JSON Files ---
-    Public Sub LoadJsonData()
-        ' Machine Types
-        Dim machineTypesJson = File.ReadAllText(Path.Combine(dataFolder, "MachineTypes.json"))
-        machineTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MachineType))(machineTypesJson)
+    '' --- Load JSON Files ---
+    'Public Sub LoadJsonData()
+    '    ' Machine Types
+    '    Dim machineTypesJson = File.ReadAllText(Path.Combine(dataFolder, "MachineTypes.json"))
+    '    machineTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MachineType))(machineTypesJson)
 
-        ' Machines
-        Dim machinesJson = File.ReadAllText(Path.Combine(dataFolder, "Machines.json"))
-        machinesTable = JsonConvert.DeserializeObject(Of JsonTable(Of Machine))(machinesJson)
+    '    ' Machines
+    '    Dim machinesJson = File.ReadAllText(Path.Combine(dataFolder, "Machines.json"))
+    '    machinesTable = JsonConvert.DeserializeObject(Of JsonTable(Of Machine))(machinesJson)
 
-        ' Machine Attributes
-        Dim machineAttributesJson = File.ReadAllText(Path.Combine(dataFolder, "MachineAttributes.json"))
-        machineAttributesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MachineAttribute))(machineAttributesJson)
+    '    ' Machine Attributes
+    '    Dim machineAttributesJson = File.ReadAllText(Path.Combine(dataFolder, "MachineAttributes.json"))
+    '    machineAttributesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MachineAttribute))(machineAttributesJson)
 
-        ' Machine Attribute Types
-        Dim machineAttributeTypesJson = File.ReadAllText(Path.Combine(dataFolder, "MachineAttributeTypes.json"))
-        machineAttributeTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MachineAttributeType))(machineAttributeTypesJson)
+    '    ' Machine Attribute Types
+    '    Dim machineAttributeTypesJson = File.ReadAllText(Path.Combine(dataFolder, "MachineAttributeTypes.json"))
+    '    machineAttributeTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MachineAttributeType))(machineAttributeTypesJson)
 
-        ' Stations
-        Dim stationsFile = Path.Combine(dataFolder, "Stations.json")
-        Dim stationsJson = File.ReadAllText(stationsFile)
-        stationsTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(stationsJson)
+    '    ' Stations
+    '    Dim stationsFile = Path.Combine(dataFolder, "Stations.json")
+    '    Dim stationsJson = File.ReadAllText(stationsFile)
+    '    stationsTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(stationsJson)
 
-        Dim toolSetupsTableFile = Path.Combine(dataFolder, "ToolSetups.json")
-        Dim toolSetupsJson = File.ReadAllText(toolSetupsTableFile)
-        toolSetupsTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(toolSetupsJson)
+    '    Dim toolSetupsTableFile = Path.Combine(dataFolder, "ToolSetups.json")
+    '    Dim toolSetupsJson = File.ReadAllText(toolSetupsTableFile)
+    '    toolSetupsTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(toolSetupsJson)
 
-        ' Tool Crib
-        Dim ToolCribTableFile = Path.Combine(dataFolder, "toolcrib.json")
-        Dim ToolCribJson = File.ReadAllText(ToolCribTableFile)
-        toolcribtable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(ToolCribJson)
+    '    ' Tool Crib
+    '    Dim ToolCribTableFile = Path.Combine(dataFolder, "toolcrib.json")
+    '    Dim ToolCribJson = File.ReadAllText(ToolCribTableFile)
+    '    toolcribtable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(ToolCribJson)
 
-        ' Tool Setup Members
-        Dim ToolSetupMembersTableFile = Path.Combine(dataFolder, "toolsetupmembers.json")
-        Dim ToolSetupMembersJson = File.ReadAllText(ToolSetupMembersTableFile)
-        toolSetupMembersTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(ToolSetupMembersJson)
+    '    ' Tool Setup Members
+    '    Dim ToolSetupMembersTableFile = Path.Combine(dataFolder, "toolsetupmembers.json")
+    '    Dim ToolSetupMembersJson = File.ReadAllText(ToolSetupMembersTableFile)
+    '    toolSetupMembersTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(ToolSetupMembersJson)
 
-        ' Machine Tool Types
-        Dim MachineToolTypeTableFile = Path.Combine(dataFolder, "MachineToolTypes.json")
-        Dim MachineToolTypeJson = File.ReadAllText(MachineToolTypeTableFile)
-        machineToolTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(MachineToolTypeJson)
+    '    ' Machine Tool Types
+    '    Dim MachineToolTypeTableFile = Path.Combine(dataFolder, "MachineToolTypes.json")
+    '    Dim MachineToolTypeJson = File.ReadAllText(MachineToolTypeTableFile)
+    '    machineToolTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(MachineToolTypeJson)
 
-        ' Tool Types
-        Dim ToolTypeTableFile = Path.Combine(dataFolder, "ToolTypes.json")
-        Dim ToolTypeJson = File.ReadAllText(ToolTypeTableFile)
-        toolTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(ToolTypeJson)
+    '    ' Tool Types
+    '    Dim ToolTypeTableFile = Path.Combine(dataFolder, "ToolTypes.json")
+    '    Dim ToolTypeJson = File.ReadAllText(ToolTypeTableFile)
+    '    toolTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(ToolTypeJson)
 
-        Dim materialTypesPath = Path.Combine(dataFolder, "MaterialTypes.json")
+    '    Dim materialTypesPath = Path.Combine(dataFolder, "MaterialTypes.json")
 
-        Dim materialInventoryPath = Path.Combine(dataFolder, "MaterialInventory.json")
-
-
+    '    Dim materialInventoryPath = Path.Combine(dataFolder, "MaterialInventory.json")
 
 
 
-    End Sub
+
+
+    'End Sub
     Public Function EncodeTag(DatVarname As String,
                               DialogDisplay As String,
                               VBValue As String,
@@ -245,6 +245,13 @@ Public Module appMain
     End Function
     ' --- Classes for JSON deserialization ---
 
+
+
+
+    Public Class MachineToolType
+        Public Property MachineTypeID As Integer
+        Public Property ToolTypeID As Integer
+    End Class
     '------------------------------
     '  MATERIAL TYPE CLASS
     '------------------------------
@@ -483,11 +490,11 @@ Public Module appMain
 
 
 
-    Public Class Station
-        Public Property ID As Integer
-        Public Property MachineID As Integer
-        Public Property Description As String
-        Public Property Position As String
-    End Class
+    'Public Class Station
+    '    Public Property ID As Integer
+    '    Public Property MachineID As Integer
+    '    Public Property Description As String
+    '    Public Property Position As String
+    'End Class
 
 End Module

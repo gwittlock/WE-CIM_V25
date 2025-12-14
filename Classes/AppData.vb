@@ -21,8 +21,12 @@ Public Class AppData
     Public Shared Machines As List(Of Machine)
     Public Shared MachineAttributeTypes As List(Of MachineAttributeType)
     Public Shared MachineAttributes As List(Of MachineAttribute)
-    Public Shared Stations As List(Of JObject)
+    Public Shared MachineToolTypes As List(Of MachineToolType)
+
+    Public Shared Stations As List(Of Station)
     Public Shared ToolSetups As List(Of ToolSetup)
+    Public Shared ToolSetupMembers As List(Of ToolSetupMember)
+
 
     Public Shared MaterialTypes As List(Of MaterialType)
     Public Shared MaterialSheets As List(Of MaterialSheet)
@@ -34,13 +38,9 @@ Public Class AppData
         Public Shared ToolTypes As List(Of ToolType)
         Public Shared ToolAttributeTypes As List(Of ToolAttributeType)
         Public Shared ToolTypeAttributes As List(Of ToolTypeAttribute)
+    Public Shared ToolTypePropertiesList As List(Of ToolTypeProperties)
 
-    ' ------------------------------------------
-    '  LOAD ALL JSON FILES (once)
-    ' ------------------------------------------
-    ' ------------------------------------------
-    ' LOAD ALL JSON FILES (once)
-    ' ------------------------------------------
+
     '  LOAD ALL JSON FILES (once)
     ' ------------------------------------------
     Public Shared Sub LoadAllJson()
@@ -53,36 +53,76 @@ Public Class AppData
         Machines = LoadTableWrapped(Of Machine)("Machines.json")
         MachineAttributeTypes = LoadTableWrapped(Of MachineAttributeType)("MachineAttributeTypes.json")
         MachineAttributes = LoadTableWrapped(Of MachineAttribute)("MachineAttributes.json")
-        Stations = LoadJObjectWrapped("Stations.json")
+        MachineToolTypes = LoadTableWrapped(Of MachineToolType)("MachineToolTypes.json")
+
+
+        'Dim stationsFile = Path.Combine(DataFolder, "Stations.json")
+        'If File.Exists(stationsFile) Then
+        '    Dim json As JObject = JObject.Parse(File.ReadAllText(stationsFile))
+        '    AppData.Stations = json("Rows").ToObject(Of List(Of Station))()
+        'Else
+        '    AppData.Stations = New List(Of Station)()
+        'End If
 
         ' ---- TOOL DATA ----
-        ' Tool Setups (wrapped JSON)
-        ToolSetups = LoadTableWrapped(Of ToolSetup)("ToolSetups.json")
+        ToolSetups = LoadTableWrapped(Of ToolSetup)("ToolSetups.json") ' List(Of ToolSetup)
         ToolCrib = LoadTableWrapped(Of ToolCribItem)("ToolCrib.json")
         ToolTypes = LoadTableWrapped(Of ToolType)("ToolTypes.json")
         ToolAttributeTypes = LoadTableWrapped(Of ToolAttributeType)("ToolAttributeTypes.json")
         ToolTypeAttributes = LoadTableWrapped(Of ToolTypeAttribute)("ToolTypeAttributes.json")
+        ToolSetupMembers = LoadTableWrapped(Of ToolSetupMember)("ToolSetupMembers.json")
+
+
+
+
+        Dim toolSetupsTableFile = Path.Combine(DataFolder, "ToolSetups.json")
+        Dim toolSetupsJson = File.ReadAllText(toolSetupsTableFile)
+        'toolSetupsTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(toolSetupsJson)
+
 
         ' ---- MATERIAL DATA ----
         MaterialTypes = LoadTableWrapped(Of MaterialType)("MaterialTypes.json")
         MaterialSheets = LoadMaterialSheets("MaterialInventory.json")
     End Sub
 
-    ' ------------------------------------------
-    '  GENERIC WRAPPED JSON TABLE LOADER
-    '  Expects JSON in the form { "TableName": "...", "Rows": [ ... ] }
-    ' ------------------------------------------
-    Private Shared Function LoadTableWrapped(Of T)(fileName As String) As List(Of T)
-        Dim spath As String = Path.Combine(DataFolder, fileName)
-        If File.Exists(spath) Then
-            Dim json = File.ReadAllText(spath)
-            Dim wrapper = JsonConvert.DeserializeObject(Of JObject)(json)
-            Dim rows = wrapper("Rows").ToString()
-            Return JsonConvert.DeserializeObject(Of List(Of T))(rows)
-        Else
-            Return New List(Of T)()
-        End If
+    Private Function LoadToolTypeAttributes() As List(Of ToolTypeAttribute)
+        Dim filePath = Path.Combine(DataFolder, "ToolTypeAttributes.json")
+        If Not File.Exists(filePath) Then Return New List(Of ToolTypeAttribute)()
+
+        Dim jsonText = File.ReadAllText(filePath)
+        Dim rootObj = JObject.Parse(jsonText)
+
+        ' Extract the "Rows" array
+        Dim rows = rootObj("Rows").ToObject(Of JArray)()
+
+        ' Map JSON rows to ToolTypeAttribute objects
+        Dim result As New List(Of ToolTypeAttribute)
+        For Each row In rows
+            result.Add(New ToolTypeAttribute With {
+            .ToolTypeID = row("ToolTypeID").Value(Of Integer)(),
+            .AttributeTypeID = row("AttributeTypeID").Value(Of Integer)()
+        })
+        Next
+
+        Return result
     End Function
+
+
+    '' ------------------------------------------
+    ''  GENERIC WRAPPED JSON TABLE LOADER
+    ''  Expects JSON in the form { "TableName": "...", "Rows": [ ... ] }
+    '' ------------------------------------------
+    'Private Shared Function LoadTableWrapped(Of T)(fileName As String) As List(Of T)
+    '    Dim spath As String = Path.Combine(DataFolder, fileName)
+    '    If File.Exists(spath) Then
+    '        Dim json = File.ReadAllText(spath)
+    '        Dim wrapper = JsonConvert.DeserializeObject(Of JObject)(json)
+    '        Dim rows = wrapper("Rows").ToString()
+    '        Return JsonConvert.DeserializeObject(Of List(Of T))(rows)
+    '    Else
+    '        Return New List(Of T)()
+    '    End If
+    'End Function
 
     Private Shared Function LoadJObjectWrapped(fileName As String) As List(Of JObject)
         Dim spath As String = Path.Combine(DataFolder, fileName)
@@ -146,7 +186,7 @@ Public Class AppData
     ' Supports JSON objects with "TableName" and "Rows", or plain arrays
     ' Optional converter allows special handling (e.g., MaterialSheet)
     ' ------------------------------------------
-    Private Shared Function LoadTableWrapped(Of T)(fileName As String, Optional converter As Func(Of JObject, T) = Nothing) As List(Of T)
+    Public Shared Function LoadTableWrapped(Of T)(fileName As String, Optional converter As Func(Of JObject, T) = Nothing) As List(Of T)
         Dim spath As String = Path.Combine(DataFolder, fileName)
         Dim result As New List(Of T)
 
@@ -240,8 +280,64 @@ Public Class AppData
 
         Return sheets
     End Function
+    Public Class Station
+        Public Property ID As Integer
+        Public Property MachineID As Integer
+        Public Property Description As String
+        Public Property Position As String
 
+        ' JSON fields
+        Public Property NCCodeNumber As Integer
+        Public Property PrimaryCode As String
+        Public Property SecondaryCode As String
+        Public Property StationSize As Integer?
 
+        ' User-defined properties (UDPs)
+        Public Property Properties As Dictionary(Of String, Object)
 
+        Public Sub New()
+            Properties = New Dictionary(Of String, Object)()
+        End Sub
+    End Class
+
+    Public Class StationJsonWrapper
+        Public Property TableName As String
+        Public Property Columns As JArray
+        Public Property Rows As JArray
+    End Class
+
+    Public Class ToolSetupMembersWrapper
+        Public Property TableName As String
+        Public Property Rows As List(Of ToolSetupMember)
+    End Class
+
+    Public Class DictionaryPropertyGridWrapper
+        Private _dict As Dictionary(Of String, Object)
+        Public Sub New(dict As Dictionary(Of String, Object))
+            _dict = dict
+        End Sub
+
+        Public Property Item(key As String) As Object
+            Get
+                Return _dict(key)
+            End Get
+            Set(value As Object)
+                _dict(key) = value
+            End Set
+        End Property
+    End Class
+
+    ' Represents a single property for a tool type
+    Public Class ToolTypeProperty
+        Public Property Name As String               ' Property name shown in property grid
+        Public Property DefaultValue As Object       ' Default value when creating a new tool
+        Public Property Type As Type                 ' Data type of the property (e.g., Integer, Double, String)
+    End Class
+
+    ' Represents all properties for a specific ToolType
+    Public Class ToolTypeProperties
+        Public Property ToolTypeID As Integer                   ' ID of the ToolType
+        Public Property Properties As List(Of ToolTypeProperty) ' List of all properties for this ToolType
+    End Class
 
 End Class

@@ -75,10 +75,15 @@ Partial Class ConfigurationManagerForm
         Me.DeleteMachineTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteToolSetupTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.AddToolSetupTSM = New System.Windows.Forms.ToolStripMenuItem()
+        Me.AddLayerSetupTSM = New System.Windows.Forms.ToolStripMenuItem()
+        Me.AddLayerTSM = New System.Windows.Forms.ToolStripMenuItem()
+        Me.DeleteLayerSetpTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.AddMaterialTypeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.AddMaterialSizeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteMaterialTypeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteMaterialSizeTSM = New System.Windows.Forms.ToolStripMenuItem()
+        Me.DeleteLayerTSM = New System.Windows.Forms.ToolStripMenuItem()
+        Me.RenameToolSetupTSM = New System.Windows.Forms.ToolStripMenuItem()
         CType(Me.SplitContainer1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SplitContainer1.Panel1.SuspendLayout()
         Me.SplitContainer1.Panel2.SuspendLayout()
@@ -653,9 +658,9 @@ Partial Class ConfigurationManagerForm
         '
         'cmsTreeActions
         '
-        Me.cmsTreeActions.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.AddMachineTSM, Me.DeleteMachineTSM, Me.DeleteToolSetupTSM, Me.AddToolSetupTSM, Me.AddMaterialTypeTSM, Me.AddMaterialSizeTSM, Me.DeleteMaterialTypeTSM, Me.DeleteMaterialSizeTSM})
+        Me.cmsTreeActions.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.AddMachineTSM, Me.DeleteMachineTSM, Me.DeleteToolSetupTSM, Me.AddToolSetupTSM, Me.RenameToolSetupTSM, Me.AddLayerSetupTSM, Me.AddLayerTSM, Me.DeleteLayerSetpTSM, Me.AddMaterialTypeTSM, Me.AddMaterialSizeTSM, Me.DeleteMaterialTypeTSM, Me.DeleteMaterialSizeTSM, Me.DeleteLayerTSM})
         Me.cmsTreeActions.Name = "ContextMenuStrip1"
-        Me.cmsTreeActions.Size = New System.Drawing.Size(197, 180)
+        Me.cmsTreeActions.Size = New System.Drawing.Size(197, 312)
         '
         'AddMachineTSM
         '
@@ -681,6 +686,24 @@ Partial Class ConfigurationManagerForm
         Me.AddToolSetupTSM.Size = New System.Drawing.Size(196, 22)
         Me.AddToolSetupTSM.Text = "Add Tool Setup"
         '
+        'AddLayerSetupTSM
+        '
+        Me.AddLayerSetupTSM.Name = "AddLayerSetupTSM"
+        Me.AddLayerSetupTSM.Size = New System.Drawing.Size(196, 22)
+        Me.AddLayerSetupTSM.Text = "Add Layer Setup"
+        '
+        'AddLayerTSM
+        '
+        Me.AddLayerTSM.Name = "AddLayerTSM"
+        Me.AddLayerTSM.Size = New System.Drawing.Size(196, 22)
+        Me.AddLayerTSM.Text = "Add Layer"
+        '
+        'DeleteLayerSetpTSM
+        '
+        Me.DeleteLayerSetpTSM.Name = "DeleteLayerSetpTSM"
+        Me.DeleteLayerSetpTSM.Size = New System.Drawing.Size(196, 22)
+        Me.DeleteLayerSetpTSM.Text = "Delete Layer Setup"
+        '
         'AddMaterialTypeTSM
         '
         Me.AddMaterialTypeTSM.Name = "AddMaterialTypeTSM"
@@ -704,6 +727,18 @@ Partial Class ConfigurationManagerForm
         Me.DeleteMaterialSizeTSM.Name = "DeleteMaterialSizeTSM"
         Me.DeleteMaterialSizeTSM.Size = New System.Drawing.Size(196, 22)
         Me.DeleteMaterialSizeTSM.Text = "Delete Material Size"
+        '
+        'DeleteLayerTSM
+        '
+        Me.DeleteLayerTSM.Name = "DeleteLayerTSM"
+        Me.DeleteLayerTSM.Size = New System.Drawing.Size(196, 22)
+        Me.DeleteLayerTSM.Text = "Delete Layer"
+        '
+        'RenameToolSetupTSM
+        '
+        Me.RenameToolSetupTSM.Name = "RenameToolSetupTSM"
+        Me.RenameToolSetupTSM.Size = New System.Drawing.Size(196, 22)
+        Me.RenameToolSetupTSM.Text = "Rename Tool Setup"
         '
         'ConfigurationManagerForm
         '
@@ -751,10 +786,6 @@ Partial Class ConfigurationManagerForm
         Me.Panel2.PerformLayout()
         Me.cmsTreeActions.ResumeLayout(False)
         Me.ResumeLayout(False)
-
-    End Sub
-
-    Private Sub TreeViewMachines_DragLeave(sender As Object, e As EventArgs) Handles TreeViewMachines.DragLeave
 
     End Sub
 
@@ -813,4 +844,9 @@ Partial Class ConfigurationManagerForm
     Friend WithEvents btnMaterialAddUDP As Button
     Friend WithEvents Panel4 As Panel
     Friend WithEvents btnConvertCMDB As Button
+    Friend WithEvents AddLayerSetupTSM As ToolStripMenuItem
+    Friend WithEvents AddLayerTSM As ToolStripMenuItem
+    Friend WithEvents DeleteLayerSetpTSM As ToolStripMenuItem
+    Friend WithEvents DeleteLayerTSM As ToolStripMenuItem
+    Friend WithEvents RenameToolSetupTSM As ToolStripMenuItem
 End Class

@@ -3,7 +3,7 @@ Public Class DynamicToolAttributes
     Implements ICustomTypeDescriptor
 
 
-    Private _attributes As Dictionary(Of String, Object)
+    Public _attributes As Dictionary(Of String, Object)
     Private _types As Dictionary(Of String, Type)
 
     Public Sub New(attributes As Dictionary(Of String, Object))

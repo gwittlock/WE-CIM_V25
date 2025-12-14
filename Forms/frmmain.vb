@@ -19,7 +19,10 @@ Imports System.IO
 Imports System.Numerics
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Helpers
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Services
-
+Imports FabV25_WIN8.AppData
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
+Imports Newtonsoft.Json
+Imports Formatting = Newtonsoft.Json.Formatting
 
 Public Class frmMain
     Inherits RibbonForm
@@ -40,14 +43,14 @@ Public Class frmMain
 
         InitSkins()
 
-            InitializeComponent()
+        InitializeComponent()
 
         Me.InitSkinGallery()
 
         Me.splitContainerControl.SuspendLayout()
-            Me.splitContainerControl.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel2
+        Me.splitContainerControl.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel2
 
-            Me.splitContainerControl.ResumeLayout()
+        Me.splitContainerControl.ResumeLayout()
 
     End Sub
     Sub InitSkins()
@@ -242,6 +245,70 @@ Public Class frmMain
             Return Text
         End Function
     End Class
+
+    Private Sub btmHeatTransfer_ItemClick(sender As Object, e As ItemClickEventArgs) Handles btmHeatTransfer.ItemClick
+        Dim mdbFile = "C:\1wittlockeng\Customers\Greg King\BoundingBoxNest\CMDB-Global.mdb"
+        Dim tableName = "Tool Crib"
+        Dim outputFolder = "C:\_Gary\AI\FabV25Test\Data"
+        'Dim attributeTypes As List(Of ToolAttributeType)
+        Dim attributeTypes As List(Of ToolAttributeType) = LoadTableWrapped(Of ToolAttributeType)("ToolAttributeTypes.json")
+
+        ConvertToolCribTableToJson(mdbFile, tableName, outputFolder, attributeTypes)
+    End Sub
+    Public Sub ConvertToolCribTableToJson(mdbFile As String, tableName As String, outputFolder As String, attributeTypes As List(Of ToolAttributeType))
+        ' Build the connection string for Access MDB
+        Dim connStr As String = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbFile};"
+        Using conn As New OleDbConnection(connStr)
+            conn.Open()
+
+            ' Load the table into a DataTable
+            Dim dt As New DataTable()
+            Using cmd As New OleDbCommand($"SELECT * FROM [{tableName}]", conn)
+                Using adapter As New OleDbDataAdapter(cmd)
+                    adapter.Fill(dt)
+                End Using
+            End Using
+
+            ' Prepare ToolCribItems
+            Dim toolCribList As New List(Of ToolCribItem)()
+
+            For Each row As DataRow In dt.Rows
+                Dim attributes As New Dictionary(Of String, Object)()
+
+                ' Populate attributes based on ToolAttributeType mapping
+                For Each attrType In attributeTypes
+                    Dim columnName = attrType.Description.Trim() ' Column name in MDB
+                    Dim keyName = attrType.Field.Trim()          ' Dictionary key
+
+                    If dt.Columns.Contains(columnName) Then
+                        Dim value = row(columnName)
+                        If value Is DBNull.Value Then value = Nothing
+                        attributes(keyName) = value
+                    Else
+                        attributes(keyName) = Nothing
+                    End If
+                Next
+
+                ' Create ToolCribItem
+                Dim tool As New ToolCribItem With {
+                    .ID = CInt(row("ID")),
+                    .Description = row("Description").ToString(),
+                    .TypeID = CInt(row("Type ID")),
+                    .Attributes = attributes
+                }
+
+                toolCribList.Add(tool)
+            Next
+
+            ' Ensure output folder exists
+            If Not Directory.Exists(outputFolder) Then Directory.CreateDirectory(outputFolder)
+
+            ' Write JSON
+            Dim savePath = Path.Combine(outputFolder, "ToolCrib.json")
+            Dim json = JsonConvert.SerializeObject(toolCribList, Formatting.Indented)
+            File.WriteAllText(savePath, json)
+        End Using
+    End Sub
 End Class
 
 
