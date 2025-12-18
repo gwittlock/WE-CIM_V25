@@ -292,6 +292,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.DirectoryServices" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Drawing.Design" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
@@ -314,6 +315,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\AppData.vb" />
+    <Compile Include="Classes\clsMatList.vb" />
     <Compile Include="Classes\DxfImport.vb" />
     <Compile Include="Classes\DynamicMachineProperty.vb" />
     <Compile Include="Classes\DynamicMachinePropertyBag.vb" />
@@ -375,6 +377,7 @@
     <Compile Include="Helpers\ConversionHelpers.vb" />
     <Compile Include="Helpers\Extensions.vb" />
     <Compile Include="Helpers\Logging.vb" />
+    <Compile Include="Models\DxfGeometryHelpers.vb" />
     <Compile Include="Models\Machine.vb" />
     <Compile Include="Models\Material.vb" />
     <Compile Include="Models\tool.vb" />
@@ -383,7 +386,13 @@
     <Compile Include="Models\udp.vb" />
     <Compile Include="Modules\AccessToJsonExporter.vb" />
     <Compile Include="Modules\appMain.vb" />
+    <Compile Include="Modules\DxfPreviewRenderer.vb" />
     <Compile Include="Modules\modFile.vb" />
+    <Compile Include="Modules\modGeo.vb" />
+    <Compile Include="Modules\modMaterial.vb" />
+    <Compile Include="Modules\modPath.vb" />
+    <Compile Include="Modules\modProject.vb" />
+    <Compile Include="Modules\PropertyGridContext.vb" />
     <Compile Include="Modules\ValidationService.vb" />
     <Compile Include="My Project\Application1.Designer.vb">
       <AutoGen>True</AutoGen>
@@ -459,6 +468,12 @@
     </Compile>
     <Compile Include="Resources\User Controls\UnboundGridViewInfoRegistrator.vb" />
     <Compile Include="State\appState.vb" />
+    <Compile Include="User_Controls\MatListTree.designer.vb">
+      <DependentUpon>MatListTree.vb</DependentUpon>
+    </Compile>
+    <Compile Include="User_Controls\MatListTree.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Forms\ConfigurationManagerForm.resx">
@@ -510,6 +525,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Resources\User Controls\UnboundGridControl.resx">
       <DependentUpon>UnboundGridControl.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="User_Controls\MatListTree.resx">
+      <DependentUpon>MatListTree.vb</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

@@ -1,316 +1,236 @@
-﻿Imports IxMilia.Dxf
+﻿Imports System.Drawing
+Imports System.Drawing.Drawing2D
+Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
 Imports System.IO
 Imports System.Windows.Forms
+Imports System.Linq
 
 Public Class DXFFileSelectionDialog
     Inherits Form
 
-    '' Controls
-    'Private tvFolders As New TreeView
-    'Private lstFiles As New ListBox
-    'Private pbPreview As New PictureBox
-    'Private btnOK As New Button
-    'Private btnCancel As New Button
-    'Private SplitContainer1 As New SplitContainer
-
-    ' Selected DXF file
-
-    Private PreviewLines As New List(Of LineF)
-    Private PreviewScale As Single
-    Private PreviewOffsetX As Single
-    Private PreviewOffsetY As Single
 
 
-    Public Sub New()
+    '-------------------------------
+    ' Folder Icons
+    '-------------------------------
+    Private _folderImages As ImageList
+    '-------------------------------
+    ' Private Fields
+    '-------------------------------
+    Private _previewDxf As DxfFile = Nothing
 
-        InitializeComponent()
 
-        'Me.Text = "Select DXF File"
-        'Me.Size = New Drawing.Size(800, 600)
-        '
+    '-------------------------------
+    ' Folder Icon Initialization
+    Private Sub InitializeFolderIcons()
+        _folderImages = New ImageList()
+        _folderImages.ColorDepth = ColorDepth.Depth32Bit
+        _folderImages.ImageSize = New Size(16, 16)
 
-        ' Event handlers
-        'AddHandler Me.Load, AddressOf DXFFileSelectionDialog_Load
-        'AddHandler tvFolders.BeforeExpand, AddressOf tvFolders_BeforeExpand
-        'AddHandler tvFolders.AfterSelect, AddressOf tvFolders_AfterSelect
-        'AddHandler lstFiles.SelectedIndexChanged, AddressOf lstFiles_SelectedIndexChanged
-        'AddHandler btnOK.Click, AddressOf btnOK_Click
-        'AddHandler btnCancel.Click, AddressOf btnCancel_Click
+
+        ' Index 0 = closed folder, Index 1 = open folder
+        _folderImages.Images.Add(SystemIcons.WinLogo.ToBitmap()) ' placeholder closed
+        _folderImages.Images.Add(SystemIcons.Application.ToBitmap()) ' placeholder open
+
+
+        tvFolders.ImageList = _folderImages
     End Sub
 
 
-    '-------------------------
-    ' Load Root Drives
-    '-------------------------
-    Private Sub LoadRootNodes()
+    Public ReadOnly Property SelectedDxfPath As String
+        Get
+            Return _selectedDxfPath
+        End Get
+    End Property
 
+    Private Sub DXFFileSelectionDialog_Load(sender As Object, e As EventArgs) Handles Me.Load
+        InitializeFolderIcons()
+        LoadRootFolders() ' your recursive folder loader
+        AddHandler pnlPreview.Paint, AddressOf pnlPreview_Paint
+    End Sub
+
+    '-------------------------------
+    ' Load Root Folders (Lazy Loaded)
+    '-------------------------------
+    Public Sub LoadRootFolders()
         tvFolders.Nodes.Clear()
 
-        For Each drive As String In Directory.GetLogicalDrives()
-            Dim rootNode As New TreeNode(drive) With {.Tag = drive}
-            rootNode.Nodes.Add(New TreeNode("...")) ' dummy node for lazy expand
-            tvFolders.Nodes.Add(rootNode)
-        Next
+        For Each drive As DriveInfo In DriveInfo.GetDrives()
+            Try
+                If drive.IsReady Then
+                    Dim driveNode As New TreeNode()
 
-        ' Optional Browse node for UNC/network paths
-        Dim browseNode As New TreeNode("Browse...") With {.Tag = "BROWSE"}
-        tvFolders.Nodes.Insert(0, browseNode)
-    End Sub
-
-
-
-    Private Sub LoadDirectories(node As TreeNode, path As String)
-        Try
-            node.Nodes.Clear()
-            Dim dirs As String() = Directory.GetDirectories(path)
-            For Each subDir In dirs
-                Try
-                    Dim childNode As New TreeNode(IO.Path.GetFileName(subDir)) With {.Tag = subDir}
-
-                    ' Add dummy node if has subfolders
-                    If Directory.GetDirectories(subDir).Length > 0 Then
-                        childNode.Nodes.Add(New TreeNode("..."))
+                    Dim nodeText As String
+                    If String.IsNullOrEmpty(drive.VolumeLabel) Then
+                        nodeText = $"{drive.Name} ({drive.DriveType})"
+                    Else
+                        nodeText = $"{drive.VolumeLabel} ({drive.Name.Substring(0, 1)})"
                     End If
-                    node.Nodes.Add(childNode)
-                Catch ex As UnauthorizedAccessException
-                    ' Skip inaccessible folders
-                Catch ex As Exception
-                    ' Optional logging
-                End Try
-            Next
+
+                    driveNode.Text = nodeText
+                    driveNode.Tag = drive.RootDirectory.FullName
+                    driveNode.ImageIndex = 0
+                    driveNode.SelectedImageIndex = 1
+
+                    tvFolders.Nodes.Add(driveNode)
+                    PopulateChildFolders(driveNode)
+                End If
+            Catch ex As Exception
+                ' Optional: handle drive load error
+            End Try
+        Next
+    End Sub
+
+    '-------------------------------
+    ' Populate Child Folders (Lazy Loaded, Safe)
+    '-------------------------------
+    Private Sub PopulateChildFolders(parentNode As TreeNode)
+        Dim currentPath As String = TryCast(parentNode.Tag, String)
+        If String.IsNullOrWhiteSpace(currentPath) Then Return
+
+        Dim subDirs As IEnumerable(Of String)
+
+        Try
+            subDirs = Directory.EnumerateDirectories(currentPath)
         Catch ex As UnauthorizedAccessException
-            ' Skip inaccessible root
-        Catch ex As Exception
-            ' Optional logging
-        End Try
-    End Sub
-
-
-
-    Private Function LoadDxfPreview(filePath As String) As Drawing.Image
-        '' TODO: Implement actual DXF preview
-        '' For now, return a blank bitmap with file name
-        'Dim bmp As New Drawing.Bitmap(pbPreview.Width, pbPreview.Height)
-        'Using g = Drawing.Graphics.FromImage(bmp)
-        '    g.Clear(Drawing.Color.LightGray)
-        '    g.DrawString(Path.GetFileName(filePath), New Drawing.Font("Arial", 12), Drawing.Brushes.Black, 10, 10)
-        'End Using
-        'Return bmp
-    End Function
-
-
-
-
-    Private Sub tvFolders_BeforeExpand(sender As Object, e As TreeViewCancelEventArgs) Handles tvFolders.BeforeExpand
-        '-------------------------
-        ' Lazy Load Folders
-        '-------------------------
-
-        Dim node = e.Node
-        ' Skip Browse node
-        If node.Tag IsNot Nothing AndAlso node.Tag.ToString() = "BROWSE" Then Return
-
-        If node.Nodes.Count = 1 AndAlso node.Nodes(0).Text = "..." Then
-            LoadDirectories(node, node.Tag.ToString())
-        End If
-
-    End Sub
-
-    Private Sub btnCancel_Click(sender As Object, e As EventArgs) Handles btnCancel.Click
-
-        Me.DialogResult = DialogResult.Cancel
-        Me.Close()
-
-    End Sub
-
-    Private Sub btnOK_Click(sender As Object, e As EventArgs) Handles btnOK.Click
-
-        '-------------------------
-        ' OK / Cancel
-        '-------------------------
-
-        If lstFiles.SelectedItem Is Nothing OrElse tvFolders.SelectedNode Is Nothing Then
-            MessageBox.Show("Please select a DXF file first.")
+            parentNode.Nodes.Add("Access Denied")
             Return
-        End If
+        Catch ex As IOException
+            Return
+        End Try
 
-        Dim folderPath = tvFolders.SelectedNode.Tag.ToString()
-        Dim fileName = lstFiles.SelectedItem.ToString()
-        SetFilename(Path.Combine(folderPath, fileName))
-        Me.DialogResult = DialogResult.OK
-        Me.Close()
+        For Each dirPath As String In subDirs
+            Dim childNode As New TreeNode(Path.GetFileName(dirPath)) With {
+                .Tag = dirPath,
+                .ImageIndex = 0,
+                .SelectedImageIndex = 1
+            }
 
-    End Sub
+            parentNode.Nodes.Add(childNode)
 
-    Private Sub lstFiles_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstFiles.SelectedIndexChanged
-        If lstFiles.SelectedItem Is Nothing Then Exit Sub
-        Dim folderPath = tvFolders.SelectedNode.Tag.ToString()
-        Dim fileName = lstFiles.SelectedItem.ToString()
-        SetFilename(Path.Combine(folderPath, fileName))
-
-
-        Dim filePath As String = GetFilename()
-        frmMain.CurrentPreviewLines = ParseDXFToLines(filePath)
-
-        DrawLinesOnPanel(pnlPreview, frmMain.CurrentPreviewLines)
-        'pnlPreview.Invalidate()
-
-
+            Try
+                Using enumerator = Directory.EnumerateDirectories(dirPath).GetEnumerator()
+                    If enumerator.MoveNext() Then
+                        childNode.Nodes.Add("Loading...")
+                    End If
+                End Using
+            Catch ex As UnauthorizedAccessException
+            Catch ex As IOException
+            End Try
+        Next
     End Sub
 
     Private Sub tvFolders_AfterSelect(sender As Object, e As TreeViewEventArgs) Handles tvFolders.AfterSelect
+        LoadDxfFiles(e.Node.Tag.ToString())
 
-        '-------------------------
-        ' Folder Selected
-        '-------------------------
+    End Sub
 
-        Dim node = e.Node
-        If node.Tag Is Nothing Then Return
+    Private Sub LoadDxfFiles(folderPath As String)
 
-        ' Handle Browse node
-        If node.Tag.ToString() = "BROWSE" Then
-            Using fbd As New FolderBrowserDialog()
-                fbd.Description = "Select root folder to browse DXF files"
-                fbd.ShowNewFolderButton = False
-                If fbd.ShowDialog() = DialogResult.OK Then
-                    Dim browseRoot As New TreeNode(fbd.SelectedPath) With {.Tag = fbd.SelectedPath}
-                    browseRoot.Nodes.Add(New TreeNode("..."))
-                    tvFolders.Nodes.Remove(node)
-                    tvFolders.Nodes.Insert(0, browseRoot)
-                    tvFolders.SelectedNode = browseRoot
-                End If
-            End Using
+        lstFiles.Items.Clear()
+        _previewDxf = Nothing
+        pnlPreview.Invalidate()
+
+        If Not Directory.Exists(folderPath) Then Return
+
+        For Each file As String In Directory.GetFiles(folderPath, "*.dxf")
+            lstFiles.Items.Add(Path.GetFileName(file))
+        Next
+    End Sub
+
+
+    Private Sub lstFiles_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstFiles.SelectedIndexChanged
+        If lstFiles.SelectedItem Is Nothing OrElse tvFolders.SelectedNode Is Nothing Then Return
+
+        _selectedDxfPath = Path.Combine(tvFolders.SelectedNode.Tag.ToString(), lstFiles.SelectedItem.ToString())
+
+        Try
+            _previewDxf = DxfFile.Load(_selectedDxfPath)
+            pnlPreview.Invalidate()
+        Catch ex As Exception
+            _previewDxf = Nothing
+            MessageBox.Show("Failed to load DXF: " & ex.Message, "DXF Preview", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+
+    Private Sub btnOK_Click(sender As Object, e As EventArgs) Handles btnOK.Click
+        If String.IsNullOrEmpty(_selectedDxfPath) Then
+            MessageBox.Show("Please select a DXF file.", "DXF Import", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
 
-        ' Load DXF files in selected folder
-        lstFiles.Items.Clear()
-        Try
-            Dim files = Directory.GetFiles(node.Tag.ToString(), "*.dxf")
-            For Each f In files
-                lstFiles.Items.Add(Path.GetFileName(f))
-            Next
-        Catch ex As Exception
-            ' Optional logging
-        End Try
 
-    End Sub
-
-    Private Sub DXFFileSelectionDialog_Load(sender As Object, e As EventArgs) Handles Me.Load
-
-        '-------------------------
-        ' Form Load
-        '-------------------------
-
-        LoadRootNodes()
-
-    End Sub
-
-    Private Sub pbPreview_Paint(sender As Object, e As PaintEventArgs)
-        Dim g = e.Graphics
-        g.Clear(Color.White)
-
-        If PreviewLines Is Nothing OrElse PreviewLines.Count = 0 Then Return
-
-        Dim offsetX As Single, offsetY As Single, scaleYFlip As Single
-        Dim scale As Single = DxfImport.ComputeScaleAndOffset(PreviewLines, pnlPreview.Width, pnlPreview.Height, 5, offsetX, offsetY, scaleYFlip)
-
-        Using pen As New Pen(Color.Black, 1)
-            For Each ln In PreviewLines
-                Dim tln = DxfImport.TransformLine(ln, scale, offsetX, offsetY, scaleYFlip)
-                g.DrawLine(pen, tln.X1, tln.Y1, tln.X2, tln.Y2)
-            Next
-        End Using
-    End Sub
-
-    Private Sub CenterAndScalePreview()
-        If PreviewLines.Count = 0 Then Exit Sub
-
-        Dim minX = PreviewLines.Min(Function(l) Math.Min(l.X1, l.X2))
-        Dim maxX = PreviewLines.Max(Function(l) Math.Max(l.X1, l.X2))
-        Dim minY = PreviewLines.Min(Function(l) Math.Min(l.Y1, l.Y2))
-        Dim maxY = PreviewLines.Max(Function(l) Math.Max(l.Y1, l.Y2))
-
-        Dim dxfWidth = maxX - minX
-        Dim dxfHeight = maxY - minY
-
-        Dim panelWidth = pnlPreview.Width
-        Dim panelHeight = pnlPreview.Height
-
-        PreviewScale = Math.Min(panelWidth / dxfWidth, panelHeight / dxfHeight) * 0.9F
-        PreviewOffsetX = (panelWidth - dxfWidth * PreviewScale) / 2 - minX * PreviewScale
-        PreviewOffsetY = (panelHeight - dxfHeight * PreviewScale) / 2 - minY * PreviewScale
+        Me.DialogResult = DialogResult.OK
+        Me.Close()
     End Sub
 
     Private Sub pnlPreview_Paint(sender As Object, e As PaintEventArgs) Handles pnlPreview.Paint
-        e.Graphics.Clear(Color.White)
-        Using pen As New Pen(Color.Black, 1)
-            For Each ln In frmMain.CurrentPreviewLines
-                e.Graphics.DrawLine(pen, ln.X1, ln.Y1, ln.X2, ln.Y2)
-            Next
-        End Using
-    End Sub
-
-    Public ReadOnly Property SelectedFilePath As String
-        Get
-            If lstFiles.SelectedItem Is Nothing Then Return ""
-            Return lstFiles.SelectedItem.ToString()
-        End Get
-    End Property
-    ''' <summary>
-    ''' Draws the given DXF lines on a panel, scaling and centering to fit the panel.
-    ''' </summary>
-    ''' <param name="panel">The panel to draw on (e.g., pnlPreview).</param>
-    ''' <param name="lines">List of LineF to draw.</param>
-    Public Sub DrawLinesOnPanel(panel As Panel, lines As List(Of LineF))
-        If lines Is Nothing OrElse lines.Count = 0 Then
-            panel.Invalidate()
+        If _previewDxf Is Nothing Then
+            e.Graphics.Clear(Color.White)
             Return
         End If
 
-        ' Compute bounding box
-        Dim minX = lines.Min(Function(ln) Math.Min(ln.X1, ln.X2))
-        Dim maxX = lines.Max(Function(ln) Math.Max(ln.X1, ln.X2))
-        Dim minY = lines.Min(Function(ln) Math.Min(ln.Y1, ln.Y2))
-        Dim maxY = lines.Max(Function(ln) Math.Max(ln.Y1, ln.Y2))
 
-        Dim dx = maxX - minX
-        Dim dy = maxY - minY
-        If dx = 0 OrElse dy = 0 Then Return
+        DxfPreviewRenderer.DrawDxfPreview(_previewDxf, e.Graphics, pnlPreview.ClientRectangle)
+    End Sub
 
-        ' Panel size with optional padding
-        Dim pad As Integer = 5
-        Dim panelWidth = panel.Width - 2 * pad
-        Dim panelHeight = panel.Height - 2 * pad
 
-        ' Compute scale to fit
-        Dim scaleX = panelWidth / dx
-        Dim scaleY = panelHeight / dy
-        Dim scale = Math.Min(scaleX, scaleY)
 
-        ' Compute offset to center
-        Dim offsetX = pad + (panelWidth - dx * scale) / 2 - minX * scale
-        Dim offsetY = pad + (panelHeight - dy * scale) / 2 + maxY * scale
-        Dim flipY As Single = -1
+    Private Sub DrawLine(p1 As DxfPoint, p2 As DxfPoint, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
+        g.DrawLine(Pens.Black,
+        CSng(p1.X * scale + ox), CSng(bounds.Height - (p1.Y * scale + oy)),
+        CSng(p2.X * scale + ox), CSng(bounds.Height - (p2.Y * scale + oy)))
+    End Sub
 
-        ' Attach Paint event
-        RemoveHandler panel.Paint, AddressOf pnlPreview_Paint ' remove previous if any
-        AddHandler panel.Paint, Sub(sender As Object, e As PaintEventArgs)
-                                    Dim g = e.Graphics
-                                    g.Clear(Color.White)
-                                    Using pen As New Pen(Color.Black, 1)
-                                        For Each ln In lines
-                                            Dim x1 = ln.X1 * scale + offsetX
-                                            Dim y1 = ln.Y1 * scale * flipY + offsetY
-                                            Dim x2 = ln.X2 * scale + offsetX
-                                            Dim y2 = ln.Y2 * scale * flipY + offsetY
-                                            g.DrawLine(pen, x1, y1, x2, y2)
-                                        Next
-                                    End Using
-                                End Sub
 
-        panel.Invalidate()
+    Private Sub DrawCircle(c As DxfCircle, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
+        Dim size = CSng(c.Radius * 2 * scale)
+        Dim x = CSng((c.Center.X - c.Radius) * scale + ox)
+        Dim y = CSng(bounds.Height - ((c.Center.Y + c.Radius) * scale + oy))
+        g.DrawEllipse(Pens.Blue, x, y, size, size)
+    End Sub
+    Private Sub DrawArc(a As DxfArc, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
+        Dim size = CSng(a.Radius * 2 * scale)
+        Dim x = CSng((a.Center.X - a.Radius) * scale + ox)
+        Dim y = CSng(bounds.Height - ((a.Center.Y + a.Radius) * scale + oy))
+
+        ' DXF CCW -> GDI+ CW conversion, accounting for flipped Y-axis
+        Dim startAngle As Single = CSng(-a.StartAngle)
+        Dim sweepAngle As Single = CSng(-(a.EndAngle - a.StartAngle))
+
+        g.DrawArc(Pens.Green, x, y, size, size, startAngle, sweepAngle)
+    End Sub
+
+
+    Private Sub DrawPolyline(pl As DxfPolyline, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
+        If pl.Vertices.Count < 2 Then Return
+
+
+        For i = 0 To pl.Vertices.Count - 2
+            DrawLine(pl.Vertices(i).Location, pl.Vertices(i + 1).Location, g, bounds, scale, ox, oy)
+        Next
+
+
+        If pl.IsClosed Then
+            DrawLine(pl.Vertices.Last().Location, pl.Vertices.First().Location, g, bounds, scale, ox, oy)
+        End If
+    End Sub
+
+    Private Sub btnCancel_Click(sender As Object, e As EventArgs) Handles btnCancel.Click
+        Me.DialogResult = DialogResult.Cancel
+        Me.Close()
+    End Sub
+
+    Private Sub tvFolders_BeforeExpand(sender As Object, e As TreeViewCancelEventArgs) Handles tvFolders.BeforeExpand
+
+        Dim node As TreeNode = e.Node
+
+        If node.Nodes.Count = 1 AndAlso node.Nodes(0).Text = "Loading..." Then
+            node.Nodes.Clear()
+            PopulateChildFolders(node)
+        End If
     End Sub
 
 End Class

@@ -3,128 +3,192 @@ Imports DevExpress.XtraEditors.Controls
 Imports DevExpress.XtraTreeList
 Imports DevExpress.XtraTreeList.Nodes
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.State
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
+Imports FabV25_WIN8.AppData
+Imports System.IO
+Imports IxMilia.Dxf
 
+'========================================================
+' frmOpenProject.vb
+' Fully rewritten version using frmMain global JSON collections
+' Handles DXF project opening with machine, tool, material, layer selection
+'========================================================
 
 Public Class frmOpenProject
+    ' ----------------------------
+    ' Private Fields
+    ' ----------------------------
+
+    Private CFG_ROOT_NODE As TreeListNode
+    Private CFG_MATERIAL_ROOT_NODE As TreeListNode
+    Private CFG_MATERIAL_CATEGORY_NODE As TreeListNode
+    Private CFG_MATERIAL_NODE As TreeListNode
+    Private Const TAG_MATERIAL_ROOT_NODE = -200
+    Private Const TAG_MATERIAL_CATEGORY_NODE = -201
+    Private Const TAG_MATERIAL_NODE = -202
+    Dim sUsage As String
 
 
-    ' Public properties to retrieve selected values after dialog closes
-    Public Property SelectedMachineID As Integer
-    Public Property SelectedToolSetupID As Integer
-    Public Property SelectedCustomer As String
-    Public Property SelectedOrderPO As String
-    Public Property SelectedDueDate As DateTime?
-    Public Property SelectedMaterialID As Integer
-    Public Property SelectedLayerSetup As String
-    Public Property MaterialLength As Double?
-    Public Property MaterialWidth As Double?
-    Public Property MaterialThickness As Double?
-    Public Class ToolSetupItem
-        Public Property ID As Integer
-        Public Property Description As String
-        Public Overrides Function ToString() As String
-            Return Description
-        End Function
-    End Class
+    Private _selectedDxfPath As String
 
-    Private Sub frmOpenProject_Load(sender As Object, e As EventArgs) Handles Me.Load
-        PopulateMachines()
-        'PopulateToolSetups()
-        PopulateMaterials()
-        PopulateLayerSetups()
+    Private _machines As List(Of Machine)
+    Private _toolSetups As List(Of ToolSetUp)
+    Private _layerSetups As List(Of LayerSetup)
+    Private _materialTypes As List(Of MaterialType)
+    Private _materialSheets As List(Of MaterialSheet)
+
+    ' Selected items
+    Public SelectedMachineID As Integer
+    Public SelectedToolSetupID As Integer
+    Public SelectedLayerSetupID As Integer
+    Public SelectedMaterialID As Integer
+    Public CustomerName As String
+    Public OrderPO As String
+    Public DueDate As DateTime
+
+    ' Material picker control
+    Private matPicker As MaterialPickerTree
+
+    ' ----------------------------
+    ' Constructor
+    ' ----------------------------
+    Public Sub New(selectedDxfPath As String)
+        InitializeComponent()
+        _selectedDxfPath = selectedDxfPath
     End Sub
 
-    Private Sub cbeMachine_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cbeMachine.SelectedIndexChanged
-        Dim selectedMachine = cbeMachine.SelectedItem
-        If selectedMachine IsNot Nothing Then
-            currentMachineID = selectedMachine.Value
-            UpdateToolSetupCombo()
-        End If
+
+    ' ----------------------------
+    ' Form Load
+    ' ----------------------------
+    Private Sub frmOpenProject_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+        ' Load all JSON data
+        _machines = AppData.Machines
+        _toolSetups = AppData.ToolSetups
+        _layerSetups = AppData.LayerSetups
+        _materialTypes = AppData.MaterialTypes
+        _materialSheets = AppData.MaterialSheets
+
+        ' Initialize ComboBoxes
+        InitMachineCombo()
+        'InitLayerSetupCombo()
+
+        ' Initialize Material Picker
+        'matPicker = New MaterialPickerTree With {
+        '    .Location = cboMaterial.Location,
+        '    .Size = cboMaterial.Size
+        '}
+        ' Me.Controls.Add(matPicker)
+        cboMaterial.Visible = False ' hide old combo
+        ' matPicker.LoadMaterials(_materialTypes, _materialSheets)
+
+        ' Set optional fields defaults
+        dtDueDate.EditValue = DateTime.Now
+
+
+        MatListTree1.LoadMaterials(
+            AppData.MaterialTypes,
+            AppData.MaterialSheets
+        )
     End Sub
 
-    Private Sub PopulateMachines()
-        'cbeMachine.Properties.Items.Clear()
-        'For Each m In AppData.Machines
-        '    cbeMachine.Properties.Items.Add(New ComboBoxItem(m.Description, m.ID))
-        'Next
-        cbeMachine.Properties.Items.Clear()
 
-        For Each m In AppData.Machines
-            ' Show description but store ID via KeyValuePair
-            cbeMachine.Properties.Items.Add(New KeyValuePair(Of String, Integer)(m.Description, m.ID))
+    ' ----------------------------
+    ' Initialize Machine ComboBox
+    ' ----------------------------
+    Private Sub InitMachineCombo()
+        cboMachine.Properties.Items.Clear()
+
+        ' Add None
+        cboMachine.Properties.Items.Add(New myItemData("None", 0))
+
+        For Each m In _machines
+            cboMachine.Properties.Items.Add(New myItemData(m.Description, m.ID))
         Next
 
-        If cbeMachine.Properties.Items.Count > 0 Then
-            cbeMachine.SelectedIndex = 0
-        End If
+        cboMachine.SelectedIndex = 0
+    End Sub
+
+
+    ' ----------------------------
+    ' Initialize LayerSetup ComboBox
+    ' ----------------------------
+    Private Sub InitLayerSetupCombo()
+        cboLayerSetup.Properties.Items.Clear()
+
+        ' Add None
+        cboLayerSetup.Properties.Items.Add(New myItemData("None", 0))
+
+        For Each ls In _layerSetups
+            cboLayerSetup.Properties.Items.Add(New myItemData(ls.Description, ls.ID))
+        Next
+
+        cboLayerSetup.SelectedIndex = 0
+    End Sub
+
+    Private Sub cboMachine_EditValueChanged(sender As Object, e As EventArgs) Handles cboMachine.EditValueChanged
+        Dim selectedItem = TryCast(cboMachine.SelectedItem, myItemData)
+        If selectedItem Is Nothing Then Return
+
+        SelectedMachineID = selectedItem.ItemData
+
+        ' Filter ToolSetup ComboBox for this machine
+        cboToolSetup.Properties.Items.Clear()
+        cboToolSetup.Properties.Items.Add(New myItemData("None", 0))
+
+        Dim setups = _toolSetups.Where(Function(ts) ts.MachineID = SelectedMachineID)
+        For Each ts In setups
+            cboToolSetup.Properties.Items.Add(New myItemData(ts.Description, ts.ID))
+        Next
+
+        cboToolSetup.SelectedIndex = 0
+
+
+        ' Reload Layer Setups filtered by machine
+        LoadLayerSetupsForMachine(SelectedMachineID)
 
     End Sub
 
-    Private Sub PopulateToolSetups(machineID As Integer)
-        'cbeToolSetup.Properties.Items.Clear()
-
-        'For Each ts In AppData.ToolSetups
-        '    ' Extract MachineID and Name from the JObject
-        '    Dim tsMachineID As Integer = ts.Value(Of Integer)("MachineID")
-        '    Dim tsID As Integer = ts.Value(Of Integer)("ID")
-        '    Dim tsName As String = ts.Value(Of String)("Name")
-
-        '    If tsMachineID = machineID Then
-        '        cbeToolSetup.Properties.Items.Add(New ComboBoxItem(tsName, tsID))
-        '    End If
-        'Next
+    Private Sub cboToolSetup_EditValueChanged(sender As Object, e As EventArgs) Handles cboToolSetup.EditValueChanged
+        Dim selectedItem = TryCast(cboToolSetup.SelectedItem, myItemData)
+        If selectedItem Is Nothing Then Return
+        SelectedToolSetupID = selectedItem.ItemData
     End Sub
 
-    Private Sub PopulateMaterials()
-        cbeMaterial.Properties.Items.Clear()
-        'For Each mat In AppState.Materials
-        '    cbeMaterial.Properties.Items.Add(New ComboBoxItem(mat.Name, mat.ID))
-        'Next
+    Private Sub cboLayerSetup_EditValueChanged(sender As Object, e As EventArgs) Handles cboLayerSetup.EditValueChanged
+        Dim selectedItem = TryCast(cboLayerSetup.SelectedItem, myItemData)
+        If selectedItem Is Nothing Then Return
+        SelectedLayerSetupID = selectedItem.ItemData
     End Sub
 
-    Private Sub PopulateLayerSetups()
-        ' Example: add layer setups manually, or pull from AppState if defined
-        cbeLayerSetup.Properties.Items.Clear()
-        cbeLayerSetup.Properties.Items.Add("Standard")
-        cbeLayerSetup.Properties.Items.Add("Custom")
-    End Sub
 
     Private Sub cmdOK_Click(sender As Object, e As EventArgs) Handles cmdOK.Click
-        ' Validate required fields
-        If cbeMachine.SelectedItem Is Nothing Then
-            XtraMessageBox.Show("Please select a Machine.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        ' Validate selections
+        If SelectedMachineID = 0 Then
+            MessageBox.Show("Please select a machine.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
 
-        If cbeToolSetup.SelectedItem Is Nothing Then
-            XtraMessageBox.Show("Please select a Tool Setup.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        If SelectedToolSetupID = 0 Then
+            MessageBox.Show("Please select a tool setup.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
 
-        If cbeMaterial.SelectedItem Is Nothing Then
-            XtraMessageBox.Show("Please select a Material.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        If MatListTree1.SelectedMaterialID = 0 Then
+
+            MessageBox.Show("Please select a material.", "Validation",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
 
-        'If cbeLayerSetup.SelectedItem Is Nothing Then
-        '    XtraMessageBox.Show("Please select a Layer Setup.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-        '    Return
-        'End If
+        ' Save optional fields
+        CustomerName = txtCustomer.Text
+        OrderPO = txtOrderPO.Text
+        DueDate = dtDueDate.EditValue
+        Dim selectedMaterialID As Integer = MatListTree1.SelectedMaterialID
 
-        ' Save selections
-        SelectedMachineID = DirectCast(cbeMachine.SelectedItem, ComboBoxItem).Value
-        SelectedToolSetupID = DirectCast(cbeToolSetup.SelectedItem, ComboBoxItem).Value
-        SelectedCustomer = tebCustomer.Text
-        SelectedOrderPO = tebOderPO.Text
-        SelectedDueDate = If(deDueDate.EditValue IsNot Nothing, CType(deDueDate.EditValue, DateTime?), Nothing)
-        SelectedMaterialID = DirectCast(cbeMaterial.SelectedItem, ComboBoxItem).Value
-        SelectedLayerSetup = cbeLayerSetup.Text
-
-        '' Optional material dimensions
-        'If tebMaterialLength.Visible Then MaterialLength = Val(tebMaterialLength.Text)
-        'If tebMaterialWidth.Visible Then MaterialWidth = Val(tebMaterialWidth.Text)
-        'If tebMaterialThickness.Visible Then MaterialThickness = Val(tebMaterialThickness.Text)
-
+        ' Close dialog
         Me.DialogResult = DialogResult.OK
         Me.Close()
     End Sub
@@ -134,83 +198,61 @@ Public Class frmOpenProject
         Me.Close()
     End Sub
 
-    Private Sub cbeMaterial_Click(sender As Object, e As EventArgs) Handles cbeMaterial.Click
-        ' Create the popup
-        Dim picker As New MaterialPickerPopup()
 
-        ' Position the popup near the combo box
-        Dim pt As Point = cbeMaterial.PointToScreen(Point.Empty)
-        picker.StartPosition = FormStartPosition.Manual
-        picker.Location = New Point(pt.X, pt.Y + cbeMaterial.Height)
+    Private Sub popupContainerEdit1_EditValueChanged(sender As Object, e As EventArgs)
+        Dim sPieces() As String
+        Try
 
-        ' Load the material tree
-        picker.LoadMaterialTree()
 
-        ' Show the popup as dialog
-        If picker.ShowDialog() = DialogResult.OK Then
-            ' Get the selected sheet
-            Dim selectedSheet = picker.SelectedSheet
-            If selectedSheet IsNot Nothing Then
-                ' Display in the combo box
-                cbeMaterial.Text = selectedSheet.Description
+            If (popupContainerEdit1.Tag IsNot Nothing) Then
+                sPieces = Split(popupContainerEdit1.Tag, ",")
 
-                ' Save any additional info as needed
-                ' Example: store the selected sheet ID
-                Dim sheetID As Integer = selectedSheet.ID
-                Dim typeID As Integer = selectedSheet.MaterialTypeID
-                ' You can also populate any hidden fields, variables, or update PropertyGrid
+                Dim materialID As Long
 
-                MessageBox.Show($"Selected Material: {selectedSheet.Description}")
+                'MsgBox("The material ID is < " & e.ToString)
+
+                materialID = (sPieces(1))
+
+                tebMaterialLength.Text = modMaterial.GetMaterialLength(materialID)
+                tebMaterialWidth.Text = modMaterial.GetMaterialWidth(materialID)
+                tebMaterialThickness.Text = modMaterial.GetMaterialThickness(materialID)
             End If
+
+        Catch ex As Exception
+            MessageBox.Show("popupContainerEdit1_EditValueChanged: " & ex.Message)
+        End Try
+        'EnableOkButton()
+    End Sub
+
+
+    Private Sub popupContainerEdit1_QueryDisplayText(sender As Object, e As QueryDisplayTextEventArgs)
+        e.DisplayText = If(e.EditValue IsNot Nothing, e.EditValue.ToString(), "")
+
+    End Sub
+
+
+
+    Private Sub LoadLayerSetupsForMachine(machineID As Integer)
+        cboLayerSetup.Properties.Items.Clear()
+
+        ' Assume _layerSetups is a List(Of LayerSetup) loaded from JSON
+        Dim filteredSetups = _layerSetups.Where(Function(l) l.MachineID = machineID).ToList()
+
+        ' Add default "None" item
+        cboLayerSetup.Properties.Items.Add(New myItemData("None", 0))
+
+        For Each ls In filteredSetups
+            cboLayerSetup.Properties.Items.Add(New myItemData(ls.Description, ls.ID))
+        Next
+
+        ' Optionally select first item
+        If cboLayerSetup.Properties.Items.Count > 0 Then
+            cboLayerSetup.SelectedIndex = 0
         End If
     End Sub
 
-    Private Sub UpdateToolSetupCombo()
-        cbeToolSetup.Properties.Items.Clear()
-        cbeToolSetup.Text = Nothing
 
-        If cbeMachine.SelectedItem Is Nothing Then Return
-
-
-        Dim selectedMachineID As Integer = DirectCast(cbeMachine.SelectedItem, KeyValuePair(Of String, Integer)).Value
-
-        '' Filter ToolSetups for this machine
-        'Dim filteredToolSetups = AppData.ToolSetups.Where(Function(ts) ts("MachineID")?.ToObject(Of Integer)() = selectedMachineID).ToList()
-
-        'For Each ts In filteredToolSetups
-        '    cbeToolSetup.Properties.Items.Add(New ToolSetupItem With {
-        '    .ID = ts("ID").ToObject(Of Integer)(),
-        '    .Description = ts("Description").ToString()
-        '})
-        'Next
-
-        ' Optional: select first tool setup automatically
-        If cbeToolSetup.Properties.Items.Count > 0 Then cbeToolSetup.SelectedIndex = 0
-    End Sub
-
-    ' --- Helper: get currently selected ToolSetup ID ---
-    Private Function GetSelectedToolSetupID() As Integer
-        Dim selected As ToolSetupItem = TryCast(cbeToolSetup.SelectedItem, ToolSetupItem)
-        If selected IsNot Nothing Then
-            Return selected.ID
-        End If
-        Return -1
-    End Function
-
-    ' Simple helper class
-    Private Class ComboBoxItem
-        Public Property Text As String
-        Public Property Value As Integer
-        Public Sub New(t As String, v As Integer)
-            Text = t
-            Value = v
-        End Sub
-        Public Overrides Function ToString() As String
-            Return Text
-        End Function
-    End Class
-
-    Private Sub cbeMaterial_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cbeMaterial.SelectedIndexChanged
-
-    End Sub
 End Class
+
+
+

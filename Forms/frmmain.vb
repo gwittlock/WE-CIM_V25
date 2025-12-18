@@ -23,12 +23,23 @@ Imports FabV25_WIN8.AppData
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 Imports Newtonsoft.Json
 Imports Formatting = Newtonsoft.Json.Formatting
+Imports IxMilia.Dxf
+Imports IxMilia.Dxf.Entities
+
 
 Public Class frmMain
     Inherits RibbonForm
     ' In frmMain or a global module
     Public CurrentDXFLines As New List(Of LineF)          ' Lines for main panel
     Public CurrentPreviewLines As New List(Of LineF)      ' Lines for file open preview
+
+    Private _loadedDxf As DxfFile = Nothing
+
+    Private _activeDxf As DxfFile
+    Private _modelBounds As RectangleF
+    Private _scale As Single = 1.0F
+    Private _offset As PointF
+
 
 
     Public PicModelerScale As Single = 1.0F
@@ -148,31 +159,16 @@ Public Class frmMain
         End
     End Sub
 
-    Public Sub ProcessDXFAndDraw(filePath As String)
-        ' Parse lines
-        CurrentDXFLines = ParseDXFToLines(filePath)
+    'Public Sub ProcessDXFAndDraw(filePath As String)
+    '    ' Parse lines
+    '    CurrentDXFLines = ParseDXFToLines(filePath)
 
-        ' Trigger redraw
-        pnlPicmodeler.Invalidate()
-    End Sub
+    '    _loadedDxf = filePath
 
 
-    Private Sub pnlPicmodeler_Paint(sender As Object, e As PaintEventArgs) Handles pnlPicmodeler.Paint
-        Dim g = e.Graphics
-        g.Clear(Color.White)
-        If CurrentDXFLines Is Nothing OrElse CurrentDXFLines.Count = 0 Then Return
-
-        Dim offsetX As Single, offsetY As Single, scaleYFlip As Single
-        Dim scale As Single = DxfImport.ComputeScaleAndOffset(CurrentDXFLines, pnlPicmodeler.Width, pnlPicmodeler.Height, 10, offsetX, offsetY, scaleYFlip)
-
-        DrawLinesOnMainPanel(pnlPicmodeler, CurrentDXFLines)
-        'Using pen As New Pen(Color.Black, 1)
-        '    For Each ln In CurrentDXFLines
-        '        Dim tln = DxfImport.TransformLine(ln, scale, offsetX, offsetY, scaleYFlip)
-        '        g.DrawLine(pen, tln.X1, tln.Y1, tln.X2, tln.Y2)
-        '    Next
-        'End Using
-    End Sub
+    '    ' Trigger redraw
+    '    pnlPicmodeler.Invalidate()
+    'End Sub
 
     ''' <summary>
     ''' Processes DXF lines, stores them, and draws them scaled and centered on the main panel.
@@ -309,6 +305,230 @@ Public Class frmMain
             File.WriteAllText(savePath, json)
         End Using
     End Sub
+
+    Public Sub LoadDXFToModeler(dxf As DxfFile)
+
+        If dxf Is Nothing Then
+            MessageBox.Show("No DXF data to load.", "DXF Import",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Return
+        End If
+
+        ' ----------------------------------
+        ' Store active DXF
+        ' ----------------------------------
+        _activeDxf = dxf
+
+        ' ----------------------------------
+        ' Compute model bounds (world extents)
+        ' ----------------------------------
+        _modelBounds = ComputeDxfBounds(dxf)
+
+        ' ----------------------------------
+        ' Reset view (zoom to fit)
+        ' ----------------------------------
+        ResetModelView()
+
+        ' ----------------------------------
+        ' Trigger repaint
+        ' ----------------------------------
+        pnlPicmodeler.Invalidate()
+        'pnlPicmodelerPanel.Invalidate()
+
+    End Sub
+
+
+
+    Private Sub ResetModelView()
+
+        If _modelBounds.IsEmpty Then Return
+
+        Dim panelSize = pnlPicmodeler.Size   'pnlPicmodelerPanel.ClientSize
+        If panelSize.Width = 0 OrElse panelSize.Height = 0 Then Return
+
+        Dim scaleX = panelSize.Width / _modelBounds.Width
+        Dim scaleY = panelSize.Height / _modelBounds.Height
+
+        _scale = CSng(Math.Min(scaleX, scaleY) * 0.9F)
+
+        _offset = New PointF(
+            -_modelBounds.Left * _scale + (panelSize.Width - _modelBounds.Width * _scale) / 2,
+            -_modelBounds.Top * _scale + (panelSize.Height - _modelBounds.Height * _scale) / 2
+        )
+
+    End Sub
+
+    'Private Sub DrawDxf(g As Graphics, dxf As DxfFile)
+
+    '    g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+    '    g.TranslateTransform(_offset.X, _offset.Y)
+    '    g.ScaleTransform(_scale, -_scale)
+    '    g.TranslateTransform(0, -_modelBounds.Bottom)
+
+    '    Using pen As New Pen(Color.White, 0)
+
+    '        For Each ent In dxf.Entities
+
+    '            Select Case True
+
+    '                Case TypeOf ent Is DxfLine
+    '                    Dim l = CType(ent, DxfLine)
+    '                    g.DrawLine(pen,
+    '                    CSng(l.P1.X), CSng(l.P1.Y),
+    '                    CSng(l.P2.X), CSng(l.P2.Y))
+
+    '                Case TypeOf ent Is DxfCircle
+    '                    Dim c = CType(ent, DxfCircle)
+    '                    g.DrawEllipse(pen,
+    '                    CSng(c.Center.X - c.Radius),
+    '                    CSng(c.Center.Y - c.Radius),
+    '                    CSng(c.Radius * 2),
+    '                    CSng(c.Radius * 2))
+
+    '                Case TypeOf ent Is DxfArc
+    '                    DrawArcCorrectly(
+    '                        CType(ent, DxfArc),
+    '                        g,
+    '                        Bounds,
+    '                        Scale,
+    '                        OffsetX,
+    '                        OffsetY)
+
+    '            End Select
+    '        Next
+    '    End Using
+    'End Sub
+
+    Private Sub pnlPicModeler_Paint(sender As Object, e As PaintEventArgs) Handles pnlPicmodeler.Paint
+        Dim g As Graphics = e.Graphics
+        g.Clear(Color.White)
+
+        If _activeDxf Is Nothing OrElse _activeDxf.Entities.Count = 0 Then Return
+
+        ' ----------------------------
+        ' 1. Compute bounding box
+        ' ----------------------------
+        Dim minX As Double = Double.MaxValue
+        Dim minY As Double = Double.MaxValue
+        Dim maxX As Double = Double.MinValue
+        Dim maxY As Double = Double.MinValue
+
+        For Each entity In _activeDxf.Entities
+            If TypeOf entity Is DxfLine Then
+                Dim line = CType(entity, DxfLine)
+                minX = Math.Min(minX, Math.Min(line.P1.X, line.P2.X))
+                minY = Math.Min(minY, Math.Min(line.P1.Y, line.P2.Y))
+                maxX = Math.Max(maxX, Math.Max(line.P1.X, line.P2.X))
+                maxY = Math.Max(maxY, Math.Max(line.P1.Y, line.P2.Y))
+            ElseIf TypeOf entity Is DxfCircle Then
+                Dim circle = CType(entity, DxfCircle)
+                minX = Math.Min(minX, circle.Center.X - circle.Radius)
+                minY = Math.Min(minY, circle.Center.Y - circle.Radius)
+                maxX = Math.Max(maxX, circle.Center.X + circle.Radius)
+                maxY = Math.Max(maxY, circle.Center.Y + circle.Radius)
+            ElseIf TypeOf entity Is DxfArc Then
+                Dim arc = CType(entity, DxfArc)
+                ' approximate bounding box for arc
+                minX = Math.Min(minX, arc.Center.X - arc.Radius)
+                minY = Math.Min(minY, arc.Center.Y - arc.Radius)
+                maxX = Math.Max(maxX, arc.Center.X + arc.Radius)
+                maxY = Math.Max(maxY, arc.Center.Y + arc.Radius)
+            ElseIf TypeOf entity Is DxfPolyline Then
+                Dim pl = CType(entity, DxfPolyline)
+                For Each v In pl.Vertices
+                    minX = Math.Min(minX, v.Location.X)
+                    minY = Math.Min(minY, v.Location.Y)
+                    maxX = Math.Max(maxX, v.Location.X)
+                    maxY = Math.Max(maxY, v.Location.Y)
+                Next
+            End If
+        Next
+
+        ' Avoid zero-size bounding box
+        If minX = maxX Then maxX = minX + 1
+        If minY = maxY Then maxY = minY + 1
+
+        ' ----------------------------
+        ' 2. Compute scale and offsets
+        ' ----------------------------
+        Dim panelRect As Rectangle = pnlPicmodeler.ClientRectangle
+        Dim scaleX As Double = panelRect.Width / (maxX - minX)
+        Dim scaleY As Double = panelRect.Height / (maxY - minY)
+        Dim scale As Double = Math.Min(scaleX, scaleY) * 0.9 ' 10% margin
+
+        ' Offsets to center the drawing
+        Dim ox As Double = (panelRect.Width - (maxX - minX) * scale) / 2 - minX * scale
+        Dim oy As Double = (panelRect.Height - (maxY - minY) * scale) / 2 - minY * scale
+
+        ' ----------------------------
+        ' 3. Draw entities
+        ' ----------------------------
+        For Each entity In _activeDxf.Entities
+            If TypeOf entity Is DxfLine Then
+                Dim line = CType(entity, DxfLine)
+                DrawLine(line.P1, line.P2, g, panelRect, scale, ox, oy)
+            ElseIf TypeOf entity Is DxfCircle Then
+                Dim circle = CType(entity, DxfCircle)
+                DrawCircle(circle, g, panelRect, scale, ox, oy)
+            ElseIf TypeOf entity Is DxfArc Then
+                Dim arc = CType(entity, DxfArc)
+                DrawArc(arc, g, panelRect, scale, ox, oy)
+            ElseIf TypeOf entity Is DxfPolyline Then
+                Dim pl = CType(entity, DxfPolyline)
+                DrawPolyline(pl, g, panelRect, scale, ox, oy)
+            End If
+        Next
+    End Sub
+
+
+
+    Private Sub DrawLine(p1 As DxfPoint, p2 As DxfPoint, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
+        g.DrawLine(Pens.Black,
+               CSng(p1.X * scale + ox), CSng(bounds.Height - (p1.Y * scale + oy)),
+               CSng(p2.X * scale + ox), CSng(bounds.Height - (p2.Y * scale + oy)))
+    End Sub
+
+
+    ' Draw a circle
+    Private Sub DrawCircle(c As DxfCircle, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
+        Dim radiusScaled As Single = CSng(c.Radius * scale)
+        Dim x As Single = CSng(c.Center.X * scale + ox - radiusScaled)
+        Dim y As Single = CSng(bounds.Height - (c.Center.Y * scale + oy) - radiusScaled)
+        Dim size As Single = radiusScaled * 2
+        g.DrawEllipse(Pens.Blue, x, y, size, size)
+    End Sub
+
+    Private Sub DrawArc(a As DxfArc, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
+        Dim radiusScaled As Single = CSng(a.Radius * scale)
+        Dim x As Single = CSng(a.Center.X * scale + ox - radiusScaled)
+        Dim y As Single = CSng(bounds.Height - (a.Center.Y * scale + oy) - radiusScaled)
+        Dim size As Single = radiusScaled * 2
+
+        ' DXF CCW angles -> GDI+ CW angles, Y-axis flipped
+        Dim startAngle As Single = CSng(-a.StartAngle)
+        Dim sweepAngle As Single = CSng(-(a.EndAngle - a.StartAngle))
+
+        g.DrawArc(Pens.Green, x, y, size, size, startAngle, sweepAngle)
+    End Sub
+
+
+    ' Draw a polyline
+    Private Sub DrawPolyline(pl As DxfPolyline, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
+        If pl.Vertices.Count < 2 Then Return
+
+        For i As Integer = 0 To pl.Vertices.Count - 2
+            Dim p1 As DxfPoint = pl.Vertices(i).Location
+            Dim p2 As DxfPoint = pl.Vertices(i + 1).Location
+            DrawLine(p1, p2, g, bounds, scale, ox, oy)
+        Next
+
+        ' Close the polyline if needed
+        If pl.IsClosed Then
+            DrawLine(pl.Vertices.Last().Location, pl.Vertices.First().Location, g, bounds, scale, ox, oy)
+        End If
+    End Sub
+
+
 End Class
 
 

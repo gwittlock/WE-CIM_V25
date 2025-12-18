@@ -1,28 +1,42 @@
 ﻿Imports System.Data.OleDb
+Imports IxMilia.Dxf
+Imports IxMilia.Dxf.Entities
 
 
 Public Module modFile
+
     Private m_FileName As String
     Public Function FileOpen() As Boolean
 
         Using dlg As New DXFFileSelectionDialog()
             If dlg.ShowDialog() = DialogResult.OK Then
-                Dim selectedFile As String = GetFilename()
-                If String.IsNullOrEmpty(selectedFile) Then Return -1
+
+                ' Get the selected DXF file path and DxfFile object
+                Dim selectedPath As String = dlg.SelectedDxfPath
+                Dim loadedDxf As DxfFile = Nothing
+
+                Try
+                    loadedDxf = DxfFile.Load(selectedPath)
+                Catch ex As Exception
+                    MessageBox.Show("Failed to load DXF: " & ex.Message, "DXF Import", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                    Return False
+                End Try
 
                 ' Show Import Dialog to gather context (Machine, ToolSetup, Material, etc.)
-                Using frmOpenProject As New frmOpenProject
+                Using frmOpenProject As New frmOpenProject(selectedPath)
                     If frmOpenProject.ShowDialog() = DialogResult.OK Then
 
                         ' Process DXF file and draw in pnlPicmodeler
-                        frmMain.ProcessDXFAndDraw(selectedFile)
+                        ' Use the loaded DxfFile from the dialog instead of re-loading
+                        frmMain.LoadDXFToModeler(loadedDxf)
                     End If
                 End Using
             End If
         End Using
 
-        Return 0
+        Return True
     End Function
+
 
     'Private Sub CenterAndScaleDXF()
     '    If frmMain.DXFLines.Count = 0 Then Exit Sub

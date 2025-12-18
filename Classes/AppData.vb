@@ -5,8 +5,11 @@
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 Imports Newtonsoft.Json
 Imports Newtonsoft.Json.Linq
+Imports System.ComponentModel
 Imports System.IO
-'Imports System.IO.Compression
+Imports System.Drawing
+Imports System.Drawing.Design
+Imports System.Windows.Forms.Design
 
 Public Class AppData
 
@@ -31,15 +34,32 @@ Public Class AppData
     Public Shared MaterialTypes As List(Of MaterialType)
     Public Shared MaterialSheets As List(Of MaterialSheet)
 
-        ' -------------------------------
-        ' TOOLS
-        ' -------------------------------
-        Public Shared ToolCrib As List(Of ToolCribItem)
-        Public Shared ToolTypes As List(Of ToolType)
-        Public Shared ToolAttributeTypes As List(Of ToolAttributeType)
-        Public Shared ToolTypeAttributes As List(Of ToolTypeAttribute)
+    ' -------------------------------
+    ' TOOLS
+    ' -------------------------------
+    Public Shared ToolCrib As List(Of ToolCribItem)
+    Public Shared ToolTypes As List(Of ToolType)
+    Public Shared ToolAttributeTypes As List(Of ToolAttributeType)
+    Public Shared ToolTypeAttributes As List(Of ToolTypeAttribute)
     Public Shared ToolTypePropertiesList As List(Of ToolTypeProperties)
+    Public Shared LayerSetups As List(Of LayerSetup)
+    Public Shared Directives As List(Of Directive)
 
+    Public Shared _selectedDxfPath As String = String.Empty
+    Public _dxfPath As String = String.Empty
+
+    Public Enum CutSideEnum
+        None = 0
+        Left = -1
+        Right = 1
+    End Enum
+
+    Public Enum CutDirectionEnum
+        CW = 1
+        CCW = -1
+        Auto = 0
+        As_Specified = 2
+    End Enum
 
     '  LOAD ALL JSON FILES (once)
     ' ------------------------------------------
@@ -83,6 +103,18 @@ Public Class AppData
         ' ---- MATERIAL DATA ----
         MaterialTypes = LoadTableWrapped(Of MaterialType)("MaterialTypes.json")
         MaterialSheets = LoadMaterialSheets("MaterialInventory.json")
+
+        Dim layerSetupsFile = Path.Combine(DataFolder, "LayerSetups.json")
+        Dim directivesFile = Path.Combine(DataFolder, "Directives.json")
+
+        LayerSetups = If(File.Exists(layerSetupsFile),
+                     JObject.Parse(File.ReadAllText(layerSetupsFile))("Rows").ToObject(Of List(Of LayerSetup))(),
+                     New List(Of LayerSetup)())
+
+        Directives = If(File.Exists(directivesFile),
+                   JObject.Parse(File.ReadAllText(directivesFile))("Rows").ToObject(Of List(Of Directive))(),
+                   New List(Of Directive)())
+
     End Sub
 
     Private Function LoadToolTypeAttributes() As List(Of ToolTypeAttribute)
@@ -233,8 +265,8 @@ Public Class AppData
             Return JsonConvert.DeserializeObject(Of List(Of T))(File.ReadAllText(spath))
         Else
             Return New List(Of T)()
-            End If
-        End Function
+        End If
+    End Function
 
     Private Shared Function LoadJObjectList(fileName As String) As List(Of JObject)
         Dim spath As String = Path.Combine(DataFolder, fileName)
@@ -338,6 +370,68 @@ Public Class AppData
     Public Class ToolTypeProperties
         Public Property ToolTypeID As Integer                   ' ID of the ToolType
         Public Property Properties As List(Of ToolTypeProperty) ' List of all properties for this ToolType
+    End Class
+
+
+
+    ' LayerSetup class
+    Public Class LayerSetup
+        Public Property ID As Integer
+        Public Property Description As String
+        Public Property MachineID As Integer
+        Public Property ZLevelMode As Double
+        Public Property GapTolerance As Double
+        Public Property CleanTolerance As Double
+        Public Property FilterTolerance As Double
+        Public Property SharpAngle As Double
+        Public Property ProcessText As Boolean
+        Public Property Restrict_Offset As Boolean
+
+        ' Optional: other global attributes like ZLevelMode, GapTolerance, etc.
+
+        ' Add a collection for layers (directives)
+        Public Property Layers As List(Of Directive) = New List(Of Directive)
+    End Class
+
+    ' Directive class
+    Public Class Directive
+        Public Property ID As Integer
+        Public Property LayerSetupID As Integer
+
+        Public Property CADLayer As String
+        Public Property CAMLayer As String
+
+        ' === Stored as Integer (JSON-safe) ===
+        <Browsable(False)>
+        Public Property Color As Integer
+
+        ' === PropertyGrid Color Picker ===
+        <DisplayName("Color")>
+        <Editor(GetType(ColorEditor), GetType(UITypeEditor))>
+        Public Property DisplayColor As Color
+            Get
+                Return ColorTranslator.FromOle(Color)
+            End Get
+            Set(value As Color)
+                Color = ColorTranslator.ToOle(value)
+            End Set
+        End Property
+
+        <TypeConverter(GetType(StationTypeConverter))>
+        Public Property Station As String
+
+        Public Property ToolType As Integer?
+
+        Public Property ZLevel As Double
+
+        ' === Enums = dropdowns ===
+        <DisplayName("Cut Side")>
+        Public Property CutSide As CutSideEnum
+
+        Public Property Distance As Double
+
+        <DisplayName("Cut Direction")>
+        Public Property CutDirection As CutDirectionEnum
     End Class
 
 End Class

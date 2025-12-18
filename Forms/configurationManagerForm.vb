@@ -10,6 +10,8 @@ Imports System.Data.OleDb
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 Imports FabV25_WIN8.DynamicToolAttributes
 Imports System.Dynamic
+Imports System.Linq
+
 
 Public Class ConfigurationManagerForm
     Inherits Form
@@ -71,6 +73,8 @@ Public Class ConfigurationManagerForm
     Private currentToolSetup As String
     Private newToolDescription As String
     Private currentToolTypeID As Integer
+
+    Public CurrentSelectedNode As TreeNode
 
     Private newToolBeingAdded As ToolCribItem = Nothing
 
@@ -193,37 +197,78 @@ Public Class ConfigurationManagerForm
         ' Clear the existing tree
         TreeViewMachines.Nodes.Clear()
 
+
+        ' --- Load Layer Setups and Directives ---
+        'Dim layerSetupsFile = Path.Combine(dataFolder, "LayerSetups.json")
+        'Dim directivesFile = Path.Combine(dataFolder, "Directives.json")
+
+        'LayerSetups = If(File.Exists(layerSetupsFile),
+        '                 JObject.Parse(File.ReadAllText(layerSetupsFile))("Rows").ToObject(Of List(Of LayerSetup))(),
+        '                 New List(Of LayerSetup)())
+
+        'Directives = If(File.Exists(directivesFile),
+        '                JObject.Parse(File.ReadAllText(directivesFile))("Rows").ToObject(Of List(Of Directive))(),
+        '                New List(Of Directive)())
+
+        ' Map directives to each LayerSetup
+        For Each ls In layerSetups
+            ls.Layers = directives.Where(Function(d) d.LayerSetupID = ls.ID).ToList()
+        Next
+
+
         ' -------------------------
         ' Root Node: Machine Types
         ' -------------------------
         Dim rootNode As TreeNode = TreeViewMachines.Nodes.Add("Machine Types")
-        rootNode.Tag = EncodeConfigTreeTag(0, 0, 0, 0, 0)
+        rootNode.Tag = EncodeConfigTreeTag(0, 0, 0, 0, 0, 0)
 
         ' Loop through Machine Types
         For Each mt As MachineType In AppData.MachineTypes
             Dim typeNode As TreeNode = rootNode.Nodes.Add(mt.Display)
-            typeNode.Tag = EncodeConfigTreeTag(mt.ID, 0, 0, 0, 1) ' nodetype = 1
+            typeNode.Tag = EncodeConfigTreeTag(mt.ID, 0, 0, 0, 0, 1) ' nodetype = 1
 
             ' Add Machines under this type
             Dim machinesOfType = AppData.Machines.Where(Function(m) m.TypeID = mt.ID)
             For Each machine As Machine In machinesOfType
                 Dim machineNode As TreeNode = typeNode.Nodes.Add(machine.Description)
-                machineNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, 0, 0, 10)
+                machineNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, 0, 0, 0, 10)
 
                 ' Add "Stations" node
                 Dim stationsNode As TreeNode = machineNode.Nodes.Add("Stations")
-                stationsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, 0, 0, 11)
+                stationsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, 0, 0, 0, 11)
 
                 ' Add "Tool Setups" node
                 Dim toolSetupsNode As TreeNode = machineNode.Nodes.Add("Tool Setups")
-                toolSetupsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, 0, 0, 12)
+                toolSetupsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, 0, 0, 0, 12)
 
                 ' Add individual ToolSetup nodes under "Tool Setups"
                 If AppData.ToolSetups IsNot Nothing Then
                     For Each ts As ToolSetup In AppData.ToolSetups
                         If ts.MachineID = machine.ID Then
                             Dim tsNode As TreeNode = toolSetupsNode.Nodes.Add(ts.Description)
-                            tsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 13) ' Store ToolSetupID
+                            tsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 13) ' Store ToolSetupID
+
+                            ' Layer Setups under Tool Setup
+                            Dim lsForMachine = layerSetups.Where(Function(ls) ls.MachineID = machine.ID).ToList()
+                            Dim layerSetupsNode As New TreeNode("Layer Setups")
+                            layerSetupsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 14)
+
+
+                            ' Add the "Layer Setups" node under the current Tool Setup node
+                            tsNode.Nodes.Add(layerSetupsNode)
+
+                            For Each ls In lsForMachine
+                                'Dim lsNode As New TreeNode(ls.Description) With {.Tag = ls.ID}
+                                Dim lsNode As New TreeNode(ls.Description) With {.Tag = EncodeConfigTreeTag(mt.ID, ts.MachineID, toolsetupid, ls.ID, 0, 15)}
+                                layerSetupsNode.Nodes.Add(lsNode)   ' <- add to the Layer Setups node, not tsNode
+
+                                ' Individual layers (directives) under LayerSetup
+                                For Each layer In ls.Layers
+                                    ' Dim layerNode As New TreeNode(layer.CADLayer) With {.Tag = layer.ID}
+                                    Dim layerNode As New TreeNode(layer.CADLayer) With {.Tag = EncodeConfigTreeTag(mt.ID, ts.MachineID, toolsetupid, ls.ID, layer.ID, 16)}
+                                    lsNode.Nodes.Add(layerNode)
+                                Next
+                            Next
                         End If
                     Next
                 End If
@@ -234,13 +279,13 @@ Public Class ConfigurationManagerForm
         ' Root Node: Material Inventory
         ' -------------------------
         Dim materialRoot As TreeNode = TreeViewMachines.Nodes.Add("Material Inventory")
-        materialRoot.Tag = EncodeConfigTreeTag(0, 0, 0, 0, 100) ' nodetype 100 = root
+        materialRoot.Tag = EncodeConfigTreeTag(0, 0, 0, 0, 0, 100) ' nodetype 100 = root
 
         ' Loop through Material Types
         If AppData.MaterialTypes IsNot Nothing Then
             For Each mt As MaterialType In AppData.MaterialTypes
                 Dim typeNode As TreeNode = materialRoot.Nodes.Add(mt.Description)
-                typeNode.Tag = EncodeConfigTreeTag(mt.ID, 0, 0, 0, 101)
+                typeNode.Tag = EncodeConfigTreeTag(mt.ID, 0, 0, 0, 0, 101)
 
                 ' Add MaterialSheets under this type
                 Dim sheets = AppData.MaterialSheets.Where(Function(s) s.TypeID = mt.ID)
@@ -256,6 +301,17 @@ Public Class ConfigurationManagerForm
         rootNode.Expand()
     End Sub
 
+    'Private Sub PopulateLayers(layerSetupNode As TreeNode, ls As LayerSetup)
+    '    For Each layerName In ls.Layers.Keys
+    '        Dim layerNode = New TreeNode(layerName) With {
+    '        .Tag = New TreeNodeTag With {
+    '            .NodeType = TreeNodeType.Layer,
+    '            .ID = 0
+    '        }
+    '    }
+    '        layerSetupNode.Nodes.Add(layerNode)
+    '    Next
+    'End Sub
 
     '' --- Load JSON Files ---
     'Private Sub LoadJsonData()
@@ -599,6 +655,9 @@ Public Class ConfigurationManagerForm
     'End Sub
     Private Sub TreeViewMachines_AfterSelect(sender As Object, e As TreeViewEventArgs) Handles TreeViewMachines.AfterSelect
         Try
+
+            CurrentSelectedNode = TreeViewMachines.SelectedNode
+
             Dim selectedNode = e.Node
             Dim WhichNode As Integer
 
@@ -634,6 +693,8 @@ Public Class ConfigurationManagerForm
                     tabControlMain.SelectedTab = tabDefinition
                     dgvToolSetup.DataSource = Nothing
 
+
+
                 Case 13 ' Actual Tool Setup Node
                     Dim machineID = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
                     currentMachineID = machineID
@@ -646,6 +707,33 @@ Public Class ConfigurationManagerForm
                     Dim machineTypeID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "MachineType_ID", 0)
                     PopulateToolTypeComboBox(machineTypeID)
                     tabControlMain.SelectedTab = tabToolSetup
+
+                Case 14 ' Layer Setup Root Node
+                    ' Set up the property grid for the Layer Setup root
+                    propgrdLayerSetup.SelectedObject = Nothing
+
+
+
+                    txtPreamble.Text = "Select a Layer Setup to view details."
+                    tabControlMain.SelectedTab = tabDefinition
+
+                Case 15 ' Layer Setup Node
+                    ' Set up the property grid for the specific Layer Setup
+                    CurrentSelectedNode = selectedNode
+                    Dim layerSetupID = GetValueFromDelimitedData(selectedNode.Tag, "LayerSetup_ID", 0)
+                    Dim layerSetup = LayerSetups.FirstOrDefault(Function(ls) ls.ID = layerSetupID)
+                    propgrdLayerSetup.SelectedObject = layerSetup
+                    txtPreamble.Text = $"Viewing Layer Setup: {selectedNode.Text}"
+                    tabControlMain.SelectedTab = tabLayerSetup
+
+                Case 16 ' Individual Layer Node
+                    ' Set up the property grid for the individual layer
+                    CurrentSelectedNode = selectedNode
+                    Dim directiveID = GetValueFromDelimitedData(selectedNode.Tag, "Directive_ID", 0)
+                    Dim directive = Directives.FirstOrDefault(Function(d) d.ID = directiveID)
+                    propgrdLayer.SelectedObject = directive
+                    txtPreamble.Text = $"Viewing Layer: {selectedNode.Text}"
+                    tabControlMain.SelectedTab = tabLayer
 
                 Case 100 To 102 ' Material nodes
                     If TypeOf selectedNode.Tag Is MaterialSheet Then
@@ -1200,7 +1288,8 @@ Public Class ConfigurationManagerForm
     Public Function EncodeConfigTreeTag(MachineType_ID As Integer,
                                  Machine_ID As Integer,
                                  ToolSetup_ID As Integer,
-                                  LayerSet_ID As Integer,
+                                 LayerSet_ID As Integer,
+                                 Directive_ID As Integer,
                                  nodetype As Integer) As String
 
         'root("Machine Types") nodetype = 1
@@ -1215,7 +1304,8 @@ Public Class ConfigurationManagerForm
         EncodeConfigTreeTag = CHR1 & "MachineType_ID" & CHR2 & MachineType_ID &
                     CHR1 & "Machine_ID" & CHR2 & Machine_ID &
                     CHR1 & "ToolSetup_ID" & CHR2 & ToolSetup_ID &
-                    CHR1 & "LayerSetup_ID" & CHR2 & ToolSetup_ID &
+                    CHR1 & "LayerSetup_ID" & CHR2 & LayerSet_ID &
+                    CHR1 & "Directive_ID" & CHR2 & Directive_ID &
                     CHR1 & "NodeType" & CHR2 & nodetype
 
 
@@ -1725,6 +1815,9 @@ Public Class ConfigurationManagerForm
             Return
         End If
 
+        ' Determine the index of the selected tool
+        Dim selectedIndex As Integer = lstTools.SelectedIndex
+
         ' Remove from ToolCrib
         AppData.ToolCrib.Remove(selectedTool)
 
@@ -1743,7 +1836,13 @@ Public Class ConfigurationManagerForm
         ' Refresh UI
         LoadToolsForSelectedToolType()
 
-        ' Optionally clear the grid selection if deleted tool was selected
+        ' Highlight next tool if available, otherwise previous
+        If lstTools.Items.Count > 0 Then
+            Dim newIndex As Integer = Math.Min(selectedIndex, lstTools.Items.Count - 1)
+            lstTools.SelectedIndex = newIndex
+        End If
+
+        ' Optionally clear grid selection if deleted tool was selected
         dgvToolSetup.ClearSelection()
     End Sub
 
@@ -1838,7 +1937,7 @@ Public Class ConfigurationManagerForm
 
         ' --- 2. Add the new machine node under the parent ---
         Dim machineNode As New TreeNode(newMachine.Description)
-        machineNode.Tag = EncodeConfigTreeTag(newMachine.TypeID, newMachine.ID, 0, 0, 10) '"NodeType", 10, "MachineID", newMachine.ID,) ' NodeType 10 = actual machine
+        machineNode.Tag = EncodeConfigTreeTag(newMachine.TypeID, newMachine.ID, 0, 0, 0, 10) '"NodeType", 10, "MachineID", newMachine.ID,) ' NodeType 10 = actual machine
         parentNode.Nodes.Add(machineNode)
 
         ' --- 3. Expand the parent so the new machine is visible ---
@@ -1992,6 +2091,13 @@ Public Class ConfigurationManagerForm
             Case 13
                 cmsTreeActions.Items.Add("Delete Tool Setup", Nothing, AddressOf DeleteToolSetupTSM_Click)
 
+            Case 14
+                cmsTreeActions.Items.Add("Add Layer Setup", Nothing, AddressOf AddLayerSetupTSM_Click)
+            Case 15
+                cmsTreeActions.Items.Add("Add Layer", Nothing, AddressOf AddLayerTSM_Click)
+                cmsTreeActions.Items.Add("Delete Layer Setup", Nothing, AddressOf DeleteLayerSetpTSM_Click)
+            Case 16
+                cmsTreeActions.Items.Add("Delete Layer ", Nothing, AddressOf DeleteLayerTSM_Click)
             Case 100
                 cmsTreeActions.Items.Add("Add Material Type", Nothing, AddressOf AddMaterialTypeTSM_Click)
 
@@ -2200,7 +2306,9 @@ Public Class ConfigurationManagerForm
         Dim rootNode As TreeNode = TreeViewMachines.Nodes.Cast(Of TreeNode)().FirstOrDefault(Function(n) n.Text = "Material Inventory")
         If rootNode IsNot Nothing Then
             Dim typeNode As TreeNode = rootNode.Nodes.Add(newType.Display)
-            typeNode.Tag = EncodeConfigTreeTag(newType.ID, -1, -1, 0, 101) ' nodetype 101
+            'typeNode.Tag = EncodeConfigTreeTag(newType.ID, -1, -1, 0, 101) ' nodetype 101
+            typeNode.Tag = EncodeConfigTreeTag(newType.ID, 0, 0, 0, 0, 101)
+
         End If
 
         SaveMaterialTypesJson(dataFolder, materialTypesTable)
@@ -2246,7 +2354,7 @@ Public Class ConfigurationManagerForm
 
         ' Add to TreeView
         Dim sheetNode As TreeNode = selectedNode.Nodes.Add(sheetName)
-        sheetNode.Tag = EncodeConfigTreeTag(typeID, newID, -1, 0, 102) ' nodetype 102
+        sheetNode.Tag = EncodeConfigTreeTag(typeID, newID, -1, 0, 0, 102) ' nodetype 102
 
         ' Show tabMaterial for editing properties
         tabControlMain.SelectedTab = tabMaterialInventory ' Adjust index
@@ -3114,4 +3222,246 @@ Public Class ConfigurationManagerForm
     End Class
 
     Public Tools As List(Of Tool) ' JSON-backed collection of all tools
+
+    Private Sub propgrdLayer_Click(sender As Object, e As EventArgs) Handles propgrdLayer.Click
+
+    End Sub
+
+    Private Sub btnSaveLayerSetp_Click(sender As Object, e As EventArgs) Handles btnSaveLayerSetp.Click
+
+        Dim editedLayerSetup = TryCast(propgrdLayerSetup.SelectedObject, LayerSetup)
+        If editedLayerSetup Is Nothing Then
+            MessageBox.Show("No Layer Setup selected.")
+            Return
+        End If
+
+        ' Find existing LayerSetup
+        Dim existing = AppData.LayerSetups _
+        .FirstOrDefault(Function(ls) ls.ID = editedLayerSetup.ID)
+
+        If existing Is Nothing Then
+            MessageBox.Show("Layer Setup not found.")
+            Return
+        End If
+
+        ' Copy editable fields
+        existing.Description = editedLayerSetup.Description
+        existing.ZLevelMode = editedLayerSetup.ZLevelMode
+        existing.GapTolerance = editedLayerSetup.GapTolerance
+        existing.CleanTolerance = editedLayerSetup.CleanTolerance
+        existing.FilterTolerance = editedLayerSetup.FilterTolerance
+        existing.SharpAngle = editedLayerSetup.SharpAngle
+        existing.ProcessText = editedLayerSetup.ProcessText
+        existing.Restrict_Offset = editedLayerSetup.Restrict_Offset
+
+        SaveLayerSetups()
+
+        MessageBox.Show("Layer Setup saved successfully.")
+
+
+    End Sub
+
+    Private Sub SaveLayerSetups()
+        Dim filePath = Path.Combine(dataFolder, "LayerSetups.json")
+
+        Dim wrapper As New JObject From {
+        {"TableName", "Layer Setups"},
+        {"Rows", JArray.FromObject(AppData.LayerSetups)}
+    }
+
+        File.WriteAllText(filePath, wrapper.ToString(Formatting.Indented))
+    End Sub
+
+    Private Sub SaveDirectives()
+        Dim filePath = Path.Combine(dataFolder, "Directives.json")
+
+        Dim wrapper As New JObject From {
+        {"TableName", "Directives"},
+        {"Rows", JArray.FromObject(AppData.Directives)}
+    }
+
+        File.WriteAllText(filePath, wrapper.ToString(Formatting.Indented))
+    End Sub
+
+
+    Private Sub btnLayerMapSave_Click(sender As Object, e As EventArgs) Handles btnLayerMapSave.Click
+
+        Dim editedDirective = TryCast(propgrdLayer.SelectedObject, Directive)
+        If editedDirective Is Nothing Then
+            MessageBox.Show("No Layer selected.")
+            Return
+        End If
+
+        Dim existing = AppData.Directives _
+        .FirstOrDefault(Function(d) d.ID = editedDirective.ID)
+
+        If existing Is Nothing Then
+            MessageBox.Show("Layer not found.")
+            Return
+        End If
+
+        ' Copy editable fields
+        existing.CADLayer = editedDirective.CADLayer
+        existing.CAMLayer = editedDirective.CAMLayer
+        existing.Color = editedDirective.Color
+        existing.Station = editedDirective.Station
+        existing.ToolType = editedDirective.ToolType
+        existing.ZLevel = editedDirective.ZLevel
+        existing.CutSide = editedDirective.CutSide
+        existing.Distance = editedDirective.Distance
+        existing.CutDirection = editedDirective.CutDirection
+
+        SaveDirectives()
+
+        MessageBox.Show("Layer saved successfully.")
+
+
+    End Sub
+
+    ''' <summary>
+    ''' Traverses up the tree to find the Tool Setup ID associated with this node.
+    ''' </summary>
+    Public Function GetToolSetupIDFromNode(node As TreeNode) As Integer
+        Dim current As TreeNode = node
+        While current IsNot Nothing
+            If TypeOf current.Tag Is String Then
+                Dim tagStr As String = CStr(current.Tag)
+                Dim nodeType = CInt(GetValueFromDelimitedData(tagStr, "NodeType", "0"))
+
+                ' Case 13 is Actual Tool Setup node
+                If nodeType = 13 Then
+                    Return GetValueFromDelimitedData(tagStr, "ToolSetup_ID", -1)
+                End If
+            End If
+            current = current.Parent
+        End While
+
+        Return -1
+    End Function
+    ' --- Add new Layer Setup ---
+    Private Sub AddLayerSetupTSM_Click(sender As Object, e As EventArgs) Handles AddLayerSetupTSM.Click
+        Try
+            Dim selectedToolSetupNode = TreeViewMachines.SelectedNode.Parent
+            If selectedToolSetupNode Is Nothing Then Exit Sub
+
+            ' Get MachineID from the parent Tool Setup node
+            Dim machineID = GetValueFromDelimitedData(selectedToolSetupNode.Tag, "Machine_ID", 0)
+
+            ' Create new LayerSetup
+            Dim newLS As New LayerSetup With {
+            .ID = GetNextLayerSetupID(),
+            .Description = "New Layer Setup",
+            .MachineID = machineID,
+            .ZLevelMode = 0,
+            .GapTolerance = 0,
+            .CleanTolerance = 0,
+            .FilterTolerance = 0,
+            .SharpAngle = 0,
+            .ProcessText = False,
+            .Restrict_Offset = False,
+            .Layers = New List(Of Directive)()
+        }
+
+            ' Add to AppData
+            AppData.LayerSetups.Add(newLS)
+            Dim MachineTyeID As Integer = GetValueFromDelimitedData(TreeViewMachines.SelectedNode.Parent.Parent.Parent.Tag, "MachineType_ID", 0)
+            Dim ToolSetup_ID As Integer = GetValueFromDelimitedData(TreeViewMachines.SelectedNode.Parent.Tag, "MachineType_ID", 0)
+            ' Create tree node
+            Dim lsNode As New TreeNode(newLS.Description) With {
+                .Tag = EncodeConfigTreeTag(MachineTyeID, machineID, ToolSetup_ID, newLS.ID, 0, 15)
+        }
+
+            selectedToolSetupNode.Nodes.Add(lsNode)
+            selectedToolSetupNode.Expand()
+
+            ' Auto-select the new node
+            TreeViewMachines.SelectedNode = lsNode
+            TreeViewMachines.Focus()
+
+            ' Populate property grid
+            propgrdLayerSetup.SelectedObject = newLS
+
+        Catch ex As Exception
+            MessageBox.Show($"Error adding Layer Setup: {ex.Message}")
+        End Try
+    End Sub
+
+    Private Sub AddLayerTSM_Click(sender As Object, e As EventArgs) Handles AddLayerTSM.Click
+
+        Dim selectedLSNode = TreeViewMachines.SelectedNode
+        Dim layerSetupID = GetValueFromDelimitedData(selectedLSNode.Tag, "LayerSetup_ID", -1)
+        toolsetupid = GetValueFromDelimitedData(TreeViewMachines.SelectedNode.Parent.Parent.Parent.Tag, "ToolSetup_ID", -1)
+        Dim machinetypeid = GetValueFromDelimitedData(TreeViewMachines.SelectedNode.Parent.Parent.Parent.Parent.Parent.Parent.Tag, "MachineType_ID", -1)
+        Dim machineid = GetValueFromDelimitedData(TreeViewMachines.SelectedNode.Parent.Parent.Parent.Parent.Parent.Tag, "Machine_ID", -1)
+
+        If layerSetupID = -1 Then Return
+
+        ' Create new Directive/Layer
+        Dim newLayer As New Directive With {
+        .ID = GetNextDirectiveID(),
+        .LayerSetupID = layerSetupID,
+        .CADLayer = "New Layer",
+        .CAMLayer = "New Layer"
+    }
+        AppData.Directives.Add(newLayer)
+        SaveDirectives()
+
+        ' Add node
+        Dim layerNode As New TreeNode(newLayer.CADLayer) With {
+        .Tag = EncodeConfigTreeTag(machinetypeid, machineid, toolsetupid, layerSetupID, newLayer.ID, 16)
+    }
+        selectedLSNode.Nodes.Add(layerNode)
+        selectedLSNode.Expand()
+
+    End Sub
+
+    Private Sub DeleteLayerSetpTSM_Click(sender As Object, e As EventArgs) Handles DeleteLayerSetpTSM.Click
+
+        Dim lsNode = TreeViewMachines.SelectedNode
+        Dim layerSetupID = GetValueFromDelimitedData(lsNode.Tag, "LayerSetup_ID", -1)
+        If layerSetupID = -1 Then Return
+
+        ' Remove associated directives
+        AppData.Directives.RemoveAll(Function(d) d.LayerSetupID = layerSetupID)
+        SaveDirectives()
+
+        ' Remove LayerSetup
+        AppData.LayerSetups.RemoveAll(Function(ls) ls.ID = layerSetupID)
+        SaveLayerSetups()
+
+        lsNode.Remove()
+
+    End Sub
+
+    Private Sub DeleteLayerTSM_Click(sender As Object, e As EventArgs) Handles DeleteLayerTSM.Click
+        Dim layerNode = TreeViewMachines.SelectedNode
+        Dim directiveID = GetValueFromDelimitedData(layerNode.Tag, "Directive_ID", -1)
+        If directiveID = -1 Then Return
+
+        AppData.Directives.RemoveAll(Function(d) d.ID = directiveID)
+        SaveDirectives()
+
+        layerNode.Remove()
+
+    End Sub
+
+    ' Returns the next available LayerSetup ID
+    Private Function GetNextLayerSetupID() As Integer
+        If AppData.LayerSetups Is Nothing OrElse AppData.LayerSetups.Count = 0 Then
+            Return 1
+        Else
+            Return AppData.LayerSetups.Max(Function(ls) ls.ID) + 1
+        End If
+    End Function
+
+    ' Returns the next available Directive ID
+    Private Function GetNextDirectiveID() As Integer
+        If AppData.Directives Is Nothing OrElse AppData.Directives.Count = 0 Then
+            Return 1
+        Else
+            Return AppData.Directives.Max(Function(d) d.ID) + 1
+        End If
+    End Function
+
+
 End Class

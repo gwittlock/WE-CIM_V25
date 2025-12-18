@@ -22,37 +22,43 @@ Partial Class frmOpenProject
         Me.lblRequired = New DevExpress.XtraEditors.LabelControl()
         Me.cmdOK = New DevExpress.XtraEditors.SimpleButton()
         Me.cmdCancel = New DevExpress.XtraEditors.SimpleButton()
-        Me.cbeMachine = New DevExpress.XtraEditors.ComboBoxEdit()
+        Me.cboMachine = New DevExpress.XtraEditors.ComboBoxEdit()
         Me.lblMachine = New DevExpress.XtraEditors.LabelControl()
         Me.lblToolSetup = New DevExpress.XtraEditors.LabelControl()
-        Me.cbeToolSetup = New DevExpress.XtraEditors.ComboBoxEdit()
-        Me.tebCustomer = New DevExpress.XtraEditors.TextEdit()
+        Me.cboToolSetup = New DevExpress.XtraEditors.ComboBoxEdit()
+        Me.txtCustomer = New DevExpress.XtraEditors.TextEdit()
         Me.lblCutomer = New DevExpress.XtraEditors.LabelControl()
         Me.lblMaterial = New DevExpress.XtraEditors.LabelControl()
-        Me.deDueDate = New DevExpress.XtraEditors.DateEdit()
+        Me.dtDueDate = New DevExpress.XtraEditors.DateEdit()
         Me.lblDueDate = New DevExpress.XtraEditors.LabelControl()
-        Me.tebOderPO = New DevExpress.XtraEditors.TextEdit()
+        Me.txtOrderPO = New DevExpress.XtraEditors.TextEdit()
         Me.lblOrderPO = New DevExpress.XtraEditors.LabelControl()
-        Me.cbeLayerSetup = New DevExpress.XtraEditors.ComboBoxEdit()
+        Me.cboLayerSetup = New DevExpress.XtraEditors.ComboBoxEdit()
         Me.lblLayerSetup = New DevExpress.XtraEditors.LabelControl()
-        Me.tl = New DevExpress.XtraTreeList.TreeList()
+        Me.tvMaterial = New DevExpress.XtraTreeList.TreeList()
         Me.MainRoot = New DevExpress.XtraTreeList.Columns.TreeListColumn()
         Me.tebMaterialThickness = New DevExpress.XtraEditors.TextEdit()
         Me.tebMaterialWidth = New DevExpress.XtraEditors.TextEdit()
         Me.tebMaterialLength = New DevExpress.XtraEditors.TextEdit()
-        Me.cbeMaterial = New DevExpress.XtraEditors.ComboBoxEdit()
-        CType(Me.cbeMachine.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.cbeToolSetup.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.tebCustomer.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.deDueDate.Properties.CalendarTimeProperties, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.deDueDate.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.tebOderPO.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.cbeLayerSetup.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.tl, System.ComponentModel.ISupportInitialize).BeginInit()
+        Me.MatListTree1 = New FabV25_WIN8.MatListTree()
+        Me.cboMaterial = New DevExpress.XtraEditors.ComboBoxEdit()
+        Me.popupContainerEdit1 = New DevExpress.XtraEditors.PopupContainerEdit()
+        Me.tl = New DevExpress.XtraTreeList.TreeList()
+        Me.TreeListColumn1 = New DevExpress.XtraTreeList.Columns.TreeListColumn()
+        CType(Me.cboMachine.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.cboToolSetup.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.txtCustomer.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.dtDueDate.Properties.CalendarTimeProperties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.dtDueDate.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.txtOrderPO.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.cboLayerSetup.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.tvMaterial, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.tebMaterialThickness.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.tebMaterialWidth.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.tebMaterialLength.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.cbeMaterial.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.cboMaterial.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.popupContainerEdit1.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.tl, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
         '
         'lblRequired
@@ -87,14 +93,14 @@ Partial Class frmOpenProject
         Me.cmdCancel.TabIndex = 8
         Me.cmdCancel.Text = "Cancel"
         '
-        'cbeMachine
+        'cboMachine
         '
-        Me.cbeMachine.Location = New System.Drawing.Point(135, 12)
-        Me.cbeMachine.Name = "cbeMachine"
-        Me.cbeMachine.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
-        Me.cbeMachine.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
-        Me.cbeMachine.Size = New System.Drawing.Size(228, 20)
-        Me.cbeMachine.TabIndex = 0
+        Me.cboMachine.Location = New System.Drawing.Point(135, 12)
+        Me.cboMachine.Name = "cboMachine"
+        Me.cboMachine.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.cboMachine.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+        Me.cboMachine.Size = New System.Drawing.Size(228, 20)
+        Me.cboMachine.TabIndex = 0
         '
         'lblMachine
         '
@@ -112,23 +118,23 @@ Partial Class frmOpenProject
         Me.lblToolSetup.TabIndex = 43
         Me.lblToolSetup.Text = "* Tool Setup:"
         '
-        'cbeToolSetup
+        'cboToolSetup
         '
-        Me.cbeToolSetup.Location = New System.Drawing.Point(135, 41)
-        Me.cbeToolSetup.Name = "cbeToolSetup"
-        Me.cbeToolSetup.Properties.AutoHeight = False
-        Me.cbeToolSetup.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
-        Me.cbeToolSetup.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
-        Me.cbeToolSetup.Size = New System.Drawing.Size(228, 22)
-        Me.cbeToolSetup.TabIndex = 1
+        Me.cboToolSetup.Location = New System.Drawing.Point(135, 41)
+        Me.cboToolSetup.Name = "cboToolSetup"
+        Me.cboToolSetup.Properties.AutoHeight = False
+        Me.cboToolSetup.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.cboToolSetup.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+        Me.cboToolSetup.Size = New System.Drawing.Size(228, 22)
+        Me.cboToolSetup.TabIndex = 1
         '
-        'tebCustomer
+        'txtCustomer
         '
-        Me.tebCustomer.Location = New System.Drawing.Point(135, 69)
-        Me.tebCustomer.Name = "tebCustomer"
-        Me.tebCustomer.Properties.AutoHeight = False
-        Me.tebCustomer.Size = New System.Drawing.Size(228, 22)
-        Me.tebCustomer.TabIndex = 2
+        Me.txtCustomer.Location = New System.Drawing.Point(135, 69)
+        Me.txtCustomer.Name = "txtCustomer"
+        Me.txtCustomer.Properties.AutoHeight = False
+        Me.txtCustomer.Size = New System.Drawing.Size(228, 22)
+        Me.txtCustomer.TabIndex = 2
         '
         'lblCutomer
         '
@@ -146,16 +152,16 @@ Partial Class frmOpenProject
         Me.lblMaterial.TabIndex = 51
         Me.lblMaterial.Text = "* Material Inventory:"
         '
-        'deDueDate
+        'dtDueDate
         '
-        Me.deDueDate.EditValue = Nothing
-        Me.deDueDate.Location = New System.Drawing.Point(135, 129)
-        Me.deDueDate.Name = "deDueDate"
-        Me.deDueDate.Properties.AutoHeight = False
-        Me.deDueDate.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
-        Me.deDueDate.Properties.CalendarTimeProperties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
-        Me.deDueDate.Size = New System.Drawing.Size(228, 22)
-        Me.deDueDate.TabIndex = 4
+        Me.dtDueDate.EditValue = Nothing
+        Me.dtDueDate.Location = New System.Drawing.Point(135, 129)
+        Me.dtDueDate.Name = "dtDueDate"
+        Me.dtDueDate.Properties.AutoHeight = False
+        Me.dtDueDate.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.dtDueDate.Properties.CalendarTimeProperties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.dtDueDate.Size = New System.Drawing.Size(228, 22)
+        Me.dtDueDate.TabIndex = 4
         '
         'lblDueDate
         '
@@ -165,13 +171,13 @@ Partial Class frmOpenProject
         Me.lblDueDate.TabIndex = 49
         Me.lblDueDate.Text = "Due Date:"
         '
-        'tebOderPO
+        'txtOrderPO
         '
-        Me.tebOderPO.Location = New System.Drawing.Point(135, 97)
-        Me.tebOderPO.Name = "tebOderPO"
-        Me.tebOderPO.Properties.AutoHeight = False
-        Me.tebOderPO.Size = New System.Drawing.Size(228, 22)
-        Me.tebOderPO.TabIndex = 3
+        Me.txtOrderPO.Location = New System.Drawing.Point(135, 97)
+        Me.txtOrderPO.Name = "txtOrderPO"
+        Me.txtOrderPO.Properties.AutoHeight = False
+        Me.txtOrderPO.Size = New System.Drawing.Size(228, 22)
+        Me.txtOrderPO.TabIndex = 3
         '
         'lblOrderPO
         '
@@ -181,15 +187,15 @@ Partial Class frmOpenProject
         Me.lblOrderPO.TabIndex = 47
         Me.lblOrderPO.Text = "Order or P/O #:"
         '
-        'cbeLayerSetup
+        'cboLayerSetup
         '
-        Me.cbeLayerSetup.Location = New System.Drawing.Point(135, 188)
-        Me.cbeLayerSetup.Name = "cbeLayerSetup"
-        Me.cbeLayerSetup.Properties.AutoHeight = False
-        Me.cbeLayerSetup.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
-        Me.cbeLayerSetup.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
-        Me.cbeLayerSetup.Size = New System.Drawing.Size(228, 22)
-        Me.cbeLayerSetup.TabIndex = 6
+        Me.cboLayerSetup.Location = New System.Drawing.Point(135, 188)
+        Me.cboLayerSetup.Name = "cboLayerSetup"
+        Me.cboLayerSetup.Properties.AutoHeight = False
+        Me.cboLayerSetup.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.cboLayerSetup.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+        Me.cboLayerSetup.Size = New System.Drawing.Size(228, 22)
+        Me.cboLayerSetup.TabIndex = 6
         '
         'lblLayerSetup
         '
@@ -199,30 +205,30 @@ Partial Class frmOpenProject
         Me.lblLayerSetup.TabIndex = 53
         Me.lblLayerSetup.Text = "* Layer Setup:"
         '
-        'tl
+        'tvMaterial
         '
-        Me.tl.Columns.AddRange(New DevExpress.XtraTreeList.Columns.TreeListColumn() {Me.MainRoot})
-        Me.tl.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.tl.Location = New System.Drawing.Point(0, 0)
-        Me.tl.Name = "tl"
-        Me.tl.OptionsBehavior.AutoChangeParent = False
-        Me.tl.OptionsBehavior.AutoNodeHeight = False
-        Me.tl.OptionsBehavior.AutoSelectAllInEditor = False
-        Me.tl.OptionsBehavior.CloseEditorOnLostFocus = False
-        Me.tl.OptionsBehavior.Editable = False
-        Me.tl.OptionsBehavior.ResizeNodes = False
-        Me.tl.OptionsBehavior.SmartMouseHover = False
-        Me.tl.OptionsMenu.EnableFooterMenu = False
-        Me.tl.OptionsPrint.PrintHorzLines = False
-        Me.tl.OptionsPrint.PrintVertLines = False
-        Me.tl.OptionsSelection.EnableAppearanceFocusedCell = False
-        Me.tl.OptionsSelection.KeepSelectedOnClick = False
-        Me.tl.OptionsView.FocusRectStyle = DevExpress.XtraTreeList.DrawFocusRectStyle.None
-        Me.tl.OptionsView.ShowHorzLines = False
-        Me.tl.OptionsView.ShowIndicator = False
-        Me.tl.OptionsView.ShowVertLines = False
-        Me.tl.Size = New System.Drawing.Size(299, 241)
-        Me.tl.TabIndex = 7
+        Me.tvMaterial.Columns.AddRange(New DevExpress.XtraTreeList.Columns.TreeListColumn() {Me.MainRoot})
+        Me.tvMaterial.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.tvMaterial.Location = New System.Drawing.Point(0, 0)
+        Me.tvMaterial.Name = "tvMaterial"
+        Me.tvMaterial.OptionsBehavior.AutoChangeParent = False
+        Me.tvMaterial.OptionsBehavior.AutoNodeHeight = False
+        Me.tvMaterial.OptionsBehavior.AutoSelectAllInEditor = False
+        Me.tvMaterial.OptionsBehavior.CloseEditorOnLostFocus = False
+        Me.tvMaterial.OptionsBehavior.Editable = False
+        Me.tvMaterial.OptionsBehavior.ResizeNodes = False
+        Me.tvMaterial.OptionsBehavior.SmartMouseHover = False
+        Me.tvMaterial.OptionsMenu.EnableFooterMenu = False
+        Me.tvMaterial.OptionsPrint.PrintHorzLines = False
+        Me.tvMaterial.OptionsPrint.PrintVertLines = False
+        Me.tvMaterial.OptionsSelection.EnableAppearanceFocusedCell = False
+        Me.tvMaterial.OptionsSelection.KeepSelectedOnClick = False
+        Me.tvMaterial.OptionsView.FocusRectStyle = DevExpress.XtraTreeList.DrawFocusRectStyle.None
+        Me.tvMaterial.OptionsView.ShowHorzLines = False
+        Me.tvMaterial.OptionsView.ShowIndicator = False
+        Me.tvMaterial.OptionsView.ShowVertLines = False
+        Me.tvMaterial.Size = New System.Drawing.Size(299, 241)
+        Me.tvMaterial.TabIndex = 7
         '
         'MainRoot
         '
@@ -270,14 +276,75 @@ Partial Class frmOpenProject
         Me.tebMaterialLength.TabIndex = 58
         Me.tebMaterialLength.Visible = False
         '
-        'cbeMaterial
+        'MatListTree1
         '
-        Me.cbeMaterial.Location = New System.Drawing.Point(135, 162)
-        Me.cbeMaterial.Name = "cbeMaterial"
-        Me.cbeMaterial.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
-        Me.cbeMaterial.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
-        Me.cbeMaterial.Size = New System.Drawing.Size(228, 20)
-        Me.cbeMaterial.TabIndex = 61
+        Me.MatListTree1.AutoSize = True
+        Me.MatListTree1.Location = New System.Drawing.Point(135, 157)
+        Me.MatListTree1.Name = "MatListTree1"
+        Me.MatListTree1.Size = New System.Drawing.Size(228, 22)
+        Me.MatListTree1.TabIndex = 61
+        '
+        'cboMaterial
+        '
+        Me.cboMaterial.Location = New System.Drawing.Point(2, 323)
+        Me.cboMaterial.Name = "cboMaterial"
+        Me.cboMaterial.Properties.AutoHeight = False
+        Me.cboMaterial.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.cboMaterial.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+        Me.cboMaterial.Size = New System.Drawing.Size(215, 22)
+        Me.cboMaterial.TabIndex = 62
+        Me.cboMaterial.Visible = False
+        '
+        'popupContainerEdit1
+        '
+        Me.popupContainerEdit1.Location = New System.Drawing.Point(396, 8)
+        Me.popupContainerEdit1.Name = "popupContainerEdit1"
+        Me.popupContainerEdit1.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.popupContainerEdit1.Properties.ShowPopupCloseButton = False
+        Me.popupContainerEdit1.Properties.ShowPopupShadow = False
+        Me.popupContainerEdit1.Properties.SuppressMouseEventOnOuterMouseClick = True
+        Me.popupContainerEdit1.Size = New System.Drawing.Size(228, 20)
+        Me.popupContainerEdit1.TabIndex = 63
+        '
+        'tl
+        '
+        Me.tl.Columns.AddRange(New DevExpress.XtraTreeList.Columns.TreeListColumn() {Me.TreeListColumn1})
+        Me.tl.Location = New System.Drawing.Point(400, 0)
+        Me.tl.Name = "tl"
+        Me.tl.OptionsBehavior.AutoChangeParent = False
+        Me.tl.OptionsBehavior.AutoNodeHeight = False
+        Me.tl.OptionsBehavior.AutoSelectAllInEditor = False
+        Me.tl.OptionsBehavior.CloseEditorOnLostFocus = False
+        Me.tl.OptionsBehavior.Editable = False
+        Me.tl.OptionsBehavior.ResizeNodes = False
+        Me.tl.OptionsBehavior.SmartMouseHover = False
+        Me.tl.OptionsMenu.EnableFooterMenu = False
+        Me.tl.OptionsPrint.PrintHorzLines = False
+        Me.tl.OptionsPrint.PrintVertLines = False
+        Me.tl.OptionsSelection.EnableAppearanceFocusedCell = False
+        Me.tl.OptionsSelection.KeepSelectedOnClick = False
+        Me.tl.OptionsView.FocusRectStyle = DevExpress.XtraTreeList.DrawFocusRectStyle.None
+        Me.tl.OptionsView.ShowHorzLines = False
+        Me.tl.OptionsView.ShowIndicator = False
+        Me.tl.OptionsView.ShowVertLines = False
+        Me.tl.Size = New System.Drawing.Size(299, 241)
+        Me.tl.TabIndex = 64
+        '
+        'TreeListColumn1
+        '
+        Me.TreeListColumn1.AllNodesSummary = True
+        Me.TreeListColumn1.Caption = "Materials"
+        Me.TreeListColumn1.FieldName = "Key"
+        Me.TreeListColumn1.MinWidth = 33
+        Me.TreeListColumn1.Name = "TreeListColumn1"
+        Me.TreeListColumn1.SortMode = DevExpress.XtraGrid.ColumnSortMode.DisplayText
+        Me.TreeListColumn1.SortOrder = System.Windows.Forms.SortOrder.Ascending
+        Me.TreeListColumn1.SummaryFooter = DevExpress.XtraTreeList.SummaryItemType.Count
+        Me.TreeListColumn1.SummaryFooterStrFormat = "Count keys = {0}"
+        Me.TreeListColumn1.UnboundType = DevExpress.XtraTreeList.Data.UnboundColumnType.[String]
+        Me.TreeListColumn1.Visible = True
+        Me.TreeListColumn1.VisibleIndex = 0
+        Me.TreeListColumn1.Width = 235
         '
         'frmOpenProject
         '
@@ -285,25 +352,28 @@ Partial Class frmOpenProject
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(379, 276)
         Me.ControlBox = False
-        Me.Controls.Add(Me.cbeMaterial)
+        Me.Controls.Add(Me.tl)
+        Me.Controls.Add(Me.popupContainerEdit1)
+        Me.Controls.Add(Me.cboMaterial)
+        Me.Controls.Add(Me.MatListTree1)
         Me.Controls.Add(Me.tebMaterialThickness)
         Me.Controls.Add(Me.tebMaterialWidth)
         Me.Controls.Add(Me.tebMaterialLength)
         Me.Controls.Add(Me.cmdOK)
         Me.Controls.Add(Me.cmdCancel)
-        Me.Controls.Add(Me.cbeLayerSetup)
+        Me.Controls.Add(Me.cboLayerSetup)
         Me.Controls.Add(Me.lblLayerSetup)
         Me.Controls.Add(Me.lblMaterial)
-        Me.Controls.Add(Me.deDueDate)
+        Me.Controls.Add(Me.dtDueDate)
         Me.Controls.Add(Me.lblDueDate)
-        Me.Controls.Add(Me.tebOderPO)
+        Me.Controls.Add(Me.txtOrderPO)
         Me.Controls.Add(Me.lblOrderPO)
-        Me.Controls.Add(Me.tebCustomer)
+        Me.Controls.Add(Me.txtCustomer)
         Me.Controls.Add(Me.lblCutomer)
-        Me.Controls.Add(Me.cbeToolSetup)
+        Me.Controls.Add(Me.cboToolSetup)
         Me.Controls.Add(Me.lblToolSetup)
         Me.Controls.Add(Me.lblMachine)
-        Me.Controls.Add(Me.cbeMachine)
+        Me.Controls.Add(Me.cboMachine)
         Me.Controls.Add(Me.lblRequired)
         Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         Me.MaximizeBox = False
@@ -311,18 +381,20 @@ Partial Class frmOpenProject
         Me.Name = "frmOpenProject"
         Me.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent
         Me.Text = "Import CAD Drawing"
-        CType(Me.cbeMachine.Properties, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.cbeToolSetup.Properties, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.tebCustomer.Properties, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.deDueDate.Properties.CalendarTimeProperties, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.deDueDate.Properties, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.tebOderPO.Properties, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.cbeLayerSetup.Properties, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.tl, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.cboMachine.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.cboToolSetup.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.txtCustomer.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.dtDueDate.Properties.CalendarTimeProperties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.dtDueDate.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.txtOrderPO.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.cboLayerSetup.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.tvMaterial, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.tebMaterialThickness.Properties, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.tebMaterialWidth.Properties, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.tebMaterialLength.Properties, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.cbeMaterial.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.cboMaterial.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.popupContainerEdit1.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.tl, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
@@ -330,23 +402,27 @@ Partial Class frmOpenProject
     Friend WithEvents lblRequired As DevExpress.XtraEditors.LabelControl
     Friend WithEvents cmdOK As DevExpress.XtraEditors.SimpleButton
     Friend WithEvents cmdCancel As DevExpress.XtraEditors.SimpleButton
-    Friend WithEvents cbeMachine As DevExpress.XtraEditors.ComboBoxEdit
+    Friend WithEvents cboMachine As DevExpress.XtraEditors.ComboBoxEdit
     Friend WithEvents lblMachine As DevExpress.XtraEditors.LabelControl
     Friend WithEvents lblToolSetup As DevExpress.XtraEditors.LabelControl
-    Friend WithEvents cbeToolSetup As DevExpress.XtraEditors.ComboBoxEdit
-    Friend WithEvents tebCustomer As DevExpress.XtraEditors.TextEdit
+    Friend WithEvents cboToolSetup As DevExpress.XtraEditors.ComboBoxEdit
+    Friend WithEvents txtCustomer As DevExpress.XtraEditors.TextEdit
     Friend WithEvents lblCutomer As DevExpress.XtraEditors.LabelControl
     Friend WithEvents lblMaterial As DevExpress.XtraEditors.LabelControl
-    Friend WithEvents deDueDate As DevExpress.XtraEditors.DateEdit
+    Friend WithEvents dtDueDate As DevExpress.XtraEditors.DateEdit
     Friend WithEvents lblDueDate As DevExpress.XtraEditors.LabelControl
-    Friend WithEvents tebOderPO As DevExpress.XtraEditors.TextEdit
+    Friend WithEvents txtOrderPO As DevExpress.XtraEditors.TextEdit
     Friend WithEvents lblOrderPO As DevExpress.XtraEditors.LabelControl
-    Friend WithEvents cbeLayerSetup As DevExpress.XtraEditors.ComboBoxEdit
+    Friend WithEvents cboLayerSetup As DevExpress.XtraEditors.ComboBoxEdit
     Friend WithEvents lblLayerSetup As DevExpress.XtraEditors.LabelControl
-    Private WithEvents tl As DevExpress.XtraTreeList.TreeList
+    Private WithEvents tvMaterial As DevExpress.XtraTreeList.TreeList
     Private WithEvents MainRoot As DevExpress.XtraTreeList.Columns.TreeListColumn
     Friend WithEvents tebMaterialThickness As TextEdit
     Friend WithEvents tebMaterialWidth As TextEdit
     Friend WithEvents tebMaterialLength As TextEdit
-    Friend WithEvents cbeMaterial As ComboBoxEdit
+    Friend WithEvents MatListTree1 As MatListTree
+    Friend WithEvents cboMaterial As ComboBoxEdit
+    Private WithEvents popupContainerEdit1 As PopupContainerEdit
+    Private WithEvents tl As DevExpress.XtraTreeList.TreeList
+    Private WithEvents TreeListColumn1 As DevExpress.XtraTreeList.Columns.TreeListColumn
 End Class
