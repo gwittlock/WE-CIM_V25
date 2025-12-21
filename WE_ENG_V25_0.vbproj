@@ -323,6 +323,7 @@
     <Compile Include="Classes\DynamicPropertyBag.vb" />
     <Compile Include="Classes\DynamicToolAttributes.vb" />
     <Compile Include="Classes\HelperFunctions.vb" />
+    <Compile Include="Classes\importedentity.vb" />
     <Compile Include="Classes\JsonLoader.vb" />
     <Compile Include="Classes\MaterialPicker.vb">
       <SubType>UserControl</SubType>
@@ -392,6 +393,7 @@
     <Compile Include="Modules\modMaterial.vb" />
     <Compile Include="Modules\modPath.vb" />
     <Compile Include="Modules\modProject.vb" />
+    <Compile Include="Modules\modRegistry.vb" />
     <Compile Include="Modules\PropertyGridContext.vb" />
     <Compile Include="Modules\ValidationService.vb" />
     <Compile Include="My Project\Application1.Designer.vb">

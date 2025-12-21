@@ -189,17 +189,17 @@ Public Module appMain
 
         Select Case sncs
             'Case 101 : status = modFile.FileNew()
-            Case 102 : status = modFile.FileOpen()
-                'Case 103 : status = modFile.FileSave()
-                'Case 104 : status = modFile.FileSaveAs()
-                'Case 105 : status = modFile.FilePrintGraphics()
-                'Case 106 : status = modFile.FileMacro()
-                'Case 107 : status = modFile.FileMerge()
-                'Case 108 : status = modFile.FileOpenPDB()
-                'Case 109 : status = modFile.FilePrintNestreports
-                'Case 110 : status = modFile.FilePrintToolList
-                'Case 111 : status = modFile.FilePrintMaterial
-                'Case 109 : status = modFile.FileMacro()
+            'Case 102 : status = modFile.FileOpen()
+            'Case 103 : status = modFile.FileSave()
+            'Case 104 : status = modFile.FileSaveAs()
+            'Case 105 : status = modFile.FilePrintGraphics()
+            'Case 106 : status = modFile.FileMacro()
+            'Case 107 : status = modFile.FileMerge()
+            'Case 108 : status = modFile.FileOpenPDB()
+            'Case 109 : status = modFile.FilePrintNestreports
+            'Case 110 : status = modFile.FilePrintToolList
+            'Case 111 : status = modFile.FilePrintMaterial
+            'Case 109 : status = modFile.FileMacro()
 
             Case Else : status = 0
         End Select

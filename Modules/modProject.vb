@@ -91,5 +91,15 @@
 
     End Class
 
+    Public Function GetMachineID() As Long
+        GetMachineID = RegGetString("Global", "MachineID", "0")
+    End Function
 
+    Public Function GetToolSetupID() As Long
+        GetToolSetupID = RegGetString("Global", "ToolSetupID", "0")
+    End Function
+
+    Public Function GetMaterialID() As Long
+        GetMaterialID = RegGetString("Global", "MaterialID", "0")
+    End Function
 End Module

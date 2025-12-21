@@ -46,6 +46,26 @@ Public Class frmOpenProject
     Public OrderPO As String
     Public DueDate As DateTime
 
+
+    Private sMyToolSetup As String
+    Private sMyLayerSetup As String
+    Private sMyMaterial As String
+    Private sMyMachine As String
+    Private nMyToolSetupID As Integer
+    Private nMyLayerSetupID As Integer
+    Private nMyMaterialID As Integer
+    Private nMyMachineID As Integer
+
+    ' Holds the imported DXF entities, classified by directive
+    Private _importedEntities As List(Of ImportedEntity)
+
+    Private _loadingDefaults As Boolean = False
+
+
+
+    ' Stores the currently loaded DXF file path
+    Private _currentDxfPath As String
+
     ' Material picker control
     Private matPicker As MaterialPickerTree
 
@@ -57,11 +77,24 @@ Public Class frmOpenProject
         _selectedDxfPath = selectedDxfPath
     End Sub
 
-
     ' ----------------------------
     ' Form Load
     ' ----------------------------
     Private Sub frmOpenProject_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+        _loadingDefaults = True
+
+        sMyToolSetup = RegGetString("Global", "ToolSetup", "")
+        sMyLayerSetup = RegGetString("Global", "LayerSetup", "")
+        sMyMaterial = RegGetString("Global", "Material", "")
+        sMyMachine = RegGetString("Global", "Machine", "")
+
+        nMyToolSetupID = RegGetInt("Global", "ToolSetupID", "")
+        nMyLayerSetupID = RegGetInt("Global", "LayerSetupID", "")
+        nMyMaterialID = RegGetInt("Global", "MaterialID", "")
+        nMyMachineID = RegGetInt("Global", "MachineID", "")
+
+
 
         ' Load all JSON data
         _machines = AppData.Machines
@@ -91,13 +124,37 @@ Public Class frmOpenProject
             AppData.MaterialTypes,
             AppData.MaterialSheets
         )
+
+
+        ' Restore selections safely by ID
+        'RestoreComboSelection(cboMachine, nMyMachineID)
+        'RestoreComboSelection(cboToolSetup, nMyToolSetupID)
+        'RestoreComboSelection(cboMaterial, nMyMaterialID)
+        'RestoreComboSelection(cboLayerSetup, nMyLayerSetupID)
+
+        _loadingDefaults = False
     End Sub
 
+    Private Sub RestoreComboSelection(combo As DevExpress.XtraEditors.ComboBoxEdit, id As Integer)
 
+        If id <= 0 Then Return
+
+        For Each item In combo.Properties.Items
+            Dim data = TryCast(item, myItemData)
+            If data IsNot Nothing AndAlso data.ItemData = id Then
+                'Combo.EditValue = data.ItemData
+                combo.SelectedItem = item
+                Return
+            End If
+        Next
+
+    End Sub
     ' ----------------------------
     ' Initialize Machine ComboBox
     ' ----------------------------
     Private Sub InitMachineCombo()
+        Dim ni As Integer
+
         cboMachine.Properties.Items.Clear()
 
         ' Add None
@@ -105,6 +162,7 @@ Public Class frmOpenProject
 
         For Each m In _machines
             cboMachine.Properties.Items.Add(New myItemData(m.Description, m.ID))
+
         Next
 
         cboMachine.SelectedIndex = 0
@@ -128,6 +186,9 @@ Public Class frmOpenProject
     End Sub
 
     Private Sub cboMachine_EditValueChanged(sender As Object, e As EventArgs) Handles cboMachine.EditValueChanged
+
+        If _loadingDefaults Then Return
+
         Dim selectedItem = TryCast(cboMachine.SelectedItem, myItemData)
         If selectedItem Is Nothing Then Return
 
@@ -151,15 +212,40 @@ Public Class frmOpenProject
     End Sub
 
     Private Sub cboToolSetup_EditValueChanged(sender As Object, e As EventArgs) Handles cboToolSetup.EditValueChanged
+
+        If _loadingDefaults Then Return
+
         Dim selectedItem = TryCast(cboToolSetup.SelectedItem, myItemData)
         If selectedItem Is Nothing Then Return
         SelectedToolSetupID = selectedItem.ItemData
     End Sub
 
     Private Sub cboLayerSetup_EditValueChanged(sender As Object, e As EventArgs) Handles cboLayerSetup.EditValueChanged
+
+        If _loadingDefaults Then Return
+
         Dim selectedItem = TryCast(cboLayerSetup.SelectedItem, myItemData)
         If selectedItem Is Nothing Then Return
+        If UCase(selectedItem.Name) = "NONE" Then Return
+
+        ' Update the selected ID
         SelectedLayerSetupID = selectedItem.ItemData
+
+        ' Lookup the selected LayerSetup object
+        _selectedLayerSetup = LayerSetups.FirstOrDefault(Function(ls) ls.ID = SelectedLayerSetupID)
+
+        If _selectedLayerSetup Is Nothing Then
+            MessageBox.Show("Selected Layer Setup not found.")
+            Return
+        End If
+
+        '' Optional: refresh preview if a DXF is already loaded
+        'If _importedEntities IsNot Nothing AndAlso _importedEntities.Count > 0 Then
+        '    ' Re-classify imported entities with the new LayerSetup
+        '    _importedEntities = ImportDxfWithLayerSetup(_currentDxfPath, _selectedLayerSetup)
+        '    pnlPicModeler.LoadImportedEntities(_importedEntities)
+        'End If
+
     End Sub
 
 
@@ -187,6 +273,15 @@ Public Class frmOpenProject
         OrderPO = txtOrderPO.Text
         DueDate = dtDueDate.EditValue
         Dim selectedMaterialID As Integer = MatListTree1.SelectedMaterialID
+
+        RegPutString("Global", "Machine", cboMachine.Text )
+        RegPutString("Global", "MachineID", CStr(SelectedMachineID))
+        RegPutString("Global", "ToolSetup", cboToolSetup.Text)
+        RegPutString("Global", "ToolSetupID", CStr(SelectedToolSetupID))
+        RegPutString("Global", "Material", cboMaterial.Text)
+        RegPutString("Global", "MaterialID", CStr(selectedMaterialID))
+        RegPutString("Global", "LayerSetup", cboLayerSetup.Text)
+        RegPutString("Global", "LayerSetupID", CStr(SelectedLayerSetupID))
 
         ' Close dialog
         Me.DialogResult = DialogResult.OK
@@ -233,6 +328,7 @@ Public Class frmOpenProject
 
 
     Private Sub LoadLayerSetupsForMachine(machineID As Integer)
+
         cboLayerSetup.Properties.Items.Clear()
 
         ' Assume _layerSetups is a List(Of LayerSetup) loaded from JSON
@@ -249,6 +345,8 @@ Public Class frmOpenProject
         If cboLayerSetup.Properties.Items.Count > 0 Then
             cboLayerSetup.SelectedIndex = 0
         End If
+
+        cboLayerSetup.Text = RegGetString("Global", "LayerSetup", "")
     End Sub
 
 

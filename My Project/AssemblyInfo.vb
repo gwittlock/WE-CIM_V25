@@ -11,7 +11,7 @@ Imports System.Runtime.InteropServices
 <Assembly: AssemblyTitle("WE-CIM Fabrication Software Ver. 25")>
 <Assembly: AssemblyDescription("WE-CIM Advanced Fabrication V25.0")>
 <Assembly: AssemblyCompany("Wittlock Engineering LLC")>
-<Assembly: AssemblyProduct("WE-CIM Advanced Fabrication V2.0")>
+<Assembly: AssemblyProduct("WE-CIM Advanced Fabrication V25.0")>
 <Assembly: AssemblyCopyright("©Wittlock Engineering LLC 2001 2025")>
 <Assembly: AssemblyTrademark("")>
 

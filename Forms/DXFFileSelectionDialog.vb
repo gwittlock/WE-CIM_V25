@@ -9,6 +9,7 @@ Imports System.Linq
 Public Class DXFFileSelectionDialog
     Inherits Form
 
+    Private _initialFolder As String
 
 
     '-------------------------------
@@ -46,9 +47,18 @@ Public Class DXFFileSelectionDialog
 
     Private Sub DXFFileSelectionDialog_Load(sender As Object, e As EventArgs) Handles Me.Load
         InitializeFolderIcons()
-        LoadRootFolders() ' your recursive folder loader
+        LoadRootFolders()
+
+        Dim defPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+        _initialFolder = RegGetString("Fabrication\FileOpen", "LastDXF", defPath)
+
+        If Directory.Exists(_initialFolder) Then
+            SelectFolderInTree(_initialFolder)
+        End If
+
         AddHandler pnlPreview.Paint, AddressOf pnlPreview_Paint
     End Sub
+
 
     '-------------------------------
     ' Load Root Folders (Lazy Loaded)
@@ -157,14 +167,20 @@ Public Class DXFFileSelectionDialog
 
     Private Sub btnOK_Click(sender As Object, e As EventArgs) Handles btnOK.Click
         If String.IsNullOrEmpty(_selectedDxfPath) Then
-            MessageBox.Show("Please select a DXF file.", "DXF Import", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show("Please select a DXF file.", "DXF Import",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
 
+        Dim folder = Path.GetDirectoryName(_selectedDxfPath)
+        If Directory.Exists(folder) Then
+            RegPutString("Fabrication\FileOpen", "LastDXF", folder)
+        End If
 
         Me.DialogResult = DialogResult.OK
         Me.Close()
     End Sub
+
 
     Private Sub pnlPreview_Paint(sender As Object, e As PaintEventArgs) Handles pnlPreview.Paint
         If _previewDxf Is Nothing Then
@@ -232,5 +248,47 @@ Public Class DXFFileSelectionDialog
             PopulateChildFolders(node)
         End If
     End Sub
+
+    Private Sub SelectFolderInTree(folderPath As String)
+        Dim parts = folderPath.TrimEnd("\"c).Split("\"c)
+
+        For Each rootNode As TreeNode In tvFolders.Nodes
+            Dim rootPath = TryCast(rootNode.Tag, String)
+            If rootPath Is Nothing Then Continue For
+
+            If parts(0).Equals(rootPath.TrimEnd("\"c), StringComparison.OrdinalIgnoreCase) Then
+                tvFolders.SelectedNode = rootNode
+                ExpandToPath(rootNode, parts, 1)
+                Exit For
+            End If
+        Next
+    End Sub
+
+    Private Sub ExpandToPath(parentNode As TreeNode, parts As String(), index As Integer)
+        If index >= parts.Length Then Return
+
+        parentNode.Expand()
+
+        ' Force lazy-load if needed
+        If parentNode.Nodes.Count = 1 AndAlso parentNode.Nodes(0).Text = "Loading..." Then
+            parentNode.Nodes.Clear()
+            PopulateChildFolders(parentNode)
+        End If
+
+        For Each child As TreeNode In parentNode.Nodes
+            Dim childPath = TryCast(child.Tag, String)
+            If childPath Is Nothing Then Continue For
+
+            If parts(index).Equals(Path.GetFileName(childPath),
+                                StringComparison.OrdinalIgnoreCase) Then
+                tvFolders.SelectedNode = child
+                ExpandToPath(child, parts, index + 1)
+                Exit For
+            End If
+        Next
+    End Sub
+
+
+
 
 End Class
