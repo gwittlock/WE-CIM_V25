@@ -183,7 +183,7 @@ Public Module modFile
 
 
     ' Adjust function to accept DxfColor
-    Private Function DxfColorToDrawingColor(dxfColor As DxfColor) As Color
+    Public Function DxfColorToDrawingColor(dxfColor As DxfColor) As Color
         If dxfColor Is Nothing OrElse dxfColor.IsByLayer OrElse dxfColor.IsByBlock Then
             Return Color.Black
         End If

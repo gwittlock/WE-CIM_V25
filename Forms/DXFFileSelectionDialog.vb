@@ -10,34 +10,27 @@ Public Class DXFFileSelectionDialog
     Inherits Form
 
     Private _initialFolder As String
-
-
-    '-------------------------------
-    ' Folder Icons
-    '-------------------------------
-    Private _folderImages As ImageList
-    '-------------------------------
-    ' Private Fields
-    '-------------------------------
+    Private _selectedDxfPath As String
     Private _previewDxf As DxfFile = Nothing
+    Private _previewEntities As List(Of ImportedEntity)
 
+    ' Folder icons
+    Private _folderImages As ImageList
 
     '-------------------------------
-    ' Folder Icon Initialization
+    ' Initialize folder icons
+    '-------------------------------
     Private Sub InitializeFolderIcons()
         _folderImages = New ImageList()
         _folderImages.ColorDepth = ColorDepth.Depth32Bit
         _folderImages.ImageSize = New Size(16, 16)
 
-
-        ' Index 0 = closed folder, Index 1 = open folder
-        _folderImages.Images.Add(SystemIcons.WinLogo.ToBitmap()) ' placeholder closed
-        _folderImages.Images.Add(SystemIcons.Application.ToBitmap()) ' placeholder open
-
+        ' Placeholder icons
+        _folderImages.Images.Add(SystemIcons.WinLogo.ToBitmap())
+        _folderImages.Images.Add(SystemIcons.Application.ToBitmap())
 
         tvFolders.ImageList = _folderImages
     End Sub
-
 
     Public ReadOnly Property SelectedDxfPath As String
         Get
@@ -59,9 +52,8 @@ Public Class DXFFileSelectionDialog
         AddHandler pnlPreview.Paint, AddressOf pnlPreview_Paint
     End Sub
 
-
     '-------------------------------
-    ' Load Root Folders (Lazy Loaded)
+    ' Load root folders
     '-------------------------------
     Public Sub LoadRootFolders()
         tvFolders.Nodes.Clear()
@@ -70,37 +62,29 @@ Public Class DXFFileSelectionDialog
             Try
                 If drive.IsReady Then
                     Dim driveNode As New TreeNode()
-
-                    Dim nodeText As String
-                    If String.IsNullOrEmpty(drive.VolumeLabel) Then
-                        nodeText = $"{drive.Name} ({drive.DriveType})"
-                    Else
-                        nodeText = $"{drive.VolumeLabel} ({drive.Name.Substring(0, 1)})"
-                    End If
-
+                    Dim nodeText As String = If(String.IsNullOrEmpty(drive.VolumeLabel),
+                                                $"{drive.Name} ({drive.DriveType})",
+                                                $"{drive.VolumeLabel} ({drive.Name.Substring(0, 1)})")
                     driveNode.Text = nodeText
                     driveNode.Tag = drive.RootDirectory.FullName
                     driveNode.ImageIndex = 0
                     driveNode.SelectedImageIndex = 1
-
                     tvFolders.Nodes.Add(driveNode)
                     PopulateChildFolders(driveNode)
                 End If
             Catch ex As Exception
-                ' Optional: handle drive load error
             End Try
         Next
     End Sub
 
     '-------------------------------
-    ' Populate Child Folders (Lazy Loaded, Safe)
+    ' Populate child folders
     '-------------------------------
     Private Sub PopulateChildFolders(parentNode As TreeNode)
         Dim currentPath As String = TryCast(parentNode.Tag, String)
         If String.IsNullOrWhiteSpace(currentPath) Then Return
 
         Dim subDirs As IEnumerable(Of String)
-
         Try
             subDirs = Directory.EnumerateDirectories(currentPath)
         Catch ex As UnauthorizedAccessException
@@ -116,7 +100,6 @@ Public Class DXFFileSelectionDialog
                 .ImageIndex = 0,
                 .SelectedImageIndex = 1
             }
-
             parentNode.Nodes.Add(childNode)
 
             Try
@@ -125,21 +108,19 @@ Public Class DXFFileSelectionDialog
                         childNode.Nodes.Add("Loading...")
                     End If
                 End Using
-            Catch ex As UnauthorizedAccessException
-            Catch ex As IOException
+            Catch
             End Try
         Next
     End Sub
 
     Private Sub tvFolders_AfterSelect(sender As Object, e As TreeViewEventArgs) Handles tvFolders.AfterSelect
         LoadDxfFiles(e.Node.Tag.ToString())
-
     End Sub
 
     Private Sub LoadDxfFiles(folderPath As String)
-
         lstFiles.Items.Clear()
         _previewDxf = Nothing
+        _previewEntities = Nothing
         pnlPreview.Invalidate()
 
         If Not Directory.Exists(folderPath) Then Return
@@ -149,7 +130,9 @@ Public Class DXFFileSelectionDialog
         Next
     End Sub
 
-
+    '-------------------------------
+    ' DXF selection changed
+    '-------------------------------
     Private Sub lstFiles_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstFiles.SelectedIndexChanged
         If lstFiles.SelectedItem Is Nothing OrElse tvFolders.SelectedNode Is Nothing Then Return
 
@@ -157,18 +140,126 @@ Public Class DXFFileSelectionDialog
 
         Try
             _previewDxf = DxfFile.Load(_selectedDxfPath)
+
+            ' Import entities for preview
+            _previewEntities = ImportDxfForPreview(_previewDxf)
+
             pnlPreview.Invalidate()
         Catch ex As Exception
             _previewDxf = Nothing
+            _previewEntities = Nothing
+            pnlPreview.Invalidate()
             MessageBox.Show("Failed to load DXF: " & ex.Message, "DXF Preview", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
 
+    '-------------------------------
+    ' Import entities for preview
+    '-------------------------------
+    Private Function ImportDxfForPreview(dxf As DxfFile) As List(Of ImportedEntity)
+        Dim results As New List(Of ImportedEntity)
+
+        For Each ent As DxfEntity In dxf.Entities
+            Dim displayColor As Color = Color.Black
+
+            If ent.Color IsNot Nothing Then
+                displayColor = DxfColorToDrawingColor(ent.Color)
+            Else
+                Dim layer As DxfLayer = dxf.Layers.FirstOrDefault(Function(l) l.Name = ent.Layer)
+                If layer IsNot Nothing AndAlso layer.Color IsNot Nothing Then
+                    displayColor = DxfColorToDrawingColor(layer.Color)
+                End If
+            End If
+
+            Dim imported As New ImportedEntity()
+            imported.DisplayColor = displayColor
+
+            ' Correct classification: Arc before Circle
+            If TypeOf ent Is DxfArc Then
+                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
+                imported.Arc = DirectCast(ent, DxfArc)
+
+            ElseIf TypeOf ent Is DxfCircle Then
+                If TypeOf ent Is DxfArc Then
+                    imported.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
+                    imported.Arc = DirectCast(ent, DxfArc)
+                ElseIf TypeOf ent Is DxfCircle Then
+                    imported.GeometryType = ImportedEntity.GeometryTypeEnum.Circle
+                    imported.Circle = DirectCast(ent, DxfCircle)
+                End If
+
+            ElseIf TypeOf ent Is DxfLine Then
+                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Line
+                imported.Line = DirectCast(ent, DxfLine)
+
+            Else
+                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Unknown
+            End If
+
+            results.Add(imported)
+        Next
+
+        Return results
+    End Function
+
+    '-------------------------------
+    ' Paint preview panel
+    '-------------------------------
+    Private Sub pnlPreview_Paint(sender As Object, e As PaintEventArgs) Handles pnlPreview.Paint
+        e.Graphics.Clear(Color.White)
+
+        If _previewEntities Is Nothing OrElse _previewEntities.Count = 0 Then Return
+
+        ' Calculate bounding box
+        Dim minX = _previewEntities.Min(Function(ent) ent.MinX)
+        Dim minY = _previewEntities.Min(Function(ent) ent.MinY)
+        Dim maxX = _previewEntities.Max(Function(ent) ent.MaxX)
+        Dim maxY = _previewEntities.Max(Function(ent) ent.MaxY)
+
+        Dim panelWidth = pnlPreview.ClientSize.Width
+        Dim panelHeight = pnlPreview.ClientSize.Height
+
+        Dim scaleX = panelWidth / (maxX - minX)
+        Dim scaleY = panelHeight / (maxY - minY)
+        Dim scale = Math.Min(scaleX, scaleY) * 0.9 ' padding
+
+        Dim offsetX = (panelWidth - (maxX - minX) * scale) / 2
+        Dim offsetY = (panelHeight - (maxY - minY) * scale) / 2
+
+        ' Draw each entity
+        For Each ent As ImportedEntity In _previewEntities
+            Using pen As New Pen(ent.DisplayColor, 1)
+                Select Case ent.GeometryType
+                    Case ImportedEntity.GeometryTypeEnum.Line
+                        Dim x1 = (ent.Line.P1.X - minX) * scale + offsetX
+                        Dim y1 = panelHeight - ((ent.Line.P1.Y - minY) * scale) - offsetY
+                        Dim x2 = (ent.Line.P2.X - minX) * scale + offsetX
+                        Dim y2 = panelHeight - ((ent.Line.P2.Y - minY) * scale) - offsetY
+                        e.Graphics.DrawLine(pen, CSng(x1), CSng(y1), CSng(x2), CSng(y2))
+
+                    Case ImportedEntity.GeometryTypeEnum.Circle
+                        Dim cx = (ent.Circle.Center.X - minX) * scale + offsetX
+                        Dim cy = panelHeight - ((ent.Circle.Center.Y - minY) * scale) - offsetY
+                        Dim r = ent.Circle.Radius * scale
+                        e.Graphics.DrawEllipse(pen, CSng(cx - r), CSng(cy - r), CSng(r * 2), CSng(r * 2))
+
+                    Case ImportedEntity.GeometryTypeEnum.Arc
+                        Dim cx = (ent.Arc.Center.X - minX) * scale + offsetX
+                        Dim cy = panelHeight - ((ent.Arc.Center.Y - minY) * scale) - offsetY
+                        Dim r = ent.Arc.Radius * scale
+
+                        Dim startAngle = -ent.Arc.StartAngle
+                        Dim sweepAngle = -(ent.Arc.EndAngle - ent.Arc.StartAngle)
+
+                        e.Graphics.DrawArc(pen, CSng(cx - r), CSng(cy - r), CSng(r * 2), CSng(r * 2), CSng(startAngle), CSng(sweepAngle))
+                End Select
+            End Using
+        Next
+    End Sub
 
     Private Sub btnOK_Click(sender As Object, e As EventArgs) Handles btnOK.Click
         If String.IsNullOrEmpty(_selectedDxfPath) Then
-            MessageBox.Show("Please select a DXF file.", "DXF Import",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            MessageBox.Show("Please select a DXF file.", "DXF Import", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
 
@@ -181,72 +272,9 @@ Public Class DXFFileSelectionDialog
         Me.Close()
     End Sub
 
-
-    Private Sub pnlPreview_Paint(sender As Object, e As PaintEventArgs) Handles pnlPreview.Paint
-        If _previewDxf Is Nothing Then
-            e.Graphics.Clear(Color.White)
-            Return
-        End If
-
-
-        DxfPreviewRenderer.DrawDxfPreview(_previewDxf, e.Graphics, pnlPreview.ClientRectangle)
-    End Sub
-
-
-
-    Private Sub DrawLine(p1 As DxfPoint, p2 As DxfPoint, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
-        g.DrawLine(Pens.Black,
-        CSng(p1.X * scale + ox), CSng(bounds.Height - (p1.Y * scale + oy)),
-        CSng(p2.X * scale + ox), CSng(bounds.Height - (p2.Y * scale + oy)))
-    End Sub
-
-
-    Private Sub DrawCircle(c As DxfCircle, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
-        Dim size = CSng(c.Radius * 2 * scale)
-        Dim x = CSng((c.Center.X - c.Radius) * scale + ox)
-        Dim y = CSng(bounds.Height - ((c.Center.Y + c.Radius) * scale + oy))
-        g.DrawEllipse(Pens.Blue, x, y, size, size)
-    End Sub
-    Private Sub DrawArc(a As DxfArc, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
-        Dim size = CSng(a.Radius * 2 * scale)
-        Dim x = CSng((a.Center.X - a.Radius) * scale + ox)
-        Dim y = CSng(bounds.Height - ((a.Center.Y + a.Radius) * scale + oy))
-
-        ' DXF CCW -> GDI+ CW conversion, accounting for flipped Y-axis
-        Dim startAngle As Single = CSng(-a.StartAngle)
-        Dim sweepAngle As Single = CSng(-(a.EndAngle - a.StartAngle))
-
-        g.DrawArc(Pens.Green, x, y, size, size, startAngle, sweepAngle)
-    End Sub
-
-
-    Private Sub DrawPolyline(pl As DxfPolyline, g As Graphics, bounds As Rectangle, scale As Double, ox As Double, oy As Double)
-        If pl.Vertices.Count < 2 Then Return
-
-
-        For i = 0 To pl.Vertices.Count - 2
-            DrawLine(pl.Vertices(i).Location, pl.Vertices(i + 1).Location, g, bounds, scale, ox, oy)
-        Next
-
-
-        If pl.IsClosed Then
-            DrawLine(pl.Vertices.Last().Location, pl.Vertices.First().Location, g, bounds, scale, ox, oy)
-        End If
-    End Sub
-
     Private Sub btnCancel_Click(sender As Object, e As EventArgs) Handles btnCancel.Click
         Me.DialogResult = DialogResult.Cancel
         Me.Close()
-    End Sub
-
-    Private Sub tvFolders_BeforeExpand(sender As Object, e As TreeViewCancelEventArgs) Handles tvFolders.BeforeExpand
-
-        Dim node As TreeNode = e.Node
-
-        If node.Nodes.Count = 1 AndAlso node.Nodes(0).Text = "Loading..." Then
-            node.Nodes.Clear()
-            PopulateChildFolders(node)
-        End If
     End Sub
 
     Private Sub SelectFolderInTree(folderPath As String)
@@ -287,8 +315,6 @@ Public Class DXFFileSelectionDialog
             End If
         Next
     End Sub
-
-
 
 
 End Class
