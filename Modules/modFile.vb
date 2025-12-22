@@ -63,14 +63,133 @@ Public Module modFile
                 ' Import DXF using the LayerSetup selected in frmOpenProject
                 Dim dxf As DxfFile = DxfFile.Load(selectedPath)
                 Dim importedEntities As List(Of ImportedEntity) =
-                ImportDxfWithLayerSetup(selectedPath, SelectedLayerSetup)
+                ImportDxfWithLayerSetup(selectedPath, SelectedLayerSetup, frmMain.pnlPicmodeler.BackColor)
 
                 Return importedEntities
             End Using
         End Using
 
     End Function
+    Public Function DxfColorToDrawingColor(
+    dxfColor As DxfColor,
+    bgColor As Color
+) As Color
 
+        Dim result As Color = Color.Black
+
+        If dxfColor IsNot Nothing Then
+            Dim aci As Short = dxfColor.RawValue
+
+            Select Case aci
+                Case 1 : result = Color.Red
+                Case 2 : result = Color.Yellow
+                Case 3 : result = Color.Green
+                Case 4 : result = Color.Cyan
+                Case 5 : result = Color.Blue
+                Case 6 : result = Color.Magenta
+                Case 7 : result = Color.White
+                Case Else
+                    result = Color.Black
+            End Select
+        End If
+
+        ' Background safety
+        If result.ToArgb() = bgColor.ToArgb() Then
+            result = If(bgColor.GetBrightness() > 0.5, Color.Black, Color.White)
+        End If
+
+        Return result
+    End Function
+
+
+    '-----------------------------------
+    ' Map AutoCAD ColorIndex to Drawing.Color
+    '-----------------------------------
+    Private Function IxMiliaColorIndexToDrawingColor(index As Integer) As Color
+        ' Minimal palette mapping
+        Select Case index
+            Case 1 : Return Color.Red
+            Case 2 : Return Color.Yellow
+            Case 3 : Return Color.Green
+            Case 4 : Return Color.Cyan
+            Case 5 : Return Color.Blue
+            Case 6 : Return Color.Magenta
+            Case 7 : Return Color.White
+            Case Else : Return Color.Black
+        End Select
+    End Function
+
+    '-----------------------------------
+    ' Import DXF with optional LayerSetup
+    '-----------------------------------
+    Public Function ImportDxfWithLayerSetup(selectedPath As String, layerSetup As AppData.LayerSetup, bgColor As Color) As List(Of ImportedEntity)
+        Dim results As New List(Of ImportedEntity)
+
+        ' Load DXF
+        Dim dxf As DxfFile = DxfFile.Load(selectedPath)
+
+        ' Prepare directives lookup (case-insensitive)
+        Dim directivesLookup = layerSetup.Layers.ToDictionary(Function(d) d.CADLayer.ToLower(), Function(d) d)
+
+        ' Find the "*default*" directive (if any)
+        Dim defaultDirective As AppData.Directive = Nothing
+        If directivesLookup.ContainsKey("*default*") Then
+            defaultDirective = directivesLookup("*default*")
+        End If
+
+        ' Iterate DXF entities
+        For Each ent As DxfEntity In dxf.Entities
+            Dim imported As New ImportedEntity()
+
+            ' Determine which directive applies
+            Dim cadLayerName = If(ent.Layer, String.Empty).ToLower()
+            Dim directive As AppData.Directive = Nothing
+
+            If directivesLookup.ContainsKey(cadLayerName) Then
+                directive = directivesLookup(cadLayerName)
+            ElseIf defaultDirective IsNot Nothing Then
+                directive = defaultDirective
+            End If
+
+            ' Set CAMLayer and color from directive (if available)
+            If directive IsNot Nothing Then
+                imported.CAMLayer = directive.CAMLayer
+                imported.DisplayColor = AdjustColorForBackground(directive.DisplayColor, bgColor)
+                imported.DirectiveID = directive.ID
+            Else
+                imported.CAMLayer = ent.Layer ' fallback to original layer name
+                imported.DisplayColor = AdjustColorForBackground(Color.Black, bgColor)
+                imported.DirectiveID = -1
+            End If
+
+            ' Classify geometry (Arc must be detected before Circle)
+            If TypeOf ent Is DxfArc Then
+                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
+                imported.Arc = DirectCast(ent, DxfArc)
+            ElseIf TypeOf ent Is DxfCircle Then
+                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Circle
+                imported.Circle = DirectCast(ent, DxfCircle)
+            ElseIf TypeOf ent Is DxfLine Then
+                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Line
+                imported.Line = DirectCast(ent, DxfLine)
+            Else
+                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Unknown
+            End If
+
+            results.Add(imported)
+        Next
+
+        Return results
+    End Function
+
+    ' Helper function to avoid drawing on the same color as the background
+    Private Function AdjustColorForBackground(c As Color, bgColor As Color) As Color
+        If c.ToArgb() = bgColor.ToArgb() Then
+            ' Simple adjustment: invert color
+            Return Color.FromArgb(c.A, 255 - c.R, 255 - c.G, 255 - c.B)
+        End If
+        Return c
+    End Function
 
 
 
@@ -138,59 +257,22 @@ Public Module modFile
     '    Return importedEntities
     'End Function
 
-    Public Function ImportDxfWithLayerSetup(selectedPath As String, layerSetup As AppData.LayerSetup) As List(Of ImportedEntity)
-        Dim results As New List(Of ImportedEntity)
 
-        ' Load DXF
-        Dim dxf As DxfFile = DxfFile.Load(selectedPath)
 
-        For Each ent As DxfEntity In dxf.Entities
-            Dim displayColor As Color = Color.Black
+    '-----------------------------------
+    ' Import DXF with optional LayerSetup
+    '-----------------------------------
 
-            ' Determine color
-            If ent.Color IsNot Nothing Then
-                displayColor = DxfColorToDrawingColor(ent.Color)
-            Else
-                Dim layer As DxfLayer = dxf.Layers.FirstOrDefault(Function(l) l.Name = ent.Layer)
-                If layer IsNot Nothing AndAlso layer.Color IsNot Nothing Then
-                    displayColor = DxfColorToDrawingColor(layer.Color)
-                End If
-            End If
-
-            Dim imported As New ImportedEntity With {.DisplayColor = displayColor}
-
-            ' Classify entity
-            If TypeOf ent Is DxfArc Then
-                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
-                imported.Arc = DirectCast(ent, DxfArc)
-            ElseIf TypeOf ent Is DxfCircle Then
-                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Circle
-                imported.Circle = DirectCast(ent, DxfCircle)
-            ElseIf TypeOf ent Is DxfLine Then
-                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Line
-                imported.Line = DirectCast(ent, DxfLine)
-            Else
-                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Unknown
-            End If
-
-            results.Add(imported)
-        Next
-
-        Return results
-    End Function
 
 
 
 
     ' Adjust function to accept DxfColor
-    Public Function DxfColorToDrawingColor(dxfColor As DxfColor) As Color
-        If dxfColor Is Nothing OrElse dxfColor.IsByLayer OrElse dxfColor.IsByBlock Then
-            Return Color.Black
-        End If
+    '-----------------------------------
+    ' Converts IxMilia DXF color to Drawing.Color
+    ' Avoids background color for contrast
+    '-----------------------------------
 
-        Dim rgb = dxfColor.ToRGB()
-        ' Return Color.FromArgb(rgb.R, rgb.G, rgb.B)
-    End Function
 
     ' Helper to compute key points for arc bounding box
     Private Function GetArcBoundingPoints(a As DxfArc) As List(Of DxfPoint)

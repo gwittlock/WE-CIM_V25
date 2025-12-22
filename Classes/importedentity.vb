@@ -4,6 +4,9 @@ Imports IxMilia.Dxf.Entities
 
 Public Class ImportedEntity
 
+    '----------------------------------
+    ' Geometry Type Enum
+    '----------------------------------
     Public Enum GeometryTypeEnum
         Unknown
         Line
@@ -11,7 +14,9 @@ Public Class ImportedEntity
         Arc
     End Enum
 
-    ' Property for entity type
+    '----------------------------------
+    ' Properties
+    '----------------------------------
     Public Property GeometryType As GeometryTypeEnum = GeometryTypeEnum.Unknown
 
     ' DXF entities
@@ -22,7 +27,15 @@ Public Class ImportedEntity
     ' Display color
     Public Property DisplayColor As Color = Color.Black
 
-    ' Bounding box
+    ' CAM Layer (from directive)
+    Public Property CAMLayer As String = String.Empty
+
+    ' Directive ID (from LayerSetup/Directive)
+    Public Property DirectiveID As Integer = -1
+
+    '----------------------------------
+    ' Bounding Box Properties
+    '----------------------------------
     Public ReadOnly Property MinX As Double
         Get
             Select Case GeometryType
@@ -31,7 +44,8 @@ Public Class ImportedEntity
                 Case GeometryTypeEnum.Circle
                     Return Circle.Center.X - Circle.Radius
                 Case GeometryTypeEnum.Arc
-                    Return Math.Min(Arc.Center.X - Arc.Radius, Arc.Center.X + Arc.Radius) ' approximate
+                    ' Approximate bounding box for arc
+                    Return Math.Min(Arc.Center.X - Arc.Radius, Arc.Center.X + Arc.Radius)
                 Case Else
                     Return 0
             End Select
@@ -46,7 +60,8 @@ Public Class ImportedEntity
                 Case GeometryTypeEnum.Circle
                     Return Circle.Center.Y - Circle.Radius
                 Case GeometryTypeEnum.Arc
-                    Return Math.Min(Arc.Center.Y - Arc.Radius, Arc.Center.Y + Arc.Radius) ' approximate
+                    ' Approximate bounding box for arc
+                    Return Math.Min(Arc.Center.Y - Arc.Radius, Arc.Center.Y + Arc.Radius)
                 Case Else
                     Return 0
             End Select
@@ -61,7 +76,8 @@ Public Class ImportedEntity
                 Case GeometryTypeEnum.Circle
                     Return Circle.Center.X + Circle.Radius
                 Case GeometryTypeEnum.Arc
-                    Return Math.Max(Arc.Center.X - Arc.Radius, Arc.Center.X + Arc.Radius) ' approximate
+                    ' Approximate bounding box for arc
+                    Return Math.Max(Arc.Center.X - Arc.Radius, Arc.Center.X + Arc.Radius)
                 Case Else
                     Return 0
             End Select
@@ -76,7 +92,8 @@ Public Class ImportedEntity
                 Case GeometryTypeEnum.Circle
                     Return Circle.Center.Y + Circle.Radius
                 Case GeometryTypeEnum.Arc
-                    Return Math.Max(Arc.Center.Y - Arc.Radius, Arc.Center.Y + Arc.Radius) ' approximate
+                    ' Approximate bounding box for arc
+                    Return Math.Max(Arc.Center.Y - Arc.Radius, Arc.Center.Y + Arc.Radius)
                 Case Else
                     Return 0
             End Select

@@ -142,7 +142,7 @@ Public Class DXFFileSelectionDialog
             _previewDxf = DxfFile.Load(_selectedDxfPath)
 
             ' Import entities for preview
-            _previewEntities = ImportDxfForPreview(_previewDxf)
+            _previewEntities = ImportDxfForPreview(_previewDxf, pnlPreview.BackColor)
 
             pnlPreview.Invalidate()
         Catch ex As Exception
@@ -156,18 +156,18 @@ Public Class DXFFileSelectionDialog
     '-------------------------------
     ' Import entities for preview
     '-------------------------------
-    Private Function ImportDxfForPreview(dxf As DxfFile) As List(Of ImportedEntity)
+    Private Function ImportDxfForPreview(dxf As DxfFile, bg As System.Drawing.Color) As List(Of ImportedEntity)
         Dim results As New List(Of ImportedEntity)
 
         For Each ent As DxfEntity In dxf.Entities
             Dim displayColor As Color = Color.Black
 
             If ent.Color IsNot Nothing Then
-                displayColor = DxfColorToDrawingColor(ent.Color)
+                displayColor = DxfColorToDrawingColor(ent.Color, pnlPreview.BackColor)
             Else
                 Dim layer As DxfLayer = dxf.Layers.FirstOrDefault(Function(l) l.Name = ent.Layer)
                 If layer IsNot Nothing AndAlso layer.Color IsNot Nothing Then
-                    displayColor = DxfColorToDrawingColor(layer.Color)
+                    displayColor = DxfColorToDrawingColor(layer.Color, pnlPreview.BackColor)
                 End If
             End If
 
@@ -206,7 +206,7 @@ Public Class DXFFileSelectionDialog
     ' Paint preview panel
     '-------------------------------
     Private Sub pnlPreview_Paint(sender As Object, e As PaintEventArgs) Handles pnlPreview.Paint
-        e.Graphics.Clear(Color.White)
+        ' e.Graphics.Clear(Color.White)
 
         If _previewEntities Is Nothing OrElse _previewEntities.Count = 0 Then Return
 
@@ -316,5 +316,41 @@ Public Class DXFFileSelectionDialog
         Next
     End Sub
 
+    Private Sub tvFolders_BeforeExpand(sender As Object, e As TreeViewCancelEventArgs) Handles tvFolders.BeforeExpand
 
+        Dim node As TreeNode = e.Node
+
+        ' Only populate if placeholder exists
+        If node.Nodes.Count = 1 AndAlso node.Nodes(0).Text = "Loading..." Then
+            node.Nodes.Clear()
+            PopulateChildFolders(node)
+        End If
+
+    End Sub
+
+    ' Helper to ensure entity color is visible against the panel background
+    Private Function GetVisibleColor(entityColor As Color, bgColor As Color) As Color
+        ' If the entity color is the same as the background, pick a contrasting color
+        If entityColor.ToArgb() = bgColor.ToArgb() Then
+            ' Simple brightness check
+            Dim brightness As Double = (0.299 * bgColor.R + 0.587 * bgColor.G + 0.114 * bgColor.B) / 255
+            Return If(brightness < 0.5, Color.White, Color.Black)
+        End If
+        Return entityColor
+    End Function
+
+    Private Function AcadColorIndexToColor(index As Integer) As Color
+        ' Minimal AutoCAD color index to Color mapping (1-255)
+        ' This can be expanded or replaced with a full mapping table
+        Select Case index
+            Case 1 : Return Color.Red
+            Case 2 : Return Color.Yellow
+            Case 3 : Return Color.Green
+            Case 4 : Return Color.Cyan
+            Case 5 : Return Color.Blue
+            Case 6 : Return Color.Magenta
+            Case 7 : Return Color.White
+            Case Else : Return Color.Black
+        End Select
+    End Function
 End Class

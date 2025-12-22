@@ -391,6 +391,27 @@ Public Class AppData
 
         ' Add a collection for layers (directives)
         Public Property Layers As List(Of Directive) = New List(Of Directive)
+
+        Public Function GetColorForLayer(cadLayerName As String) As Color?
+            If Layers Is Nothing Then Return Nothing
+
+            ' Try to find directive matching the CAD layer
+            Dim directive = Layers.FirstOrDefault(Function(d) String.Equals(d.CADLayer, cadLayerName, StringComparison.OrdinalIgnoreCase))
+
+            ' Fallback to "*default*" if not found
+            If directive Is Nothing Then
+                directive = Layers.FirstOrDefault(Function(d) String.Equals(d.CADLayer, "*default*", StringComparison.OrdinalIgnoreCase))
+            End If
+
+            ' Return the DisplayColor if found
+            If directive IsNot Nothing Then
+                Return directive.DisplayColor
+            End If
+
+            ' Not found
+            Return Nothing
+        End Function
+
     End Class
 
     ' Directive class
@@ -433,5 +454,6 @@ Public Class AppData
         <DisplayName("Cut Direction")>
         Public Property CutDirection As CutDirectionEnum
     End Class
+
 
 End Class

@@ -37,7 +37,11 @@ Imports IxMilia.Dxf.Entities
 Public Class frmMain
     Inherits RibbonForm
 
-
+    Private _minX As Double
+    Private _minY As Double
+    Private _offsetX As Double
+    Private _offsetY As Double
+    Private _scale As Single = 1.0F
     Private _ox As Double
     Private _oy As Double
 
@@ -59,9 +63,25 @@ Public Class frmMain
 
 
     Private _modelBounds As RectangleF
-    Private _scale As Single = 1.0F
+
     Private _offset As PointF
 
+
+    Private lastEntity As ImportedEntity = Nothing
+    '------------------------------------------
+    Private WithEvents entityTip As New ToolTip()
+    Private lastHoverEntity As ImportedEntity = Nothing
+    Private _hoverEntity As ImportedEntity = Nothing
+    Private _selectedEntity As ImportedEntity = Nothing
+    Private _modelerToolTip As New ToolTip() With {
+    .ShowAlways = False,
+    .InitialDelay = 400,
+    .ReshowDelay = 100,
+    .AutoPopDelay = 4000
+}
+
+
+    Private Const HitTolerance As Double = 5 ' pixels
 
 
     Public PicModelerScale As Single = 1.0F
@@ -241,7 +261,7 @@ Public Class frmMain
         RemoveHandler panel.Paint, AddressOf pnlPicmodeler_Paint ' remove previous if any
         AddHandler panel.Paint, Sub(sender As Object, e As PaintEventArgs)
                                     Dim g = e.Graphics
-                                    g.Clear(Color.White)
+                                    ' g.Clear(Color.White)
                                     Using pen As New Pen(Color.Black, 1)
                                         For Each ln In CurrentDXFLines
                                             Dim x1 = ln.X1 * scale + offsetX
@@ -338,9 +358,6 @@ Public Class frmMain
         Me.Invalidate() ' trigger repaint
     End Sub
 
-
-
-
     Private Sub ResetModelView()
 
         If _modelBounds.IsEmpty Then Return
@@ -360,46 +377,6 @@ Public Class frmMain
 
     End Sub
 
-    'Private Sub DrawDxf(g As Graphics, dxf As DxfFile)
-
-    '    g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
-    '    g.TranslateTransform(_offset.X, _offset.Y)
-    '    g.ScaleTransform(_scale, -_scale)
-    '    g.TranslateTransform(0, -_modelBounds.Bottom)
-
-    '    Using pen As New Pen(Color.White, 0)
-
-    '        For Each ent In dxf.Entities
-
-    '            Select Case True
-
-    '                Case TypeOf ent Is DxfLine
-    '                    Dim l = CType(ent, DxfLine)
-    '                    g.DrawLine(pen,
-    '                    CSng(l.P1.X), CSng(l.P1.Y),
-    '                    CSng(l.P2.X), CSng(l.P2.Y))
-
-    '                Case TypeOf ent Is DxfCircle
-    '                    Dim c = CType(ent, DxfCircle)
-    '                    g.DrawEllipse(pen,
-    '                    CSng(c.Center.X - c.Radius),
-    '                    CSng(c.Center.Y - c.Radius),
-    '                    CSng(c.Radius * 2),
-    '                    CSng(c.Radius * 2))
-
-    '                Case TypeOf ent Is DxfArc
-    '                    DrawArcCorrectly(
-    '                        CType(ent, DxfArc),
-    '                        g,
-    '                        Bounds,
-    '                        Scale,
-    '                        OffsetX,
-    '                        OffsetY)
-
-    '            End Select
-    '        Next
-    '    End Using
-    'End Sub
     Private Sub pnlPicModeler_Paint(sender As Object, e As PaintEventArgs) Handles pnlPicmodeler.Paint
         If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return
 
@@ -423,11 +400,13 @@ Public Class frmMain
 
         Dim g = e.Graphics
 
-        g.Clear(Color.White)
+        'g.Clear(Color.White)
 
         ' 4. Draw each entity
         For Each ent As ImportedEntity In _importedEntities
-            Dim pen As New Pen(ent.DisplayColor, 1)
+            Dim penColor As Color = If(Object.ReferenceEquals(ent, _hoverEntity), Color.Red, ent.DisplayColor)
+
+            Dim pen As New Pen(penColor, 1)
 
             Select Case ent.GeometryType
                 Case ImportedEntity.GeometryTypeEnum.Line
@@ -460,6 +439,19 @@ Public Class frmMain
         Next
     End Sub
 
+    Private Function WorldToScreen(p As DxfPoint,
+                               minX As Double,
+                               minY As Double,
+                               scale As Double,
+                               offsetX As Double,
+                               offsetY As Double,
+                               panelHeight As Integer) As PointF
+
+        Dim sx As Single = CSng((p.X - minX) * scale + offsetX)
+        Dim sy As Single = CSng(panelHeight - ((p.Y - minY) * scale) - offsetY)
+
+        Return New PointF(sx, sy)
+    End Function
 
 
     Private Function GetDirectiveByID(id As Integer) As AppData.Directive
@@ -647,6 +639,295 @@ Public Class frmMain
     Private Function DxfToPointF(p As IxMilia.Dxf.DxfPoint) As PointF
         Return New PointF(CSng(p.X), CSng(p.Y))
     End Function
+
+    '------------------------------------------
+    ' Hit-testing function
+    '------------------------------------------
+    Private Function HitTestImported(mousePos As Point,
+                                 pnl As Panel,
+                                 hitTolerance As Single,
+                                 ByRef hitDistance As Single) As ImportedEntity
+
+        hitDistance = Single.MaxValue
+
+        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then
+            Return Nothing
+        End If
+
+        '-------------------------------------------------
+        ' Recompute SAME view transform as Paint
+        '-------------------------------------------------
+        Dim minX = _importedEntities.Min(Function(ent) ent.MinX)
+        Dim minY = _importedEntities.Min(Function(ent) ent.MinY)
+        Dim maxX = _importedEntities.Max(Function(ent) ent.MaxX)
+        Dim maxY = _importedEntities.Max(Function(ent) ent.MaxY)
+
+        Dim panelWidth = pnl.ClientSize.Width
+        Dim panelHeight = pnl.ClientSize.Height
+
+        Dim scaleX = panelWidth / (maxX - minX)
+        Dim scaleY = panelHeight / (maxY - minY)
+        Dim scale = Math.Min(scaleX, scaleY) * 0.9F
+
+        Dim offsetX = (panelWidth - (maxX - minX) * scale) / 2.0F
+        Dim offsetY = (panelHeight - (maxY - minY) * scale) / 2.0F
+
+        '-------------------------------------------------
+        ' Helpers
+        '-------------------------------------------------
+        Dim mouseF As New PointF(mousePos.X, mousePos.Y)
+
+        Dim worldToScreen =
+        Function(p As DxfPoint) As PointF
+            Return New PointF(
+                CSng((p.X - minX) * scale + offsetX),
+                CSng(panelHeight - ((p.Y - minY) * scale) - offsetY)
+            )
+        End Function
+
+        Dim bestEntity As ImportedEntity = Nothing
+
+        '-------------------------------------------------
+        ' Hit test each entity
+        '-------------------------------------------------
+        For Each ent In _importedEntities
+
+            Dim dist As Single = Single.MaxValue
+
+            Select Case ent.GeometryType
+
+                Case ImportedEntity.GeometryTypeEnum.Line
+                    Dim p1 = worldToScreen(ent.Line.P1)
+                    Dim p2 = worldToScreen(ent.Line.P2)
+
+                    dist = DistancePointToLine(mouseF, p1, p2)
+
+                Case ImportedEntity.GeometryTypeEnum.Circle
+                    Dim c = worldToScreen(ent.Circle.Center)
+                    Dim r = CSng(ent.Circle.Radius * scale)
+
+                    dist = Math.Abs(Distance(mouseF, c) - r)
+
+                Case ImportedEntity.GeometryTypeEnum.Arc
+                    Dim c = worldToScreen(ent.Arc.Center)
+                    Dim r = CSng(ent.Arc.Radius * scale)
+
+                    dist = Math.Abs(Distance(mouseF, c) - r)
+
+            End Select
+
+            If dist < hitDistance Then
+                hitDistance = dist
+                bestEntity = ent
+            End If
+
+        Next
+
+        If hitDistance <= hitTolerance Then
+            Return bestEntity
+        End If
+
+        Return Nothing
+
+    End Function
+
+
+    '------------------------------------------
+    ' MouseMove handler for hover tooltip
+    '------------------------------------------
+
+    Private Sub pnlPicModeler_MouseMove(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseMove
+
+        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then
+            statusLocation.Caption = "Location: N/A"
+            _hoverEntity = Nothing
+            entityTip.Hide(pnlPicmodeler)
+            Return
+        End If
+
+        '--------------------------------------------
+        ' Convert screen → model coordinates using form-level transform
+        '--------------------------------------------
+        Dim modelX As Double = ((e.X - _offsetX) / _scale) + _minX
+        Dim modelY As Double = ((pnlPicmodeler.ClientSize.Height - e.Y - _offsetY) / _scale) + _minY
+        statusLocation.Caption = $"Location: X = {modelX:0.###}, Y = {modelY:0.###}"
+
+        '--------------------------------------------
+        ' Hit-test in screen space
+        '--------------------------------------------
+        Dim hitDist As Single
+        Dim hit As ImportedEntity = HitTestImported(e.Location, pnlPicmodeler, HitTolerance, hitDist)
+
+        ' Update hover entity only if changed
+        If Not Object.ReferenceEquals(hit, _hoverEntity) Then
+            _hoverEntity = hit
+            pnlPicmodeler.Invalidate() ' redraw for hover highlight
+        End If
+
+        '--------------------------------------------
+        ' Update tooltip
+        '--------------------------------------------
+        If hit IsNot Nothing Then
+            entityTip.SetToolTip(pnlPicmodeler, BuildEntityToolTip(hit))
+        Else
+            entityTip.Hide(pnlPicmodeler)
+        End If
+
+    End Sub
+
+    '------------------------------------------
+    ' Generate tooltip text with color swatch
+    '------------------------------------------
+    Private Function GetImportedEntityInfo(entity As ImportedEntity) As String
+        Dim sb As New System.Text.StringBuilder()
+        sb.AppendLine($"CAM Layer: {entity.CAMLayer}")
+        sb.AppendLine($"Directive ID: {entity.DirectiveID}")
+
+        ' Show color as HTML-style or RGB
+        sb.AppendLine($"Color: #{entity.DisplayColor.R:X2}{entity.DisplayColor.G:X2}{entity.DisplayColor.B:X2}")
+
+        Select Case entity.GeometryType
+            Case ImportedEntity.GeometryTypeEnum.Line
+                If entity.Line IsNot Nothing Then
+                    Dim startPt As PointF = ToPointFFromDxfPoint(entity.Line.P1)
+                    Dim endPt As PointF = ToPointFFromDxfPoint(entity.Line.P2)
+                    sb.AppendLine($"Line: Start({startPt.X:F2},{startPt.Y:F2}), End({endPt.X:F2},{endPt.Y:F2})")
+                End If
+
+            Case ImportedEntity.GeometryTypeEnum.Circle
+                If entity.Circle IsNot Nothing Then
+                    Dim centerPt As PointF = ToPointFFromDxfPoint(entity.Circle.Center)
+                    sb.AppendLine($"Circle: Center({centerPt.X:F2},{centerPt.Y:F2}), Radius {entity.Circle.Radius:F2}")
+                End If
+
+            Case ImportedEntity.GeometryTypeEnum.Arc
+                If entity.Arc IsNot Nothing Then
+                    Dim centerPt As PointF = ToPointFFromDxfPoint(entity.Arc.Center)
+                    sb.AppendLine($"Arc: Center({centerPt.X:F2},{centerPt.Y:F2}), Radius {entity.Arc.Radius:F2}")
+                End If
+
+            Case Else
+                sb.AppendLine("Unknown Geometry")
+        End Select
+
+        Return sb.ToString()
+    End Function
+
+
+    '------------------------------------------
+    ' Distance between two PointF
+    '------------------------------------------
+    Private Function Distance(p1 As PointF, p2 As PointF) As Single
+        Dim dx = p1.X - p2.X
+        Dim dy = p1.Y - p2.Y
+        Return CSng(Math.Sqrt(dx * dx + dy * dy))
+    End Function
+
+    '------------------------------------------
+    ' Distance from point to line segment
+
+    Private Function DistancePointToLine(p As PointF, a As PointF, b As PointF) As Single
+        Dim dx = b.X - a.X
+        Dim dy = b.Y - a.Y
+
+        If dx = 0 AndAlso dy = 0 Then
+            Return Distance(p, a)
+        End If
+
+        Dim t = ((p.X - a.X) * dx + (p.Y - a.Y) * dy) / (dx * dx + dy * dy)
+        t = Math.Max(0, Math.Min(1, t))
+
+        Dim proj As New PointF(a.X + t * dx, a.Y + t * dy)
+        Return Distance(p, proj)
+    End Function
+
+    '------------------------------------------
+    ' Convert Double() array to PointF
+    '------------------------------------------
+    Private Function ToPointF(coords As Double()) As PointF
+        If coords Is Nothing OrElse coords.Length < 2 Then Return PointF.Empty
+        Return New PointF(CSng(coords(0)), CSng(coords(1)))
+    End Function
+    '------------------------------------------
+    ' Convert DxfPoint to PointF
+    '------------------------------------------
+    Private Function ToPointFFromDxfPoint(p As DxfPoint) As PointF
+        Return New PointF(CSng(p.X), CSng(p.Y))
+    End Function
+
+
+    ' Convert Double() array (e.g., Line P1/P2) to PointF
+    Private Function ToPointFFromArray(coords As Double()) As PointF
+        If coords Is Nothing OrElse coords.Length < 2 Then Return PointF.Empty
+        Return New PointF(CSng(coords(0)), CSng(coords(1)))
+    End Function
+
+    Private Sub pnlPicmodeler_MouseClick(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseClick
+
+        If e.Button <> MouseButtons.Left Then Return
+
+        Dim hitDist As Single
+        Dim hitEntity = HitTestImported(e.Location, pnlPicmodeler, 5.0F, hitDist)
+
+        _selectedEntity = hitEntity
+
+        '------------------------------------------
+        ' Selection feedback
+        '------------------------------------------
+        pnlPicmodeler.Invalidate()
+
+        If hitEntity Is Nothing Then
+            ' Optional: clear property grid / status
+            Return
+        End If
+
+        '------------------------------------------
+        ' Selection action
+        '------------------------------------------
+        HandleEntitySelected(hitEntity)
+    End Sub
+
+    Private Function BuildEntityToolTip(ent As ImportedEntity) As String
+
+        If ent Is Nothing Then Return String.Empty
+
+        Select Case ent.GeometryType
+
+            Case ImportedEntity.GeometryTypeEnum.Line
+                Return "Line" & Environment.NewLine &
+                   $"P1: X={ent.Line.P1.X:0.###}, Y={ent.Line.P1.Y:0.###}" & Environment.NewLine &
+                   $"P2: X={ent.Line.P2.X:0.###}, Y={ent.Line.P2.Y:0.###}"
+
+            Case ImportedEntity.GeometryTypeEnum.Circle
+                Return "Circle" & Environment.NewLine &
+                   $"Center: X={ent.Circle.Center.X:0.###}, Y={ent.Circle.Center.Y:0.###}" & Environment.NewLine &
+                   $"Radius: {ent.Circle.Radius:0.###}"
+
+            Case ImportedEntity.GeometryTypeEnum.Arc
+                Return "Arc" & Environment.NewLine &
+                   $"Center: X={ent.Arc.Center.X:0.###}, Y={ent.Arc.Center.Y:0.###}" & Environment.NewLine &
+                   $"Radius: {ent.Arc.Radius:0.###}" & Environment.NewLine &
+                   $"Start: {ent.Arc.StartAngle:0.###}°  End: {ent.Arc.EndAngle:0.###}°"
+
+            Case Else
+                Return ent.GeometryType.ToString()
+
+        End Select
+
+    End Function
+
+    Private Sub HandleEntitySelected(ent As ImportedEntity)
+
+        If ent Is Nothing Then Exit Sub
+
+        ' Placeholder for selection behavior
+        ' Examples (future):
+        '   PropertyGrid.SelectedObject = ent
+        '   Show context menu
+        '   Update status bar
+        '   Highlight entity
+
+    End Sub
 
 End Class
 
