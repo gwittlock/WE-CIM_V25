@@ -32,7 +32,7 @@ Imports System.Linq
 ' IxMilia DXF imports
 Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
-
+Imports System.Reflection
 
 Public Class frmMain
     Inherits RibbonForm
@@ -45,7 +45,38 @@ Public Class frmMain
     Private _ox As Double
     Private _oy As Double
 
-    ' In frmMain or a global module
+    Private _isPanning As Boolean = False
+    Private _panStart As Point
+    Private _offsetStartX As Double
+    Private _offsetStartY As Double
+
+
+    Private Structure ViewState
+        Public MinX As Double
+        Public MinY As Double
+        Public Scale As Single
+        Public OffsetX As Double
+        Public OffsetY As Double
+    End Structure
+
+    Private _viewHistory As New Stack(Of ViewState)
+
+    Private _windowSelecting As Boolean = False
+    Private _windowStart As Point
+    Private _windowEnd As Point
+    Private _currentTool As String = "None"
+
+    ' Optional: zoom factor per wheel notch
+    Private Const ZoomFactor As Single = 1.2F
+
+
+    Private _isMeasuring As Boolean = False
+    Private _measureStart As Point
+    Private _measureEnd As Point
+
+    Private _measureTooltip As String = ""
+
+
     Public CurrentDXFLines As New List(Of LineF)          ' Lines for main panel
     Public CurrentPreviewLines As New List(Of LineF)      ' Lines for file open preview
 
@@ -149,6 +180,8 @@ Public Class frmMain
     Private Sub frmMain_Load(sender As Object, e As EventArgs) Handles Me.Load
 
         Try
+
+            EnableDoubleBuffering(pnlPicmodeler)
             '-----------------------------
             ' 1. Load all core JSON data
             '-----------------------------
@@ -190,6 +223,7 @@ Public Class frmMain
         If _importedEntities IsNot Nothing AndAlso _importedEntities.Count > 0 Then
             pnlPicmodeler.Invalidate()
         End If
+        ViewFull()
 
 
     End Sub
@@ -258,7 +292,7 @@ Public Class frmMain
         Dim flipY As Single = -1
 
         ' Attach Paint event
-        RemoveHandler panel.Paint, AddressOf pnlPicmodeler_Paint ' remove previous if any
+        RemoveHandler panel.Paint, AddressOf pnlPicModeler_Paint ' remove previous if any
         AddHandler panel.Paint, Sub(sender As Object, e As PaintEventArgs)
                                     Dim g = e.Graphics
                                     ' g.Clear(Color.White)
@@ -378,65 +412,79 @@ Public Class frmMain
     End Sub
 
     Private Sub pnlPicModeler_Paint(sender As Object, e As PaintEventArgs) Handles pnlPicmodeler.Paint
+
         If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return
 
-        ' 1. Compute bounding box of all entities
-        Dim minX = _importedEntities.Min(Function(ent) ent.MinX)
-        Dim minY = _importedEntities.Min(Function(ent) ent.MinY)
-        Dim maxX = _importedEntities.Max(Function(ent) ent.MaxX)
-        Dim maxY = _importedEntities.Max(Function(ent) ent.MaxY)
-
-        ' 2. Compute scale to fit panel
-        Dim panelWidth = pnlPicmodeler.ClientSize.Width
+        Dim g = e.Graphics
         Dim panelHeight = pnlPicmodeler.ClientSize.Height
 
-        Dim scaleX = panelWidth / (maxX - minX)
-        Dim scaleY = panelHeight / (maxY - minY)
-        Dim scale = Math.Min(scaleX, scaleY) * 0.9 ' optional 10% padding
+        ' Helper function: convert model coordinates to screen coordinates
+        Dim ModelToScreen =
+            Function(p As DxfPoint) As PointF
+                Return New PointF(
+                    CSng((p.X - _minX) * _scale + _offsetX),
+                    CSng(panelHeight - ((p.Y - _minY) * _scale) - _offsetY)
+                )
+            End Function
 
-        ' 3. Compute offset to center drawing
-        Dim offsetX = (panelWidth - (maxX - minX) * scale) / 2
-        Dim offsetY = (panelHeight - (maxY - minY) * scale) / 2
+        ' Draw all entities
+        For Each ent In _importedEntities
+            ' Hovered entity drawn in red
+            Dim color As Color = If(Object.ReferenceEquals(ent, _hoverEntity), Color.Red, ent.DisplayColor)
+            Using pen As New Pen(color, 1)
+                Select Case ent.GeometryType
+                    Case ImportedEntity.GeometryTypeEnum.Line
+                        Dim p1 = ModelToScreen(ent.Line.P1)
+                        Dim p2 = ModelToScreen(ent.Line.P2)
+                        g.DrawLine(pen, p1, p2)
 
-        Dim g = e.Graphics
+                    Case ImportedEntity.GeometryTypeEnum.Circle
+                        Dim c = ModelToScreen(ent.Circle.Center)
+                        Dim r As Single = CSng(ent.Circle.Radius * _scale)
+                        g.DrawEllipse(pen, c.X - r, c.Y - r, r * 2, r * 2)
 
-        'g.Clear(Color.White)
-
-        ' 4. Draw each entity
-        For Each ent As ImportedEntity In _importedEntities
-            Dim penColor As Color = If(Object.ReferenceEquals(ent, _hoverEntity), Color.Red, ent.DisplayColor)
-
-            Dim pen As New Pen(penColor, 1)
-
-            Select Case ent.GeometryType
-                Case ImportedEntity.GeometryTypeEnum.Line
-                    Dim x1 = (ent.Line.P1.X - minX) * scale + offsetX
-                    Dim y1 = panelHeight - ((ent.Line.P1.Y - minY) * scale) - offsetY
-                    Dim x2 = (ent.Line.P2.X - minX) * scale + offsetX
-                    Dim y2 = panelHeight - ((ent.Line.P2.Y - minY) * scale) - offsetY
-                    e.Graphics.DrawLine(pen, CSng(x1), CSng(y1), CSng(x2), CSng(y2))
-
-                Case ImportedEntity.GeometryTypeEnum.Circle
-                    Dim cx = (ent.Circle.Center.X - minX) * scale + offsetX
-                    Dim cy = panelHeight - ((ent.Circle.Center.Y - minY) * scale) - offsetY
-                    Dim r = ent.Circle.Radius * scale
-                    e.Graphics.DrawEllipse(pen, CSng(cx - r), CSng(cy - r), CSng(r * 2), CSng(r * 2))
-
-                Case ImportedEntity.GeometryTypeEnum.Arc
-                    ' IxMilia DxfArc has Center, Radius, StartAngle, EndAngle (degrees)
-                    Dim cx = (ent.Arc.Center.X - minX) * scale + offsetX
-                    Dim cy = panelHeight - ((ent.Arc.Center.Y - minY) * scale) - offsetY
-                    Dim r = ent.Arc.Radius * scale
-
-                    ' Convert DXF angles (CCW from X+) to WinForms angles (CW from X+)
-                    Dim startAngle = -ent.Arc.StartAngle
-                    Dim sweepAngle = -(ent.Arc.EndAngle - ent.Arc.StartAngle)
-
-                    e.Graphics.DrawArc(pen, CSng(cx - r), CSng(cy - r), CSng(r * 2), CSng(r * 2), CSng(startAngle), CSng(sweepAngle))
-            End Select
-
-            pen.Dispose()
+                    Case ImportedEntity.GeometryTypeEnum.Arc
+                        Dim c = ModelToScreen(ent.Arc.Center)
+                        Dim r As Single = CSng(ent.Arc.Radius * _scale)
+                        Dim startAngle As Single = CSng(-ent.Arc.StartAngle)
+                        Dim sweepAngle As Single = CSng(-(ent.Arc.EndAngle - ent.Arc.StartAngle))
+                        g.DrawArc(pen, c.X - r, c.Y - r, r * 2, r * 2, startAngle, sweepAngle)
+                End Select
+            End Using
         Next
+
+        ' Draw View Window rubber-band rectangle
+        If _windowSelecting Then
+            Dim rect As New Rectangle(
+                Math.Min(_windowStart.X, _windowEnd.X),
+                Math.Min(_windowStart.Y, _windowEnd.Y),
+                Math.Abs(_windowEnd.X - _windowStart.X),
+                Math.Abs(_windowEnd.Y - _windowStart.Y)
+            )
+
+            ' Cyan dashed border
+            Using pen As New Pen(Color.Cyan) With {.DashStyle = Drawing2D.DashStyle.Dash}
+                g.DrawRectangle(pen, rect)
+            End Using
+
+            ' Optional: semi-transparent fill
+            Using brush As New SolidBrush(Color.FromArgb(50, Color.Cyan))
+                g.FillRectangle(brush, rect)
+            End Using
+        End If
+        If _isMeasuring Then
+            Using pen As New Pen(Color.Lime, 1)
+                pen.DashStyle = Drawing2D.DashStyle.Dash
+                g.DrawLine(pen, _measureStart, _measureEnd)
+            End Using
+
+            If Not String.IsNullOrEmpty(_measureTooltip) Then
+                Using brush As New SolidBrush(Color.Lime)
+                    g.DrawString(_measureTooltip, Me.Font, brush, _measureEnd.X + 5, _measureEnd.Y + 5)
+                End Using
+            End If
+        End If
+
     End Sub
 
     Private Function WorldToScreen(p As DxfPoint,
@@ -773,6 +821,39 @@ Public Class frmMain
             entityTip.Hide(pnlPicmodeler)
         End If
 
+        ' Pan
+        If _isPanning Then
+            Dim dx = e.X - _panStart.X
+            Dim dy = e.Y - _panStart.Y
+            _offsetX = _offsetStartX + dx
+            _offsetY = _offsetStartY + dy
+            pnlPicmodeler.Invalidate()
+            Return
+        End If
+
+        ' View Window rubber-band
+        If _windowSelecting Then
+            _windowEnd = e.Location
+            pnlPicmodeler.Invalidate()
+        End If
+        If _isMeasuring Then
+            _measureEnd = e.Location
+
+            ' Convert to model coordinates
+            Dim startModel As DxfPoint = ScreenToModel(_measureStart)
+            Dim endModel As DxfPoint = ScreenToModel(_measureEnd)
+
+            ' Compute differences
+            Dim dx As Double = endModel.X - startModel.X
+            Dim dy As Double = endModel.Y - startModel.Y
+            Dim dist As Double = Math.Sqrt(dx * dx + dy * dy)
+
+            ' Format tooltip text
+            _measureTooltip = $"ΔX = {dx:F3}, ΔY = {dy:F3}, Δ = {dist:F3}"
+
+            pnlPicmodeler.Invalidate()
+        End If
+
     End Sub
 
     '------------------------------------------
@@ -929,6 +1010,316 @@ Public Class frmMain
 
     End Sub
 
+    Private Sub ViewFull()
+        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return
+
+        SaveCurrentView() ' save current view for ViewPrevious
+
+        Dim minX = _importedEntities.Min(Function(ent) ent.MinX)
+        Dim minY = _importedEntities.Min(Function(ent) ent.MinY)
+        Dim maxX = _importedEntities.Max(Function(ent) ent.MaxX)
+        Dim maxY = _importedEntities.Max(Function(ent) ent.MaxY)
+
+        Dim panelWidth = pnlPicmodeler.ClientSize.Width
+        Dim panelHeight = pnlPicmodeler.ClientSize.Height
+
+        Dim scaleX = panelWidth / (maxX - minX)
+        Dim scaleY = panelHeight / (maxY - minY)
+        _scale = Math.Min(scaleX, scaleY) * 0.9F ' 10% padding
+
+        _minX = minX
+        _minY = minY
+        _offsetX = (panelWidth - (maxX - minX) * _scale) / 2
+        _offsetY = (panelHeight - (maxY - minY) * _scale) / 2
+
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Sub ViewPrevious()
+        If _viewHistory.Count = 0 Then Return
+        Dim prev = _viewHistory.Pop()
+        _minX = prev.MinX
+        _minY = prev.MinY
+        _scale = prev.Scale
+        _offsetX = prev.OffsetX
+        _offsetY = prev.OffsetY
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Sub pnlPicmodeler_MouseDown(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseDown
+        ' Pan (Ctrl+Shift)
+        If e.Button = MouseButtons.Left AndAlso (Control.ModifierKeys And Keys.Control) = Keys.Control _
+       AndAlso (Control.ModifierKeys And Keys.Shift) = Keys.Shift Then
+            _isPanning = True
+            _panStart = e.Location
+            _offsetStartX = _offsetX
+            _offsetStartY = _offsetY
+            pnlPicmodeler.Cursor = Cursors.Hand
+            Return
+        End If
+
+        ' View Window
+        If e.Button = MouseButtons.Left Then
+            _windowSelecting = True
+            _windowStart = e.Location
+            _windowEnd = e.Location
+        End If
+
+        If _currentTool = "Measure" AndAlso e.Button = MouseButtons.Left Then
+            _isMeasuring = True
+            _measureStart = e.Location
+            _measureEnd = e.Location
+            _measureTooltip = ""
+        End If
+    End Sub
+
+    Private Sub pnlPicmodeler_MouseUp(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseUp
+        Dim PopUpPoint As Point
+
+        If e.Button = Windows.Forms.MouseButtons.Right Then
+            PopUpPoint.X = System.Windows.Forms.Cursor.Position.X
+
+            PopUpPoint.Y = System.Windows.Forms.Cursor.Position.Y
+
+            'super incattation of right mose click for popups
+            mnuPopUp3.ShowPopup(PopUpPoint)
+        End If
+
+        ' End pan
+        If _isPanning Then
+            _isPanning = False
+            pnlPicmodeler.Cursor = Cursors.Default
+            Return
+        End If
+
+        ' End View Window
+        If _windowSelecting Then
+            _windowSelecting = False
+            pnlPicmodeler.Invalidate()
+            Dim rect As New Rectangle(
+                Math.Min(_windowStart.X, _windowEnd.X),
+                Math.Min(_windowStart.Y, _windowEnd.Y),
+                Math.Abs(_windowEnd.X - _windowStart.X),
+                Math.Abs(_windowEnd.Y - _windowStart.Y)
+            )
+            If rect.Width > 5 AndAlso rect.Height > 5 Then
+                ZoomToRectangle(rect)
+            End If
+        End If
+
+        ' Finish measurement
+        If _isMeasuring AndAlso e.Button = MouseButtons.Left Then
+            _isMeasuring = False
+            pnlPicmodeler.Invalidate()
+            ' Optionally, keep the tooltip visible for a moment or show a message box
+            MessageBox.Show(_measureTooltip, "Measurement")
+            _measureTooltip = ""
+        End If
+    End Sub
+
+    Private Sub ZoomToRectangle(rect As Rectangle)
+        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return
+        If rect.Width < 2 OrElse rect.Height < 2 Then Return
+
+        SaveCurrentView()
+
+        Dim panelWidth = pnlPicmodeler.ClientSize.Width
+        Dim panelHeight = pnlPicmodeler.ClientSize.Height
+
+        ' Convert screen coordinates to model coordinates
+        Dim x1 As Double = (rect.Left - _offsetX) / _scale + _minX
+        Dim x2 As Double = (rect.Right - _offsetX) / _scale + _minX
+        Dim y1 As Double = _minY + (panelHeight - rect.Top - _offsetY) / _scale
+        Dim y2 As Double = _minY + (panelHeight - rect.Bottom - _offsetY) / _scale
+
+        Dim zoomMinX = Math.Min(x1, x2)
+        Dim zoomMaxX = Math.Max(x1, x2)
+        Dim zoomMinY = Math.Min(y1, y2)
+        Dim zoomMaxY = Math.Max(y1, y2)
+
+        Dim scaleX = panelWidth / (zoomMaxX - zoomMinX)
+        Dim scaleY = panelHeight / (zoomMaxY - zoomMinY)
+        _scale = Math.Min(scaleX, scaleY) * 0.9F
+
+        _minX = zoomMinX
+        _minY = zoomMinY
+        _offsetX = (panelWidth - (zoomMaxX - zoomMinX) * _scale) / 2
+        _offsetY = (panelHeight - (zoomMaxY - zoomMinY) * _scale) / 2
+
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Function ScreenToModel(pt As Point) As DxfPoint
+        Dim safeScale As Single = If(_scale = 0, 1.0F, _scale)
+        Dim modelX As Double = _minX + (pt.X - _offsetX) / safeScale
+        Dim modelY As Double = _minY + (pnlPicmodeler.ClientSize.Height - pt.Y - _offsetY) / safeScale
+        Return New DxfPoint(modelX, modelY, 0)
+    End Function
+
+    Private Sub ApplyViewWindow(pt1 As Point, pt2 As Point)
+        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return
+
+        ' Push current view — create a proper ViewState
+        Dim vs As New ViewState With {
+        .MinX = _minX,
+        .MinY = _minY,
+        .Scale = _scale,
+        .OffsetX = _offsetX,
+        .OffsetY = _offsetY
+    }
+        _viewHistory.Push(vs)
+
+        ' Convert to model space
+        Dim x1 = ((Math.Min(pt1.X, pt2.X) - _offsetX) / _scale) + _minX
+        Dim y1 = ((pnlPicmodeler.ClientSize.Height - Math.Max(pt1.Y, pt2.Y) - _offsetY) / _scale) + _minY
+        Dim x2 = ((Math.Max(pt1.X, pt2.X) - _offsetX) / _scale) + _minX
+        Dim y2 = ((pnlPicmodeler.ClientSize.Height - Math.Min(pt1.Y, pt2.Y) - _offsetY) / _scale) + _minY
+
+        Dim width = x2 - x1
+        Dim height = y2 - y1
+
+        If width <= 0 OrElse height <= 0 Then Return
+
+        ' Compute new scale
+        Dim scaleX = pnlPicmodeler.ClientSize.Width / width
+        Dim scaleY = pnlPicmodeler.ClientSize.Height / height
+        _scale = Math.Min(scaleX, scaleY) * 0.9F
+
+        ' Update offsets
+        _minX = x1
+        _minY = y1
+        _offsetX = (pnlPicmodeler.ClientSize.Width - width * _scale) / 2
+        _offsetY = (pnlPicmodeler.ClientSize.Height - height * _scale) / 2
+
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Sub ViewRefresh()
+        ' Simply invalidate the panel to trigger a repaint
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Sub tbViewFull_Click(sender As Object, e As EventArgs) Handles tbViewFull.Click
+        ViewFull()
+
+    End Sub
+
+    Private Sub tbViewWindow_Click(sender As Object, e As EventArgs) Handles tbViewWindow.Click
+        _currentTool = "ViewWindow"
+    End Sub
+
+    Private Sub bbiMeasure_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbiMeasure.ItemClick
+        _currentTool = "Measure"
+    End Sub
+
+    Public Function AllowPan(Button As Integer, Shift As Integer) As Boolean
+
+
+        AllowPan =
+            (Button = MouseButtons.Left) And
+            (My.Computer.Keyboard.CtrlKeyDown) And
+            (My.Computer.Keyboard.ShiftKeyDown)
+
+    End Function
+
+    Private Function ModelToScreen(p As DxfPoint) As PointF
+        Dim panelHeight = pnlPicmodeler.ClientSize.Height
+        Return New PointF(
+        CSng((p.X - _minX) * _scale + _offsetX),
+        CSng(panelHeight - ((p.Y - _minY) * _scale) - _offsetY)
+    )
+    End Function
+
+
+    Public Sub EnableDoubleBuffering(ByVal control As Control)
+        Dim propertyInfo As PropertyInfo = GetType(Control).GetProperty("DoubleBuffered",
+            BindingFlags.Instance Or BindingFlags.NonPublic)
+        propertyInfo.SetValue(control, True, Nothing)
+    End Sub
+
+    Private Sub tbViewPrevious_Click(sender As Object, e As EventArgs) Handles tbViewPrevious.Click
+        ViewPrevious()
+    End Sub
+
+    Private Sub SaveCurrentView()
+        Dim vs As New ViewState With {
+            .MinX = _minX,
+            .MinY = _minY,
+            .Scale = _scale,
+            .OffsetX = _offsetX,
+            .OffsetY = _offsetY
+        }
+        _viewHistory.Push(vs)
+    End Sub
+
+    Private Sub tbViewRefresh_Click(sender As Object, e As EventArgs) Handles tbViewRefresh.Click
+        ViewRefresh()
+    End Sub
+
+    Private Sub pnlPicmodeler_MouseWheel(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseWheel
+        ' Only zoom if Ctrl+Shift are held
+        If (Control.ModifierKeys And Keys.Control) = Keys.Control AndAlso
+           (Control.ModifierKeys And Keys.Shift) = Keys.Shift Then
+
+            ' Determine zoom direction
+            Dim zoomIn As Boolean = e.Delta > 0
+            Dim zoomAmount As Single = If(zoomIn, ZoomFactor, 1 / ZoomFactor)
+
+            ' Convert mouse location to model coordinates
+            Dim mouseModel As DxfPoint = ScreenToModel(e.Location)
+
+            ' Apply zoom while keeping mouse position fixed
+            _scale *= zoomAmount
+
+            ' Adjust offsets so mouse remains at the same model point
+            _offsetX = e.X - (mouseModel.X - _minX) * _scale
+            _offsetY = e.Y - (pnlPicmodeler.ClientSize.Height - mouseModel.Y - _minY) * _scale
+
+            pnlPicmodeler.Invalidate()
+        End If
+    End Sub
+
+    Private Sub ZoomIn(center As Point)
+        ZoomAtPoint(center, ZoomFactor)
+    End Sub
+
+    Private Sub ZoomOut(center As Point)
+        ZoomAtPoint(center, 1 / ZoomFactor)
+    End Sub
+
+    Private Sub ZoomAtPoint(screenCenter As Point, zoomAmount As Single)
+        ' Convert screen point to model coordinates
+        Dim modelCenter As DxfPoint = ScreenToModel(screenCenter)
+
+        ' Apply zoom
+        _scale *= zoomAmount
+
+        ' Optional: clamp scale to avoid extreme zoom
+        _scale = Math.Max(0.01F, Math.Min(1000.0F, _scale))
+
+        ' Recalculate offsets to keep the zoom centered on the chosen point
+        _offsetX = screenCenter.X - (modelCenter.X - _minX) * _scale
+        _offsetY = screenCenter.Y - (pnlPicmodeler.ClientSize.Height - modelCenter.Y - _minY) * _scale
+
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Sub tbViewZoomIn_Click(sender As Object, e As EventArgs) Handles tbViewZoomIn.Click
+        Dim center As New Point(pnlPicmodeler.ClientSize.Width \ 2, pnlPicmodeler.ClientSize.Height \ 2)
+        ZoomIn(center)
+    End Sub
+
+    Private Sub tbViewZoomOut_Click(sender As Object, e As EventArgs) Handles tbViewZoomOut.Click
+        Dim center As New Point(pnlPicmodeler.ClientSize.Width \ 2, pnlPicmodeler.ClientSize.Height \ 2)
+        ZoomOut(center)
+
+    End Sub
+
+    Private Sub pnlPicmodeler_DoubleClick(sender As Object, e As EventArgs) Handles pnlPicmodeler.DoubleClick
+
+        ZoomIn(MousePosition)
+
+    End Sub
 End Class
 
 
