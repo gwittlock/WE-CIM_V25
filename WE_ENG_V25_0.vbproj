@@ -315,6 +315,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\AppData.vb" />
+    <Compile Include="Classes\C3dCoord.vb" />
+    <Compile Include="Classes\CadEntity.vb" />
+    <Compile Include="Classes\CamBuilder.vb" />
+    <Compile Include="Classes\CamProfile.vb" />
     <Compile Include="Classes\clsMatList.vb" />
     <Compile Include="Classes\DxfImport.vb" />
     <Compile Include="Classes\DynamicMachineProperty.vb" />
@@ -387,7 +391,6 @@
     <Compile Include="Models\udp.vb" />
     <Compile Include="Modules\AccessToJsonExporter.vb" />
     <Compile Include="Modules\appMain.vb" />
-    <Compile Include="Modules\DxfPreviewRenderer.vb" />
     <Compile Include="Modules\modFile.vb" />
     <Compile Include="Modules\modGeo.vb" />
     <Compile Include="Modules\modMaterial.vb" />

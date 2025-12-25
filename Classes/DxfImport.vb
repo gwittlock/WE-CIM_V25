@@ -4,82 +4,84 @@ Imports System.Drawing
 
 Public Module DxfImport
 
-    Public CurrentDXFLines As New List(Of LineF)
+    ' Store imported CadEntities
+    Public CurrentDXFEntities As New List(Of CadEntity)
 
-    Public Class LineF
-        Public Property X1 As Single
-        Public Property Y1 As Single
-        Public Property X2 As Single
-        Public Property Y2 As Single
-
-        Public Sub New(x1 As Single, y1 As Single, x2 As Single, y2 As Single)
-            Me.X1 = x1
-            Me.Y1 = y1
-            Me.X2 = x2
-            Me.Y2 = y2
-        End Sub
-    End Class
-
-
-    Public Function ParseDXFToLines(filePath As String) As List(Of LineF)
-        Dim lines As New List(Of LineF)
+    ''' <summary>
+    ''' Parse a DXF file and return a list of CadEntity objects.
+    ''' Only lines, arcs, and circles are currently supported.
+    ''' </summary>
+    Public Function ParseDXFToCadEntities(filePath As String) As List(Of CadEntity)
+        Dim entities As New List(Of CadEntity)
 
         Dim dxfDoc As DxfFile = DxfFile.Load(filePath)
 
-        For Each entity In dxfDoc.Entities
-            If TypeOf entity Is DxfLine Then
-                Dim ln = CType(entity, DxfLine)
-                lines.Add(New LineF(CSng(ln.P1.X), CSng(ln.P1.Y), CSng(ln.P2.X), CSng(ln.P2.Y)))
+        For Each ent In dxfDoc.Entities
+            Dim cadEnt = CadEntity.FromDxf(ent)
+            If cadEnt IsNot Nothing Then
+                entities.Add(cadEnt)
             End If
         Next
 
-        Return lines
+        CurrentDXFEntities = entities
+        Return entities
     End Function
 
+    ''' <summary>
+    ''' Compute scale and offsets to fit CadEntities in a panel.
+    ''' </summary>
+    Public Function ComputeScaleAndOffset(entities As List(Of CadEntity),
+                                          panelWidth As Integer,
+                                          panelHeight As Integer,
+                                          padding As Integer,
+                                          ByRef offsetX As Double,
+                                          ByRef offsetY As Double,
+                                          Optional ByRef scaleYFlip As Double = 1) As Double
 
-    ' Compute bounding box of a set of lines
-    Public Sub GetBoundingBox(lines As List(Of LineF), ByRef minX As Single, ByRef minY As Single, ByRef maxX As Single, ByRef maxY As Single)
-            If lines Is Nothing OrElse lines.Count = 0 Then
-                minX = 0 : minY = 0 : maxX = 0 : maxY = 0
-                Return
-            End If
+        ' Get bounding box for all entities
+        Dim minX As Double, minY As Double, maxX As Double, maxY As Double
+        CadEntity.GetBoundingBox(entities, minX, minY, maxX, maxY)
 
-            minX = lines.Min(Function(l) Math.Min(l.X1, l.X2))
-            minY = lines.Min(Function(l) Math.Min(l.Y1, l.Y2))
-            maxX = lines.Max(Function(l) Math.Max(l.X1, l.X2))
-            maxY = lines.Max(Function(l) Math.Max(l.Y1, l.Y2))
-        End Sub
+        Dim dxfWidth As Double = maxX - minX
+        Dim dxfHeight As Double = maxY - minY
 
-        ' Compute scale and offsets to fit lines in a panel
-        Public Function ComputeScaleAndOffset(lines As List(Of LineF), panelWidth As Integer, panelHeight As Integer, padding As Integer,
-                                              ByRef offsetX As Single, ByRef offsetY As Single, Optional ByRef scaleYFlip As Single = 1) As Single
-            Dim minX As Single, minY As Single, maxX As Single, maxY As Single
-            GetBoundingBox(lines, minX, minY, maxX, maxY)
+        ' Compute scale to fit panel
+        Dim scaleX As Double = (panelWidth - 2 * padding) / dxfWidth
+        Dim scaleY As Double = (panelHeight - 2 * padding) / dxfHeight
+        Dim scale As Double = Math.Min(scaleX, scaleY)
 
-            Dim dxfWidth As Single = maxX - minX
-            Dim dxfHeight As Single = maxY - minY
+        ' Flip Y-axis for Windows drawing coordinates
+        scaleYFlip = -1
 
-            Dim scaleX As Single = (panelWidth - 2 * padding) / dxfWidth
-            Dim scaleY As Single = (panelHeight - 2 * padding) / dxfHeight
-            Dim scale As Single = Math.Min(scaleX, scaleY)
+        ' Compute centered offsets
+        offsetX = (panelWidth - (dxfWidth * scale)) / 2 - minX * scale
+        offsetY = (panelHeight + (dxfHeight * scale)) / 2 + minY * scale   ' Y flipped
 
-            ' Flip Y-axis for Windows drawing coordinates
-            scaleYFlip = -1
+        Return scale
+    End Function
 
-            offsetX = (panelWidth - (dxfWidth * scale)) / 2 - minX * scale
-            offsetY = (panelHeight + (dxfHeight * scale)) / 2 + minY * scale   ' Y flipped
+    ''' <summary>
+    ''' Transform a CadEntity to panel coordinates with Y-axis flip.
+    ''' Returns a tuple of transformed start and end points.
+    ''' </summary>
+    Public Function TransformEntityToPanel(entity As CadEntity,
+                                           scale As Double,
+                                           offsetX As Double,
+                                           offsetY As Double,
+                                           Optional scaleYFlip As Double = -1) As ((X As Double, Y As Double), (X As Double, Y As Double))
+        Dim sp = entity.StartPoint
+        Dim ep = entity.EndPoint
 
-            Return scale
-        End Function
+        Dim transformedStart = (
+            sp.X * scale + offsetX,
+            sp.Y * scale * scaleYFlip + offsetY
+        )
+        Dim transformedEnd = (
+            ep.X * scale + offsetX,
+            ep.Y * scale * scaleYFlip + offsetY
+        )
 
-        ' Transform a line to panel coordinates with Y-axis flip
-        Public Function TransformLine(line As LineF, scale As Single, offsetX As Single, offsetY As Single, Optional scaleYFlip As Single = -1) As LineF
-            Return New LineF(
-                line.X1 * scale + offsetX,
-                line.Y1 * scale * scaleYFlip + offsetY,
-                line.X2 * scale + offsetX,
-                line.Y2 * scale * scaleYFlip + offsetY
-            )
-        End Function
+        Return (transformedStart, transformedEnd)
+    End Function
 
-    End Module
+End Module

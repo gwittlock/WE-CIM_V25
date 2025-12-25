@@ -75,47 +75,90 @@ Public Class AppData
         MachineAttributes = LoadTableWrapped(Of MachineAttribute)("MachineAttributes.json")
         MachineToolTypes = LoadTableWrapped(Of MachineToolType)("MachineToolTypes.json")
 
-
-        'Dim stationsFile = Path.Combine(DataFolder, "Stations.json")
-        'If File.Exists(stationsFile) Then
-        '    Dim json As JObject = JObject.Parse(File.ReadAllText(stationsFile))
-        '    AppData.Stations = json("Rows").ToObject(Of List(Of Station))()
-        'Else
-        '    AppData.Stations = New List(Of Station)()
-        'End If
-
         ' ---- TOOL DATA ----
-        ToolSetups = LoadTableWrapped(Of ToolSetup)("ToolSetups.json") ' List(Of ToolSetup)
+        ToolSetups = LoadTableWrapped(Of ToolSetup)("ToolSetups.json")
         ToolCrib = LoadTableWrapped(Of ToolCribItem)("ToolCrib.json")
         ToolTypes = LoadTableWrapped(Of ToolType)("ToolTypes.json")
         ToolAttributeTypes = LoadTableWrapped(Of ToolAttributeType)("ToolAttributeTypes.json")
         ToolTypeAttributes = LoadTableWrapped(Of ToolTypeAttribute)("ToolTypeAttributes.json")
         ToolSetupMembers = LoadTableWrapped(Of ToolSetupMember)("ToolSetupMembers.json")
 
-
-
-
-        Dim toolSetupsTableFile = Path.Combine(DataFolder, "ToolSetups.json")
-        Dim toolSetupsJson = File.ReadAllText(toolSetupsTableFile)
-        'toolSetupsTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(toolSetupsJson)
-
-
         ' ---- MATERIAL DATA ----
         MaterialTypes = LoadTableWrapped(Of MaterialType)("MaterialTypes.json")
         MaterialSheets = LoadMaterialSheets("MaterialInventory.json")
 
+        ' ---- LAYER SETUPS / DIRECTIVES ----
         Dim layerSetupsFile = Path.Combine(DataFolder, "LayerSetups.json")
         Dim directivesFile = Path.Combine(DataFolder, "Directives.json")
 
         LayerSetups = If(File.Exists(layerSetupsFile),
-                     JObject.Parse(File.ReadAllText(layerSetupsFile))("Rows").ToObject(Of List(Of LayerSetup))(),
-                     New List(Of LayerSetup)())
+        JObject.Parse(File.ReadAllText(layerSetupsFile))("Rows").ToObject(Of List(Of LayerSetup))(),
+        New List(Of LayerSetup)())
 
         Directives = If(File.Exists(directivesFile),
-                   JObject.Parse(File.ReadAllText(directivesFile))("Rows").ToObject(Of List(Of Directive))(),
-                   New List(Of Directive)())
+        JObject.Parse(File.ReadAllText(directivesFile))("Rows").ToObject(Of List(Of Directive))(),
+        New List(Of Directive)())
+
+        ' Resolve directive colors ONCE
+        For Each d In Directives
+            d.ResolveColors()
+        Next
+
+        ' ------------------------------------------
+        ' Bind directives to layer setups (NO DUPES)
+        ' ------------------------------------------
+        Dim directiveLookup = Directives.ToDictionary(Function(d) d.ID)
+
+        For Each ls In LayerSetups
+            ls.Layers.Clear()
+
+            For Each d In Directives.Where(Function(x) x.LayerSetupID = ls.ID)
+                ls.Layers.Add(directiveLookup(d.ID))
+            Next
+        Next
+
+        ValidateConfigurationState()
+
 
     End Sub
+
+    Public Shared Sub ValidateConfigurationState()
+
+        ' ---- LayerSetup / Directive invariants ----
+        For Each ls In LayerSetups
+
+            If ls.Layers Is Nothing Then
+                Throw New InvalidOperationException(
+                $"LayerSetup ID {ls.ID} has a null Layers collection."
+            )
+            End If
+
+            For Each d In ls.Layers
+
+                If d Is Nothing Then
+                    Throw New InvalidOperationException(
+                    $"LayerSetup ID {ls.ID} contains a null directive."
+                )
+                End If
+
+                If String.IsNullOrWhiteSpace(d.CADLayer) Then
+                    Throw New InvalidOperationException(
+                    $"Directive ID {d.ID} in LayerSetup ID {ls.ID} has an empty CADLayer."
+                )
+                End If
+
+                If d.DisplayColor = Color.Empty Then
+                    Throw New InvalidOperationException(
+                    $"Directive ID {d.ID} in LayerSetup ID {ls.ID} has no resolved DisplayColor."
+                )
+                End If
+
+            Next
+        Next
+
+    End Sub
+
+
 
     Private Function LoadToolTypeAttributes() As List(Of ToolTypeAttribute)
         Dim filePath = Path.Combine(DataFolder, "ToolTypeAttributes.json")
@@ -138,23 +181,6 @@ Public Class AppData
 
         Return result
     End Function
-
-
-    '' ------------------------------------------
-    ''  GENERIC WRAPPED JSON TABLE LOADER
-    ''  Expects JSON in the form { "TableName": "...", "Rows": [ ... ] }
-    '' ------------------------------------------
-    'Private Shared Function LoadTableWrapped(Of T)(fileName As String) As List(Of T)
-    '    Dim spath As String = Path.Combine(DataFolder, fileName)
-    '    If File.Exists(spath) Then
-    '        Dim json = File.ReadAllText(spath)
-    '        Dim wrapper = JsonConvert.DeserializeObject(Of JObject)(json)
-    '        Dim rows = wrapper("Rows").ToString()
-    '        Return JsonConvert.DeserializeObject(Of List(Of T))(rows)
-    '    Else
-    '        Return New List(Of T)()
-    '    End If
-    'End Function
 
     Private Shared Function LoadJObjectWrapped(fileName As String) As List(Of JObject)
         Dim spath As String = Path.Combine(DataFolder, fileName)
@@ -207,8 +233,6 @@ Public Class AppData
             Return New List(Of MaterialSheet)()
         End If
     End Function
-
-
 
     ' ------------------------------------------
     ' GENERIC WRAPPER LOADER
@@ -372,13 +396,14 @@ Public Class AppData
         Public Property Properties As List(Of ToolTypeProperty) ' List of all properties for this ToolType
     End Class
 
-
-
-    ' LayerSetup class
+    ' LayerSetup class for WE-CIM v25
     Public Class LayerSetup
+        ' Unique identifier for the LayerSetup
         Public Property ID As Integer
         Public Property Description As String
         Public Property MachineID As Integer
+
+        ' CAM processing parameters
         Public Property ZLevelMode As Double
         Public Property GapTolerance As Double
         Public Property CleanTolerance As Double
@@ -387,11 +412,48 @@ Public Class AppData
         Public Property ProcessText As Boolean
         Public Property Restrict_Offset As Boolean
 
-        ' Optional: other global attributes like ZLevelMode, GapTolerance, etc.
+        ' Profile direction: Auto, CW, CCW
+        Public Property Direction As ProfileDirectionModeEnum
+        Public Enum ProfileDirectionModeEnum
+            Auto
+            CW
+            CCW
+        End Enum
 
-        ' Add a collection for layers (directives)
+        ' Optional: Dictionary for extra parameters/extensions
+        Public Property Parameters As Dictionary(Of String, Object) = New Dictionary(Of String, Object)()
+
+        ' Collection of directives/layers for this setup
         Public Property Layers As List(Of Directive) = New List(Of Directive)
 
+        Public Sub Validate()
+            If ID <= 0 Then
+                Throw New InvalidOperationException("LayerSetup has invalid ID.")
+            End If
+
+            If Layers Is Nothing OrElse Layers.Count = 0 Then
+                Throw New InvalidOperationException($"LayerSetup {ID} has no directives.")
+            End If
+
+            ' Ensure *default* exists
+            If Not Layers.Any(Function(d) d.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase)) Then
+                Throw New InvalidOperationException($"LayerSetup {ID} is missing *default* directive.")
+            End If
+
+            ' Ensure no unresolved directives
+            For Each d In Layers
+                d.Validate()
+
+                If d.LayerSetupID <> ID Then
+                    Throw New InvalidOperationException(
+                $"Directive {d.ID} incorrectly assigned to LayerSetup {ID}."
+            )
+                End If
+            Next
+        End Sub
+
+
+        ' Utility method to get the display color for a specific CAD layer
         Public Function GetColorForLayer(cadLayerName As String) As Color?
             If Layers Is Nothing Then Return Nothing
 
@@ -412,47 +474,88 @@ Public Class AppData
             Return Nothing
         End Function
 
-    End Class
+        ' Optional: Add helper to quickly get a parameter by name
+        Public Function GetParameter(Of T)(paramName As String, Optional defaultValue As T = Nothing) As T
+            If Parameters IsNot Nothing AndAlso Parameters.ContainsKey(paramName) Then
+                Return CType(Parameters(paramName), T)
+            End If
+            Return defaultValue
+        End Function
 
+        ' Optional: Set or override a parameter
+        Public Sub SetParameter(paramName As String, value As Object)
+            If Parameters Is Nothing Then Parameters = New Dictionary(Of String, Object)()
+            Parameters(paramName) = value
+        End Sub
+
+    End Class
     ' Directive class
     Public Class Directive
         Public Property ID As Integer
         Public Property LayerSetupID As Integer
-
         Public Property CADLayer As String
         Public Property CAMLayer As String
 
-        ' === Stored as Integer (JSON-safe) ===
-        <Browsable(False)>
+        ' Raw numeric color from JSON (optional / legacy)
         Public Property Color As Integer
 
-        ' === PropertyGrid Color Picker ===
-        <DisplayName("Color")>
-        <Editor(GetType(ColorEditor), GetType(UITypeEditor))>
+        ' Human-readable color name from JSON
+        <JsonProperty("DisplayColor")>
+        Public Property DisplayColorName As String
+
+        ' Actual runtime color used for rendering
+        <JsonIgnore>
         Public Property DisplayColor As Color
-            Get
-                Return ColorTranslator.FromOle(Color)
-            End Get
-            Set(value As Color)
-                Color = ColorTranslator.ToOle(value)
-            End Set
-        End Property
 
-        <TypeConverter(GetType(StationTypeConverter))>
         Public Property Station As String
-
         Public Property ToolType As Integer?
-
         Public Property ZLevel As Double
-
-        ' === Enums = dropdowns ===
-        <DisplayName("Cut Side")>
-        Public Property CutSide As CutSideEnum
-
+        Public Property CutSide As Integer
         Public Property Distance As Double
+        Public Property CutDirection As Integer
 
-        <DisplayName("Cut Direction")>
-        Public Property CutDirection As CutDirectionEnum
+        Public Sub Validate()
+            If ID <= 0 Then
+                Throw New InvalidOperationException("Directive ID is invalid.")
+            End If
+
+            If String.IsNullOrWhiteSpace(CADLayer) Then
+                Throw New InvalidOperationException($"Directive {ID} has no CADLayer.")
+            End If
+
+            If LayerSetupID <= 0 Then
+                Throw New InvalidOperationException($"Directive {ID} has invalid LayerSetupID.")
+            End If
+
+            If DisplayColor.IsEmpty Then
+                Throw New InvalidOperationException($"Directive {ID} has unresolved DisplayColor.")
+            End If
+        End Sub
+
+
+
+        Public Sub ResolveColors()
+
+            ' 1. Prefer named color if provided
+            If Not String.IsNullOrWhiteSpace(DisplayColorName) Then
+                Dim c = System.Drawing.Color.FromName(DisplayColorName)
+                If c.IsKnownColor OrElse c.IsNamedColor Then
+                    DisplayColor = c
+                    Return
+                End If
+            End If
+
+            ' 2. Fallback to integer ARGB if present
+            If Color <> 0 Then
+                DisplayColor = ColorTranslator.FromWin32(Color)
+                Return
+            End If
+
+            ' 3. Absolute fallback
+            DisplayColor = System.Drawing.Color.Magenta
+
+        End Sub
+
     End Class
 
 

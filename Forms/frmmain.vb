@@ -1,4 +1,5 @@
-﻿Imports DevExpress.UserSkins
+﻿
+Imports DevExpress.UserSkins
 Imports DevExpress.Skins
 Imports DevExpress.LookAndFeel
 Imports DevExpress.Spreadsheet
@@ -22,21 +23,25 @@ Imports FabV25_WIN8.WE_ENG_V25_0.Core.Services
 Imports FabV25_WIN8.AppData
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 Imports FabV25_WIN8.ImportedEntity
+Imports FabV25_WIN8.CadEntity
 Imports Newtonsoft.Json
 Imports Formatting = Newtonsoft.Json.Formatting
 Imports System.Drawing
 Imports System.Drawing.Drawing2D
 Imports System.Windows.Forms
 Imports System.Linq
-
+Imports System.Math
 ' IxMilia DXF imports
 Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
 Imports System.Reflection
+Imports System.Text
 
 Public Class frmMain
     Inherits RibbonForm
-
+    Dim currentScale As Double
+    Dim minScale As Double
+    Dim maxScale As Double
     Private _minX As Double
     Private _minY As Double
     Private _offsetX As Double
@@ -49,6 +54,15 @@ Public Class frmMain
     Private _panStart As Point
     Private _offsetStartX As Double
     Private _offsetStartY As Double
+    Private _gapPairs As List(Of Tuple(Of DxfPoint, DxfPoint))
+
+    ' Each profile is a list of connected entities
+    Private _profiles As New List(Of List(Of ImportedEntity))
+
+    Private _importedProfiles As List(Of CamProfile)
+
+    Private _inquireMode As Boolean = False
+
 
 
     Private Structure ViewState
@@ -67,7 +81,7 @@ Public Class frmMain
     Private _currentTool As String = "None"
 
     ' Optional: zoom factor per wheel notch
-    Private Const ZoomFactor As Single = 1.2F
+    Private Const ZoomFactor As Single = 1.5F
 
 
     Private _isMeasuring As Boolean = False
@@ -76,9 +90,9 @@ Public Class frmMain
 
     Private _measureTooltip As String = ""
 
-
-    Public CurrentDXFLines As New List(Of LineF)          ' Lines for main panel
-    Public CurrentPreviewLines As New List(Of LineF)      ' Lines for file open preview
+    ' Replace old LineF lists
+    Public CurrentDXFEntities As New List(Of CadEntity)         ' Entities for main panel
+    Public CurrentPreviewEntities As New List(Of CadEntity)     ' Entities for file open preview
 
     Private _loadedDxf As DxfFile = Nothing
 
@@ -101,7 +115,7 @@ Public Class frmMain
     Private lastEntity As ImportedEntity = Nothing
     '------------------------------------------
     Private WithEvents entityTip As New ToolTip()
-    Private lastHoverEntity As ImportedEntity = Nothing
+    Private lastHoverEntity As CadEntity = Nothing
     Private _hoverEntity As ImportedEntity = Nothing
     Private _selectedEntity As ImportedEntity = Nothing
     Private _modelerToolTip As New ToolTip() With {
@@ -112,7 +126,7 @@ Public Class frmMain
 }
 
 
-    Private Const HitTolerance As Double = 5 ' pixels
+    Private Const HitTolerance As Double = 0.05 ' pixels
 
 
     Public PicModelerScale As Single = 1.0F
@@ -216,17 +230,91 @@ Public Class frmMain
 
         ConfigurationManagerForm.Show(Me)
     End Sub
-
     Private Sub iOpen_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iOpen.ItemClick
-        _importedEntities = FileOpen()
+        ' Open DXF and import as CamProfiles
+        _importedProfiles = FileOpen()  ' returns List(Of CamProfile)
 
-        If _importedEntities IsNot Nothing AndAlso _importedEntities.Count > 0 Then
+        If _importedProfiles IsNot Nothing AndAlso _importedProfiles.Count > 0 Then
+            ' Flatten all CadEntities from profiles into _importedEntities for legacy code
+            _importedEntities = New List(Of ImportedEntity)
+
+            For Each profile In _importedProfiles
+                For Each cad In profile.Entities
+                    _importedEntities.Add(ConvertCadEntityToImportedEntity(cad, _selectedLayerSetup))
+                Next
+            Next
+
+            ' Refresh the drawing panel
             pnlPicmodeler.Invalidate()
         End If
+
+        ' Ensure view is updated
         ViewFull()
-
-
     End Sub
+    ' Converts a single CadEntity to an ImportedEntity
+    Private Function ConvertCadEntityToImportedEntity(cad As CadEntity, layerSetup As AppData.LayerSetup) As ImportedEntity
+        Dim imp As New ImportedEntity()
+
+        ' Assign CAM layer name
+        imp.CAMLayer = cad.LayerName
+        imp.DirectiveID = -1  ' Adjust if you track directive IDs
+
+        ' Determine the color from LayerSetup
+        Dim layerDirective As AppData.Directive =
+    layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer.Equals(cad.LayerName, StringComparison.OrdinalIgnoreCase))
+
+        ' Fallback to *default* if no match
+        If layerDirective Is Nothing Then
+            layerDirective = layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer = "*default*")
+        End If
+
+        If layerDirective IsNot Nothing Then
+            imp.DisplayColor = ResolveDirectiveColor(layerDirective)
+        Else
+            imp.DisplayColor = Color.Black
+        End If
+
+        ' Map geometry type and DXF reference
+        Select Case cad.CadEntityType
+            Case CadEntity.EntityType.Line
+                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Line
+                imp.Line = TryCast(cad.DxfEntity, DxfLine)
+
+            Case CadEntity.EntityType.Arc
+                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
+                imp.Arc = TryCast(cad.DxfEntity, DxfArc)
+
+            Case CadEntity.EntityType.Circle
+                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Circle
+                imp.Circle = TryCast(cad.DxfEntity, DxfCircle)
+
+            Case Else
+                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Unknown
+        End Select
+        Return imp
+    End Function
+
+    ''' <summary>
+    ''' Returns a System.Drawing.Color for a directive, resolving *default* and raw integer values if needed.
+    ''' </summary>
+    Public Function ResolveDirectiveColor(directive As AppData.Directive) As Color
+        If directive Is Nothing Then Return Color.Black
+
+        ' If DisplayColor is already set, use it
+        If directive.DisplayColor <> Color.Empty Then
+            Return directive.DisplayColor
+        End If
+
+        ' Try to use the integer Color property
+        Try
+            Return Color.FromArgb(directive.Color)
+        Catch
+            ' fallback
+            Return Color.Black
+        End Try
+    End Function
+
+
 
     Private Sub frmMain_Closing(sender As Object, e As CancelEventArgs) Handles Me.Closing
 
@@ -253,24 +341,73 @@ Public Class frmMain
     'End Sub
 
     ''' <summary>
-    ''' Processes DXF lines, stores them, and draws them scaled and centered on the main panel.
+    ''' Draws a list of CadEntity objects on a specified panel, scaling and centering them automatically.
     ''' </summary>
-    ''' <param name="panel">The main drawing panel (e.g., pnlPicmodeler).</param>
-    ''' <param name="lines">List of LineF from DXF parsing.</param>
-    Public Sub DrawLinesOnMainPanel(panel As Panel, lines As List(Of LineF))
-        ' Store lines for later
-        CurrentDXFLines = lines
+    ''' <param name="panel">The target panel to draw on.</param>
+    ''' <param name="entities">List of CadEntity to render.</param>
+    ''' <param name="penColor">Optional: color of the pen used for drawing. Default is black.</param>
+    ''' <param name="padding">Optional: padding inside the panel. Default is 10.</param>
+    Public Sub DrawEntitiesOnPanel(panel As Panel,
+                               entities As List(Of CadEntity),
+                               Optional penColor As Color = Nothing,
+                               Optional padding As Integer = 10)
 
-        If lines Is Nothing OrElse lines.Count = 0 Then
+        If entities Is Nothing OrElse entities.Count = 0 Then
             panel.Invalidate()
             Return
         End If
 
-        ' Compute bounding box
-        Dim minX = lines.Min(Function(ln) Math.Min(ln.X1, ln.X2))
-        Dim maxX = lines.Max(Function(ln) Math.Max(ln.X1, ln.X2))
-        Dim minY = lines.Min(Function(ln) Math.Min(ln.Y1, ln.Y2))
-        Dim maxY = lines.Max(Function(ln) Math.Max(ln.Y1, ln.Y2))
+        ' Store entities in a panel-specific variable if needed
+        ' Example: use CurrentDXFEntities for main panel or CurrentPreviewEntities for preview
+        ' For demonstration, we'll assume CurrentDXFEntities
+        CurrentDXFEntities = entities
+
+        ' Panel size accounting for padding
+        Dim panelWidth = panel.Width - 2 * padding
+        Dim panelHeight = panel.Height - 2 * padding
+
+        ' Compute scale and offsets
+        Dim offsetX As Double, offsetY As Double, scaleYFlip As Double
+        Dim scale = DxfImport.ComputeScaleAndOffset(entities, panelWidth, panelHeight, padding, offsetX, offsetY, scaleYFlip)
+
+        ' Use default black pen if none specified
+        If penColor = Nothing Then penColor = Color.Black
+
+        ' Attach Paint event
+        RemoveHandler panel.Paint, AddressOf pnlPicModeler_Paint
+        AddHandler panel.Paint, Sub(sender As Object, e As PaintEventArgs)
+                                    Dim g = e.Graphics
+                                    Using pen As New Pen(penColor, 1)
+                                        For Each ent In entities
+                                            ' Transform entity to panel coordinates
+                                            Dim transformed = DxfImport.TransformEntityToPanel(ent, scale, offsetX, offsetY, scaleYFlip)
+                                            Dim startPt = transformed.Item1
+                                            Dim endPt = transformed.Item2
+
+                                            ' Draw line
+                                            g.DrawLine(pen, CSng(startPt.X), CSng(startPt.Y), CSng(endPt.X), CSng(endPt.Y))
+                                        Next
+                                    End Using
+                                End Sub
+
+
+        panel.Invalidate()
+    End Sub
+
+    ''' <summary>
+    ''' Draw a list of CadEntities on the given panel, scaling and centering them.
+    ''' </summary>
+    Public Sub DrawCadEntitiesOnPanel(panel As Panel, entities As List(Of CadEntity))
+        If entities Is Nothing OrElse entities.Count = 0 Then
+            panel.Invalidate()
+            Return
+        End If
+
+        ' Compute bounding box for all entities
+        Dim minX As Double = entities.Min(Function(e) Math.Min(e.StartPoint.X, e.EndPoint.X))
+        Dim maxX As Double = entities.Max(Function(e) Math.Max(e.StartPoint.X, e.EndPoint.X))
+        Dim minY As Double = entities.Min(Function(e) Math.Min(e.StartPoint.Y, e.EndPoint.Y))
+        Dim maxY As Double = entities.Max(Function(e) Math.Max(e.StartPoint.Y, e.EndPoint.Y))
 
         Dim dx = maxX - minX
         Dim dy = maxY - minY
@@ -282,33 +419,35 @@ Public Class frmMain
         Dim panelHeight = panel.Height - 2 * pad
 
         ' Compute scale to fit
-        Dim scaleX = panelWidth / dx
-        Dim scaleY = panelHeight / dy
-        Dim scale = Math.Min(scaleX, scaleY)
+        Dim scaleX As Double = panelWidth / dx
+        Dim scaleY As Double = panelHeight / dy
+        Dim scale As Double = Math.Min(scaleX, scaleY)
 
-        ' Compute offset to center
-        Dim offsetX = pad + (panelWidth - dx * scale) / 2 - minX * scale
-        Dim offsetY = pad + (panelHeight - dy * scale) / 2 + maxY * scale
-        Dim flipY As Single = -1
+        ' Compute offsets to center
+        Dim offsetX As Double = pad + (panelWidth - dx * scale) / 2 - minX * scale
+        Dim offsetY As Double = pad + (panelHeight - dy * scale) / 2 + maxY * scale
+        Dim flipY As Double = -1
 
         ' Attach Paint event
-        RemoveHandler panel.Paint, AddressOf pnlPicModeler_Paint ' remove previous if any
+        ' RemoveHandler panel.Paint, AddressOf panel.Paint
         AddHandler panel.Paint, Sub(sender As Object, e As PaintEventArgs)
                                     Dim g = e.Graphics
-                                    ' g.Clear(Color.White)
                                     Using pen As New Pen(Color.Black, 1)
-                                        For Each ln In CurrentDXFLines
-                                            Dim x1 = ln.X1 * scale + offsetX
-                                            Dim y1 = ln.Y1 * scale * flipY + offsetY
-                                            Dim x2 = ln.X2 * scale + offsetX
-                                            Dim y2 = ln.Y2 * scale * flipY + offsetY
-                                            g.DrawLine(pen, x1, y1, x2, y2)
+                                        For Each cad In entities
+                                            ' Assign tuple to a single variable
+                                            Dim endpoints = DxfImport.TransformEntityToPanel(cad, scale, offsetX, offsetY, flipY)
+                                            Dim startPt = endpoints.Item1
+                                            Dim endPt = endpoints.Item2
+
+                                            g.DrawLine(pen, CSng(startPt.X), CSng(startPt.Y), CSng(endPt.X), CSng(endPt.Y))
                                         Next
                                     End Using
                                 End Sub
 
+
         panel.Invalidate()
     End Sub
+
 
     Private Class ComboBoxItem
         Public Property Text As String
@@ -804,7 +943,10 @@ Public Class frmMain
         ' Hit-test in screen space
         '--------------------------------------------
         Dim hitDist As Single
-        Dim hit As ImportedEntity = HitTestImported(e.Location, pnlPicmodeler, HitTolerance, hitDist)
+        Dim worldPt = ScreenToWorld(e.Location)
+
+        Dim hit = HitTestImportedEntity(_importedEntities, worldPt, HitTolerance)
+
 
         ' Update hover entity only if changed
         If Not Object.ReferenceEquals(hit, _hoverEntity) Then
@@ -815,11 +957,31 @@ Public Class frmMain
         '--------------------------------------------
         ' Update tooltip
         '--------------------------------------------
-        If hit IsNot Nothing Then
-            entityTip.SetToolTip(pnlPicmodeler, BuildEntityToolTip(hit))
+        '--------------------------------------------
+        ' Inquire mode hit-test + tooltip
+        '--------------------------------------------
+        If _inquireMode Then
+
+
+            If Not Object.ReferenceEquals(hit, _hoverEntity) Then
+                _hoverEntity = hit
+                pnlPicmodeler.Invalidate()
+            End If
+
+            If hit IsNot Nothing Then
+                BuildEntityToolTip(hit)
+                pnlPicmodeler.Cursor = Cursors.Help
+            Else
+                entityTip.Hide(pnlPicmodeler)
+            End If
+
         Else
+            ' Normal mode – ensure tooltip is off
             entityTip.Hide(pnlPicmodeler)
+            _hoverEntity = Nothing
         End If
+
+
 
         ' Pan
         If _isPanning Then
@@ -945,6 +1107,7 @@ Public Class frmMain
 
     Private Sub pnlPicmodeler_MouseClick(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseClick
 
+
         If e.Button <> MouseButtons.Left Then Return
 
         Dim hitDist As Single
@@ -968,34 +1131,189 @@ Public Class frmMain
         HandleEntitySelected(hitEntity)
     End Sub
 
-    Private Function BuildEntityToolTip(ent As ImportedEntity) As String
+    'Private Function BuildEntityToolTip(ent As CadEntity) As String
 
-        If ent Is Nothing Then Return String.Empty
+    'If ent Is Nothing Then Return String.Empty
 
+    'Select Case ent.GeometryType
+
+    '    Case ImportedEntity.GeometryTypeEnum.Line
+    '        Return "Line" & Environment.NewLine &
+    '           $"P1: X={ent.Line.P1.X:0.###}, Y={ent.Line.P1.Y:0.###}" & Environment.NewLine &
+    '           $"P2: X={ent.Line.P2.X:0.###}, Y={ent.Line.P2.Y:0.###}"
+
+    '    Case ImportedEntity.GeometryTypeEnum.Circle
+    '        Return "Circle" & Environment.NewLine &
+    '           $"Center: X={ent.Circle.Center.X:0.###}, Y={ent.Circle.Center.Y:0.###}" & Environment.NewLine &
+    '           $"Radius: {ent.Circle.Radius:0.###}"
+
+    '    Case ImportedEntity.GeometryTypeEnum.Arc
+    '        Return "Arc" & Environment.NewLine &
+    '           $"Center: X={ent.Arc.Center.X:0.###}, Y={ent.Arc.Center.Y:0.###}" & Environment.NewLine &
+    '           $"Radius: {ent.Arc.Radius:0.###}" & Environment.NewLine &
+    '           $"Start: {ent.Arc.StartAngle:0.###}°  End: {ent.Arc.EndAngle:0.###}°"
+
+    '    Case Else
+    '        Return ent.GeometryType.ToString()
+
+    'End Select
+
+    '    Dim info = ent.GetInspectionInfo()
+
+    '    Dim sb As New StringBuilder()
+    '    For Each kvp In info
+    '        sb.AppendLine($"{kvp.Key}: {kvp.Value}")
+    '    Next
+
+    '    BuildEntityToolTip = sb.ToString
+
+    'End Function
+
+    Private Sub BuildEntityToolTip(ent As ImportedEntity)
+
+        ' Fence-post safety
+        If ent Is Nothing Then
+            entityTip.Hide(pnlPicmodeler)
+            pnlPicmodeler.Cursor = Cursors.Default
+            Return
+        End If
+
+        Dim sb As New System.Text.StringBuilder()
+
+        '--------------------------------------------
+        ' Header
+        '--------------------------------------------
+        sb.AppendLine($"Type: {ent.GeometryType}")
+        sb.AppendLine($"Layer: {ent.CAMLayer}")
+
+        If ent.DirectiveID >= 0 Then
+            sb.AppendLine($"Directive ID: {ent.DirectiveID}")
+        End If
+
+        sb.AppendLine(New String("-"c, 28))
+
+        '--------------------------------------------
+        ' Geometry-specific data
+        '--------------------------------------------
         Select Case ent.GeometryType
 
             Case ImportedEntity.GeometryTypeEnum.Line
-                Return "Line" & Environment.NewLine &
-                   $"P1: X={ent.Line.P1.X:0.###}, Y={ent.Line.P1.Y:0.###}" & Environment.NewLine &
-                   $"P2: X={ent.Line.P2.X:0.###}, Y={ent.Line.P2.Y:0.###}"
+                Dim ln = ent.Line
+                If ln IsNot Nothing Then
+                    Dim dx = ln.P2.X - ln.P1.X
+                    Dim dy = ln.P2.Y - ln.P1.Y
+                    Dim length = Math.Sqrt(dx * dx + dy * dy)
+                    Dim angle = Math.Atan2(dy, dx) * 180.0 / Math.PI
+
+                    sb.AppendLine($"Start: ({F(ln.P1.X)}, {F(ln.P1.Y)})")
+                    sb.AppendLine($"End:   ({F(ln.P2.X)}, {F(ln.P2.Y)})")
+                    sb.AppendLine($"Length: {F(length)}")
+                    sb.AppendLine($"Angle:  {F(angle)}°")
+                End If
 
             Case ImportedEntity.GeometryTypeEnum.Circle
-                Return "Circle" & Environment.NewLine &
-                   $"Center: X={ent.Circle.Center.X:0.###}, Y={ent.Circle.Center.Y:0.###}" & Environment.NewLine &
-                   $"Radius: {ent.Circle.Radius:0.###}"
+                Dim c = ent.Circle
+                If c IsNot Nothing Then
+                    sb.AppendLine($"Center: ({F(c.Center.X)}, {F(c.Center.Y)})")
+                    sb.AppendLine($"Radius: {F(c.Radius)}")
+                End If
 
             Case ImportedEntity.GeometryTypeEnum.Arc
-                Return "Arc" & Environment.NewLine &
-                   $"Center: X={ent.Arc.Center.X:0.###}, Y={ent.Arc.Center.Y:0.###}" & Environment.NewLine &
-                   $"Radius: {ent.Arc.Radius:0.###}" & Environment.NewLine &
-                   $"Start: {ent.Arc.StartAngle:0.###}°  End: {ent.Arc.EndAngle:0.###}°"
+                Dim a = ent.Arc
+                If a IsNot Nothing Then
+                    sb.AppendLine($"Center: ({F(a.Center.X)}, {F(a.Center.Y)})")
+                    sb.AppendLine($"Radius: {F(a.Radius)}")
+                    sb.AppendLine($"Start Angle: {F(a.StartAngle)}°")
+                    sb.AppendLine($"End Angle:   {F(a.EndAngle)}°")
+                End If
 
             Case Else
-                Return ent.GeometryType.ToString()
+                sb.AppendLine("Geometry: Unknown")
 
         End Select
 
+        '--------------------------------------------
+        ' Show tooltip
+        '--------------------------------------------
+        entityTip.Show(
+        sb.ToString(),
+        pnlPicmodeler,
+        pnlPicmodeler.PointToClient(Cursor.Position),
+        2000
+    )
+
+        ' Change cursor while hovering entity
+        pnlPicmodeler.Cursor = Cursors.Help
+
+    End Sub
+
+
+
+
+    Private Function ArcStartPoint(a As DxfArc) As DxfPoint
+        Dim rad = a.StartAngle * Math.PI / 180.0
+        Return New DxfPoint(
+        a.Center.X + a.Radius * Math.Cos(rad),
+        a.Center.Y + a.Radius * Math.Sin(rad),
+        0
+    )
     End Function
+
+    Private Function ArcEndPoint(a As DxfArc) As DxfPoint
+        Dim rad = a.EndAngle * Math.PI / 180.0
+        Return New DxfPoint(
+        a.Center.X + a.Radius * Math.Cos(rad),
+        a.Center.Y + a.Radius * Math.Sin(rad),
+        0
+    )
+    End Function
+
+
+    Private Sub AppendLineInfo(sb As StringBuilder, cad As CadEntity)
+
+        Dim sp = cad.StartPoint
+        Dim ep = cad.EndPoint
+
+        Dim dx As Double = ep.X - sp.X
+        Dim dy As Double = ep.Y - sp.Y
+
+        Dim length As Double = Math.Sqrt(dx * dx + dy * dy)
+        Dim angleDeg As Double = Math.Atan2(dy, dx) * 180.0 / Math.PI
+        If angleDeg < 0 Then angleDeg += 360
+
+        sb.AppendLine("Type: Line")
+        sb.AppendLine($"Start: ({sp.X:0.###}, {sp.Y:0.###})")
+        sb.AppendLine($"End:   ({ep.X:0.###}, {ep.Y:0.###})")
+        sb.AppendLine($"Length: {length:0.###}")
+        sb.AppendLine($"Angle: {angleDeg:0.###}°")
+
+    End Sub
+
+    Private Sub AppendArcInfo(sb As StringBuilder, cad As CadEntity)
+
+        Dim sp = cad.StartPoint
+        Dim ep = cad.EndPoint
+        Dim cp = cad.CenterPoint
+
+        sb.AppendLine("Type: Arc")
+        sb.AppendLine($"Start:  ({sp.X:0.###}, {sp.Y:0.###})")
+        sb.AppendLine($"End:    ({ep.X:0.###}, {ep.Y:0.###})")
+        sb.AppendLine($"Center: ({cp.X:0.###}, {cp.Y:0.###})")
+        sb.AppendLine($"Radius: {cad.Radius:0.###}")
+        sb.AppendLine($"Direction: {If(cad.IsClockwise, "CW", "CCW")}")
+
+    End Sub
+
+    Private Sub AppendCircleInfo(sb As StringBuilder, cad As CadEntity)
+
+        Dim cp = cad.CenterPoint
+
+        sb.AppendLine("Type: Circle")
+        sb.AppendLine($"Center: ({cp.X:0.###}, {cp.Y:0.###})")
+        sb.AppendLine($"Radius: {cad.Radius:0.###}")
+
+    End Sub
+
 
     Private Sub HandleEntitySelected(ent As ImportedEntity)
 
@@ -1261,20 +1579,27 @@ Public Class frmMain
         If (Control.ModifierKeys And Keys.Control) = Keys.Control AndAlso
            (Control.ModifierKeys And Keys.Shift) = Keys.Shift Then
 
-            ' Determine zoom direction
-            Dim zoomIn As Boolean = e.Delta > 0
-            Dim zoomAmount As Single = If(zoomIn, ZoomFactor, 1 / ZoomFactor)
+            ' Mouse position relative to panel
+            Dim mouseX As Double = e.X
+            Dim mouseY As Double = e.Y
 
-            ' Convert mouse location to model coordinates
-            Dim mouseModel As DxfPoint = ScreenToModel(e.Location)
+            ' Zoom factor per wheel tick
+            Dim zoomFactor As Double = 1.05
+            If e.Delta < 0 Then zoomFactor = 1.0 / zoomFactor
 
-            ' Apply zoom while keeping mouse position fixed
-            _scale *= zoomAmount
+            ' Compute new scale
+            Dim newScale As Double = currentScale * zoomFactor
+            newScale = Math.Max(minScale, Math.Min(maxScale, newScale)) ' clamp
 
-            ' Adjust offsets so mouse remains at the same model point
-            _offsetX = e.X - (mouseModel.X - _minX) * _scale
-            _offsetY = e.Y - (pnlPicmodeler.ClientSize.Height - mouseModel.Y - _minY) * _scale
+            ' Adjust offsets to keep zoom centered at cursor
+            OffsetX = mouseX - (mouseX - OffsetX) * (newScale / currentScale)
+            OffsetY = mouseY - (mouseY - OffsetY) * (newScale / currentScale)
 
+            ' Update current scale
+            currentScale = newScale
+
+            ' Trigger redraw
+            pnlPicmodeler.Invalidate()
             pnlPicmodeler.Invalidate()
         End If
     End Sub
@@ -1320,6 +1645,503 @@ Public Class frmMain
         ZoomIn(MousePosition)
 
     End Sub
+
+    Public Sub ApplyFilterTolerance(
+    entities As List(Of ImportedEntity),
+    filterTol As Double)
+        Dim LineLength As Double
+        Dim ArcLength As Double
+
+        For i As Integer = entities.Count - 1 To 0 Step -1
+            Dim e = entities(i)
+
+            Select Case e.GeometryType
+
+                Case ImportedEntity.GeometryTypeEnum.Line
+                    If e.Line Is Nothing Then Continue For
+                    Dim length = GetLineLength(e.Line)
+                    If length < filterTol Then entities.RemoveAt(i)
+
+                Case ImportedEntity.GeometryTypeEnum.Arc
+                    If e.Arc Is Nothing Then Continue For
+                    Dim length = GetArcLength(e.Arc)
+                    If length < filterTol Then entities.RemoveAt(i)
+
+                Case ImportedEntity.GeometryTypeEnum.Circle
+                    ' FilterTolerance does not apply to circles
+
+            End Select
+        Next
+    End Sub
+
+    Public Function GetLineLength(line As DxfLine) As Double
+        Dim dx As Double = line.P2.X - line.P1.X
+        Dim dy As Double = line.P2.Y - line.P1.Y
+        Dim dz As Double = line.P2.Z - line.P1.Z
+
+        Return Math.Sqrt(dx * dx + dy * dy + dz * dz)
+
+    End Function
+
+    ' Calculate circumference of a DXF Circle
+    Public Function GetCircleCircumference(circle As DxfCircle) As Double
+        Return 2 * Math.PI * circle.Radius
+    End Function
+
+    ' Calculate arc length of a DXF Arc
+    Public Function GetArcLength(arc As DxfArc) As Double
+        Dim theta As Double = arc.EndAngle - arc.StartAngle
+        If theta < 0 Then theta += 360  ' Handle arcs crossing 0° (always counterclockwise in DXF)
+
+        Return (theta / 360) * (2 * PI * arc.Radius)
+    End Function
+
+    Public Sub ApplyCleanTolerance(
+    entities As List(Of ImportedEntity),
+    cleanTol As Double)
+
+        If entities Is Nothing OrElse entities.Count < 2 Then Return
+
+        For i As Integer = 0 To entities.Count - 2
+            Dim e1 = entities(i)
+
+            For j As Integer = i + 1 To entities.Count - 1
+                Dim e2 = entities(j)
+
+                '--------------------------------------------------
+                ' Line - Line
+                '--------------------------------------------------
+                If e1.GeometryType = ImportedEntity.GeometryTypeEnum.Line AndAlso
+               e2.GeometryType = ImportedEntity.GeometryTypeEnum.Line Then
+
+                    CleanLineLine(e1.Line, e2.Line, cleanTol)
+                End If
+
+                '--------------------------------------------------
+                ' Line - Arc
+                '--------------------------------------------------
+                If e1.GeometryType = ImportedEntity.GeometryTypeEnum.Line AndAlso
+               e2.GeometryType = ImportedEntity.GeometryTypeEnum.Arc Then
+
+                    CleanLineArc(e1.Line, e2.Arc, cleanTol)
+                End If
+
+                If e1.GeometryType = ImportedEntity.GeometryTypeEnum.Arc AndAlso
+               e2.GeometryType = ImportedEntity.GeometryTypeEnum.Line Then
+
+                    CleanLineArc(e2.Line, e1.Arc, cleanTol)
+                End If
+
+                '--------------------------------------------------
+                ' Arc - Arc
+                '--------------------------------------------------
+                If e1.GeometryType = ImportedEntity.GeometryTypeEnum.Arc AndAlso
+               e2.GeometryType = ImportedEntity.GeometryTypeEnum.Arc Then
+
+                    CleanArcArc(e1.Arc, e2.Arc, cleanTol)
+                End If
+
+            Next
+        Next
+    End Sub
+
+    Private Function Distance(p1 As DxfPoint, p2 As DxfPoint) As Double
+        Dim dx = p2.X - p1.X
+        Dim dy = p2.Y - p1.Y
+        Dim dz = p2.Z - p1.Z
+        Return Math.Sqrt(dx * dx + dy * dy + dz * dz)
+    End Function
+
+    Private Sub SnapPoints(ByRef p1 As DxfPoint, ByRef p2 As DxfPoint)
+        Dim mx = (p1.X + p2.X) / 2.0
+        Dim my = (p1.Y + p2.Y) / 2.0
+        Dim mz = (p1.Z + p2.Z) / 2.0
+
+        p1 = New DxfPoint(mx, my, mz)
+        p2 = New DxfPoint(mx, my, mz)
+    End Sub
+
+    Private Sub CleanLineLine(
+    l1 As DxfLine,
+    l2 As DxfLine,
+    tol As Double)
+
+        If Distance(l1.P2, l2.P1) < tol Then
+            SnapPoints(l1.P2, l2.P1)
+        End If
+
+        If Distance(l1.P1, l2.P2) < tol Then
+            SnapPoints(l1.P1, l2.P2)
+        End If
+
+        If Distance(l1.P1, l2.P1) < tol Then
+            SnapPoints(l1.P1, l2.P1)
+        End If
+
+        If Distance(l1.P2, l2.P2) < tol Then
+            SnapPoints(l1.P2, l2.P2)
+        End If
+    End Sub
+
+    Private Sub CleanLineArc(
+    line As DxfLine,
+    arc As DxfArc,
+    tol As Double)
+
+        Dim arcStart = GetArcStartPoint(arc)
+        Dim arcEnd = GetArcEndPoint(arc)
+
+        If Distance(line.P1, arcStart) < tol Then
+            SnapPoints(line.P1, arcStart)
+            SnapArcStartPoint(arc, arcStart)
+        End If
+
+        If Distance(line.P2, arcStart) < tol Then
+            SnapPoints(line.P2, arcStart)
+            SnapArcStartPoint(arc, arcStart)
+        End If
+
+        If Distance(line.P1, arcEnd) < tol Then
+            SnapPoints(line.P1, arcEnd)
+            SnapArcEndPoint(arc, arcEnd)
+        End If
+
+        If Distance(line.P2, arcEnd) < tol Then
+            SnapPoints(line.P2, arcEnd)
+            SnapArcEndPoint(arc, arcEnd)
+        End If
+    End Sub
+
+    Private Sub CleanArcArc(
+    a1 As DxfArc,
+    a2 As DxfArc,
+    tol As Double)
+
+        Dim a1s = GetArcStartPoint(a1)
+        Dim a1e = GetArcEndPoint(a1)
+        Dim a2s = GetArcStartPoint(a2)
+        Dim a2e = GetArcEndPoint(a2)
+
+        If Distance(a1e, a2s) < tol Then
+            SnapPoints(a1e, a2s)
+            SnapArcEndPoint(a1, a1e)
+            SnapArcStartPoint(a2, a2s)
+        End If
+
+        If Distance(a1s, a2e) < tol Then
+            SnapPoints(a1s, a2e)
+            SnapArcStartPoint(a1, a1s)
+            SnapArcEndPoint(a2, a2e)
+        End If
+    End Sub
+
+    Private Function GetArcStartPoint(arc As DxfArc) As DxfPoint
+        Dim ang = arc.StartAngle * Math.PI / 180.0
+        Return New DxfPoint(
+        arc.Center.X + arc.Radius * Math.Cos(ang),
+        arc.Center.Y + arc.Radius * Math.Sin(ang),
+        arc.Center.Z)
+    End Function
+
+    Private Function GetArcEndPoint(arc As DxfArc) As DxfPoint
+        Dim ang = arc.EndAngle * Math.PI / 180.0
+        Return New DxfPoint(
+        arc.Center.X + arc.Radius * Math.Cos(ang),
+        arc.Center.Y + arc.Radius * Math.Sin(ang),
+        arc.Center.Z)
+    End Function
+
+    Private Sub SnapArcStartPoint(arc As DxfArc, target As DxfPoint)
+        ' Compute new StartAngle based on target point
+        Dim dx = target.X - arc.Center.X
+        Dim dy = target.Y - arc.Center.Y
+        arc.StartAngle = Math.Atan2(dy, dx) * 180.0 / Math.PI
+    End Sub
+
+    Private Sub SnapArcEndPoint(arc As DxfArc, target As DxfPoint)
+        ' Compute new EndAngle based on target point
+        Dim dx = target.X - arc.Center.X
+        Dim dy = target.Y - arc.Center.Y
+        arc.EndAngle = Math.Atan2(dy, dx) * 180.0 / Math.PI
+    End Sub
+
+    ' Returns a list of endpoint pairs that are within gapTol
+    '-------------------------------------------------
+    ' Apply gap tolerance: store _gapPairs as points
+    '-------------------------------------------------
+    '-------------------------------------------------
+    ' Apply gap tolerance to entity list
+    '-------------------------------------------------
+    Public Function ApplyGapTolerance(entities As List(Of ImportedEntity),
+                                  gapTolerance As Double) As List(Of Tuple(Of ImportedEntity, ImportedEntity))
+        ' Compute pairs that are within gap tolerance
+        Dim gapPairs = ComputeGapPairs(entities, gapTolerance)
+
+        ' This is where you could optionally "snap" entities together or store the pairs
+        ' For now, just return the list
+        Return gapPairs
+    End Function
+
+    '-------------------------------------------------
+    ' Helper: get "start point" of an entity
+    '-------------------------------------------------
+    Private Function GetEntityStartPoint(e As ImportedEntity) As DxfPoint
+        Select Case e.GeometryType
+            Case ImportedEntity.GeometryTypeEnum.Line
+                Return e.Line.P1
+            Case ImportedEntity.GeometryTypeEnum.Arc
+                ' Return start point of arc (compute from center, radius, start angle)
+                Dim rad As Double = e.Arc.StartAngle * Math.PI / 180.0
+                Return New DxfPoint(
+                e.Arc.Center.X + e.Arc.Radius * Math.Cos(rad),
+                e.Arc.Center.Y + e.Arc.Radius * Math.Sin(rad),
+                0
+            )
+            Case ImportedEntity.GeometryTypeEnum.Circle
+                ' Arbitrarily pick a point on circle as "start"
+                Return New DxfPoint(e.Circle.Center.X + e.Circle.Radius, e.Circle.Center.Y, 0)
+            Case Else
+                Return New DxfPoint(0, 0, 0)
+        End Select
+    End Function
+
+
+    '-------------------------------------------------
+    ' Helper: compute minimal distance between 2 entities
+    '-------------------------------------------------
+    Private Function MinDistanceBetweenEntities(e1 As ImportedEntity, e2 As ImportedEntity) As Double
+        ' Very simple approach: use start points
+        Dim p1 = GetEntityStartPoint(e1)
+        Dim p2 = GetEntityStartPoint(e2)
+
+        Dim dx = p1.X - p2.X
+        Dim dy = p1.Y - p2.Y
+        Dim dz = p1.Z - p2.Z
+
+        Return Math.Sqrt(dx * dx + dy * dy + dz * dz)
+    End Function
+
+    Private Function GetEndpoints(ent As ImportedEntity) As List(Of DxfPoint)
+        Dim pts As New List(Of DxfPoint)
+
+        Select Case ent.GeometryType
+            Case ImportedEntity.GeometryTypeEnum.Line
+                pts.Add(ent.Line.P1)
+                pts.Add(ent.Line.P2)
+
+            Case ImportedEntity.GeometryTypeEnum.Arc
+                pts.Add(GetArcStartPoint(ent.Arc))
+                pts.Add(GetArcEndPoint(ent.Arc))
+
+            Case ImportedEntity.GeometryTypeEnum.Circle
+                ' Circles are continuous; optionally skip or include a representative point
+                ' pts.Add(ent.Circle.Center)  ' usually ignored for profile chaining
+        End Select
+
+        Return pts
+    End Function
+
+    '-----------------------------------------
+    ' Build all profiles based on gap pairs
+    '-----------------------------------------
+    Public Function BuildProfiles(entities As List(Of ImportedEntity), gapTol As Double) As List(Of List(Of ImportedEntity))
+
+        Dim profiles As New List(Of List(Of ImportedEntity))()
+        Dim visited As New HashSet(Of ImportedEntity)()
+        Dim gapPairs As List(Of Tuple(Of ImportedEntity, ImportedEntity)) = ComputeGapPairs(entities, gapTol)
+
+        For Each e As ImportedEntity In entities
+            If visited.Contains(e) Then Continue For
+
+            Dim profile As New List(Of ImportedEntity)()
+            Dim stack As New Stack(Of ImportedEntity)()
+            stack.Push(e)
+
+            While stack.Count > 0
+                Dim current As ImportedEntity = stack.Pop()
+                If visited.Contains(current) Then Continue While
+
+                visited.Add(current)
+                profile.Add(current)
+
+                ' Add connected entities from gapPairs
+                For Each pair As Tuple(Of ImportedEntity, ImportedEntity) In gapPairs
+                    If pair.Item1 Is current AndAlso Not visited.Contains(pair.Item2) Then
+                        stack.Push(pair.Item2)
+                    ElseIf pair.Item2 Is current AndAlso Not visited.Contains(pair.Item1) Then
+                        stack.Push(pair.Item1)
+                    End If
+                Next
+            End While
+
+            profiles.Add(profile)
+        Next
+
+        Return profiles
+    End Function
+
+
+
+    '-----------------------------------------
+    ' Assign CW/CCW directions to profiles
+    '-----------------------------------------
+    '-----------------------------------------
+    ' Assign CW/CCW directions to CadEntity profiles
+    '-----------------------------------------
+    Public Sub AssignProfileDirections(
+    profiles As List(Of List(Of CadEntity)),
+    directionSetting As String)
+
+        For Each profile As List(Of CadEntity) In profiles
+
+            Select Case directionSetting.ToLower()
+
+                Case "cw"
+                    For Each e As CadEntity In profile
+                        e.WindingDirection = "CW"
+                    Next
+
+                Case "ccw"
+                    For Each e As CadEntity In profile
+                        e.WindingDirection = "CCW"
+                    Next
+
+                Case "auto"
+                    ' Signed area determines orientation
+                    Dim signedArea As Double = ComputeSignedArea(profile)
+
+                    ' Positive area → CCW, Negative → CW
+                    Dim profileDirection As String =
+                    If(signedArea >= 0, "CCW", "CW")
+
+                    For Each e As CadEntity In profile
+                        e.WindingDirection = profileDirection
+                    Next
+
+            End Select
+
+        Next
+    End Sub
+
+
+    'Private Function ComputeProfileCentroid(profile As List(Of ImportedEntity)) As DxfPoint
+    '    ' Simple average of all entity points
+    '    Dim sumX As Double = 0
+    '    Dim sumY As Double = 0
+    '    Dim count As Integer = 0
+
+    '    For Each e As ImportedEntity In profile
+    '        Dim endpoints = CamBuilder.GetEntityEndpoints(e)
+    '        sumX += endpoints.Item1.X + endpoints.Item2.X
+    '        sumY += endpoints.Item1.Y + endpoints.Item2.Y
+    '        count += 2
+    '    Next
+
+
+    '    Return New DxfPoint(sumX / count, sumY / count, 0)
+    'End Function
+
+
+    Private Function PointInsideProfile(pt As PointF, profile As List(Of ImportedEntity)) As Boolean
+        Dim crossings As Integer = 0
+        Dim points As New List(Of PointF)
+
+        ' Build points list from profile
+        For Each ent In profile
+            Select Case ent.GeometryType
+                Case ImportedEntity.GeometryTypeEnum.Line
+                    points.Add(New PointF(CSng(ent.Line.P1.X), CSng(ent.Line.P1.Y)))
+                    points.Add(New PointF(CSng(ent.Line.P2.X), CSng(ent.Line.P2.Y)))
+
+                Case ImportedEntity.GeometryTypeEnum.Arc
+                    ' Approximate arc with center point only (simpler)
+                    points.Add(New PointF(CSng(ent.Arc.Center.X), CSng(ent.Arc.Center.Y)))
+
+                Case ImportedEntity.GeometryTypeEnum.Circle
+                    points.Add(New PointF(CSng(ent.Circle.Center.X), CSng(ent.Circle.Center.Y)))
+            End Select
+        Next
+
+        ' Remove duplicates
+        points = points.Distinct().ToList()
+
+        ' Ray-casting
+        Dim n As Integer = points.Count
+        For i As Integer = 0 To n - 1
+            Dim j As Integer = (i + 1) Mod n
+            If (((points(i).Y > pt.Y) Xor (points(j).Y > pt.Y)) AndAlso
+                 (pt.X < ((points(j).X - points(i).X) * (pt.Y - points(i).Y) / (points(j).Y - points(i).Y) + points(i).X))) Then
+                crossings += 1
+            End If
+        Next
+
+        Return (crossings Mod 2) = 1
+    End Function
+
+    Private Sub pnlPicmodeler_MouseEnter(sender As Object, e As EventArgs) Handles pnlPicmodeler.MouseEnter
+        pnlPicmodeler.Focus()
+
+    End Sub
+
+
+    Private Function ScreenToWorld(pt As Point) As PointF
+        Dim worldX As Single =
+        CSng(((pt.X - _offsetX) / _scale) + _minX)
+
+        Dim worldY As Single =
+        CSng(((pnlPicmodeler.ClientSize.Height - pt.Y - _offsetY) / _scale) + _minY)
+
+        Return New PointF(worldX, worldY)
+    End Function
+
+    Private Function F(v As Double) As String
+        Return v.ToString("0.###")
+    End Function
+
+    Private Sub pnlPicmodeler_MouseHover(sender As Object, e As EventArgs) Handles pnlPicmodeler.MouseHover
+        If _hoverEntity IsNot Nothing Then
+            pnlPicmodeler.Cursor = Cursors.Help
+        Else
+            pnlPicmodeler.Cursor = Cursors.Default
+        End If
+
+    End Sub
+
+    Private Sub pnlPicmodeler_MouseLeave(sender As Object, e As EventArgs) Handles pnlPicmodeler.MouseLeave
+        If _inquireMode Then
+            entityTip.Hide(pnlPicmodeler)
+        End If
+
+        pnlPicmodeler.Cursor = If(_inquireMode, Cursors.Help, Cursors.Default)
+    End Sub
+
+    Private Sub bbInquire_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbInquire.ItemClick
+
+    End Sub
+
+    Private Sub frmMain_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown
+        If e.KeyCode = Keys.Escape AndAlso _inquireMode Then
+            ExitInquireMode()
+            e.Handled = True
+        End If
+    End Sub
+
+    Private ReadOnly Property IsInquireMode As Boolean
+        Get
+            Return _inquireMode
+        End Get
+    End Property
+
+    Private Sub ExitInquireMode()
+        _inquireMode = False
+        _hoverEntity = Nothing
+        entityTip.Hide(pnlPicmodeler)
+        pnlPicmodeler.Cursor = Cursors.Default
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+
+
 End Class
 
 

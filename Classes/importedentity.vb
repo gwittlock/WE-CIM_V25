@@ -24,6 +24,9 @@ Public Class ImportedEntity
     Public Property Circle As DxfCircle
     Public Property Arc As DxfArc
 
+    ' NEW: Original CadEntity reference
+    Public Property CadEntity As CadEntity
+
     ' Display color
     Public Property DisplayColor As Color = Color.Black
 
@@ -32,6 +35,7 @@ Public Class ImportedEntity
 
     ' Directive ID (from LayerSetup/Directive)
     Public Property DirectiveID As Integer = -1
+    Public Property WindingDirection As String
 
     '----------------------------------
     ' Bounding Box Properties
