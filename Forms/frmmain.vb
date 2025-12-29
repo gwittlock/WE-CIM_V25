@@ -94,10 +94,11 @@ Public Class frmMain
     Public CurrentDXFEntities As New List(Of CadEntity)         ' Entities for main panel
     Public CurrentPreviewEntities As New List(Of CadEntity)     ' Entities for file open preview
 
+
     Private _loadedDxf As DxfFile = Nothing
 
     'Private _activeDxf As DxfFile
-    Private _importedEntities As List(Of ImportedEntity)
+
 
     ' Public _selectedLayerSetup As AppData.LayerSetup
 
@@ -195,7 +196,7 @@ Public Class frmMain
 
         Try
 
-            EnableDoubleBuffering(pnlPicmodeler)
+            ' EnableDoubleBuffering(pnlPicmodeler)
             '-----------------------------
             ' 1. Load all core JSON data
             '-----------------------------
@@ -234,91 +235,25 @@ Public Class frmMain
         ' Open DXF and import as CamProfiles
         _importedProfiles = FileOpen()  ' returns List(Of CamProfile)
 
-        If _importedProfiles IsNot Nothing AndAlso _importedProfiles.Count > 0 Then
-            ' Flatten all CadEntities from profiles into _importedEntities for legacy code
-            _importedEntities = New List(Of ImportedEntity)
+        'If _importedProfiles IsNot Nothing AndAlso _importedProfiles.Count > 0 Then
+        '    Flatten all CadEntities from profiles into _importedEntities for legacy code
+        '    _importedEntities = New List(Of ImportedEntity)
 
-            For Each profile In _importedProfiles
-                For Each cad In profile.Entities
-                    _importedEntities.Add(ConvertCadEntityToImportedEntity(cad, _selectedLayerSetup))
-                Next
-            Next
+        '    For Each profile In _importedProfiles
+        '        For Each cad In profile.Entities
+        '            _importedEntities.Add(ConvertCadEntityToImportedEntity(cad, _selectedLayerSetup))
+        '        Next
+        '    Next
 
-            ' Refresh the drawing panel
-            pnlPicmodeler.Invalidate()
-        End If
+        ' Refresh the drawing panel
+        pnlPicmodeler.Invalidate()
+        'End If
 
         ' Ensure view is updated
         ViewFull()
     End Sub
-    ' Converts a single CadEntity to an ImportedEntity
-    Private Function ConvertCadEntityToImportedEntity(cad As CadEntity, layerSetup As AppData.LayerSetup) As ImportedEntity
-        Dim imp As New ImportedEntity()
-
-        ' Assign CAM layer name
-        imp.CAMLayer = cad.LayerName
-        imp.DirectiveID = -1  ' Adjust if you track directive IDs
-
-        ' Determine the color from LayerSetup
-        Dim layerDirective As AppData.Directive =
-    layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer.Equals(cad.LayerName, StringComparison.OrdinalIgnoreCase))
-
-        ' Fallback to *default* if no match
-        If layerDirective Is Nothing Then
-            layerDirective = layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer = "*default*")
-        End If
-
-        If layerDirective IsNot Nothing Then
-            imp.DisplayColor = ResolveDirectiveColor(layerDirective)
-        Else
-            imp.DisplayColor = Color.Black
-        End If
-
-        ' Map geometry type and DXF reference
-        Select Case cad.CadEntityType
-            Case CadEntity.EntityType.Line
-                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Line
-                imp.Line = TryCast(cad.DxfEntity, DxfLine)
-
-            Case CadEntity.EntityType.Arc
-                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
-                imp.Arc = TryCast(cad.DxfEntity, DxfArc)
-
-            Case CadEntity.EntityType.Circle
-                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Circle
-                imp.Circle = TryCast(cad.DxfEntity, DxfCircle)
-
-            Case Else
-                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Unknown
-        End Select
-        Return imp
-    End Function
-
-    ''' <summary>
-    ''' Returns a System.Drawing.Color for a directive, resolving *default* and raw integer values if needed.
-    ''' </summary>
-    Public Function ResolveDirectiveColor(directive As AppData.Directive) As Color
-        If directive Is Nothing Then Return Color.Black
-
-        ' If DisplayColor is already set, use it
-        If directive.DisplayColor <> Color.Empty Then
-            Return directive.DisplayColor
-        End If
-
-        ' Try to use the integer Color property
-        Try
-            Return Color.FromArgb(directive.Color)
-        Catch
-            ' fallback
-            Return Color.Black
-        End Try
-    End Function
 
 
-
-    Private Sub frmMain_Closing(sender As Object, e As CancelEventArgs) Handles Me.Closing
-
-    End Sub
 
     Private Sub frmMain_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
         Me.Dispose()
@@ -550,81 +485,57 @@ Public Class frmMain
 
     End Sub
 
-    Private Sub pnlPicModeler_Paint(sender As Object, e As PaintEventArgs) Handles pnlPicmodeler.Paint
+    Private Sub pnlPicModeler_Paint(sender As Object, e As PaintEventArgs) _
+    Handles pnlPicmodeler.Paint
 
-        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return
+        If _drawables Is Nothing OrElse _drawables.Count = 0 Then Exit Sub
 
-        Dim g = e.Graphics
-        Dim panelHeight = pnlPicmodeler.ClientSize.Height
+        e.Graphics.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+        Dim padding As Integer = 20
 
-        ' Helper function: convert model coordinates to screen coordinates
-        Dim ModelToScreen =
-            Function(p As DxfPoint) As PointF
-                Return New PointF(
-                    CSng((p.X - _minX) * _scale + _offsetX),
-                    CSng(panelHeight - ((p.Y - _minY) * _scale) - _offsetY)
-                )
-            End Function
+        ' Compute scale & offset for panel
+        Dim scale As Double, offsetX As Double, offsetY As Double
+        ComputePanelTransform(_cadEntities,
+                          pnlPicmodeler.Width,
+                          pnlPicmodeler.Height,
+                          padding,
+                          scale,
+                          offsetX,
+                          offsetY)
 
-        ' Draw all entities
-        For Each ent In _importedEntities
-            ' Hovered entity drawn in red
-            Dim color As Color = If(Object.ReferenceEquals(ent, _hoverEntity), Color.Red, ent.DisplayColor)
-            Using pen As New Pen(color, 1)
-                Select Case ent.GeometryType
-                    Case ImportedEntity.GeometryTypeEnum.Line
-                        Dim p1 = ModelToScreen(ent.Line.P1)
-                        Dim p2 = ModelToScreen(ent.Line.P2)
-                        g.DrawLine(pen, p1, p2)
+        ' Draw each entity
+        For Each d In _drawables
+            Using pen As New Pen(d.Color, 1)
+                Select Case d.DrawableType
+                    Case DxfDrawable.DrawableTypeEnum.Line
+                        Dim sp = TransformToPanel(d.StartPoint.X, d.StartPoint.Y, scale, offsetX, offsetY)
+                        Dim ep = TransformToPanel(d.EndPoint.X, d.EndPoint.Y, scale, offsetX, offsetY)
+                        e.Graphics.DrawLine(pen, sp, ep)
 
-                    Case ImportedEntity.GeometryTypeEnum.Circle
-                        Dim c = ModelToScreen(ent.Circle.Center)
-                        Dim r As Single = CSng(ent.Circle.Radius * _scale)
-                        g.DrawEllipse(pen, c.X - r, c.Y - r, r * 2, r * 2)
+                    Case DxfDrawable.DrawableTypeEnum.Circle
+                        Dim center = TransformToPanel(d.Center.X, d.Center.Y, scale, offsetX, offsetY)
+                        Dim r As Single = CSng(d.Radius * scale)
+                        e.Graphics.DrawEllipse(pen, center.X - r, center.Y - r, 2 * r, 2 * r)
 
-                    Case ImportedEntity.GeometryTypeEnum.Arc
-                        Dim c = ModelToScreen(ent.Arc.Center)
-                        Dim r As Single = CSng(ent.Arc.Radius * _scale)
-                        Dim startAngle As Single = CSng(-ent.Arc.StartAngle)
-                        Dim sweepAngle As Single = CSng(-(ent.Arc.EndAngle - ent.Arc.StartAngle))
-                        g.DrawArc(pen, c.X - r, c.Y - r, r * 2, r * 2, startAngle, sweepAngle)
+                    Case DxfDrawable.DrawableTypeEnum.Arc
+                        Dim center = TransformToPanel(d.Center.X, d.Center.Y, scale, offsetX, offsetY)
+                        Dim r As Single = CSng(d.Radius * scale)
+                        Dim startAngle As Single = CSng(-d.StartAngle)
+                        Dim sweepAngle As Single = CSng(-(d.EndAngle - d.StartAngle))
+                        e.Graphics.DrawArc(pen, center.X - r, center.Y - r, 2 * r, 2 * r, startAngle, sweepAngle)
                 End Select
             End Using
         Next
 
-        ' Draw View Window rubber-band rectangle
-        If _windowSelecting Then
-            Dim rect As New Rectangle(
-                Math.Min(_windowStart.X, _windowEnd.X),
-                Math.Min(_windowStart.Y, _windowEnd.Y),
-                Math.Abs(_windowEnd.X - _windowStart.X),
-                Math.Abs(_windowEnd.Y - _windowStart.Y)
-            )
-
-            ' Cyan dashed border
-            Using pen As New Pen(Color.Cyan) With {.DashStyle = Drawing2D.DashStyle.Dash}
-                g.DrawRectangle(pen, rect)
-            End Using
-
-            ' Optional: semi-transparent fill
-            Using brush As New SolidBrush(Color.FromArgb(50, Color.Cyan))
-                g.FillRectangle(brush, rect)
-            End Using
-        End If
-        If _isMeasuring Then
-            Using pen As New Pen(Color.Lime, 1)
-                pen.DashStyle = Drawing2D.DashStyle.Dash
-                g.DrawLine(pen, _measureStart, _measureEnd)
-            End Using
-
-            If Not String.IsNullOrEmpty(_measureTooltip) Then
-                Using brush As New SolidBrush(Color.Lime)
-                    g.DrawString(_measureTooltip, Me.Font, brush, _measureEnd.X + 5, _measureEnd.Y + 5)
-                End Using
-            End If
-        End If
-
     End Sub
+
+
+
+    ' Transforms a DXF circle or arc radius to panel pixels
+    Public Function TransformRadius(radius As Double, scale As Double) As Single
+        Return CSng(radius * scale)
+    End Function
+
 
     Private Function WorldToScreen(p As DxfPoint,
                                minX As Double,
@@ -2139,6 +2050,41 @@ Public Class frmMain
         pnlPicmodeler.Cursor = Cursors.Default
         pnlPicmodeler.Invalidate()
     End Sub
+
+
+    ' ------------------------------
+    ' From ImportedEntity
+    ' ------------------------------
+    Public Shared Function FromImportedEntity(imp As ImportedEntity) As CadEntity
+        If imp Is Nothing Then Return Nothing
+
+        Dim cad As CadEntity = Nothing
+
+        Select Case imp.GeometryType
+            Case ImportedEntity.GeometryTypeEnum.Line
+                cad = CreateFromLine(imp.Line, imp.CAMLayer)
+            Case ImportedEntity.GeometryTypeEnum.Arc
+                ' Compute start/end points from center, radius, start/end angles
+                Dim startRad = imp.Arc.StartAngle * Math.PI / 180.0
+                Dim endRad = imp.Arc.EndAngle * Math.PI / 180.0
+                Dim startPt = New DxfPoint(imp.Arc.Center.X + imp.Arc.Radius * Math.Cos(startRad),
+                                           imp.Arc.Center.Y + imp.Arc.Radius * Math.Sin(startRad), 0)
+                Dim endPt = New DxfPoint(imp.Arc.Center.X + imp.Arc.Radius * Math.Cos(endRad),
+                                         imp.Arc.Center.Y + imp.Arc.Radius * Math.Sin(endRad), 0)
+
+                cad = CreateFromArc(imp.Arc, imp.CAMLayer)
+            Case ImportedEntity.GeometryTypeEnum.Circle
+                cad = CreateFromCircle(imp.Circle, imp.CAMLayer)
+            Case Else
+                Return Nothing
+        End Select
+
+        ' Apply tooling if needed
+        cad.SetTooling("", "") ' optionally set tool/workzone from ImportedEntity properties if available
+
+        Return cad
+    End Function
+
 
 
 

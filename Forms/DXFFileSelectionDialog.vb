@@ -353,4 +353,7 @@ Public Class DXFFileSelectionDialog
             Case Else : Return Color.Black
         End Select
     End Function
+
+
+
 End Class

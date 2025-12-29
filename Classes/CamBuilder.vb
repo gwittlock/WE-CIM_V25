@@ -37,21 +37,21 @@
                 Next
             End While
 
-            ' Create the CamProfile
+            Dim firstEntity = profileEntities.FirstOrDefault()
+
             Dim camProfile As New CamProfile With {
-                .Entities = profileEntities,
-                .Direction = layerSetup.Direction,
-                .ZLevelMode = layerSetup.ZLevelMode,
-                .GapTolerance = layerSetup.GapTolerance,
-                .CleanTolerance = layerSetup.CleanTolerance,
-                .FilterTolerance = layerSetup.FilterTolerance,
-                .SharpAngle = layerSetup.SharpAngle,
-                .ProcessText = layerSetup.ProcessText,
-                .RestrictOffset = layerSetup.Restrict_Offset,
-                .LayerName = If(profileEntities.FirstOrDefault() IsNot Nothing,
-                                profileEntities.First().LayerName,
-                                "")
-            }
+    .Entities = profileEntities,
+    .Direction = layerSetup.Direction,
+    .ZLevelMode = layerSetup.ZLevelMode,
+    .GapTolerance = layerSetup.GapTolerance,
+    .CleanTolerance = layerSetup.CleanTolerance,
+    .FilterTolerance = layerSetup.FilterTolerance,
+    .SharpAngle = layerSetup.SharpAngle,
+    .ProcessText = layerSetup.ProcessText,
+    .RestrictOffset = layerSetup.Restrict_Offset,
+    .LayerName = If(firstEntity IsNot Nothing, firstEntity.LayerName, ""),
+    .DisplayColor = If(firstEntity IsNot Nothing, firstEntity.DisplayColor, Color.Black)
+}
 
             ' Auto winding
             If camProfile.Direction = WindingDirectionEnum.Auto Then

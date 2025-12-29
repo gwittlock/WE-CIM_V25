@@ -2,100 +2,134 @@
 Imports System.IO
 Imports System.Text.Json
 Imports System.Text.Json.Serialization
+Imports System.Data
+Imports System.Linq
 Imports Newtonsoft.Json
+Imports System.Data.DataSetExtensions
 Imports JsonSerializer = System.Text.Json.JsonSerializer
-
 Public Module AccessToJsonExporter
+    Public Class ValueCell
+        Public Property Name As String
+        Public Property Display As String
+        Public Property Value As Object
+        Public Property DataType As Integer
+        Public Property DefaultValue As Object
+        Public Property Visible As Boolean
+    End Class
+
 
     '''' Exports every table from an MDB to its own clean JSON file (one file per table)
     '''' Spaces are removed from field names (both in Columns and in Rows)
     '''' </summary>
-    Public Sub ExportMdbToJson_OneFilePerTable(mdbPath As String, outputFolder As String)
-
+    Private Sub ExportFlatTable(mdbPath As String, outputFolder As String, tableName As String, sJsonName As String)
         If Not File.Exists(mdbPath) Then Throw New FileNotFoundException("MDB not found", mdbPath)
+        IO.Directory.CreateDirectory(outputFolder)
 
-        Dim connStr As String = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbPath};"
+        Using conn As New OleDbConnection($"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbPath};")
+            conn.Open()
+
+            ' Get columns
+            Dim schemaCols = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Columns, New Object() {Nothing, Nothing, tableName})
+            schemaCols.DefaultView.Sort = "ORDINAL_POSITION"
+            schemaCols = schemaCols.DefaultView.ToTable()
+
+            ' Build column definitions
+            Dim columns As New List(Of Object)
+            For Each col As DataRow In schemaCols.Rows
+                Dim colName = col("COLUMN_NAME").ToString()
+                columns.Add(New With {
+                .Field = colName.Replace(" ", ""),
+                .Header = Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(colName.Replace("_", " ").ToLower()),
+                .Visible = True,
+                .DataType = GetColumnDataType(col)
+            })
+            Next
+
+            ' Read rows
+            Dim rows As New List(Of Object)
+            Using cmd As New OleDbCommand($"SELECT * FROM [{tableName}]", conn)
+                Using reader = cmd.ExecuteReader()
+                    While reader.Read()
+                        Dim row As New Dictionary(Of String, Object)
+                        For Each col As DataRow In schemaCols.Rows
+                            Dim colName = col("COLUMN_NAME").ToString()
+                            row(colName.Replace(" ", "")) = If(reader(colName) Is DBNull.Value, Nothing, reader(colName))
+                        Next
+                        rows.Add(row)
+                    End While
+                End Using
+            End Using
+
+            ' Build final table object
+            Dim tableObj = New With {
+            .TableName = tableName,
+            .Columns = columns,
+            .Rows = rows
+        }
+
+            ' Serialize
+            Dim options As New JsonSerializerOptions With {.WriteIndented = True}
+            Dim json As String = JsonSerializer.Serialize(tableObj, options)
+
+            ' Save using sJsonName
+            Dim filePath = IO.Path.Combine(outputFolder, sJsonName & ".json")
+            IO.File.WriteAllText(filePath, json)
+
+            Console.WriteLine($"Exported Flat Table: {filePath}")
+        End Using
+    End Sub
+
+
+
+
+    Private sJsonName As String
+    Public Sub ExportAllTables(mdbPath As String, outputFolder As String)
+        If Not File.Exists(mdbPath) Then
+            Throw New FileNotFoundException("MDB not found", mdbPath)
+        End If
 
         ' Ensure output folder exists
         IO.Directory.CreateDirectory(outputFolder)
 
+        Dim connStr As String = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbPath};"
+
         Using conn As New OleDbConnection(connStr)
             conn.Open()
 
+            ' Get all user tables
             Dim schemaTables = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables,
-                New Object() {Nothing, Nothing, Nothing, "TABLE"})
+            New Object() {Nothing, Nothing, Nothing, "TABLE"})
 
             For Each tblRow As DataRow In schemaTables.Rows
                 Dim tableName As String = tblRow("TABLE_NAME").ToString()
+
+                ' Skip system tables
                 If tableName.StartsWith("MSys") OrElse tableName.Contains("~") Then Continue For
 
-                ' Get columns in order
-                Dim schemaCols = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Columns,
-                    New Object() {Nothing, Nothing, tableName})
-                schemaCols.DefaultView.Sort = "ORDINAL_POSITION"
-                schemaCols = schemaCols.DefaultView.ToTable()
+                ' Check if this table is in our 18-table map
+                If Not IsValueTableByName(tableName) AndAlso String.IsNullOrEmpty(sJsonName) Then
+                    ' Table not in map → skip
+                    Console.WriteLine($"Skipping table: {tableName}")
+                    Continue For
+                End If
 
-                Dim columns As New List(Of ColumnDef)
-                Dim fieldMap As New Dictionary(Of String, String) ' Original → Clean name
-
-                For Each colRow As DataRow In schemaCols.Rows
-                    Dim originalField = colRow("COLUMN_NAME").ToString()
-                    Dim cleanField = originalField.Replace(" ", "")   ' <<< STRIP SPACES
-
-                    ' Nice header (still human readable)
-                    Dim header = Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(
-                        originalField.Replace("_", " ").ToLower())
-
-                    columns.Add(New ColumnDef With {
-                        .Field = cleanField,
-                        .Header = header,
-                        .Visible = True
-                    })
-
-                    fieldMap(originalField) = cleanField
-                Next
-
-                ' Read rows
-                Dim rows As New List(Of Dictionary(Of String, Object))
-                Using cmd As New OleDbCommand($"SELECT * FROM [{tableName}]", conn)
-                    Using reader = cmd.ExecuteReader()
-                        While reader.Read()
-                            Dim row As New Dictionary(Of String, Object)
-                            For Each kv In fieldMap
-                                Dim value = reader(kv.Key)
-                                row(kv.Value) = If(value Is DBNull.Value OrElse value Is Nothing, Nothing, value)
-                            Next
-                            rows.Add(row)
-                        End While
-                    End Using
-                End Using
-
-                ' Build final object for this table
-                Dim tableObj = New With {
-                    .TableName = tableName,
-                    .Columns = columns,
-                    .Rows = rows
-                }
-
-                ' Serialize this table only
-                Dim options As New JsonSerializerOptions With {.WriteIndented = True}
-                Dim json As String = JsonSerializer.Serialize(tableObj, options)
-
-                ' Save as:  outputFolder\TableName.json
-                'Dim safeFileName As String = String.Join("_", tableName.Split(IO.Path.GetInvalidFileNameChars()))
-                Dim safeFileName As String = GetSafeFileName(tableName)
-                Dim filePath As String = IO.Path.Combine(outputFolder, safeFileName & ".json")
-
-                IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(filePath))
-                IO.File.WriteAllText(filePath, json)
-
-                Console.WriteLine($"Exported: {filePath}")
+                ' Export according to type
+                If IsValueTableByName(tableName) Then
+                    ' Value table
+                    ExportValueTable(mdbPath, outputFolder, tableName, sJsonName)
+                Else
+                    ' Flat table
+                    ExportFlatTable(mdbPath, outputFolder, tableName, sJsonName)
+                End If
             Next
         End Using
 
-        MessageBox.Show("All tables exported successfully!" & vbCrLf & "One JSON file per table in:" & vbCrLf & outputFolder,
-                        "Complete!", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        MessageBox.Show("Export complete!" & vbCrLf &
+                    "JSON files written to: " & outputFolder,
+                    "Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
     End Sub
+
+
 
     ' Clean table name: remove spaces and invalid filename characters
     Function GetSafeFileName(tableName As String) As String
@@ -206,6 +240,266 @@ Public Module AccessToJsonExporter
         Public Property Columns As List(Of ColumnDef)
         Public Property Rows As List(Of Dictionary(Of String, Object))
     End Class
+    ' Module-level dictionary to define Value Tables and their key columns
+    Private valueTableKeyColumns As New Dictionary(Of String, (IDCol As String, TypeIDCol As String)) From {
+    {"Material Inventory", ("ID", "Type ID")},
+    {"Tool Crib", ("ID", "Type ID")},
+    {"Machine Tool Types", ("ID", "ToolTypeID")},
+    {"Station Configuration", ("ID", "Type ID")},
+    {"Tool Setup Members", ("ID", "Type ID")}
+}
+
+    Private Sub ExportValueTable(mdbPath As String, outputFolder As String, tableName As String, sJsonName As String)
+        If Not File.Exists(mdbPath) Then Throw New FileNotFoundException("MDB not found", mdbPath)
+
+        Dim connStr As String = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbPath};"
+        IO.Directory.CreateDirectory(outputFolder)
+
+        Using conn As New OleDbConnection(connStr)
+            conn.Open()
+
+            ' Get columns
+            Dim schemaCols = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Columns,
+                    New Object() {Nothing, Nothing, tableName})
+            schemaCols.DefaultView.Sort = "ORDINAL_POSITION"
+            schemaCols = schemaCols.DefaultView.ToTable()
+
+            ' Read rows
+            Dim rows As New List(Of Object)
+            Using cmd As New OleDbCommand($"SELECT * FROM [{tableName}]", conn)
+                Using reader = cmd.ExecuteReader()
+                    While reader.Read()
+                        Dim rowObj As New Dictionary(Of String, Object)
+
+                        ' Identify top-level columns: ID + TypeID (normalized)
+                        If schemaCols.Rows.Cast(Of DataRow)().Any(Function(c) c("COLUMN_NAME").ToString().Equals("ID", StringComparison.OrdinalIgnoreCase)) Then
+                            rowObj("ID") = reader("ID")
+                        End If
+                        If schemaCols.Rows.Cast(Of DataRow)().Any(Function(c) c("COLUMN_NAME").ToString().Equals("Type ID", StringComparison.OrdinalIgnoreCase)) Then
+                            rowObj("TypeID") = reader("Type ID")
+                        End If
+
+                        ' Build Values array
+                        Dim valuesList As New List(Of Object)
+                        For Each col As DataRow In schemaCols.Rows
+                            Dim cName = col("COLUMN_NAME").ToString()
+                            Dim normalizedName As String = If(cName.Equals("Type ID", StringComparison.OrdinalIgnoreCase), "TypeID", cName.Replace(" ", ""))
+                            Dim cValue = If(reader(cName) Is DBNull.Value, Nothing, reader(cName))
+                            valuesList.Add(New With {
+                            .Name = normalizedName,
+                            .Display = cName,
+                            .Value = cValue,
+                            .DataType = GetColumnDataType(col),
+                            .DefaultValue = cValue,
+                            .Visible = True
+                        })
+                        Next
+                        rowObj("Values") = valuesList
+                        rows.Add(rowObj)
+                    End While
+                End Using
+            End Using
+
+            ' Build table object
+            Dim tableObj = New With {
+            .TableName = tableName,
+            .Columns = New List(Of Object), ' empty, handled by Values
+            .Rows = rows
+        }
+
+            ' Serialize
+            Dim options As New JsonSerializerOptions With {.WriteIndented = True}
+            Dim json As String = JsonSerializer.Serialize(tableObj, options)
+
+            ' Save JSON
+            Dim filePath As String = IO.Path.Combine(outputFolder, sJsonName & ".json")
+            IO.File.WriteAllText(filePath, json)
+
+            Console.WriteLine($"Exported Value Table: {filePath}")
+        End Using
+    End Sub
+
+
+    ' Helper to get a simple DataType number for JSON
+    Private Function GetColumnDataType(col As DataRow) As Integer
+        ' Adjust based on your mapping: 1=int, 7=double, 2=bool, 0=string
+        Dim typeName = col("DATA_TYPE") ' OleDb type number
+        Select Case Convert.ToInt32(typeName)
+            Case 2, 3 : Return 1      ' SmallInt, Integer
+            Case 4, 5, 6 : Return 7  ' Single, Double, Currency
+            Case 11 : Return 2        ' Boolean
+            Case Else : Return 0      ' String/Other
+        End Select
+    End Function
+
+
+
+
+    Private Function ToDisplayName(fieldName As String) As String
+        Return Globalization.CultureInfo.CurrentCulture.TextInfo.
+        ToTitleCase(fieldName.Replace("_", " ").ToLower())
+    End Function
+
+    Private Function MapOleDbTypeToDataType(dataType As Integer) As Integer
+
+        Select Case CType(dataType, OleDbType)
+
+            Case OleDbType.Integer, OleDbType.SmallInt
+                Return 1   ' Int
+
+            Case OleDbType.Double, OleDbType.Single, OleDbType.Decimal, OleDbType.Currency
+                Return 7   ' Double
+
+            Case OleDbType.Boolean
+                Return 2   ' Bool
+
+            Case Else
+                Return 0   ' String
+
+        End Select
+
+    End Function
+
+    Private Function IsValueTable(schemaCols As DataTable) As Boolean
+
+        Dim hasID As Boolean = False
+        Dim hasTypeID As Boolean = False
+
+        For Each colRow As DataRow In schemaCols.Rows
+            Dim colName = colRow("COLUMN_NAME").ToString()
+
+            If colName.Equals("ID", StringComparison.OrdinalIgnoreCase) Then
+                hasID = True
+            ElseIf colName.Equals("Type ID", StringComparison.OrdinalIgnoreCase) Then
+                hasTypeID = True
+            End If
+        Next
+
+        Return hasID AndAlso hasTypeID
+    End Function
+
+
+
+    Public Sub ExportDatabaseToJson(mdbPath As String, outputFolder As String)
+        Dim connStr As String = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbPath};Persist Security Info=False;"
+
+        Using conn As New OleDbConnection(connStr)
+            conn.Open()
+
+            Dim tables = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, Nothing)
+
+            For Each row As DataRow In tables.Rows
+
+                Dim tableName = row("TABLE_NAME").ToString()
+                If tableName.StartsWith("MSys") Then Continue For
+
+                Dim schema = conn.GetOleDbSchemaTable(
+                OleDbSchemaGuid.Columns,
+                New Object() {Nothing, Nothing, tableName, Nothing}
+            )
+
+                schema.DefaultView.Sort = "ORDINAL_POSITION"
+                schema = schema.DefaultView.ToTable()
+
+                If IsValueTableByName(tableName) Then
+                    Debug.WriteLine("We are exporting table <" & tableName & "> as Value table")
+
+
+                End If
+                If IsValueTableByName(tableName) Then
+
+
+                    ExportValueTable(mdbPath, outputFolder, tableName, sJsonName)
+                Else
+                    ExportFlatTable(mdbPath, outputFolder, tableName, sJsonName)
+                End If
+
+
+            Next
+        End Using
+    End Sub
+
+
+    Private Function IsValueTableByName(tableName As String) As Boolean
+        Select Case tableName
+            Case "Material Inventory"
+                sJsonName = "MaterialInventory"
+                Return True
+
+            Case "Tool Crib"
+                sJsonName = "toolcrib"
+                Return True
+
+            Case "Machine Tool Types"
+                sJsonName = "MachineToolTypes"
+                Return True
+
+            Case "Station Configuration"
+                sJsonName = "Stations"
+                Return True
+
+            Case "Tool Setup Members"
+                sJsonName = "ToolSetupMembers"
+                Return True
+
+            Case "Directives"
+                sJsonName = "Directives"
+                Return False
+
+            Case "Layer Setups"
+                sJsonName = "LayerSetups"
+                Return False
+
+            Case "Machine Attributes"
+                sJsonName = "MachineAttributes"
+                Return False
+
+            Case "Machine Attributes Type"
+                sJsonName = "MachineAttributeTypes"
+                Return False
+
+            Case "Machines"
+                sJsonName = "Machines"
+                Return False
+
+            Case "Machine Tools"
+                sJsonName = "MachineTools"
+                Return False
+
+            Case "Machine Type Attributes"
+                sJsonName = "MachineTypeAttributes"
+                Return False
+
+            Case "Machine Types"
+                sJsonName = "MachineTypes"
+                Return False
+
+            Case "Material Types"
+                sJsonName = "MaterialTypes"
+                Return False
+
+            Case "Tool Attribute Types"
+                sJsonName = "ToolAttributeTypes"
+                Return False
+
+            Case "Tool Setups"
+                sJsonName = "ToolSetups"
+                Return False
+
+            Case "Tool Type Attributes"
+                sJsonName = "ToolTypeAttributes"
+                Return False
+
+            Case "Tool Types"
+                sJsonName = "ToolTypes"
+                Return False
+            Case Else
+                sJsonName = Nothing
+                Return Nothing
+
+
+        End Select
+    End Function
 
 
 End Module

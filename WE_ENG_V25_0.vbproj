@@ -315,11 +315,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\AppData.vb" />
+    <Compile Include="Classes\AutoPunchingEngine.vb" />
+    <Compile Include="Classes\bogus.vb" />
     <Compile Include="Classes\C3dCoord.vb" />
     <Compile Include="Classes\CadEntity.vb" />
     <Compile Include="Classes\CamBuilder.vb" />
+    <Compile Include="Classes\CamEntity.vb" />
+    <Compile Include="Classes\CamOperation.vb" />
     <Compile Include="Classes\CamProfile.vb" />
+    <Compile Include="Classes\ClassifiedProfile.vb" />
+    <Compile Include="Classes\ClosedProfile.vb" />
     <Compile Include="Classes\clsMatList.vb" />
+    <Compile Include="Classes\DatabaseConversion.vb" />
+    <Compile Include="Classes\DxfDrawable.vb" />
     <Compile Include="Classes\DxfImport.vb" />
     <Compile Include="Classes\DynamicMachineProperty.vb" />
     <Compile Include="Classes\DynamicMachinePropertyBag.vb" />
@@ -329,6 +337,7 @@
     <Compile Include="Classes\HelperFunctions.vb" />
     <Compile Include="Classes\importedentity.vb" />
     <Compile Include="Classes\JsonLoader.vb" />
+    <Compile Include="Classes\LayerPunchRule.vb" />
     <Compile Include="Classes\MaterialPicker.vb">
       <SubType>UserControl</SubType>
     </Compile>
@@ -337,6 +346,14 @@
     </Compile>
     <Compile Include="Classes\MaterialSheetPG.vb" />
     <Compile Include="Classes\MaterialSheetWrapper.vb" />
+    <Compile Include="Classes\Polyline2D.vb" />
+    <Compile Include="Classes\ProfileFeature.vb" />
+    <Compile Include="Classes\ProfileSignature.vb" />
+    <Compile Include="Classes\PunchOperation.vb" />
+    <Compile Include="Classes\PunchResult.vb" />
+    <Compile Include="Classes\ToolPathGenerator.vb" />
+    <Compile Include="Classes\ToolSelection.vb" />
+    <Compile Include="Classes\ToolShapes.vb" />
     <Compile Include="Forms\ConfigurationManagerForm.Designer.vb">
       <DependentUpon>ConfigurationManagerForm.vb</DependentUpon>
     </Compile>

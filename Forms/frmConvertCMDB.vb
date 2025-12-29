@@ -22,8 +22,8 @@ Public Class frmConvertCMDB
     End Sub
 
     Private Sub BtnConvertCMDB_Click(sender As Object, e As EventArgs) Handles btnConvertCMDB.Click
-        ExportMdbToJson_OneFilePerTable(txtCMDBFile.Text, txtDataFolder.Text)
-
+        ExportAllTables(txtCMDBFile.Text, txtDataFolder.Text)
+        '  ExportMaterialJson(txtCMDBFile.Text, txtDataFolder.Text)
     End Sub
 
 
@@ -55,4 +55,5 @@ Public Class frmConvertCMDB
         Me.Dispose()
 
     End Sub
+
 End Class

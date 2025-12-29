@@ -411,6 +411,8 @@ Public Class AppData
         Public Property SharpAngle As Double
         Public Property ProcessText As Boolean
         Public Property Restrict_Offset As Boolean
+        Public Property Color As Color = Color.Black
+        Public Property Visible As Boolean = True
 
         ' Profile direction: Auto, CW, CCW
         Public Property Direction As ProfileDirectionModeEnum

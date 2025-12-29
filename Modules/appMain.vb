@@ -439,6 +439,18 @@ Public Module appMain
 
     ' Tool object that is persisted to JSON
     Public Class Tool
+        Public Enum ToolShape
+            Circle
+            Rectangle
+            Square
+            Custom
+        End Enum
+
+        Public Property Shape As ToolShape
+        Public Property Size As Double ' For circle
+        Public Property Width As Double ' For rectangle
+        Public Property Height As Double
+        Public Property Name As String
         Public Property ID As Integer
         Public Property Description As String
         Public Property ToolTypeID As Integer

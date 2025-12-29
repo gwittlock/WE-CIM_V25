@@ -12,6 +12,11 @@ Imports FabV25_WIN8.AppData
 Imports FabV25_WIN8.ImportedEntity
 Imports FabV25_WIN8.CamBuilder
 
+Imports FabV25_WIN8.DrawableEntity
+
+Imports FabV25_WIN8.DxfDrawable
+Imports FabV25_WIN8.CamEntity
+Imports FabV25_WIN8.CadEntity
 
 
 Public Module modFile
@@ -19,7 +24,8 @@ Public Module modFile
     ' Holds the currently selected LayerSetup object
     Public _selectedLayerSetup As LayerSetup
     Private m_FileName As String
-    Private _importedEntities As List(Of ImportedEntity)
+    Public _importedEntities As List(Of ImportedEntity)
+    Public _drawables As List(Of DxfDrawable)
 
 
     'Public Function FileOpen() As List(Of ImportedEntity)
@@ -64,21 +70,160 @@ Public Module modFile
             Using frm As New frmOpenProject(selectedPath)
                 If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
 
-                ' Import DXF using the LayerSetup selected in frmOpenProject
-                Dim profiles As List(Of CamProfile) =
-                ImportDxfWithLayerSetupV25(selectedPath, SelectedLayerSetup, frmMain.pnlPicmodeler.BackColor)
+                CurrentDXFEntities = ParseDXFToCadEntities(selectedPath)
 
-                ' Calculate bounding box & total length for each profile
-                For Each profile In profiles
-                    profile.ComputeBoundingBox()
-                    profile.ComputeTotalLength()
+                Dim layerColorDict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
+
+                For Each layer In _selectedLayerSetup.Layers
+                    layerColorDict(layer.CADLayer) = layer.DisplayColor
                 Next
 
-                Return profiles
+                Dim resolver As New LayerColorResolver(layerColorDict)
+
+                Dim drawables As New List(Of DxfDrawable)
+
+                _cadEntities = CurrentDXFEntities
+
+                PopulateDrawables(_cadEntities, _selectedLayerSetup)
+
+                'For Each cad In CurrentDXFEntities
+                '    drawables.Add(ConvertCadToDrawable(cad, resolver))
+                'Next
+
             End Using
         End Using
 
     End Function
+
+    ''' <summary>
+    ''' Converts a list of CadEntity into DxfDrawable for drawing on panel.
+    ''' </summary>
+    Public Sub PopulateDrawables(cadEntities As List(Of CadEntity), layerSetup As AppData.LayerSetup)
+        _drawables = New List(Of DxfDrawable)
+
+        For Each cad In cadEntities
+            Dim d As New DxfDrawable()
+
+            ' Resolve color from LayerSetup / directive
+            Dim layerDirective As AppData.Directive =
+            layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer.Equals(cad.LayerName, StringComparison.OrdinalIgnoreCase))
+            If layerDirective Is Nothing Then
+                layerDirective = layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase))
+            End If
+            d.Color = If(layerDirective IsNot Nothing, ResolveDirectiveColor(layerDirective), System.Drawing.Color.Black)
+
+            ' Populate geometry
+            Select Case cad.CadEntityType
+                Case CadEntity.EntityType.Line
+                    d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
+                    d.StartPoint = New PointF(CSng(cad.StartPoint.X), CSng(cad.StartPoint.Y))
+                    d.EndPoint = New PointF(CSng(cad.EndPoint.X), CSng(cad.EndPoint.Y))
+
+                Case CadEntity.EntityType.Circle
+                    d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
+                    d.Center = New PointF(CSng(cad.CircleCenter.X), CSng(cad.CircleCenter.Y))
+                    d.Radius = CSng(cad.CircleRadius)
+
+
+                Case CadEntity.EntityType.Arc
+
+                    Dim arc = TryCast(cad.DxfEntity, IxMilia.Dxf.Entities.DxfArc)
+                    If arc Is Nothing Then Exit Select
+
+                    d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
+
+                    ' Center MUST come from DxfArc, not CadEntity
+                    d.Center = New PointF(CSng(arc.Center.X), CSng(arc.Center.Y))
+
+                    d.Radius = CSng(arc.Radius)
+
+                    ' Angles ONLY exist here
+                    d.StartAngle = CSng(arc.StartAngle)
+                    d.EndAngle = CSng(arc.EndAngle)
+
+                    ' Optional but useful
+                    d.IsClockwise = cad.ArcIsClockwise
+
+                Case Else
+                    Continue For
+            End Select
+
+            _drawables.Add(d)
+        Next
+    End Sub
+
+
+
+
+
+    Public Function BuildLayerColorMap(
+    layerSetup As AppData.LayerSetup
+) As Dictionary(Of String, Color)
+
+        Dim dict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
+
+        For Each layer In layerSetup.Layers
+            dict(layer.CADLayer) = layer.DisplayColor
+        Next
+
+        Return dict
+    End Function
+    'Function MapEntityToDrawable(cadEntity As Object, layers As List(Of LayerSetup)) As DrawableEntity
+    '    Dim layerName As String = cadEntity.Layer
+    '    Dim layerSetup = layers.FirstOrDefault(Function(l) l.Description = layerName)
+
+    '    Dim drawable As New DrawableEntity With {
+    '    .Type = DetermineType(cadEntity),
+    '    .Geometry = cadEntity,
+    '    .Layer = layerName,
+    '    .Color = If(layerSetup IsNot Nothing, layerSetup.Color, Color.Black),
+    '    .Visible = If(layerSetup IsNot Nothing, layerSetup.Visible, True)
+    '}
+
+    '    Return drawable
+    'End Function
+
+
+
+    'Private Sub DrawEntities(g As Graphics, entities As List(Of DrawableEntity))
+    '    g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+
+    '    For Each ent In entities
+    '        If Not ent.Visible Then Continue For
+
+    '        Dim pen As New Pen(ent.Color, 1)
+    '        Select Case ent.Type
+    '            Case CamEntityType.Line
+    '                Dim line = CType(ent.Geometry, DxfLine)
+    '                g.DrawLine(pen, line.Start.X, line.Start.Y, line.End.X, line.End.Y)
+
+    '            Case CamEntityType.Circle
+    '                Dim circle = CType(ent.Geometry, DxfCircle)
+    '                g.DrawEllipse(pen, circle.Center.X - circle.Radius, circle.Center.Y - circle.Radius, circle.Radius * 2, circle.Radius * 2)
+
+    '            Case CamEntityType.Arc
+    '                Dim arc = CType(ent.Geometry, DxfArc)
+    '                ' Simplified; you may need angle conversion
+    '                g.DrawArc(pen, arc.BoundingRect, arc.StartAngle, arc.SweepAngle)
+
+    '            Case CamEntityType.Point
+    '                Dim pt = CType(ent.Geometry, DxfPoint)
+    '                g.FillEllipse(New SolidBrush(ent.Color), pt.X - 2, pt.Y - 2, 4, 4)
+    '        End Select
+    '    Next
+    'End Sub
+
+
+    Function DetermineType(entity As Object) As CamEntityType
+        ' This is simplified; adapt based on your DXF entity type
+        If TypeOf entity Is DxfLine Then Return CamEntityType.Line
+        If TypeOf entity Is DxfCircle Then Return CamEntityType.Circle
+        If TypeOf entity Is DxfArc Then Return CamEntityType.Arc
+        If TypeOf entity Is DxfPoint Then Return CamEntityType.Point
+        Return CamEntityType.Line ' default fallback
+    End Function
+
+
 
 
     Public Function DxfColorToDrawingColor(
@@ -86,27 +231,27 @@ Public Module modFile
     bgColor As Color
 ) As Color
 
-        Dim result As Color = Color.Black
+        Dim result As Color = System.Drawing.Color.Black
 
         If dxfColor IsNot Nothing Then
             Dim aci As Short = dxfColor.RawValue
 
             Select Case aci
-                Case 1 : result = Color.Red
-                Case 2 : result = Color.Yellow
-                Case 3 : result = Color.Green
-                Case 4 : result = Color.Cyan
-                Case 5 : result = Color.Blue
-                Case 6 : result = Color.Magenta
-                Case 7 : result = Color.White
+                Case 1 : result = System.Drawing.Color.Red
+                Case 2 : result = System.Drawing.Color.Yellow
+                Case 3 : result = System.Drawing.Color.Green
+                Case 4 : result = System.Drawing.Color.Cyan
+                Case 5 : result = System.Drawing.Color.Blue
+                Case 6 : result = System.Drawing.Color.Magenta
+                Case 7 : result = System.Drawing.Color.White
                 Case Else
-                    result = Color.Black
+                    result = System.Drawing.Color.Black
             End Select
         End If
 
         ' Background safety
         If result.ToArgb() = bgColor.ToArgb() Then
-            result = If(bgColor.GetBrightness() > 0.5, Color.Black, Color.White)
+            result = If(bgColor.GetBrightness() > 0.5, System.Drawing.Color.Black, System.Drawing.Color.White)
         End If
 
         Return result
@@ -116,115 +261,19 @@ Public Module modFile
     '-----------------------------------
     ' Map AutoCAD ColorIndex to Drawing.Color
     '-----------------------------------
-    Private Function IxMiliaColorIndexToDrawingColor(index As Integer) As Color
+    Private Function IxMiliaColorIndexToDrawingColor(index As Integer) As System.Drawing.Color
         ' Minimal palette mapping
         Select Case index
-            Case 1 : Return Color.Red
-            Case 2 : Return Color.Yellow
-            Case 3 : Return Color.Green
-            Case 4 : Return Color.Cyan
-            Case 5 : Return Color.Blue
-            Case 6 : Return Color.Magenta
-            Case 7 : Return Color.White
-            Case Else : Return Color.Black
+            Case 1 : Return System.Drawing.Color.Red
+            Case 2 : Return System.Drawing.Color.Yellow
+            Case 3 : Return System.Drawing.Color.Green
+            Case 4 : Return System.Drawing.Color.Cyan
+            Case 5 : Return System.Drawing.Color.Blue
+            Case 6 : Return System.Drawing.Color.Magenta
+            Case 7 : Return System.Drawing.Color.White
+            Case Else : Return System.Drawing.Color.Black
         End Select
     End Function
-
-    '-----------------------------------
-    ' Import DXF with optional LayerSetup
-    '-----------------------------------
-    'Public Function ImportDxfWithLayerSetup(selectedPath As String, layerSetup As AppData.LayerSetup, bgColor As Color) As List(Of ImportedEntity)
-    '    Dim results As New List(Of ImportedEntity)
-
-    '    ' Load DXF
-    '    Dim dxf As DxfFile = DxfFile.Load(selectedPath)
-
-    '    ' Prepare directives lookup (case-insensitive)
-    '    Dim directivesLookup = layerSetup.Layers.ToDictionary(Function(d) d.CADLayer.ToLower(), Function(d) d)
-
-    '    ' Find the "*default*" directive (if any)
-    '    Dim defaultDirective As AppData.Directive = Nothing
-    '    If directivesLookup.ContainsKey("*default*") Then
-    '        defaultDirective = directivesLookup("*default*")
-    '    End If
-
-    '    ' Iterate DXF entities
-    '    For Each ent As DxfEntity In dxf.Entities
-    '        Dim imported As New ImportedEntity()
-
-    '        ' Determine which directive applies
-    '        Dim cadLayerName = If(ent.Layer, String.Empty).ToLower()
-    '        Dim directive As AppData.Directive = Nothing
-
-    '        If directivesLookup.ContainsKey(cadLayerName) Then
-    '            directive = directivesLookup(cadLayerName)
-    '        ElseIf defaultDirective IsNot Nothing Then
-    '            directive = defaultDirective
-    '        End If
-
-    '        ' Set CAMLayer and color from directive (if available)
-    '        If directive IsNot Nothing Then
-    '            imported.CAMLayer = directive.CAMLayer
-    '            imported.DisplayColor = AdjustColorForBackground(directive.DisplayColor, bgColor)
-    '            imported.DirectiveID = directive.ID
-    '        Else
-    '            imported.CAMLayer = ent.Layer ' fallback to original layer name
-    '            imported.DisplayColor = AdjustColorForBackground(Color.Black, bgColor)
-    '            imported.DirectiveID = -1
-    '        End If
-
-    '        ' Classify geometry (Arc must be detected before Circle)
-    '        If TypeOf ent Is DxfArc Then
-    '            imported.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
-    '            imported.Arc = DirectCast(ent, DxfArc)
-    '        ElseIf TypeOf ent Is DxfCircle Then
-    '            imported.GeometryType = ImportedEntity.GeometryTypeEnum.Circle
-    '            imported.Circle = DirectCast(ent, DxfCircle)
-    '        ElseIf TypeOf ent Is DxfLine Then
-    '            imported.GeometryType = ImportedEntity.GeometryTypeEnum.Line
-    '            imported.Line = DirectCast(ent, DxfLine)
-    '        Else
-    '            imported.GeometryType = ImportedEntity.GeometryTypeEnum.Unknown
-    '        End If
-
-    '        results.Add(imported)
-    '    Next
-
-    '    Return results
-    'End Function
-    Public Function ImportDxfWithLayerSetupV25(selectedPath As String, layerSetup As AppData.LayerSetup, bgColor As Color) As List(Of CamProfile)
-
-        ' 1. Load DXF
-        Dim dxf As DxfFile = DxfFile.Load(selectedPath)
-
-        ' 2. Convert DXF entities to CadEntity
-        Dim cadEntities As New List(Of CadEntity)
-
-        For Each ent As DxfEntity In dxf.Entities
-            Dim cad = CadEntity.FromDxf(ent)
-            If cad Is Nothing Then Continue For
-
-            ' Assign DisplayColor from LayerSetup or fallback to *default*
-            Dim layerDirective As AppData.Directive =
-        layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer.Equals(cad.LayerName, StringComparison.OrdinalIgnoreCase))
-
-            If layerDirective Is Nothing Then
-                layerDirective = layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer = "*default*")
-            End If
-
-            cad.DisplayColor = If(layerDirective?.DisplayColor, Color.Black)
-
-            cadEntities.Add(cad)
-        Next
-
-
-        ' 3. Build profiles using BuildProfilesV25
-        Dim profiles As List(Of CamProfile) = CamBuilder.BuildProfilesV25(cadEntities, layerSetup)
-
-        Return profiles
-    End Function
-
-
 
 
     '-------------------------------------------------
@@ -308,7 +357,7 @@ Public Module modFile
     Private Function AdjustColorForBackground(c As Color, bgColor As Color) As Color
         If c.ToArgb() = bgColor.ToArgb() Then
             ' Simple adjustment: invert color
-            Return Color.FromArgb(c.A, 255 - c.R, 255 - c.G, 255 - c.B)
+            Return System.Drawing.Color.FromArgb(c.A, 255 - c.R, 255 - c.G, 255 - c.B)
         End If
         Return c
     End Function

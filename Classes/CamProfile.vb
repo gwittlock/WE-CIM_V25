@@ -23,6 +23,7 @@ Public Class CamProfile
     Public Property SharpAngle As Double
     Public Property ProcessText As Boolean
     Public Property RestrictOffset As Boolean
+    Public Property DisplayColor As Color
 
     ' Bounding box coordinates
     Public Property MinX As Double
