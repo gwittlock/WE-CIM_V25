@@ -218,6 +218,7 @@ Public Class frmOpenProject
         Dim selectedItem = TryCast(cboToolSetup.SelectedItem, myItemData)
         If selectedItem Is Nothing Then Return
         SelectedToolSetupID = selectedItem.ItemData
+        _selectedToolSetup = ToolSetups.FirstOrDefault(Function(ts) ts.ID = SelectedToolSetupID)
     End Sub
 
     Private Sub cboLayerSetup_EditValueChanged(sender As Object, e As EventArgs) Handles cboLayerSetup.EditValueChanged

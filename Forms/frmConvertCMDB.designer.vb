@@ -33,6 +33,7 @@ Partial Class frmConvertCMDB
         Me.btnCancel = New System.Windows.Forms.Button()
         Me.fbdJsonDataFolder = New System.Windows.Forms.FolderBrowserDialog()
         Me.ofdCMDBFile = New System.Windows.Forms.OpenFileDialog()
+        Me.Button1 = New System.Windows.Forms.Button()
         CType(Me.picCMDBFile, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.picJsonFolder, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
@@ -121,11 +122,21 @@ Partial Class frmConvertCMDB
         Me.ofdCMDBFile.FileName = "OpenFileDialog1"
         Me.ofdCMDBFile.Filter = """CMDB Files|*.mdb"""
         '
+        'Button1
+        '
+        Me.Button1.Location = New System.Drawing.Point(28, 93)
+        Me.Button1.Name = "Button1"
+        Me.Button1.Size = New System.Drawing.Size(75, 23)
+        Me.Button1.TabIndex = 8
+        Me.Button1.Text = "Button1"
+        Me.Button1.UseVisualStyleBackColor = True
+        '
         'frmConvertCMDB
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(572, 119)
+        Me.Controls.Add(Me.Button1)
         Me.Controls.Add(Me.btnCancel)
         Me.Controls.Add(Me.btnConvertCMDB)
         Me.Controls.Add(Me.picJsonFolder)
@@ -154,4 +165,5 @@ Partial Class frmConvertCMDB
     Friend WithEvents btnCancel As Button
     Friend WithEvents fbdJsonDataFolder As FolderBrowserDialog
     Friend WithEvents ofdCMDBFile As OpenFileDialog
+    Friend WithEvents Button1 As Button
 End Class

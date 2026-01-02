@@ -1,6 +1,7 @@
 ﻿Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
 Imports System.Drawing
+Imports System.Runtime.CompilerServices
 
 Public Class CadEntity
 
@@ -38,6 +39,8 @@ Public Class CadEntity
     Private _toolName As String
     Private _workZone As String
     Public Shared _cadEntities As List(Of CadEntity)
+
+
 
     Public ReadOnly Property ToolName As String
         Get

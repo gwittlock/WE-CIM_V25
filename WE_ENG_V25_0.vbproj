@@ -323,8 +323,6 @@
     <Compile Include="Classes\CamEntity.vb" />
     <Compile Include="Classes\CamOperation.vb" />
     <Compile Include="Classes\CamProfile.vb" />
-    <Compile Include="Classes\ClassifiedProfile.vb" />
-    <Compile Include="Classes\ClosedProfile.vb" />
     <Compile Include="Classes\clsMatList.vb" />
     <Compile Include="Classes\DatabaseConversion.vb" />
     <Compile Include="Classes\DxfDrawable.vb" />
@@ -337,7 +335,6 @@
     <Compile Include="Classes\HelperFunctions.vb" />
     <Compile Include="Classes\importedentity.vb" />
     <Compile Include="Classes\JsonLoader.vb" />
-    <Compile Include="Classes\LayerPunchRule.vb" />
     <Compile Include="Classes\MaterialPicker.vb">
       <SubType>UserControl</SubType>
     </Compile>
@@ -347,10 +344,7 @@
     <Compile Include="Classes\MaterialSheetPG.vb" />
     <Compile Include="Classes\MaterialSheetWrapper.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
-    <Compile Include="Classes\ProfileFeature.vb" />
-    <Compile Include="Classes\ProfileSignature.vb" />
-    <Compile Include="Classes\PunchOperation.vb" />
-    <Compile Include="Classes\PunchResult.vb" />
+    <Compile Include="Classes\PuncfResult.vb" />
     <Compile Include="Classes\ToolPathGenerator.vb" />
     <Compile Include="Classes\ToolSelection.vb" />
     <Compile Include="Classes\ToolShapes.vb" />
@@ -408,6 +402,8 @@
     <Compile Include="Models\udp.vb" />
     <Compile Include="Modules\AccessToJsonExporter.vb" />
     <Compile Include="Modules\appMain.vb" />
+    <Compile Include="Modules\AutoPunhTest.vb" />
+    <Compile Include="Modules\Exporters.vb" />
     <Compile Include="Modules\modFile.vb" />
     <Compile Include="Modules\modGeo.vb" />
     <Compile Include="Modules\modMaterial.vb" />

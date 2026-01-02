@@ -233,7 +233,8 @@ Public Class frmMain
     End Sub
     Private Sub iOpen_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iOpen.ItemClick
         ' Open DXF and import as CamProfiles
-        _importedProfiles = FileOpen()  ' returns List(Of CamProfile)
+        '_importedProfiles = FileOpen()  ' returns List(Of CamProfile)
+        FileOpen()
 
         'If _importedProfiles IsNot Nothing AndAlso _importedProfiles.Count > 0 Then
         '    Flatten all CadEntities from profiles into _importedEntities for legacy code

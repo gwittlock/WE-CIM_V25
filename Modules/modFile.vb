@@ -17,15 +17,19 @@ Imports FabV25_WIN8.DrawableEntity
 Imports FabV25_WIN8.DxfDrawable
 Imports FabV25_WIN8.CamEntity
 Imports FabV25_WIN8.CadEntity
-
+Imports System.Runtime.CompilerServices
+Imports FabV25_WIN8.AutoPunchingEngine
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 
 Public Module modFile
 
     ' Holds the currently selected LayerSetup object
     Public _selectedLayerSetup As LayerSetup
+    Public _selectedToolSetup As ToolSetup
     Private m_FileName As String
     Public _importedEntities As List(Of ImportedEntity)
     Public _drawables As List(Of DxfDrawable)
+
 
 
     'Public Function FileOpen() As List(Of ImportedEntity)
@@ -59,41 +63,247 @@ Public Module modFile
 
     'End Function
 
-    Public Function FileOpen() As List(Of CamProfile)
+    'Public Function FileOpen() As List(Of CamProfile)
 
+    'Using dlg As New DXFFileSelectionDialog()
+    'If dlg.ShowDialog() <> DialogResult.OK Then Return Nothing
+
+    '        Dim selectedPath As String = dlg.SelectedDxfPath
+
+    '' Show Import Dialog to gather context
+    'Using frm As New frmOpenProject(selectedPath)
+    'If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
+
+    '            CurrentDXFEntities = ParseDXFToCadEntities(selectedPath)
+
+    '            Dim layerColorDict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
+
+    'For Each layer In _selectedLayerSetup.Layers
+    '                layerColorDict(layer.CADLayer) = layer.DisplayColor
+    '            Next
+
+    'Dim resolver As New LayerColorResolver(layerColorDict)
+
+    'Dim drawables As New List(Of DxfDrawable)
+
+    '            _cadEntities = CurrentDXFEntities
+
+    '            PopulateDrawables(_cadEntities, _selectedLayerSetup)
+
+    '        End Using
+    'End Using
+
+    'End Function
+
+    Public Function FileOpen() As List(Of Polyline2D)
         Using dlg As New DXFFileSelectionDialog()
-            If dlg.ShowDialog() <> DialogResult.OK Then Return Nothing
-
+            If dlg.ShowDialog() <> DialogResult.OK Then Exit Function
             Dim selectedPath As String = dlg.SelectedDxfPath
 
-            ' Show Import Dialog to gather context
             Using frm As New frmOpenProject(selectedPath)
-                If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
+                If frm.ShowDialog() <> DialogResult.OK Then Exit Function
 
-                CurrentDXFEntities = ParseDXFToCadEntities(selectedPath)
+                RunTest()
 
-                Dim layerColorDict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
+                '        ' Parse DXF into CadEntities
+                '        CurrentDXFEntities = ParseDXFToCadEntities(selectedPath)
+                '        _cadEntities = CurrentDXFEntities
 
-                For Each layer In _selectedLayerSetup.Layers
-                    layerColorDict(layer.CADLayer) = layer.DisplayColor
-                Next
+                '        ' Optional: setup layer colors
+                '        Dim layerColorDict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
+                '        For Each layer In _selectedLayerSetup.Layers
+                '            layerColorDict(layer.CADLayer) = layer.DisplayColor
+                '        Next
+                '        Dim resolver As New LayerColorResolver(layerColorDict)
 
-                Dim resolver As New LayerColorResolver(layerColorDict)
+                '        ' Populate drawables (if needed)
+                '        PopulateDrawables(_cadEntities, _selectedLayerSetup)
 
-                Dim drawables As New List(Of DxfDrawable)
+                '        '-----------------------------
+                '        ' 2) Convert circles to Polyline2D
+                '        '-----------------------------
+                '        Dim circlePolylines As New List(Of (Profile As Polyline2D, LayerName As String))
 
-                _cadEntities = CurrentDXFEntities
+                '        For Each cad In _cadEntities
+                '            If cad.CadEntityType = CadEntity.EntityType.Circle Then
+                '                Dim cx = CSng(cad.CircleCenter.X)
+                '                Dim cy = CSng(cad.CircleCenter.Y)
+                '                Dim r = CSng(cad.CircleRadius)
 
-                PopulateDrawables(_cadEntities, _selectedLayerSetup)
+                '                Dim points As New List(Of PointF)
+                '                Dim steps = 64 ' higher accuracy
+                '                For i = 0 To steps - 1
+                '                    Dim theta = 2 * Math.PI * i / steps
+                '                    Dim x = cx + r * Math.Cos(theta)
+                '                    Dim y = cy + r * Math.Sin(theta)
+                '                    points.Add(New PointF(x, y))
+                '                Next
 
-                'For Each cad In CurrentDXFEntities
-                '    drawables.Add(ConvertCadToDrawable(cad, resolver))
-                'Next
+                '                Dim pl As New Polyline2D(points)
+                '                circlePolylines.Add((Profile:=pl, LayerName:=cad.LayerName))
+                '            End If
+                '        Next
 
+                '        '-----------------------------
+                '        ' 3) Prepare ToolSetup instance
+                '        '-----------------------------
+                '        Dim toolSetup As ToolSetup = _selectedToolSetup ' ensure this is assigned
+
+                '        '-----------------------------
+                '        ' 4) Run AutoPunch on all circles
+                '        '-----------------------------
+                '        For Each cp In circlePolylines
+                '            ' Find directive for this layer
+                '            Dim dir As AppData.Directive = _selectedLayerSetup.FindRuleByLayer(cp.LayerName)
+                '            If dir Is Nothing Then Continue For
+                '            If dir.Station = StationMode.None Then Continue For
+
+                '            ' Convert directive → LayerPunchRule
+                '            'Dim rule As LayerPunchRule = ConvertDirectiveToLayerPunchRule(dir)
+
+                '            ' Create working profile
+                '            Dim workingProfile = CreateWorkingProfile(cp.Profile, rule, "Demo") ' role = "Demo"
+
+                '            ' Run AutoPunch
+                '            Dim punchResult = AutoPunch(workingProfile, toolSetup, rule)
+
+                '            ' Inspect result
+                '            Console.WriteLine($"Circle Layer: {cp.LayerName}, PunchResult: {punchResult.ResultType}")
+                '            If punchResult.ToolIDs.Any() Then
+                '                Console.WriteLine($"Tools Applied: {String.Join(",", punchResult.ToolIDs)}")
+                '            End If
+                '        Next
+
+                '        Console.WriteLine("Circle AutoPunch test completed.")
             End Using
         End Using
 
     End Function
+
+    '' ==========================
+    '' 1) Helper: Convert Directive -> LayerPunchRule
+    '' ==========================
+    'Private Function DirectiveToLayerPunchRule(dir As AppData.Directive) As LayerPunchRule
+    '    Return New LayerPunchRule With {
+    '    .CADLayer = dir.CADLayer,
+    '    .Station = dir.Station,
+    '    .CutDirection = dir.CutDirection,
+    '    .Distance = dir.Distance,
+    '    .AutoIndex = dir.AutoIndex
+    '}
+    'End Function
+
+    ' ==========================
+    ' 2) Public CreateWorkingProfile (accept Polyline2D)
+    '' ==========================
+    'Public Function CreateWorkingProfile(baseProfile As Polyline2D, directive As Directive, role As ProfileRole) As Polyline2D
+
+    '    ' If Distance > 0, offset the profile
+    '    Dim workingProfile As Polyline2D = baseProfile.Clone() ' make a copy
+
+    '    If LayerPunchRule.Distance <> 0 Then
+    '        workingProfile = workingProfile.Offset(Rule.Distance, Rule.CutSide)
+    '    End If
+
+    '    ' Resolve winding direction
+    '    workingProfile.Winding = ResolveWinding(role, Rule.CutDirection)
+
+    '    Return workingProfile
+    'End Function
+
+    '' ==========================
+    '' 3) Run AutoPunch on a list of circles
+    '' ==========================
+    'Public Sub TestAutoPunchCircles(cadProfiles As List(Of CadProfile))
+    '    ' 1) Loop through each profile
+    '    For Each cp In cadProfiles
+
+    '        ' 1a) Find directive for layer
+    '        Dim dir As AppData.Directive = _selectedLayerSetup.FindRuleByLayer(cp.LayerName)
+    '        If dir Is Nothing OrElse dir.Station = StationMode.None Then Continue For
+
+    '        ' 1b) Convert to LayerPunchRule
+    '        ' Dim rule As LayerPunchRule = DirectiveToLayerPunchRule(dir)
+
+    '        ' 2) Create working profile from Polyline2D
+    '        Dim workingProfile As Polyline2D = CreateWorkingProfile(cp.Profile, rule, cp.Role)
+
+    '        ' 3) Run AutoPunch
+    '        'Dim punchResult As PunchResult = AutoPunch(workingProfile, _selectedToolSetup, rule)
+
+    '        ' 4) Inspect result
+    '        Console.WriteLine($"Profile: {cp.LayerName}, PunchResult: {punchResult.ResultType}")
+    '        If punchResult.ToolIDs.Any() Then
+    '            Console.WriteLine($"Tools Applied: {String.Join(",", punchResult.ToolIDs)}")
+    '        End If
+
+    '    Next
+
+    '    Console.WriteLine("Circle AutoPunch test completed.")
+    'End Sub
+
+    ' ==========================
+    ' 4) ResolveWinding (make Public)
+    ' ==========================
+    Public Function ResolveWinding(role As AutoPunchingEngine.ProfileRole, cutDir As AutoPunchingEngine.CutDirection) As AutoPunchingEngine.WindingDirection
+        If cutDir = AutoPunchingEngine.CutDirection.Auto Then
+            Return If(role = AutoPunchingEngine.ProfileRole.Inside, AutoPunchingEngine.WindingDirection.CCW, AutoPunchingEngine.WindingDirection.CW)
+        End If
+        ' For explicit CutDirection
+        Return If(cutDir = AutoPunchingEngine.CutDirection.CW, AutoPunchingEngine.WindingDirection.CW, AutoPunchingEngine.WindingDirection.CCW)
+    End Function
+
+    Public Function GetPolylinesFromCadEntities(entities As List(Of CadEntity)) As List(Of Polyline2D)
+        Dim polylines As New List(Of Polyline2D)
+
+        For Each cad In entities
+            Select Case cad.CadEntityType
+                Case CadEntity.EntityType.Circle
+                    Dim cx = CSng(cad.CircleCenter.X)
+                    Dim cy = CSng(cad.CircleCenter.Y)
+                    Dim r = CSng(cad.CircleRadius)
+
+                    ' Approximate circle as N-point polygon
+                    Dim points As New List(Of PointF)
+                    Dim steps = 32  ' can increase for smoother circle
+                    For i = 0 To steps - 1
+                        Dim theta = 2 * Math.PI * i / steps
+                        Dim x = cx + r * Math.Cos(theta)
+                        Dim y = cy + r * Math.Sin(theta)
+                        points.Add(New PointF(x, y))
+                    Next
+
+                    Dim pl As New Polyline2D(points)
+                    pl.LayerName = cad.LayerName
+                    polylines.Add(pl)
+
+                Case Else
+                    ' For now ignore lines/arcs
+            End Select
+        Next
+
+        Return polylines
+    End Function
+
+    'Private Function PolylineFromCadEntity(entity As CadEntity) As Polyline2D
+    '    ' Only convert closed polylines
+    '    If Not entity.CadEntityType = EntityType.Polyline Then
+    '        Return Nothing
+    '    End If
+
+    '    ' Check if entity is closed
+    '    'If Not entity.IsPolylineClosed() Then Return Nothing
+
+    '    ' Convert DXF points to PointF
+    '    Dim pts As New List(Of PointF)
+    '    For Each p In entity.GetPolylinePoints()
+    '        pts.Add(New PointF(p.X, p.Y))
+    '    Next
+
+    '    Return New Polyline2D(pts)
+    'End Function
+
+
 
     ''' <summary>
     ''' Converts a list of CadEntity into DxfDrawable for drawing on panel.

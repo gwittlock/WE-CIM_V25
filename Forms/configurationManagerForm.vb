@@ -786,6 +786,7 @@ Public Class ConfigurationManagerForm
     End Sub
     Private Sub PopulateStationsGrid(machineID As Integer)
         Try
+            Dim stationsForMachine As List(Of Station)
             ' Load the JSON file into a JObject
             Dim json As JObject = JObject.Parse(File.ReadAllText(Path.Combine(dataFolder, "Stations.json")))
 
@@ -793,10 +794,12 @@ Public Class ConfigurationManagerForm
             Dim allStations As List(Of Station) = json("Rows") _
                                                .ToObject(Of List(Of Station))()
 
-            ' Filter for the selected machine
-            Dim stationsForMachine As List(Of Station) = allStations _
-                                                    .Where(Function(s) s.MachineID = machineID) _
-                                                    .ToList()
+            If allStations Is Nothing Then
+                stationsForMachine = New List(Of Station)()
+            Else
+                stationsForMachine = allStations.Where(Function(s) s.MachineID = machineID).ToList()
+            End If
+
 
             ' Bind to grid
             dgvStations.DataSource = stationsForMachine
@@ -3463,5 +3466,7 @@ Public Class ConfigurationManagerForm
         End If
     End Function
 
+    Private Sub TreeViewMachines_MouseUp(sender As Object, e As MouseEventArgs) Handles TreeViewMachines.MouseUp
 
+    End Sub
 End Class

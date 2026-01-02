@@ -339,6 +339,7 @@ Public Class AppData
     Public Class Station
         Public Property ID As Integer
         Public Property MachineID As Integer
+        Public Property WorkplaneID As Integer  ' <-- added
         Public Property Description As String
         Public Property Position As String
 
@@ -454,6 +455,10 @@ Public Class AppData
             Next
         End Sub
 
+        Public Function FindRuleByLayer(layerName As String) As AppData.Directive
+            If Layers Is Nothing Then Return Nothing
+            Return Layers.FirstOrDefault(Function(r) String.Equals(r.CADLayer, layerName, StringComparison.OrdinalIgnoreCase))
+        End Function
 
         ' Utility method to get the display color for a specific CAD layer
         Public Function GetColorForLayer(cadLayerName As String) As Color?
@@ -515,7 +520,7 @@ Public Class AppData
         Public Property CutSide As Integer
         Public Property Distance As Double
         Public Property CutDirection As Integer
-
+        Public Property ToolID As Integer
         Public Sub Validate()
             If ID <= 0 Then
                 Throw New InvalidOperationException("Directive ID is invalid.")
