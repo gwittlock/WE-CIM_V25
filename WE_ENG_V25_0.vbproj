@@ -403,6 +403,7 @@
     <Compile Include="Modules\AccessToJsonExporter.vb" />
     <Compile Include="Modules\appMain.vb" />
     <Compile Include="Modules\AutoPunhTest.vb" />
+    <Compile Include="Modules\dxfImporter.vb" />
     <Compile Include="Modules\Exporters.vb" />
     <Compile Include="Modules\modFile.vb" />
     <Compile Include="Modules\modGeo.vb" />

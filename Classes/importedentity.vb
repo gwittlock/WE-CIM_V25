@@ -12,12 +12,29 @@ Public Class ImportedEntity
         Line
         Circle
         Arc
+        PolyLine
     End Enum
 
     '----------------------------------
     ' Properties
     '----------------------------------
-    Public Property GeometryType As GeometryTypeEnum = GeometryTypeEnum.Unknown
+    Public Property CAMLayer As String
+    Public Property DirectiveID As Integer
+    Public Property DisplayColor As Color
+    Public Property GeometryType As GeometryTypeEnum
+
+    ' Line
+    Public Property StartPoint As CadEntity.Point2D
+    Public Property EndPoint As CadEntity.Point2D
+
+    ' Circle / Arc
+    Public Property Center As CadEntity.Point2D
+    Public Property Radius As Double
+    Public Property StartAngle As Double
+    Public Property EndAngle As Double
+
+    ' Polyline
+    Public Property Points As List(Of CadEntity.Point2D)
 
     ' DXF entities
     Public Property Line As DxfLine
@@ -27,14 +44,6 @@ Public Class ImportedEntity
     ' NEW: Original CadEntity reference
     Public Property CadEntity As CadEntity
 
-    ' Display color
-    Public Property DisplayColor As Color = Color.Black
-
-    ' CAM Layer (from directive)
-    Public Property CAMLayer As String = String.Empty
-
-    ' Directive ID (from LayerSetup/Directive)
-    Public Property DirectiveID As Integer = -1
     Public Property WindingDirection As String
 
     '----------------------------------

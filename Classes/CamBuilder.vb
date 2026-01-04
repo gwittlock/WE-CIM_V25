@@ -108,10 +108,12 @@
             Throw New ArgumentNullException(NameOf(entity))
         End If
 
-        ' Return the precomputed points directly from CadEntity
-        Return (entity.StartPoint, entity.EndPoint)
-    End Function
+        ' Return X and Y values as a tuple
+        Dim startTuple = (X:=entity.StartPt.X, Y:=entity.StartPt.Y)
+        Dim endTuple = (X:=entity.EndPt.X, Y:=entity.EndPt.Y)
 
+        Return (startTuple, endTuple)
+    End Function
 
 
     'Public Sub Validate()

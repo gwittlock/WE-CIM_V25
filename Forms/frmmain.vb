@@ -62,6 +62,7 @@ Public Class frmMain
     Private _importedProfiles As List(Of CamProfile)
 
     Private _inquireMode As Boolean = False
+    Private _dxfImporter As IDxfImporter = New DxfImporter_IxMilia()
 
 
 
@@ -232,9 +233,13 @@ Public Class frmMain
         ConfigurationManagerForm.Show(Me)
     End Sub
     Private Sub iOpen_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iOpen.ItemClick
+        FileOpen()
+
+
+
         ' Open DXF and import as CamProfiles
         '_importedProfiles = FileOpen()  ' returns List(Of CamProfile)
-        FileOpen()
+        ' FileOpen()
 
         'If _importedProfiles IsNot Nothing AndAlso _importedProfiles.Count > 0 Then
         '    Flatten all CadEntities from profiles into _importedEntities for legacy code
@@ -340,10 +345,10 @@ Public Class frmMain
         End If
 
         ' Compute bounding box for all entities
-        Dim minX As Double = entities.Min(Function(e) Math.Min(e.StartPoint.X, e.EndPoint.X))
-        Dim maxX As Double = entities.Max(Function(e) Math.Max(e.StartPoint.X, e.EndPoint.X))
-        Dim minY As Double = entities.Min(Function(e) Math.Min(e.StartPoint.Y, e.EndPoint.Y))
-        Dim maxY As Double = entities.Max(Function(e) Math.Max(e.StartPoint.Y, e.EndPoint.Y))
+        Dim minX As Double = entities.Min(Function(e) Math.Min(e.StartPt.X, e.EndPt.X))
+        Dim maxX As Double = entities.Max(Function(e) Math.Max(e.StartPt.X, e.EndPt.X))
+        Dim minY As Double = entities.Min(Function(e) Math.Min(e.StartPt.Y, e.EndPt.Y))
+        Dim maxY As Double = entities.Max(Function(e) Math.Max(e.StartPt.Y, e.EndPt.Y))
 
         Dim dx = maxX - minX
         Dim dy = maxY - minY
@@ -519,11 +524,29 @@ Public Class frmMain
                         e.Graphics.DrawEllipse(pen, center.X - r, center.Y - r, 2 * r, 2 * r)
 
                     Case DxfDrawable.DrawableTypeEnum.Arc
+
+                        Debug.Assert(d.EndAngle <> d.StartAngle, "Arc has zero sweep")
+
                         Dim center = TransformToPanel(d.Center.X, d.Center.Y, scale, offsetX, offsetY)
                         Dim r As Single = CSng(d.Radius * scale)
-                        Dim startAngle As Single = CSng(-d.StartAngle)
-                        Dim sweepAngle As Single = CSng(-(d.EndAngle - d.StartAngle))
-                        e.Graphics.DrawArc(pen, center.X - r, center.Y - r, 2 * r, 2 * r, startAngle, sweepAngle)
+
+                        ' Start and end angles are in degrees
+                        Dim startDeg As Single = CSng(d.StartAngle)
+                        Dim endDeg As Single = CSng(d.EndAngle)
+
+                        ' Compute sweep
+                        Dim sweep As Single = endDeg - startDeg
+                        If sweep < 0 Then sweep += 360  ' ensure positive sweep
+
+                        ' DrawArc expects clockwise sweep, negate to match CAD convention
+                        e.Graphics.DrawArc(New Pen(d.Color, 1),
+                        center.X - r, center.Y - r, 2 * r, 2 * r,
+                        -startDeg, -sweep)
+
+                        Debug.WriteLine($"Arc: Center=({d.Center.X},{d.Center.Y}) R={r} Start={startDeg} End={endDeg} Sweep = {sweep}")
+
+
+
                 End Select
             End Using
         Next
@@ -701,11 +724,7 @@ Public Class frmMain
 
     'End Sub
 
-    Private Function NormalizeAngle(deg As Double) As Double
-        deg = deg Mod 360
-        If deg < 0 Then deg += 360
-        Return deg
-    End Function
+
 
     ' Helper to draw the default marker (e.g., a "!") at a point
     Private Sub DrawDefaultMarker(g As Graphics, pt As PointF, scale As Double)
@@ -857,76 +876,76 @@ Public Class frmMain
         Dim hitDist As Single
         Dim worldPt = ScreenToWorld(e.Location)
 
-        Dim hit = HitTestImportedEntity(_importedEntities, worldPt, HitTolerance)
+        ' Dim hit = HitTestImportedEntity(_importedEntities, worldPt, HitTolerance)
 
 
-        ' Update hover entity only if changed
-        If Not Object.ReferenceEquals(hit, _hoverEntity) Then
-            _hoverEntity = hit
-            pnlPicmodeler.Invalidate() ' redraw for hover highlight
-        End If
+        '' Update hover entity only if changed
+        'If Not Object.ReferenceEquals(hit, _hoverEntity) Then
+        '    _hoverEntity = hit
+        '    pnlPicmodeler.Invalidate() ' redraw for hover highlight
+        'End If
 
-        '--------------------------------------------
-        ' Update tooltip
-        '--------------------------------------------
-        '--------------------------------------------
-        ' Inquire mode hit-test + tooltip
-        '--------------------------------------------
-        If _inquireMode Then
-
-
-            If Not Object.ReferenceEquals(hit, _hoverEntity) Then
-                _hoverEntity = hit
-                pnlPicmodeler.Invalidate()
-            End If
-
-            If hit IsNot Nothing Then
-                BuildEntityToolTip(hit)
-                pnlPicmodeler.Cursor = Cursors.Help
-            Else
-                entityTip.Hide(pnlPicmodeler)
-            End If
-
-        Else
-            ' Normal mode – ensure tooltip is off
-            entityTip.Hide(pnlPicmodeler)
-            _hoverEntity = Nothing
-        End If
+        ''--------------------------------------------
+        '' Update tooltip
+        ''--------------------------------------------
+        ''--------------------------------------------
+        '' Inquire mode hit-test + tooltip
+        ''--------------------------------------------
+        'If _inquireMode Then
 
 
+        '    If Not Object.ReferenceEquals(hit, _hoverEntity) Then
+        '        _hoverEntity = hit
+        '        pnlPicmodeler.Invalidate()
+        '    End If
 
-        ' Pan
-        If _isPanning Then
-            Dim dx = e.X - _panStart.X
-            Dim dy = e.Y - _panStart.Y
-            _offsetX = _offsetStartX + dx
-            _offsetY = _offsetStartY + dy
-            pnlPicmodeler.Invalidate()
-            Return
-        End If
+        '    If hit IsNot Nothing Then
+        '        BuildEntityToolTip(hit)
+        '        pnlPicmodeler.Cursor = Cursors.Help
+        '    Else
+        '        entityTip.Hide(pnlPicmodeler)
+        '    End If
 
-        ' View Window rubber-band
-        If _windowSelecting Then
-            _windowEnd = e.Location
-            pnlPicmodeler.Invalidate()
-        End If
-        If _isMeasuring Then
-            _measureEnd = e.Location
+        'Else
+        '    ' Normal mode – ensure tooltip is off
+        '    entityTip.Hide(pnlPicmodeler)
+        '    _hoverEntity = Nothing
+        'End If
 
-            ' Convert to model coordinates
-            Dim startModel As DxfPoint = ScreenToModel(_measureStart)
-            Dim endModel As DxfPoint = ScreenToModel(_measureEnd)
 
-            ' Compute differences
-            Dim dx As Double = endModel.X - startModel.X
-            Dim dy As Double = endModel.Y - startModel.Y
-            Dim dist As Double = Math.Sqrt(dx * dx + dy * dy)
 
-            ' Format tooltip text
-            _measureTooltip = $"ΔX = {dx:F3}, ΔY = {dy:F3}, Δ = {dist:F3}"
+        '' Pan
+        'If _isPanning Then
+        '    Dim dx = e.X - _panStart.X
+        '    Dim dy = e.Y - _panStart.Y
+        '    _offsetX = _offsetStartX + dx
+        '    _offsetY = _offsetStartY + dy
+        '    pnlPicmodeler.Invalidate()
+        '    Return
+        'End If
 
-            pnlPicmodeler.Invalidate()
-        End If
+        '' View Window rubber-band
+        'If _windowSelecting Then
+        '    _windowEnd = e.Location
+        '    pnlPicmodeler.Invalidate()
+        'End If
+        'If _isMeasuring Then
+        '    _measureEnd = e.Location
+
+        '    ' Convert to model coordinates
+        '    Dim startModel As DxfPoint = ScreenToModel(_measureStart)
+        '    Dim endModel As DxfPoint = ScreenToModel(_measureEnd)
+
+        '    ' Compute differences
+        '    Dim dx As Double = endModel.X - startModel.X
+        '    Dim dy As Double = endModel.Y - startModel.Y
+        '    Dim dist As Double = Math.Sqrt(dx * dx + dy * dy)
+
+        '    ' Format tooltip text
+        '    _measureTooltip = $"ΔX = {dx:F3}, ΔY = {dy:F3}, Δ = {dist:F3}"
+
+        '    pnlPicmodeler.Invalidate()
+        'End If
 
     End Sub
 
@@ -1183,8 +1202,8 @@ Public Class frmMain
 
     Private Sub AppendLineInfo(sb As StringBuilder, cad As CadEntity)
 
-        Dim sp = cad.StartPoint
-        Dim ep = cad.EndPoint
+        Dim sp = cad.StartPt
+        Dim ep = cad.EndPt
 
         Dim dx As Double = ep.X - sp.X
         Dim dy As Double = ep.Y - sp.Y
@@ -1202,29 +1221,37 @@ Public Class frmMain
     End Sub
 
     Private Sub AppendArcInfo(sb As StringBuilder, cad As CadEntity)
-
-        Dim sp = cad.StartPoint
-        Dim ep = cad.EndPoint
-        Dim cp = cad.CenterPoint
+        Dim sp = cad.StartPt
+        Dim ep = cad.EndPt
+        Dim cp = cad.CircleCenter
 
         sb.AppendLine("Type: Arc")
         sb.AppendLine($"Start:  ({sp.X:0.###}, {sp.Y:0.###})")
         sb.AppendLine($"End:    ({ep.X:0.###}, {ep.Y:0.###})")
-        sb.AppendLine($"Center: ({cp.X:0.###}, {cp.Y:0.###})")
-        sb.AppendLine($"Radius: {cad.Radius:0.###}")
-        sb.AppendLine($"Direction: {If(cad.IsClockwise, "CW", "CCW")}")
 
+        If cp.HasValue Then
+            sb.AppendLine($"Center: ({cp.Value.X:0.###}, {cp.Value.Y:0.###})")
+        Else
+            sb.AppendLine("Center: N/A")
+        End If
+
+        sb.AppendLine($"Radius: {If(cad.ArcRadius.HasValue, cad.ArcRadius.Value.ToString("0.###"), "N/A")}")
+        sb.AppendLine($"Direction: {If(cad.ArcIsClockwise.HasValue AndAlso cad.ArcIsClockwise.Value, "CW", "CCW")}")
     End Sub
 
     Private Sub AppendCircleInfo(sb As StringBuilder, cad As CadEntity)
-
-        Dim cp = cad.CenterPoint
+        Dim cp = cad.CircleCenter
 
         sb.AppendLine("Type: Circle")
-        sb.AppendLine($"Center: ({cp.X:0.###}, {cp.Y:0.###})")
-        sb.AppendLine($"Radius: {cad.Radius:0.###}")
+        If cp.HasValue Then
+            sb.AppendLine($"Center: ({cp.Value.X:0.###}, {cp.Value.Y:0.###})")
+        Else
+            sb.AppendLine("Center: N/A")
+        End If
 
+        sb.AppendLine($"Radius: {If(cad.CircleRadius.HasValue, cad.CircleRadius.Value.ToString("0.###"), "N/A")}")
     End Sub
+
 
 
     Private Sub HandleEntitySelected(ent As ImportedEntity)
@@ -1904,35 +1931,35 @@ Public Class frmMain
     profiles As List(Of List(Of CadEntity)),
     directionSetting As String)
 
-        For Each profile As List(Of CadEntity) In profiles
+        'For Each profile As List(Of CadEntity) In profiles
 
-            Select Case directionSetting.ToLower()
+        '    Select Case directionSetting.ToLower()
 
-                Case "cw"
-                    For Each e As CadEntity In profile
-                        e.WindingDirection = "CW"
-                    Next
+        '        Case "cw"
+        '            For Each e As CadEntity In profile
+        '                e.WindingDirection = "CW"
+        '            Next
 
-                Case "ccw"
-                    For Each e As CadEntity In profile
-                        e.WindingDirection = "CCW"
-                    Next
+        '        Case "ccw"
+        '            For Each e As CadEntity In profile
+        '                e.WindingDirection = "CCW"
+        '            Next
 
-                Case "auto"
-                    ' Signed area determines orientation
-                    Dim signedArea As Double = ComputeSignedArea(profile)
+        '        Case "auto"
+        '            ' Signed area determines orientation
+        '            Dim signedArea As Double = ComputeSignedArea(profile)
 
-                    ' Positive area → CCW, Negative → CW
-                    Dim profileDirection As String =
-                    If(signedArea >= 0, "CCW", "CW")
+        '            ' Positive area → CCW, Negative → CW
+        '            Dim profileDirection As String =
+        '            If(signedArea >= 0, "CCW", "CW")
 
-                    For Each e As CadEntity In profile
-                        e.WindingDirection = profileDirection
-                    Next
+        '            For Each e As CadEntity In profile
+        '                e.WindingDirection = profileDirection
+        '            Next
 
-            End Select
+        '    End Select
 
-        Next
+        'Next
     End Sub
 
 
@@ -2063,31 +2090,40 @@ Public Class frmMain
 
         Select Case imp.GeometryType
             Case ImportedEntity.GeometryTypeEnum.Line
-                cad = CreateFromLine(imp.Line, imp.CAMLayer)
-            Case ImportedEntity.GeometryTypeEnum.Arc
-                ' Compute start/end points from center, radius, start/end angles
-                Dim startRad = imp.Arc.StartAngle * Math.PI / 180.0
-                Dim endRad = imp.Arc.EndAngle * Math.PI / 180.0
-                Dim startPt = New DxfPoint(imp.Arc.Center.X + imp.Arc.Radius * Math.Cos(startRad),
-                                           imp.Arc.Center.Y + imp.Arc.Radius * Math.Sin(startRad), 0)
-                Dim endPt = New DxfPoint(imp.Arc.Center.X + imp.Arc.Radius * Math.Cos(endRad),
-                                         imp.Arc.Center.Y + imp.Arc.Radius * Math.Sin(endRad), 0)
+                ' --- Convert DXF line ---
+                cad = CadEntity.CreateFromLine(
+                startPt:=New CadEntity.Point2D(imp.Line.P1.X, imp.Line.P1.Y),
+                endPt:=New CadEntity.Point2D(imp.Line.P2.X, imp.Line.P2.Y),
+                layer:=imp.Line.Layer
+            )
 
-                cad = CreateFromArc(imp.Arc, imp.CAMLayer)
+            Case ImportedEntity.GeometryTypeEnum.Arc
+                ' --- Convert DXF arc ---
+                Dim arcClockwise As Boolean = (imp.Arc.EndAngle - imp.Arc.StartAngle) < 0
+
+                cad = CadEntity.CreateFromArc(
+                center:=New CadEntity.Point2D(imp.Arc.Center.X, imp.Arc.Center.Y),
+                radius:=imp.Arc.Radius,
+                startAngle:=imp.Arc.StartAngle,
+                endAngle:=imp.Arc.EndAngle,
+                layer:=imp.Arc.Layer,
+                clockwise:=arcClockwise
+            )
+
             Case ImportedEntity.GeometryTypeEnum.Circle
-                cad = CreateFromCircle(imp.Circle, imp.CAMLayer)
+                ' --- Convert DXF circle ---
+                cad = CadEntity.CreateFromCircle(
+                center:=New CadEntity.Point2D(imp.Circle.Center.X, imp.Circle.Center.Y),
+                radius:=imp.Circle.Radius,
+                layer:=imp.Circle.Layer
+            )
+
             Case Else
                 Return Nothing
         End Select
 
-        ' Apply tooling if needed
-        cad.SetTooling("", "") ' optionally set tool/workzone from ImportedEntity properties if available
-
         Return cad
     End Function
-
-
-
 
 End Class
 

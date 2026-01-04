@@ -248,8 +248,12 @@ Public Class DXFFileSelectionDialog
                         Dim cy = panelHeight - ((ent.Arc.Center.Y - minY) * scale) - offsetY
                         Dim r = ent.Arc.Radius * scale
 
-                        Dim startAngle = -ent.Arc.StartAngle
-                        Dim sweepAngle = -(ent.Arc.EndAngle - ent.Arc.StartAngle)
+                        Dim startAngle As Single = CSng(-ent.Arc.StartAngle)
+
+                        Dim sweep As Double = ent.Arc.EndAngle - ent.Arc.StartAngle
+                        If sweep < 0 Then sweep += 360
+
+                        Dim sweepAngle As Single = CSng(-sweep)
 
                         e.Graphics.DrawArc(pen, CSng(cx - r), CSng(cy - r), CSng(r * 2), CSng(r * 2), CSng(startAngle), CSng(sweepAngle))
                 End Select

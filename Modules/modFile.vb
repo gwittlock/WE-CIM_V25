@@ -5,18 +5,18 @@ Imports System.Windows.Forms
 Imports System.IO
 Imports System.Linq
 
+
 ' IxMilia DXF imports
 Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
 Imports FabV25_WIN8.AppData
 Imports FabV25_WIN8.ImportedEntity
 Imports FabV25_WIN8.CamBuilder
-
+Imports FabV25_WIN8.dxfImporter
 Imports FabV25_WIN8.DrawableEntity
-
+Imports FabV25_WIN8.DxfImporter_IxMilia
 Imports FabV25_WIN8.DxfDrawable
 Imports FabV25_WIN8.CamEntity
-Imports FabV25_WIN8.CadEntity
 Imports System.Runtime.CompilerServices
 Imports FabV25_WIN8.AutoPunchingEngine
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
@@ -29,6 +29,96 @@ Public Module modFile
     Private m_FileName As String
     Public _importedEntities As List(Of ImportedEntity)
     Public _drawables As List(Of DxfDrawable)
+    ' Store all loaded CAD entities
+    Public _cadEntities As List(Of CadEntity)
+    ' Optional: layer color resolver
+    Public _layerResolver As DxfImport.LayerColorResolver
+
+    Public Function FileOpen() As List(Of CamProfile)
+        Dim importer As New DxfImporter_IxMilia()
+
+        Using dlg As New DXFFileSelectionDialog()
+            If dlg.ShowDialog() <> DialogResult.OK Then Return Nothing
+            Dim selectedPath As String = dlg.SelectedDxfPath
+
+            Using frm As New frmOpenProject(selectedPath)
+                If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
+
+                ' Import DXF as ModelEntities
+                Dim modelEntities As List(Of ModelEntity) = importer.Import(selectedPath)
+                If modelEntities Is Nothing OrElse modelEntities.Count = 0 Then
+                    Return New List(Of CamProfile)()
+                End If
+
+                ' Convert to CadEntity
+                _cadEntities = New List(Of CadEntity)
+                For Each m In modelEntities
+                    _cadEntities.AddRange(CadEntity.CadEntitiesFromModelEntityIxMilia(m))
+                Next
+
+                ' Prepare drawables with layer colors
+                _layerResolver = New DxfImport.LayerColorResolver(SelectedLayerSetup.Layers _
+                                 .ToDictionary(Function(l) l.CADLayer,
+                                               Function(l) ResolveDirectiveColor(l)))
+
+                _drawables = _cadEntities.Select(Function(c) DxfImport.ConvertCadToDrawable(c, _layerResolver)).ToList()
+
+                ' DEBUG: Count drawables
+                Dim lineCount As Integer =
+                _drawables.Where(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Line).Count()
+
+                Dim arcCount As Integer =
+                _drawables.Where(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc).Count()
+
+                Dim circleCount As Integer =
+                _drawables.Where(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle).Count()
+
+                Debug.WriteLine(
+                $"DRAWABLES → Lines={lineCount}, Arcs={arcCount}, Circles={circleCount}")
+
+
+                ' Group by layer to create profiles
+                Dim profiles As New List(Of CamProfile)()
+
+                For Each layerGroup In _cadEntities.GroupBy(Function(c)
+                                                                ' If the entity's layer exists in the setup, use it
+                                                                If SelectedLayerSetup.Layers.Any(Function(l) l.CADLayer.Equals(c.LayerName, StringComparison.OrdinalIgnoreCase)) Then
+                                                                    Return c.LayerName
+                                                                    ' Otherwise, check if "*default*" exists
+                                                                ElseIf SelectedLayerSetup.Layers.Any(Function(l) l.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase)) Then
+                                                                    Return "*default*"
+                                                                Else
+                                                                    ' Otherwise, ignore this entity
+                                                                    Return Nothing
+                                                                End If
+                                                            End Function)
+
+                    Dim key = layerGroup.Key
+                    If key Is Nothing Then Continue For
+
+                    Dim profile As New CamProfile() With {
+                    .LayerName = key,
+                    .Direction = WindingDirectionEnum.Auto,
+                    .Entities = layerGroup.ToList()
+                }
+
+                    profile.ComputeBoundingBox()
+                    profile.ComputeTotalLength()
+                    profiles.Add(profile)
+                Next
+
+                Return profiles
+            End Using
+        End Using
+    End Function
+
+
+
+
+
+
+
+
 
 
 
@@ -95,90 +185,43 @@ Public Module modFile
 
     'End Function
 
-    Public Function FileOpen() As List(Of Polyline2D)
-        Using dlg As New DXFFileSelectionDialog()
-            If dlg.ShowDialog() <> DialogResult.OK Then Exit Function
-            Dim selectedPath As String = dlg.SelectedDxfPath
+    'Using dlg As New DXFFileSelectionDialog()
+    '    If dlg.ShowDialog() <> DialogResult.OK Then Return Nothing
 
-            Using frm As New frmOpenProject(selectedPath)
-                If frm.ShowDialog() <> DialogResult.OK Then Exit Function
+    '    Dim selectedPath As String = dlg.SelectedDxfPath
 
-                RunTest()
+    '    ' Show Import Dialog to gather context
+    '    Using frm As New frmOpenProject(selectedPath)
+    '        If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
 
-                '        ' Parse DXF into CadEntities
-                '        CurrentDXFEntities = ParseDXFToCadEntities(selectedPath)
-                '        _cadEntities = CurrentDXFEntities
+    '        Dim entities As List(Of ModelEntity) = importer.Import(selectedPath)
 
-                '        ' Optional: setup layer colors
-                '        Dim layerColorDict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
-                '        For Each layer In _selectedLayerSetup.Layers
-                '            layerColorDict(layer.CADLayer) = layer.DisplayColor
-                '        Next
-                '        Dim resolver As New LayerColorResolver(layerColorDict)
 
-                '        ' Populate drawables (if needed)
-                '        PopulateDrawables(_cadEntities, _selectedLayerSetup)
+    'CurrentDXFEntities = ParseDXFToCadEntities(selectedPath)
 
-                '        '-----------------------------
-                '        ' 2) Convert circles to Polyline2D
-                '        '-----------------------------
-                '        Dim circlePolylines As New List(Of (Profile As Polyline2D, LayerName As String))
+    'Dim layerColorDict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
 
-                '        For Each cad In _cadEntities
-                '            If cad.CadEntityType = CadEntity.EntityType.Circle Then
-                '                Dim cx = CSng(cad.CircleCenter.X)
-                '                Dim cy = CSng(cad.CircleCenter.Y)
-                '                Dim r = CSng(cad.CircleRadius)
+    'For Each layer In _selectedLayerSetup.Layers
+    '    layerColorDict(layer.CADLayer) = layer.DisplayColor
+    'Next
 
-                '                Dim points As New List(Of PointF)
-                '                Dim steps = 64 ' higher accuracy
-                '                For i = 0 To steps - 1
-                '                    Dim theta = 2 * Math.PI * i / steps
-                '                    Dim x = cx + r * Math.Cos(theta)
-                '                    Dim y = cy + r * Math.Sin(theta)
-                '                    points.Add(New PointF(x, y))
-                '                Next
+    'Dim resolver As New LayerColorResolver(layerColorDict)
 
-                '                Dim pl As New Polyline2D(points)
-                '                circlePolylines.Add((Profile:=pl, LayerName:=cad.LayerName))
-                '            End If
-                '        Next
+    'Dim drawables As New List(Of DxfDrawable)
 
-                '        '-----------------------------
-                '        ' 3) Prepare ToolSetup instance
-                '        '-----------------------------
-                '        Dim toolSetup As ToolSetup = _selectedToolSetup ' ensure this is assigned
+    '_cadEntities = CurrentDXFEntities
 
-                '        '-----------------------------
-                '        ' 4) Run AutoPunch on all circles
-                '        '-----------------------------
-                '        For Each cp In circlePolylines
-                '            ' Find directive for this layer
-                '            Dim dir As AppData.Directive = _selectedLayerSetup.FindRuleByLayer(cp.LayerName)
-                '            If dir Is Nothing Then Continue For
-                '            If dir.Station = StationMode.None Then Continue For
+    'PopulateDrawables(_cadEntities, _selectedLayerSetup)
 
-                '            ' Convert directive → LayerPunchRule
-                '            'Dim rule As LayerPunchRule = ConvertDirectiveToLayerPunchRule(dir)
+    ''For Each cad In CurrentDXFEntities
+    ''    drawables.Add(ConvertCadToDrawable(cad, resolver))
+    ''Next
 
-                '            ' Create working profile
-                '            Dim workingProfile = CreateWorkingProfile(cp.Profile, rule, "Demo") ' role = "Demo"
+    'End Using
+    'End Using
 
-                '            ' Run AutoPunch
-                '            Dim punchResult = AutoPunch(workingProfile, toolSetup, rule)
 
-                '            ' Inspect result
-                '            Console.WriteLine($"Circle Layer: {cp.LayerName}, PunchResult: {punchResult.ResultType}")
-                '            If punchResult.ToolIDs.Any() Then
-                '                Console.WriteLine($"Tools Applied: {String.Join(",", punchResult.ToolIDs)}")
-                '            End If
-                '        Next
 
-                '        Console.WriteLine("Circle AutoPunch test completed.")
-            End Using
-        End Using
-
-    End Function
 
     '' ==========================
     '' 1) Helper: Convert Directive -> LayerPunchRule
@@ -252,118 +295,6 @@ Public Module modFile
         ' For explicit CutDirection
         Return If(cutDir = AutoPunchingEngine.CutDirection.CW, AutoPunchingEngine.WindingDirection.CW, AutoPunchingEngine.WindingDirection.CCW)
     End Function
-
-    Public Function GetPolylinesFromCadEntities(entities As List(Of CadEntity)) As List(Of Polyline2D)
-        Dim polylines As New List(Of Polyline2D)
-
-        For Each cad In entities
-            Select Case cad.CadEntityType
-                Case CadEntity.EntityType.Circle
-                    Dim cx = CSng(cad.CircleCenter.X)
-                    Dim cy = CSng(cad.CircleCenter.Y)
-                    Dim r = CSng(cad.CircleRadius)
-
-                    ' Approximate circle as N-point polygon
-                    Dim points As New List(Of PointF)
-                    Dim steps = 32  ' can increase for smoother circle
-                    For i = 0 To steps - 1
-                        Dim theta = 2 * Math.PI * i / steps
-                        Dim x = cx + r * Math.Cos(theta)
-                        Dim y = cy + r * Math.Sin(theta)
-                        points.Add(New PointF(x, y))
-                    Next
-
-                    Dim pl As New Polyline2D(points)
-                    pl.LayerName = cad.LayerName
-                    polylines.Add(pl)
-
-                Case Else
-                    ' For now ignore lines/arcs
-            End Select
-        Next
-
-        Return polylines
-    End Function
-
-    'Private Function PolylineFromCadEntity(entity As CadEntity) As Polyline2D
-    '    ' Only convert closed polylines
-    '    If Not entity.CadEntityType = EntityType.Polyline Then
-    '        Return Nothing
-    '    End If
-
-    '    ' Check if entity is closed
-    '    'If Not entity.IsPolylineClosed() Then Return Nothing
-
-    '    ' Convert DXF points to PointF
-    '    Dim pts As New List(Of PointF)
-    '    For Each p In entity.GetPolylinePoints()
-    '        pts.Add(New PointF(p.X, p.Y))
-    '    Next
-
-    '    Return New Polyline2D(pts)
-    'End Function
-
-
-
-    ''' <summary>
-    ''' Converts a list of CadEntity into DxfDrawable for drawing on panel.
-    ''' </summary>
-    Public Sub PopulateDrawables(cadEntities As List(Of CadEntity), layerSetup As AppData.LayerSetup)
-        _drawables = New List(Of DxfDrawable)
-
-        For Each cad In cadEntities
-            Dim d As New DxfDrawable()
-
-            ' Resolve color from LayerSetup / directive
-            Dim layerDirective As AppData.Directive =
-            layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer.Equals(cad.LayerName, StringComparison.OrdinalIgnoreCase))
-            If layerDirective Is Nothing Then
-                layerDirective = layerSetup.Layers.FirstOrDefault(Function(l) l.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase))
-            End If
-            d.Color = If(layerDirective IsNot Nothing, ResolveDirectiveColor(layerDirective), System.Drawing.Color.Black)
-
-            ' Populate geometry
-            Select Case cad.CadEntityType
-                Case CadEntity.EntityType.Line
-                    d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
-                    d.StartPoint = New PointF(CSng(cad.StartPoint.X), CSng(cad.StartPoint.Y))
-                    d.EndPoint = New PointF(CSng(cad.EndPoint.X), CSng(cad.EndPoint.Y))
-
-                Case CadEntity.EntityType.Circle
-                    d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
-                    d.Center = New PointF(CSng(cad.CircleCenter.X), CSng(cad.CircleCenter.Y))
-                    d.Radius = CSng(cad.CircleRadius)
-
-
-                Case CadEntity.EntityType.Arc
-
-                    Dim arc = TryCast(cad.DxfEntity, IxMilia.Dxf.Entities.DxfArc)
-                    If arc Is Nothing Then Exit Select
-
-                    d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
-
-                    ' Center MUST come from DxfArc, not CadEntity
-                    d.Center = New PointF(CSng(arc.Center.X), CSng(arc.Center.Y))
-
-                    d.Radius = CSng(arc.Radius)
-
-                    ' Angles ONLY exist here
-                    d.StartAngle = CSng(arc.StartAngle)
-                    d.EndAngle = CSng(arc.EndAngle)
-
-                    ' Optional but useful
-                    d.IsClockwise = cad.ArcIsClockwise
-
-                Case Else
-                    Continue For
-            End Select
-
-            _drawables.Add(d)
-        Next
-    End Sub
-
-
-
 
 
     Public Function BuildLayerColorMap(

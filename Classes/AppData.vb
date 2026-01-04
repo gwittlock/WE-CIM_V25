@@ -398,7 +398,7 @@ Public Class AppData
     End Class
 
     ' LayerSetup class for WE-CIM v25
-    Public Class LayerSetup
+    Public Class layersetup
         ' Unique identifier for the LayerSetup
         Public Property ID As Integer
         Public Property Description As String

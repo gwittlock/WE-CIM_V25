@@ -68,6 +68,9 @@ Public Class frmOpenProject
 
     ' Material picker control
     Private matPicker As MaterialPickerTree
+    Dim importer As IDxfImporter = New DxfImporter_IxMilia()
+
+
 
     ' ----------------------------
     ' Constructor
