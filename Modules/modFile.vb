@@ -20,19 +20,148 @@ Imports FabV25_WIN8.CamEntity
 Imports System.Runtime.CompilerServices
 Imports FabV25_WIN8.AutoPunchingEngine
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
+Imports FabV25_WIN8.LayerDefinition
+Imports FabV25_WIN8.MachineDefinition
+Imports FabV25_WIN8.MaterialWrapper.Material
+Imports FabV25_WIN8.WorkZoneFactory
+Imports FabV25_WIN8.MachineEnvelope
 
 Public Module modFile
 
     ' Holds the currently selected LayerSetup object
-    Public _selectedLayerSetup As LayerSetup
+    Public _selectedLayerSetup As layersetup
     Public _selectedToolSetup As ToolSetup
+    Public _selectedMachine As Machine
+    Public _selectedMaterial As MaterialSheet
     Private m_FileName As String
+    Public CurrentJob As JobContext
     Public _importedEntities As List(Of ImportedEntity)
     Public _drawables As List(Of DxfDrawable)
     ' Store all loaded CAD entities
     Public _cadEntities As List(Of CadEntity)
     ' Optional: layer color resolver
-    Public _layerResolver As DxfImport.LayerColorResolver
+    Public _layerResolver As LayerColorResolver
+    Public CurrentWorkZoneFactory As WorkZoneFactory
+
+
+    Public Sub PrePareUI(sFilename As String, ByVal picModelerHandle As IntPtr)
+        Dim numericWidth As Double
+        Dim numericLength As Double
+
+        ' NOTE:
+        ' All geometry values are expressed in machine units.
+        ' The system is unit-agnostic: inches vs metric is metadata only.
+        ' No implicit unit conversions are performed anywhere in geometry or rendering.
+
+        'When preparing the UI several things must happen before importing a file.
+        'this sub does eactly wha it says.
+        ''1) It prepares th UI to the corrodinate system
+        '2) sets up transforms to display geometry correctly
+        '3) get Machine Data in order to draw workzones and clamps
+        '4) Get material data in order to draw the material.
+        '5) Determines the Filetype in order to fire off the correct open state
+        '   a)  a MM3 (Our file format, maybe jsut a renamed DXF)
+        '   b) a NST file a dxf file renamed. (again or format for a nested sheet of parts
+        '   c) a PDB file (Parts Database for nesting
+        '   d) a CTG File a dxf file renamed. (Again our format for a "Custom Tool Graphic"
+        '   e) a CLAMP.CTG  a dxf file renamed. The is a Custom Drawn file used to Display Clamps on the screen
+        '   f) a TABLE.CTG a dxf file renamed. (A Custom Drawn file which represent things such as slats or stops on the table)
+        '   g) a DXF file. The original dxf used to create CAM data files
+
+
+        'Each CAM file must include:
+        '    Machinetype
+        '   Machine
+        '   Tool Setup
+        '   Material
+        '   optional Layer Setup
+
+        'The first thing we prepare is the material. Ideally this comes from the MaterialInvemtory.json file
+        'Give the selected materiaid we can get the width, length, thicknes, and type of material.
+        'This is enough information to draw the material. Material is just a representaion of the
+        'material. It is not selectable. to get these values we do the following
+
+        Dim matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+        Dim matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+
+        If matWidth > 0 Then
+            numericWidth = Convert.ToDouble(matWidth)
+            ' Perform logic with numericWidth
+        End If
+
+        If matLength > 0 Then
+            numericLength = Convert.ToDouble(matLength)
+            ' Perform logic with numericWidth
+        End If
+
+
+        DrawMaterial(MaterialSheets, picModelerHandle, numericWidth, numericLength, X, Y)
+
+
+
+        '' ---- Resolve machine from configuration ----
+        Dim machineDef As MachineDefinition = MachineLoader.LoadMachineDefinition(SelectedMachineID)
+
+        _machineDef = machineDef
+
+        CurrentWorkZoneFactory = New WorkZoneFactory(_machineDef.Max_Travel_Limit_X, matLength, matWidth)
+
+        If machineDef Is Nothing Then
+            Throw New Exception($"Machine with ID {SelectedMachineID} not found.")
+        End If
+
+        ' ---- Assign to current job ----
+        CurrentJob = New JobContext()
+        CurrentJob.MachineDefinition = machineDef
+
+        '---- Generate workzones from machine definition ----
+
+        Dim wz = CurrentWorkZoneFactory.WorkZones(0)
+        ' Create / update job context
+
+        CurrentJob.ToolSetupID = SelectedToolSetupID
+        CurrentJob.MaterialID = SelectedMaterialID
+        CurrentJob.LayerSetupID = SelectedLayerSetupID
+
+        'machineDef.SelectedToolSetupID = SelectedToolSetupID
+        'machineDef.SelectedLayerSetupID = SelectedLayerSetupID
+        'machineDef.SelectedMaterialID = SelectedMaterialID
+
+
+
+        Dim wzFactory As New WorkZoneFactory(_machineDef.Max_Travel_Limit_X, matLength, matWidth)
+
+
+
+        Using pen As New Pen(System.Drawing.Color.DarkGray, 1)
+            pen.DashStyle = Drawing2D.DashStyle.Dash
+
+
+            For Each wz In CurrentWorkZoneFactory.WorkZones
+                Dim envelopes = New List(Of WorkZone) From {wz}
+                For Each env In envelopes
+
+                    ' World corners
+                    Dim bl = WorldToScreen(env.XMin, env.YMin, myTransform, panelHeight)
+                    Dim tr = WorldToScreen(env.XMax, env.YMax, myTransform, panelHeight)
+
+                    ' Normalize rectangle (important!)
+                    Dim x As Single = Math.Min(bl.X, tr.X)
+                    Dim y As Single = Math.Min(bl.Y, tr.Y)
+                    Dim w As Single = Math.Abs(tr.X - bl.X)
+                    Dim h As Single = Math.Abs(tr.Y - bl.Y)
+
+                    If w > 0 AndAlso h > 0 Then
+                        Using g As Graphics = Graphics.FromHwnd(picModelerHandle)
+                            g.DrawRectangle(pen, x, y, w, h)
+                        End Using
+                    End If
+
+                Next
+            Next
+        End Using
+
+    End Sub
 
     Public Function FileOpen() As List(Of CamProfile)
         Dim importer As New DxfImporter_IxMilia()
@@ -44,73 +173,91 @@ Public Module modFile
             Using frm As New frmOpenProject(selectedPath)
                 If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
 
+                PrePareUI(selectedPath, frmMain._pnlPicModelerHandle)
                 ' Import DXF as ModelEntities
-                Dim modelEntities As List(Of ModelEntity) = importer.Import(selectedPath)
-                If modelEntities Is Nothing OrElse modelEntities.Count = 0 Then
-                    Return New List(Of CamProfile)()
-                End If
+                'Dim modelEntities As List(Of ModelEntity) = importer.Import(selectedPath)
+                'If modelEntities Is Nothing OrElse modelEntities.Count = 0 Then
+                '    Return New List(Of CamProfile)()
+                'End If
 
-                ' Convert to CadEntity
-                _cadEntities = New List(Of CadEntity)
-                For Each m In modelEntities
-                    _cadEntities.AddRange(CadEntity.CadEntitiesFromModelEntityIxMilia(m))
-                Next
+                '' Convert ModelEntities → CadEntities
+                '_cadEntities = New List(Of CadEntity)
+                'For Each m In modelEntities
+                '    _cadEntities.AddRange(CadEntity.CadEntitiesFromModelEntityIxMilia(m))
+                'Next
 
-                ' Prepare drawables with layer colors
-                _layerResolver = New DxfImport.LayerColorResolver(SelectedLayerSetup.Layers _
-                                 .ToDictionary(Function(l) l.CADLayer,
-                                               Function(l) ResolveDirectiveColor(l)))
-
-                _drawables = _cadEntities.Select(Function(c) DxfImport.ConvertCadToDrawable(c, _layerResolver)).ToList()
-
-                ' DEBUG: Count drawables
-                Dim lineCount As Integer =
-                _drawables.Where(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Line).Count()
-
-                Dim arcCount As Integer =
-                _drawables.Where(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc).Count()
-
-                Dim circleCount As Integer =
-                _drawables.Where(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle).Count()
-
-                Debug.WriteLine(
-                $"DRAWABLES → Lines={lineCount}, Arcs={arcCount}, Circles={circleCount}")
+                '' Convert CadEntities → ImportedEntities (intent + geometry)
+                '' Convert CadEntities → ImportedEntities
+                'Dim importedEntities As New List(Of DxfGeometryHelpers.ImportedEntity)
 
 
-                ' Group by layer to create profiles
-                Dim profiles As New List(Of CamProfile)()
 
-                For Each layerGroup In _cadEntities.GroupBy(Function(c)
-                                                                ' If the entity's layer exists in the setup, use it
-                                                                If SelectedLayerSetup.Layers.Any(Function(l) l.CADLayer.Equals(c.LayerName, StringComparison.OrdinalIgnoreCase)) Then
-                                                                    Return c.LayerName
-                                                                    ' Otherwise, check if "*default*" exists
-                                                                ElseIf SelectedLayerSetup.Layers.Any(Function(l) l.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase)) Then
-                                                                    Return "*default*"
-                                                                Else
-                                                                    ' Otherwise, ignore this entity
-                                                                    Return Nothing
-                                                                End If
-                                                            End Function)
+                'For Each cad In _cadEntities
+                '    importedEntities.Add(ConvertCadToImportedEntity(cad))
+                'Next
 
-                    Dim key = layerGroup.Key
-                    If key Is Nothing Then Continue For
+                'For Each imp In importedEntities
+                '    Debug.WriteLine($"Layer={imp.CAMLayer}, Mode={imp.ColorMode}, ExplicitColor={imp.ExplicitColor}")
+                'Next
+                '' Initialize resolver using full LayerSetup (no ToDictionary)
+                '_layerResolver = New LayerColorResolver(SelectedLayerSetup)
 
-                    Dim profile As New CamProfile() With {
-                    .LayerName = key,
-                    .Direction = WindingDirectionEnum.Auto,
-                    .Entities = layerGroup.ToList()
-                }
+                '' Convert ImportedEntities → Drawables
+                '_drawables = importedEntities _
+                '    .Select(Function(imp) ConvertImportedToDrawable(imp, _layerResolver)) _
+                '    .Where(Function(d) d IsNot Nothing) _
+                '    .ToList()
 
-                    profile.ComputeBoundingBox()
-                    profile.ComputeTotalLength()
-                    profiles.Add(profile)
-                Next
+                '' DEBUG: Count drawables
+                '' Dim lineCount = _drawables.Count(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Line)
+                '' Dim arcCount = _drawables.Count(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc)
+                '' Dim circleCount = _drawables.Count(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle)
 
-                Return profiles
+                '' Debug.WriteLine($"DRAWABLES → Lines={lineCount}, Arcs={arcCount}, Circles={circleCount}")
+
+                '' Group CadEntities by layer to create CamProfiles
+                'Dim profiles As New List(Of CamProfile)()
+
+                'For Each layerGroup In _cadEntities.GroupBy(Function(c)
+                '                                                ' Use the entity's layer if it exists in setup
+                '                                                If SelectedLayerSetup.Layers.Any(Function(l) l.CADLayer.Equals(c.LayerName, StringComparison.OrdinalIgnoreCase)) Then
+                '                                                    Return c.LayerName
+                '                                                    ' Otherwise, check for "*default*"
+                '                                                ElseIf SelectedLayerSetup.Layers.Any(Function(l) l.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase)) Then
+                '                                                    Return "*default*"
+                '                                                Else
+                '                                                    ' Otherwise, ignore this entity
+                '                                                    Return Nothing
+                '                                                End If
+                '                                            End Function)
+
+                '    Dim key = layerGroup.Key
+                '    If key Is Nothing Then Continue For
+
+                '    Dim profile As New CamProfile() With {
+                '    .LayerName = key,
+                '    .Direction = WindingDirectionEnum.Auto,
+                '    .Entities = layerGroup.ToList()
+                '}
+
+                '    profile.ComputeBoundingBox()
+                '    profile.ComputeTotalLength()
+                '    profiles.Add(profile)
+                'Next
+
+                'Return profiles
             End Using
         End Using
     End Function
+
+    Public Sub ActivateWorkZone(index As Integer)
+        For Each wz In CurrentWorkZoneFactory.WorkZones
+            wz.IsActive = False
+        Next
+        CurrentWorkZoneFactory.WorkZones(index).IsActive = True
+    End Sub
+
+
 
 
 
@@ -298,7 +445,7 @@ Public Module modFile
 
 
     Public Function BuildLayerColorMap(
-    layerSetup As AppData.LayerSetup
+    layerSetup As AppData.layersetup
 ) As Dictionary(Of String, Color)
 
         Dim dict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
@@ -506,7 +653,7 @@ Public Module modFile
 
 
 
-    Private Function MatchDirective(entity As DxfEntity, layerSetup As AppData.LayerSetup) As Directive
+    Private Function MatchDirective(entity As DxfEntity, layerSetup As AppData.layersetup) As Directive
 
         ' IMPORTANT:
         ' Directives are evaluated in the order they appear in LayerSetups.json
@@ -672,7 +819,7 @@ Public Module modFile
 
 
 
-    Public ReadOnly Property SelectedLayerSetup As AppData.LayerSetup
+    Public ReadOnly Property SelectedLayerSetup As AppData.layersetup
         Get
             Return _selectedLayerSetup
         End Get

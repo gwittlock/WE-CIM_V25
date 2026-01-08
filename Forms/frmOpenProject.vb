@@ -4,9 +4,14 @@ Imports DevExpress.XtraTreeList
 Imports DevExpress.XtraTreeList.Nodes
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.State
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
+Imports FabV25_WIN8.Material
 Imports FabV25_WIN8.AppData
 Imports System.IO
 Imports IxMilia.Dxf
+Imports FabV25_WIN8.MateriaWrapper
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Helpers
+Imports FabV25_WIN8.MaterialWrapper
+Imports FabV25_WIN8.MachineDefinition
 
 '========================================================
 ' frmOpenProject.vb
@@ -32,20 +37,16 @@ Public Class frmOpenProject
     Private _selectedDxfPath As String
 
     Private _machines As List(Of Machine)
-    Private _toolSetups As List(Of ToolSetUp)
-    Private _layerSetups As List(Of LayerSetup)
+    Private _toolSetups As List(Of ToolSetup)
+    Private _layerSetups As List(Of layersetup)
     Private _materialTypes As List(Of MaterialType)
     Private _materialSheets As List(Of MaterialSheet)
 
-    ' Selected items
-    Public SelectedMachineID As Integer
-    Public SelectedToolSetupID As Integer
-    Public SelectedLayerSetupID As Integer
-    Public SelectedMaterialID As Integer
+
     Public CustomerName As String
     Public OrderPO As String
     Public DueDate As DateTime
-
+    Public _material As Material
 
     Private sMyToolSetup As String
     Private sMyLayerSetup As String
@@ -197,6 +198,7 @@ Public Class frmOpenProject
 
         SelectedMachineID = selectedItem.ItemData
 
+
         ' Filter ToolSetup ComboBox for this machine
         cboToolSetup.Properties.Items.Clear()
         cboToolSetup.Properties.Items.Add(New myItemData("None", 0))
@@ -206,8 +208,9 @@ Public Class frmOpenProject
             cboToolSetup.Properties.Items.Add(New myItemData(ts.Description, ts.ID))
         Next
 
-        cboToolSetup.SelectedIndex = 0
+        '_selectedMachine = Machines.FirstOrDefault(Function(ms) ms.ID = SelectedMachineID)
 
+        cboToolSetup.SelectedIndex = 0
 
         ' Reload Layer Setups filtered by machine
         LoadLayerSetupsForMachine(SelectedMachineID)
@@ -277,15 +280,18 @@ Public Class frmOpenProject
         OrderPO = txtOrderPO.Text
         DueDate = dtDueDate.EditValue
         Dim selectedMaterialID As Integer = MatListTree1.SelectedMaterialID
+        _SelectedMaterialID = selectedMaterialID
+        _selectedMaterial = MatListTree1.SelectedMaterial
 
-        RegPutString("Global", "Machine", cboMachine.Text )
+        RegPutString("Global", "Machine", cboMachine.Text)
         RegPutString("Global", "MachineID", CStr(SelectedMachineID))
         RegPutString("Global", "ToolSetup", cboToolSetup.Text)
         RegPutString("Global", "ToolSetupID", CStr(SelectedToolSetupID))
-        RegPutString("Global", "Material", cboMaterial.Text)
+        RegPutString("Global", "Material", MatListTree1.SelectedMaterial.Description)
         RegPutString("Global", "MaterialID", CStr(selectedMaterialID))
         RegPutString("Global", "LayerSetup", cboLayerSetup.Text)
         RegPutString("Global", "LayerSetupID", CStr(SelectedLayerSetupID))
+
 
         ' Close dialog
         Me.DialogResult = DialogResult.OK
@@ -312,9 +318,9 @@ Public Class frmOpenProject
 
                 materialID = (sPieces(1))
 
-                tebMaterialLength.Text = modMaterial.GetMaterialLength(materialID)
-                tebMaterialWidth.Text = modMaterial.GetMaterialWidth(materialID)
-                tebMaterialThickness.Text = modMaterial.GetMaterialThickness(materialID)
+                tebMaterialLength.Text = modMaterial.GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+                tebMaterialWidth.Text = modMaterial.GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+                tebMaterialThickness.Text = modMaterial.GetMaterialThickness(MaterialSheets, _SelectedMaterialID)
             End If
 
         Catch ex As Exception
@@ -352,7 +358,6 @@ Public Class frmOpenProject
 
         cboLayerSetup.Text = RegGetString("Global", "LayerSetup", "")
     End Sub
-
 
 End Class
 

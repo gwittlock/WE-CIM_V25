@@ -1,6 +1,8 @@
 ﻿Imports System.Data.OleDb
+Imports FabV25_WIN8.AppData
 
 Module modMaterial
+    Public myTransform As ViewTransform
     Public Function CheckMaterialWeight(ByRef materialID As Integer) As Double
         'Dim ds As New DataSet
         'Dim connection As OleDbConnection
@@ -52,102 +54,37 @@ Module modMaterial
 
     End Function
 
-    Public Function GetMaterialLength(ByVal lMaterialID As Long) As Double
-        'Dim sql As String
-        'Dim ds As New DataSet
-        'Dim connection As OleDbConnection
-        'Dim oledbAdapter As OleDbDataAdapter
-        'Dim connetionString As String
-        'Dim i As Integer
 
-        'connetionString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source='" & PathCMDB() & "';"
+    Public Function GetMaterialLength(sheets As List(Of MaterialSheet), ByVal targetSheetId As Long) As Double
 
-        'sql = "SELECT * FROM [Material Inventory] WHERE [ID] = " & lMaterialID
+        ' Use LINQ to find the sheet by ID, then find the parameter named "Width"
+        Dim sheet = sheets.FirstOrDefault(Function(s) s.ID = targetSheetId)
 
-        'connection = New OleDbConnection(connetionString)
+        If sheet IsNot Nothing Then
+            Dim widthParam = sheet.Values.FirstOrDefault(Function(p) p.Name.Equals("Length", StringComparison.OrdinalIgnoreCase))
 
-        'Try
-        '    connection.Open()
+            If widthParam IsNot Nothing Then
+                Return widthParam.Value
+            End If
+        End If
 
-        '    oledbAdapter = New OleDbDataAdapter(sql, connection)
-
-        '    oledbAdapter.Fill(ds)
-
-        '    oledbAdapter.Dispose()
-
-        '    connection.Close()
-
-        '    For i = 0 To ds.Tables(0).Rows.Count - 1
-
-        '        GetMaterialLength = ds.Tables(0).Rows(i).Item("Length")
-
-        '    Next
-
-        '    ds.Dispose()
-
-        '    If ds IsNot Nothing Then ds = Nothing
-
-        '    If oledbAdapter IsNot Nothing Then oledbAdapter = Nothing
-
-        '    If connection IsNot Nothing Then connection = Nothing
-
-        'Catch ex As Exception
-
-        '    MessageBox.Show("Can not open connection ! ")
-
-        'End Try
-
-        'Return GetMaterialLength
-
+        Return Nothing
     End Function
 
-    Public Function GetMaterialThickness(ByVal lMaterialID As Long) As Double
-        'Dim sql As String
-        'Dim ds As New DataSet
-        'Dim connection As OleDbConnection
-        'Dim oledbAdapter As OleDbDataAdapter
-        'Dim connetionString As String
-        'Dim i As Integer
+    Public Function GetMaterialThickness(sheets As List(Of MaterialSheet), ByVal targetSheetId As Long) As Double
 
-        'connetionString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source='" & PathCMDB() & "';"
+        ' Use LINQ to find the sheet by ID, then find the parameter named "Width"
+        Dim sheet = sheets.FirstOrDefault(Function(s) s.ID = targetSheetId)
 
-        'sql = "SELECT * FROM [Material Inventory] WHERE [ID] = " & lMaterialID
+        If sheet IsNot Nothing Then
+            Dim widthParam = sheet.Values.FirstOrDefault(Function(p) p.Name.Equals("Thickness", StringComparison.OrdinalIgnoreCase))
 
-        'connection = New OleDbConnection(connetionString)
+            If widthParam IsNot Nothing Then
+                Return widthParam.Value
+            End If
+        End If
 
-        'Try
-        '    connection.Open()
-
-        '    oledbAdapter = New OleDbDataAdapter(sql, connection)
-
-        '    oledbAdapter.Fill(ds)
-
-        '    oledbAdapter.Dispose()
-
-        '    connection.Close()
-
-        '    For i = 0 To ds.Tables(0).Rows.Count - 1
-
-        '        GetMaterialThickness = ds.Tables(0).Rows(i).Item("Thickness")
-
-        '    Next
-
-        '    ds.Dispose()
-
-        '    If ds IsNot Nothing Then ds = Nothing
-
-        '    If oledbAdapter IsNot Nothing Then oledbAdapter = Nothing
-
-        '    If connection IsNot Nothing Then connection = Nothing
-
-        'Catch ex As Exception
-
-        '    MessageBox.Show("Can not open connection ! ")
-
-        'End Try
-
-        'Return GetMaterialThickness
-
+        Return Nothing
     End Function
     Public Function GetMaterialCost(ByVal lMaterialID As Long) As Double
         'Dim sql As String
@@ -346,55 +283,121 @@ Module modMaterial
     End Function
 
 
-    Public Function GetMaterialWidth(ByVal lMaterialID As Long) As Double
+    Public Function GetMaterialWidth(sheets As List(Of MaterialSheet), ByVal targetSheetId As Long) As Double
 
-        'Dim sql As String
-        'Dim ds As New DataSet
-        'Dim connection As OleDbConnection
-        'Dim oledbAdapter As OleDbDataAdapter
-        'Dim connetionString As String
-        'Dim i As Integer
+        ' Use LINQ to find the sheet by ID, then find the parameter named "Width"
+        Dim sheet = sheets.FirstOrDefault(Function(s) s.ID = targetSheetId)
 
-        'connetionString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source='" & PathCMDB() & "';"
+        If sheet IsNot Nothing Then
+            Dim widthParam = sheet.Values.FirstOrDefault(Function(p) p.Name.Equals("Width", StringComparison.OrdinalIgnoreCase))
 
-        'sql = "SELECT * FROM [Material Inventory] WHERE [ID] = " & lMaterialID
+            If widthParam IsNot Nothing Then
+                Return widthParam.Value
+            End If
+        End If
 
-        'connection = New OleDbConnection(connetionString)
-
-        'Try
-        '    connection.Open()
-
-        '    oledbAdapter = New OleDbDataAdapter(sql, connection)
-
-        '    oledbAdapter.Fill(ds)
-
-        '    oledbAdapter.Dispose()
-
-        '    connection.Close()
-
-        '    For i = 0 To ds.Tables(0).Rows.Count - 1
-
-        '        GetMaterialWidth = ds.Tables(0).Rows(i).Item("Width")
-
-        '    Next
-
-        '    ds.Dispose()
-
-        '    If ds IsNot Nothing Then ds = Nothing
-
-        '    If oledbAdapter IsNot Nothing Then oledbAdapter = Nothing
-
-        '    If connection IsNot Nothing Then connection = Nothing
-
-        'Catch ex As Exception
-
-        '    MessageBox.Show("Can not open connection ! ")
-
-        'End Try
-
-        'Return GetMaterialWidth
-
+        Return Nothing
     End Function
+    Public Function WorldToScreen(x As Double,
+                               y As Double,
+                               vt As ViewTransform,
+                               panelHeight As Integer) As PointF
+
+        Dim sx As Single = CSng(x * vt.Scale + vt.OffsetX)
+        Dim sy As Single = CSng(panelHeight - (y * vt.Scale + vt.OffsetY))
+
+        Return New PointF(sx, sy)
+    End Function
+
+
+    Public Sub DrawMaterial(sheets As List(Of MaterialSheet), ByVal panelHandle As IntPtr, matWid As Double, matLength As Double, x As Integer, y As Integer)
+        Dim margin As Integer = 20
+
+
+
+        Dim scaleX As Double = (panelWidth - 2 * margin) / matLength
+        Dim scaleY As Double = (panelHeight - 2 * margin) / matWid
+        Dim scale As Double = Math.Min(scaleX, scaleY)
+
+        Dim offsetX As Double = (panelWidth - matLength * scale) / 2
+        Dim offsetY As Double = (panelHeight - matWid * scale) / 2
+
+        'myTransform = ViewTransform
+        myTransform = New ViewTransform With {
+        .Scale = scale,
+        .OffsetX = offsetX,
+        .OffsetY = offsetY
+    }
+
+        ' World-space corners
+        Dim bl As PointF = WorldToScreen(0, 0, myTransform, panelHeight)
+        Dim tr As PointF = WorldToScreen(matLength, matWid, myTransform, panelHeight)
+
+        ' Build rectangle safely
+        x = Math.Min(bl.X, tr.X)
+        y = Math.Min(bl.Y, tr.Y)
+        Dim w As Single = Math.Abs(tr.X - bl.X)
+        Dim h As Single = Math.Abs(tr.Y - bl.Y)
+        Debug.WriteLine($"ViewTransform Scale={myTransform.Scale}, ViewTransform OffsetX={myTransform.OffsetX} ViewTransform OffsetY = {myTransform.OffsetY} ")
+        Debug.WriteLine($"bl={bl}, tr={tr}")
+        Debug.WriteLine($"scaleX={scaleX}, scaleY={scaleY} scale = {scale} offsetX= {offsetX} offsetY={offsetX}")
+
+        Debug.WriteLine($"PanelWidth={panelWidth}, Height={panelHeight} MatWidth = {matWid} matLength= {matLength}")
+        Debug.WriteLine($"Material X={x}, Y={y} W = {w} H= {h}")
+
+        Dim rectF As New RectangleF(x, y, w, h)
+        Debug.WriteLine($"Screen rect W={rectF.Width}, H={rectF.Height}")
+
+        Using g As Graphics = Graphics.FromHwnd(panelHandle)
+            ' Example: Drawing a red rectangle
+            Using p As New Pen(Color.Red, 2)
+                g.DrawRectangle(p, Rectangle.Round(rectF))
+            End Using
+
+            '' Example: Drawing text
+            'Using f As New Font("Arial", 12)
+            '    g.DrawString("Drawn via Handle", f, Brushes.Blue, 15, 15)
+            'End Using
+        End Using
+
+
+
+        'Using Pen As New Pen(Color.CadetBlue, 1)
+        'g.DrawRectangle(pen, Rectangle.Round(rectF))
+        'End Using
+
+
+        ' Material dimensions in inches
+        'Dim materialWidth As Double = 96
+        'Dim materialHeight As Double = 48
+
+        '' Panel size
+        'Dim panelWidth As Integer = frmMain.pnlPicmodeler.Width
+        'Dim panelHeight As Integer = frmMain.pnlPicmodeler.Height
+
+        '' Compute scale to fit material inside panel with a margin
+        'Dim margin As Double = 20 ' pixels
+        'Dim scaleX As Double = (panelWidth - 2 * margin) / matLength
+        'Dim scaleY As Double = (panelHeight - 2 * margin) / matWid
+        'Dim scale As Double = Math.Min(scaleX, scaleY)
+
+        '' Compute offsets to center the material in the panel
+        'Dim offsetX As Double = (panelWidth - matLength * scale) / 2
+        'Dim offsetY As Double = (panelHeight - matWid * scale) / 2
+
+        '' Convert world (material) coordinates to screen
+        'Dim topLeft As New PointF(CSng(0 * scale + offsetX), CSng(panelHeight - (matWid * scale + offsetY)))
+        'Dim bottomRight As New PointF(CSng(matLength * scale + offsetX), CSng(panelHeight - (0 * scale + offsetY)))
+
+        '' Build rectangle
+        'Dim rectF As New RectangleF(topLeft.X, topLeft.Y, bottomRight.X - topLeft.X, bottomRight.Y - topLeft.Y)
+
+        ' Draw the material
+        ' Using pen As New Pen(Color.CadetBlue, 2)
+        'g.DrawRectangle(pen, rectF.X, rectF.Y, rectF.Width, rectF.Height)
+        'End Using
+
+    End Sub
     Public Function GetMatlTypeIDFromTypesDescription(sDescrip As String) As Long
         'Dim sql As String
         'Dim ds As New DataSet

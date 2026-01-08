@@ -3466,7 +3466,4 @@ Public Class ConfigurationManagerForm
         End If
     End Function
 
-    Private Sub TreeViewMachines_MouseUp(sender As Object, e As MouseEventArgs) Handles TreeViewMachines.MouseUp
-
-    End Sub
 End Class

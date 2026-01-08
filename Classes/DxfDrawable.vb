@@ -1,12 +1,17 @@
 ﻿Public Class DxfDrawable
 
     Public Property GeometryType As CadEntity.EntityType
+    ' Rectangle
+    Public Property Width As Single
+    Public Property Height As Single
 
     Public Enum DrawableTypeEnum
             Line
             Circle
-            Arc
-        End Enum
+        Arc
+        PolyLine
+        Rectangle
+    End Enum
 
     ' Type of entity
     Public DrawableType As DrawableTypeEnum

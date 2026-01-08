@@ -7,7 +7,7 @@ Namespace WE_ENG_V25_0.Core.State
     '    Public Shared Tools As List(Of Tool)
     '    Public Shared ToolTypes As List(Of ToolType)
     '    Public Shared ToolSetups As List(Of ToolSetup)
-    '    Public Shared Materials As List(Of Material)
+    ' Public Shared Materials As List(Of Material)
     '    Public Shared MachineAttributeTypes As List(Of MachineAttributeType)
     '    Public Shared UDPs As List(Of UDP)
     'End Class

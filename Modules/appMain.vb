@@ -5,6 +5,7 @@ Imports Newtonsoft.Json.Linq
 Imports System.ComponentModel
 Public Module appMain
 
+    Public _SelectedMaterialID As Integer
 
     ' Path to the Data folder
     Public dataFolder As String = Path.Combine(Application.StartupPath, "data")
@@ -270,6 +271,8 @@ Public Module appMain
     <TypeConverter(GetType(MaterialSheetTypeConverter))>
     Public Class MaterialSheet
         ' JSON-deserialized fields
+        Public Property X As Double
+        Public Property Y As Double
         Public Property ID As Integer
         Public Property TypeID As Integer
         Public Property Values As New List(Of MaterialParameter)
@@ -380,7 +383,7 @@ Public Module appMain
 
             ' Add all UDPs / Values
             For Each param In sheet.Values
-                props.Add(New MaterialParameterDescriptor(param))
+                'props.Add(New MaterialParameterDescriptor(param))
             Next
 
             Return New PropertyDescriptorCollection(props.ToArray())
@@ -492,7 +495,7 @@ Public Module appMain
         Public Property ID As Integer
         Public Property DataType As Integer        ' 0=String, 1=Integer, 7=Double, 8=Boolean, 9=Dropdown, 10=File, 11=Folder, 12=Color, etc.
         Public Property Display As String
-
+        Public Property Description As String
         ' For dropdowns only
         Public Property Options As List(Of String)
 

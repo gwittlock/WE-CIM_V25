@@ -11,6 +11,7 @@ Imports System.Drawing
 Imports System.Drawing.Design
 Imports System.Windows.Forms.Design
 
+
 Public Class AppData
 
     ' Folder where JSON files are stored
@@ -45,8 +46,18 @@ Public Class AppData
     Public Shared LayerSetups As List(Of LayerSetup)
     Public Shared Directives As List(Of Directive)
 
+    Public Shared panelWidth As Double
+    Public Shared panelHeight As Double
+
     Public Shared _selectedDxfPath As String = String.Empty
     Public _dxfPath As String = String.Empty
+
+    ' Selected items
+    'Public Shared SelectedMachineID As Integer
+    'Public Shared SelectedToolSetupID As Integer
+    'Public Shared SelectedLayerSetupID As Integer
+    'Public Shared SelectedMaterialID As Integer
+    'Public Shared SelectedMaterial As List(Of MaterialSheet)
 
     Public Enum CutSideEnum
         None = 0

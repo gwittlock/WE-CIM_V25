@@ -24,6 +24,8 @@ Imports FabV25_WIN8.AppData
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 Imports FabV25_WIN8.ImportedEntity
 Imports FabV25_WIN8.CadEntity
+
+Imports FabV25_WIN8.MateriaWrapper
 Imports Newtonsoft.Json
 Imports Formatting = Newtonsoft.Json.Formatting
 Imports System.Drawing
@@ -36,9 +38,13 @@ Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
 Imports System.Reflection
 Imports System.Text
+Imports FabV25_WIN8.MachineEnvelope
+Imports FabV25_WIN8.MaterialWrapper
 
 Public Class frmMain
     Inherits RibbonForm
+
+
     Dim currentScale As Double
     Dim minScale As Double
     Dim maxScale As Double
@@ -63,6 +69,9 @@ Public Class frmMain
 
     Private _inquireMode As Boolean = False
     Private _dxfImporter As IDxfImporter = New DxfImporter_IxMilia()
+    Public Shared _pnlPicModelerHandle As IntPtr
+
+    Public _SelectedMaterialID As Integer
 
 
 
@@ -214,7 +223,8 @@ Public Class frmMain
             ' 3. AppState is now ready
             '    No central combo boxes here
             '-----------------------------
-
+            panelWidth = pnlPicmodeler.Width
+            panelHeight = pnlPicmodeler.Height
 
             statusDate.Caption = "Date: " & Now.ToString("MMMM dd, yyyy")
             statusTime.Caption = "Time: " & Now.ToString("hh:mm tt")
@@ -233,6 +243,7 @@ Public Class frmMain
         ConfigurationManagerForm.Show(Me)
     End Sub
     Private Sub iOpen_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iOpen.ItemClick
+
         FileOpen()
 
 
@@ -251,12 +262,12 @@ Public Class frmMain
         '        Next
         '    Next
 
-        ' Refresh the drawing panel
-        pnlPicmodeler.Invalidate()
-        'End If
+        '' Refresh the drawing panel
+        'pnlPicmodeler.Invalidate()
+        ''End If
 
-        ' Ensure view is updated
-        ViewFull()
+        '' Ensure view is updated
+        'ViewFull()
     End Sub
 
 
@@ -494,62 +505,82 @@ Public Class frmMain
     Private Sub pnlPicModeler_Paint(sender As Object, e As PaintEventArgs) _
     Handles pnlPicmodeler.Paint
 
-        If _drawables Is Nothing OrElse _drawables.Count = 0 Then Exit Sub
+        _pnlPicModelerHandle = pnlPicmodeler.Handle
+        'Dim margin As Integer = 20
+        '' Compute scale to fit material inside panel with a margin
+        'Dim panelWidth = pnlPicmodeler.Width
+        'Dim panelHeight = pnlPicmodeler.Height
 
-        e.Graphics.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
-        Dim padding As Integer = 20
+        'Dim materialHeight = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+        'Dim materialWidth = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
 
-        ' Compute scale & offset for panel
-        Dim scale As Double, offsetX As Double, offsetY As Double
-        ComputePanelTransform(_cadEntities,
-                          pnlPicmodeler.Width,
-                          pnlPicmodeler.Height,
-                          padding,
-                          scale,
-                          offsetX,
-                          offsetY)
+
+        'Dim scaleX As Double = (panelWidth - 2 * margin) / materialWidth
+        'Dim scaleY As Double = (panelHeight - 2 * margin) / materialHeight
+        'Dim scale As Double = Math.Min(scaleX, scaleY)
+
+        '' Compute offsets to center the material in the panel
+        'Dim offsetX As Double = (panelWidth - materialWidth * scale) / 2
+        'Dim offsetY As Double = (panelHeight - materialHeight * scale) / 2
+
+
+
+        'If _drawables Is Nothing OrElse _drawables.Count = 0 Then Exit Sub
+
+        'e.Graphics.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+        'Dim padding As Integer = 20
+
+        '' Compute scale & offset for panel
+
+        'ComputePanelTransform(_cadEntities,
+        '                  pnlPicmodeler.Width,
+        '                  pnlPicmodeler.Height,
+        '                  padding,
+        '                  scale,
+        '                  offsetX,
+        '                  offsetY)
 
         ' Draw each entity
-        For Each d In _drawables
-            Using pen As New Pen(d.Color, 1)
-                Select Case d.DrawableType
-                    Case DxfDrawable.DrawableTypeEnum.Line
-                        Dim sp = TransformToPanel(d.StartPoint.X, d.StartPoint.Y, scale, offsetX, offsetY)
-                        Dim ep = TransformToPanel(d.EndPoint.X, d.EndPoint.Y, scale, offsetX, offsetY)
-                        e.Graphics.DrawLine(pen, sp, ep)
+        'For Each d In _drawables
+        '    Using pen As New Pen(d.Color, 1)
+        '        Select Case d.DrawableType
+        '            Case DxfDrawable.DrawableTypeEnum.Line
+        '                Dim sp = TransformToPanel(d.StartPoint.X, d.StartPoint.Y, myTransform.Scale, myTransform.OffsetX, myTransform.OffsetY)
+        '                Dim ep = TransformToPanel(d.EndPoint.X, d.EndPoint.Y, myTransform.Scale, myTransform.OffsetX, myTransform.OffsetY)
+        '                e.Graphics.DrawLine(pen, sp, ep)
 
-                    Case DxfDrawable.DrawableTypeEnum.Circle
-                        Dim center = TransformToPanel(d.Center.X, d.Center.Y, scale, offsetX, offsetY)
-                        Dim r As Single = CSng(d.Radius * scale)
-                        e.Graphics.DrawEllipse(pen, center.X - r, center.Y - r, 2 * r, 2 * r)
+        '            Case DxfDrawable.DrawableTypeEnum.Circle
+        '                Dim center = TransformToPanel(d.Center.X, d.Center.Y, myTransform.Scale, myTransform.OffsetX, myTransform.OffsetY)
+        '                Dim r As Single = CSng(d.Radius * myTransform.Scale)
+        '                e.Graphics.DrawEllipse(pen, center.X - r, center.Y - r, 2 * r, 2 * r)
 
-                    Case DxfDrawable.DrawableTypeEnum.Arc
+        '            Case DxfDrawable.DrawableTypeEnum.Arc
 
-                        Debug.Assert(d.EndAngle <> d.StartAngle, "Arc has zero sweep")
+        '                Debug.Assert(d.EndAngle <> d.StartAngle, "Arc has zero sweep")
 
-                        Dim center = TransformToPanel(d.Center.X, d.Center.Y, scale, offsetX, offsetY)
-                        Dim r As Single = CSng(d.Radius * scale)
+        '                Dim center = TransformToPanel(d.Center.X, d.Center.Y, myTransform.Scale, myTransform.OffsetX, myTransform.OffsetY)
+        '                Dim r As Single = CSng(d.Radius * myTransform.Scale)
 
-                        ' Start and end angles are in degrees
-                        Dim startDeg As Single = CSng(d.StartAngle)
-                        Dim endDeg As Single = CSng(d.EndAngle)
+        '                ' Start and end angles are in degrees
+        '                Dim startDeg As Single = CSng(d.StartAngle)
+        '                Dim endDeg As Single = CSng(d.EndAngle)
 
-                        ' Compute sweep
-                        Dim sweep As Single = endDeg - startDeg
-                        If sweep < 0 Then sweep += 360  ' ensure positive sweep
+        '                ' Compute sweep
+        '                Dim sweep As Single = endDeg - startDeg
+        '                If sweep < 0 Then sweep += 360  ' ensure positive sweep
 
-                        ' DrawArc expects clockwise sweep, negate to match CAD convention
-                        e.Graphics.DrawArc(New Pen(d.Color, 1),
-                        center.X - r, center.Y - r, 2 * r, 2 * r,
-                        -startDeg, -sweep)
+        '                ' DrawArc expects clockwise sweep, negate to match CAD convention
+        '                e.Graphics.DrawArc(New Pen(d.Color, 1),
+        '                center.X - r, center.Y - r, 2 * r, 2 * r,
+        '                -startDeg, -sweep)
 
-                        Debug.WriteLine($"Arc: Center=({d.Center.X},{d.Center.Y}) R={r} Start={startDeg} End={endDeg} Sweep = {sweep}")
+        '                Debug.WriteLine($"Arc: Center=({d.Center.X},{d.Center.Y}) R={r} Start={startDeg} End={endDeg} Sweep = {sweep}")
 
 
 
-                End Select
-            End Using
-        Next
+        '        End Select
+        '    End Using
+        'Next
 
     End Sub
 
@@ -558,21 +589,6 @@ Public Class frmMain
     ' Transforms a DXF circle or arc radius to panel pixels
     Public Function TransformRadius(radius As Double, scale As Double) As Single
         Return CSng(radius * scale)
-    End Function
-
-
-    Private Function WorldToScreen(p As DxfPoint,
-                               minX As Double,
-                               minY As Double,
-                               scale As Double,
-                               offsetX As Double,
-                               offsetY As Double,
-                               panelHeight As Integer) As PointF
-
-        Dim sx As Single = CSng((p.X - minX) * scale + offsetX)
-        Dim sy As Single = CSng(panelHeight - ((p.Y - minY) * scale) - offsetY)
-
-        Return New PointF(sx, sy)
     End Function
 
 
@@ -1266,6 +1282,19 @@ Public Class frmMain
         '   Highlight entity
 
     End Sub
+    Public Structure ViewTransform
+        Public Scale As Double
+        Public OffsetX As Double
+        Public OffsetY As Double
+    End Structure
+
+    ' Convert machine coordinates to screen coordinates
+    Public Function WorldToScreen(x As Double, y As Double, vt As ViewTransform, panelHeight As Integer) As PointF
+        Dim sx As Single = CSng(x * vt.Scale + vt.OffsetX)
+        Dim sy As Single = CSng(panelHeight - (y * vt.Scale + vt.OffsetY))
+        Return New PointF(sx, sy)
+    End Function
+
 
     Private Sub ViewFull()
         If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return

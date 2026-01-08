@@ -1,5 +1,8 @@
 ﻿Imports FabV25_WIN8.AppData
 Imports FabV25_WIN8.CadEntity
+Imports FabV25_WIN8.ImportedEntity
+Imports FabV25_WIN8.LayerDefinition
+Imports FabV25_WIN8.LayerDefinition.ImportedEntity
 Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
 Imports System.Drawing
@@ -8,7 +11,19 @@ Public Module DxfImport
 
     ' Store imported CadEntities
     Public CurrentDXFEntities As New List(Of CadEntity)
+    Public Function ToScreen(
+    pt As PointF,
+    scale As Double,
+    ox As Double,
+    oy As Double,
+    worldMaxY As Double
+) As PointF
 
+        Dim sx As Single = CSng((pt.X * scale) + ox)
+        Dim sy As Single = CSng((worldMaxY - pt.Y) * scale + oy)
+
+        Return New PointF(sx, sy)
+    End Function
     ''' <summary>
     ''' Parse a DXF file and return a list of CadEntity objects.
     ''' Only lines, arcs, circles, and polylines are currently supported.
@@ -29,23 +44,6 @@ Public Module DxfImport
         Return entities
     End Function
 
-    Public Class LayerColorResolver
-        Private ReadOnly _layerColors As Dictionary(Of String, Color)
-
-        Public Sub New(layerColors As Dictionary(Of String, Color))
-            _layerColors = layerColors
-        End Sub
-
-        Public Function Resolve(layerName As String) As Color
-            If _layerColors Is Nothing OrElse _layerColors.Count = 0 Then
-                Return Color.Gray
-            End If
-
-            If _layerColors.ContainsKey(layerName) Then Return _layerColors(layerName)
-            If _layerColors.ContainsKey("*default*") Then Return _layerColors("*default*")
-            Return Color.Gray
-        End Function
-    End Class
 
     ''' <summary>
     ''' Computes scale and offsets to fit CadEntities in a panel.
@@ -143,48 +141,35 @@ Public Module DxfImport
     ''' <summary>
     ''' Convert a single CadEntity to an ImportedEntity
     ''' </summary>
-    Public Function ConvertCadEntityToImportedEntity(cad As CadEntity, layerSetup As AppData.LayerSetup) As ImportedEntity
+    Public Function ConvertCadToImportedEntity(cad As CadEntity) As ImportedEntity
         Dim imp As New ImportedEntity()
+        imp.CadEntity = cad
         imp.CAMLayer = cad.LayerName
-        imp.DirectiveID = -1
 
-        ' Resolve display color
-        Dim layerDirective = layerSetup.Layers _
-        .FirstOrDefault(Function(l) l.CADLayer.Equals(cad.LayerName, StringComparison.OrdinalIgnoreCase))
-        If layerDirective Is Nothing Then
-            layerDirective = layerSetup.Layers _
-            .FirstOrDefault(Function(l) l.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase))
+        ' IxMilia: ByLayer often comes through as Black
+        If cad.DisplayColor.IsEmpty OrElse cad.DisplayColor = Color.Black Then
+            imp.ColorMode = ColorSourceMode.ByLayer
+        Else
+            imp.ColorMode = ColorSourceMode.ByEntity
+            imp.ExplicitColor = cad.DisplayColor
         End If
 
-        imp.DisplayColor = If(layerDirective IsNot Nothing,
-                          ResolveDirectiveColor(layerDirective),
-                          Color.Black)
-
-        ' Map geometry type and copy geometric info
-        Select Case cad.Type
-            Case CadEntity.EntityType.Line
-                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Line
-                imp.StartPoint = cad.StartPt
-                imp.EndPoint = cad.EndPt
-
-            Case CadEntity.EntityType.Arc
-                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
-                imp.Center = cad.CircleCenter
-                imp.Radius = cad.ArcRadius
-                imp.StartAngle = cad.StartAngle
-                imp.EndAngle = cad.EndAngle
-
-            Case CadEntity.EntityType.Circle
-                imp.GeometryType = ImportedEntity.GeometryTypeEnum.Circle
-                imp.Center = cad.CircleCenter
-                imp.Radius = cad.CircleRadius
-
-            Case CadEntity.EntityType.Polyline
-                imp.GeometryType = ImportedEntity.GeometryTypeEnum.PolyLine
-                imp.Points = cad.Points  ' assuming your polyline stores a list of points
-        End Select
-
         Return imp
+    End Function
+
+
+
+
+    Public Function ResolveCadColorIndex(index As Integer) As Color
+        ' Example simple mapping, replace with DXF palette if needed
+        Select Case index
+            Case 1 : Return Color.Red
+            Case 2 : Return Color.Yellow
+            Case 3 : Return Color.Green
+        ' ... etc.
+            Case 256 : Return Color.Empty  ' ByLayer
+            Case Else : Return Color.Black
+        End Select
     End Function
 
 
@@ -204,49 +189,83 @@ Public Module DxfImport
     ''' <summary>
     ''' Convert CadEntity to DxfDrawable for panel rendering.
     ''' </summary>
-    Public Function ConvertCadToDrawable(cad As CadEntity,
-                                     resolver As LayerColorResolver) As DxfDrawable
+    'Public Function ConvertCadToDrawable(cad As CadEntity,
+    '                                 resolver As LayerColorResolver) As DxfDrawable
 
+    '    Dim d As New DxfDrawable With {
+    '    .LayerName = cad.LayerName,
+    '    .Color = resolver.Resolve(cad)
+    '}
+
+    '    Select Case cad.Type
+
+    '        Case CadEntity.EntityType.Line
+    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
+    '            d.StartPoint = New PointF(
+    '            CSng(cad.StartPt.X),
+    '            CSng(cad.StartPt.Y))
+    '            d.EndPoint = New PointF(
+    '            CSng(cad.EndPt.X),
+    '            CSng(cad.EndPt.Y))
+
+    '        Case CadEntity.EntityType.Circle
+    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
+    '            d.Center = New PointF(
+    '            CSng(cad.CircleCenter.Value.X),
+    '            CSng(cad.CircleCenter.Value.Y))
+    '            d.Radius = CSng(cad.CircleRadius)
+
+    '        Case CadEntity.EntityType.Arc
+    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
+    '            d.Center = New PointF(
+    '            CSng(cad.CircleCenter.Value.X),
+    '            CSng(cad.CircleCenter.Value.Y))
+    '            d.Radius = CSng(cad.ArcRadius.Value)
+    '            d.StartAngle = CSng(cad.ArcStartAngle)
+    '            d.EndAngle = CSng(cad.ArcEndAngle)
+
+    '        Case Else
+    '            Return Nothing
+
+    '    End Select
+
+    '    Return d
+    'End Function
+    Public Function ConvertImportedToDrawable(
+    imp As ImportedEntity,
+    resolver As LayerColorResolver
+) As DxfDrawable
+
+        Dim cad = imp.CadEntity
         Dim d As New DxfDrawable With {
-        .LayerName = cad.LayerName,
-        .Color = resolver.Resolve(cad.LayerName)
+        .LayerName = imp.CAMLayer,
+        .Color = resolver.Resolve(imp)
     }
 
         Select Case cad.Type
-
             Case CadEntity.EntityType.Line
                 d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
-                d.StartPoint = New PointF(
-                CSng(cad.StartPt.X),
-                CSng(cad.StartPt.Y))
-                d.EndPoint = New PointF(
-                CSng(cad.EndPt.X),
-                CSng(cad.EndPt.Y))
+                d.StartPoint = New PointF(CSng(cad.StartPt.X), CSng(cad.StartPt.Y))
+                d.EndPoint = New PointF(CSng(cad.EndPt.X), CSng(cad.EndPt.Y))
 
             Case CadEntity.EntityType.Circle
                 d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
-                d.Center = New PointF(
-                CSng(cad.CircleCenter.Value.X),
-                CSng(cad.CircleCenter.Value.Y))
+                d.Center = New PointF(CSng(cad.CircleCenter.Value.X), CSng(cad.CircleCenter.Value.Y))
                 d.Radius = CSng(cad.CircleRadius)
 
             Case CadEntity.EntityType.Arc
                 d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
-                d.Center = New PointF(
-                CSng(cad.CircleCenter.Value.X),
-                CSng(cad.CircleCenter.Value.Y))
+                d.Center = New PointF(CSng(cad.CircleCenter.Value.X), CSng(cad.CircleCenter.Value.Y))
                 d.Radius = CSng(cad.ArcRadius.Value)
                 d.StartAngle = CSng(cad.ArcStartAngle)
                 d.EndAngle = CSng(cad.ArcEndAngle)
 
             Case Else
                 Return Nothing
-
         End Select
 
         Return d
     End Function
-
 
 
 End Module
