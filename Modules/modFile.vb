@@ -23,8 +23,11 @@ Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 Imports FabV25_WIN8.LayerDefinition
 Imports FabV25_WIN8.MachineDefinition
 Imports FabV25_WIN8.MaterialWrapper.Material
-Imports FabV25_WIN8.WorkZoneFactory
+Imports FabV25_WIN8.WorkZone
 Imports FabV25_WIN8.MachineEnvelope
+Imports FabV25_WIN8.WorkZoneFactory
+Imports FabV25_WIN8.modView
+
 
 Public Module modFile
 
@@ -41,7 +44,7 @@ Public Module modFile
     Public _cadEntities As List(Of CadEntity)
     ' Optional: layer color resolver
     Public _layerResolver As LayerColorResolver
-    Public CurrentWorkZoneFactory As WorkZoneFactory
+
 
 
     Public Sub PrePareUI(sFilename As String, ByVal picModelerHandle As IntPtr)
@@ -95,7 +98,7 @@ Public Module modFile
         End If
 
 
-        DrawMaterial(MaterialSheets, picModelerHandle, numericWidth, numericLength, X, Y)
+        'DrawMaterial(MaterialSheets, picModelerHandle, numericWidth, numericLength, X, Y)
 
 
 
@@ -104,24 +107,40 @@ Public Module modFile
 
         _machineDef = machineDef
 
-        CurrentWorkZoneFactory = New WorkZoneFactory(_machineDef.Max_Travel_Limit_X, matLength, matWidth)
+
 
         If machineDef Is Nothing Then
             Throw New Exception($"Machine with ID {SelectedMachineID} not found.")
         End If
 
-        ' ---- Assign to current job ----
+        Dim g As Graphics = Graphics.FromHwnd(picModelerHandle)
+
+
+        'DrawSheetAndWorkzones(g, matLength, matWidth)
         CurrentJob = New JobContext()
         CurrentJob.MachineDefinition = machineDef
 
-        '---- Generate workzones from machine definition ----
 
-        Dim wz = CurrentWorkZoneFactory.WorkZones(0)
-        ' Create / update job context
+        RestoreAndDrawJob()
+        '' ---- Assign to current job ----
 
-        CurrentJob.ToolSetupID = SelectedToolSetupID
-        CurrentJob.MaterialID = SelectedMaterialID
-        CurrentJob.LayerSetupID = SelectedLayerSetupID
+
+        If CurrentJob Is Nothing Then Return
+        If CurrentJob.WorkZones Is Nothing OrElse CurrentJob.WorkZones.Count = 0 Then Return
+
+        DrawSheetAndWorkzones(g, matLength, matWidth)
+        '' ---- Assign to current job ----
+        'CurrentJob = New JobContext()
+        'CurrentJob.MachineDefinition = machineDef
+
+        ''---- Generate workzones from machine definition ----
+
+        'Dim wz = CurrentWorkZoneFactory.WorkZones(0)
+        '' Create / update job context
+
+        'CurrentJob.ToolSetupID = SelectedToolSetupID
+        'CurrentJob.MaterialID = SelectedMaterialID
+        'CurrentJob.LayerSetupID = SelectedLayerSetupID
 
         'machineDef.SelectedToolSetupID = SelectedToolSetupID
         'machineDef.SelectedLayerSetupID = SelectedLayerSetupID
@@ -129,37 +148,37 @@ Public Module modFile
 
 
 
-        Dim wzFactory As New WorkZoneFactory(_machineDef.Max_Travel_Limit_X, matLength, matWidth)
+        'Dim wzFactory As New WorkZoneFactory(_machineDef.Max_Travel_Limit_X, matLength, matWidth)
 
 
 
-        Using pen As New Pen(System.Drawing.Color.DarkGray, 1)
-            pen.DashStyle = Drawing2D.DashStyle.Dash
+        'Using pen As New Pen(System.Drawing.Color.DarkGray, 1)
+        '    pen.DashStyle = Drawing2D.DashStyle.Dash
 
 
-            For Each wz In CurrentWorkZoneFactory.WorkZones
-                Dim envelopes = New List(Of WorkZone) From {wz}
-                For Each env In envelopes
+        '    For Each wz In CurrentWorkZoneFactory.WorkZones
+        '        Dim envelopes = New List(Of WorkZone) From {wz}
+        '        For Each env In envelopes
 
-                    ' World corners
-                    Dim bl = WorldToScreen(env.XMin, env.YMin, myTransform, panelHeight)
-                    Dim tr = WorldToScreen(env.XMax, env.YMax, myTransform, panelHeight)
+        '            ' World corners
+        '            Dim bl = WorldToScreen(env.XMin, env.YMin, myTransform, panelHeight)
+        '            Dim tr = WorldToScreen(env.XMax, env.YMax, myTransform, panelHeight)
 
-                    ' Normalize rectangle (important!)
-                    Dim x As Single = Math.Min(bl.X, tr.X)
-                    Dim y As Single = Math.Min(bl.Y, tr.Y)
-                    Dim w As Single = Math.Abs(tr.X - bl.X)
-                    Dim h As Single = Math.Abs(tr.Y - bl.Y)
+        '            ' Normalize rectangle (important!)
+        '            Dim x As Single = Math.Min(bl.X, tr.X)
+        '            Dim y As Single = Math.Min(bl.Y, tr.Y)
+        '            Dim w As Single = Math.Abs(tr.X - bl.X)
+        '            Dim h As Single = Math.Abs(tr.Y - bl.Y)
 
-                    If w > 0 AndAlso h > 0 Then
-                        Using g As Graphics = Graphics.FromHwnd(picModelerHandle)
-                            g.DrawRectangle(pen, x, y, w, h)
-                        End Using
-                    End If
+        '            If w > 0 AndAlso h > 0 Then
+        '                Using g As Graphics = Graphics.FromHwnd(picModelerHandle)
+        '                    g.DrawRectangle(pen, x, y, w, h)
+        '                End Using
+        '            End If
 
-                Next
-            Next
-        End Using
+        '        Next
+        '    Next
+        'End Using
 
     End Sub
 
@@ -173,7 +192,7 @@ Public Module modFile
             Using frm As New frmOpenProject(selectedPath)
                 If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
 
-                PrePareUI(selectedPath, frmMain._pnlPicModelerHandle)
+                PrePareUI(selectedPath, _pnlPicModelerHandle)
                 ' Import DXF as ModelEntities
                 'Dim modelEntities As List(Of ModelEntity) = importer.Import(selectedPath)
                 'If modelEntities Is Nothing OrElse modelEntities.Count = 0 Then
@@ -249,24 +268,6 @@ Public Module modFile
             End Using
         End Using
     End Function
-
-    Public Sub ActivateWorkZone(index As Integer)
-        For Each wz In CurrentWorkZoneFactory.WorkZones
-            wz.IsActive = False
-        Next
-        CurrentWorkZoneFactory.WorkZones(index).IsActive = True
-    End Sub
-
-
-
-
-
-
-
-
-
-
-
 
 
     'Public Function FileOpen() As List(Of ImportedEntity)

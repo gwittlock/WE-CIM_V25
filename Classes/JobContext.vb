@@ -4,5 +4,5 @@
     Public Property MaterialID As Integer
     Public Property LayerSetupID As Integer
 
-
+    Public Property WorkZones As New List(Of WorkZone)
 End Class

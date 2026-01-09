@@ -16,6 +16,40 @@ Public Class HelperFunctions
             Me.DataType = dataType
         End Sub
     End Class
+    ''' <summary>
+    ''' Creates a RectangleF from two points, automatically normalizing
+    ''' so width and height are positive, regardless of point order.
+    ''' </summary>
+    Public Shared Function RectFromPoints(p1 As PointF, p2 As PointF) As RectangleF
+        Dim x As Single = Math.Min(p1.X, p2.X)
+        Dim y As Single = Math.Min(p1.Y, p2.Y)
+        Dim w As Single = Math.Abs(p2.X - p1.X)
+        Dim h As Single = Math.Abs(p2.Y - p1.Y)
+
+        Return New RectangleF(x, y, w, h)
+    End Function
+
+
+    Public Function RectFromWorldBounds(
+    minX As Single,
+    minY As Single,
+    maxX As Single,
+    maxY As Single,
+    transform As ViewTransform,
+    panelHeight As Integer
+) As RectangleF
+
+        ' Convert world min/max to screen coordinates
+        Dim p1 As PointF = WorldToScreen(minX, minY, transform, panelHeight)
+        Dim p2 As PointF = WorldToScreen(maxX, maxY, transform, panelHeight)
+
+        ' Use safe rectangle creation
+        Return RectFromPoints(p1, p2)
+    End Function
+
+
+
+
 
     ''' <summary>
     ''' Builds a JSON Columns array from a DataTable.

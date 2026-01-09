@@ -311,91 +311,92 @@ Module modMaterial
 
 
     Public Sub DrawMaterial(sheets As List(Of MaterialSheet), ByVal panelHandle As IntPtr, matWid As Double, matLength As Double, x As Integer, y As Integer)
-        Dim margin As Integer = 20
+        '    Dim margin As Integer = 20
 
 
 
-        Dim scaleX As Double = (panelWidth - 2 * margin) / matLength
-        Dim scaleY As Double = (panelHeight - 2 * margin) / matWid
-        Dim scale As Double = Math.Min(scaleX, scaleY)
+        '    Dim scaleX As Double = (panelWidth - 2 * margin) / matLength
+        '    Dim scaleY As Double = (panelHeight - 2 * margin) / matWid
+        '    Dim scale As Double = Math.Min(scaleX, scaleY)
 
-        Dim offsetX As Double = (panelWidth - matLength * scale) / 2
-        Dim offsetY As Double = (panelHeight - matWid * scale) / 2
+        '    Dim offsetX As Double = (panelWidth - matLength * scale) / 2
+        '    Dim offsetY As Double = (panelHeight - matWid * scale) / 2
 
-        'myTransform = ViewTransform
-        myTransform = New ViewTransform With {
-        .Scale = scale,
-        .OffsetX = offsetX,
-        .OffsetY = offsetY
-    }
+        '    'myTransform = ViewTransform
+        '    myTransform = New ViewTransform With {
+        '    .Scale = scale,
+        '    .OffsetX = offsetX,
+        '    .OffsetY = offsetY
+        '}
 
-        ' World-space corners
-        Dim bl As PointF = WorldToScreen(0, 0, myTransform, panelHeight)
-        Dim tr As PointF = WorldToScreen(matLength, matWid, myTransform, panelHeight)
+        '    ' World-space corners
+        '    Dim bl As PointF = WorldToScreen(0, 0, myTransform, panelHeight)
+        '    Dim tr As PointF = WorldToScreen(matLength, matWid, myTransform, panelHeight)
 
-        ' Build rectangle safely
-        x = Math.Min(bl.X, tr.X)
-        y = Math.Min(bl.Y, tr.Y)
-        Dim w As Single = Math.Abs(tr.X - bl.X)
-        Dim h As Single = Math.Abs(tr.Y - bl.Y)
-        Debug.WriteLine($"ViewTransform Scale={myTransform.Scale}, ViewTransform OffsetX={myTransform.OffsetX} ViewTransform OffsetY = {myTransform.OffsetY} ")
-        Debug.WriteLine($"bl={bl}, tr={tr}")
-        Debug.WriteLine($"scaleX={scaleX}, scaleY={scaleY} scale = {scale} offsetX= {offsetX} offsetY={offsetX}")
+        '    ' Build rectangle safely
+        '    x = Math.Min(bl.X, tr.X)
+        '    y = Math.Min(bl.Y, tr.Y)
+        '    Dim w As Single = Math.Abs(tr.X - bl.X)
+        '    Dim h As Single = Math.Abs(tr.Y - bl.Y)
+        '    Debug.WriteLine($"ViewTransform Scale={myTransform.Scale}, ViewTransform OffsetX={myTransform.OffsetX} ViewTransform OffsetY = {myTransform.OffsetY} ")
+        '    Debug.WriteLine($"bl={bl}, tr={tr}")
+        '    Debug.WriteLine($"scaleX={scaleX}, scaleY={scaleY} scale = {scale} offsetX= {offsetX} offsetY={offsetX}")
 
-        Debug.WriteLine($"PanelWidth={panelWidth}, Height={panelHeight} MatWidth = {matWid} matLength= {matLength}")
-        Debug.WriteLine($"Material X={x}, Y={y} W = {w} H= {h}")
+        '    Debug.WriteLine($"PanelWidth={panelWidth}, Height={panelHeight} MatWidth = {matWid} matLength= {matLength}")
+        '    Debug.WriteLine($"Material X={x}, Y={y} W = {w} H= {h}")
 
-        Dim rectF As New RectangleF(x, y, w, h)
-        Debug.WriteLine($"Screen rect W={rectF.Width}, H={rectF.Height}")
+        '    Dim rectF = HelperFunctions.RectFromPoints(topLeft, bottomRight)
 
-        Using g As Graphics = Graphics.FromHwnd(panelHandle)
-            ' Example: Drawing a red rectangle
-            Using p As New Pen(Color.Red, 2)
-                g.DrawRectangle(p, Rectangle.Round(rectF))
-            End Using
+        '    Debug.WriteLine($"Screen rect W={rectF.Width}, H={rectF.Height}")
 
-            '' Example: Drawing text
-            'Using f As New Font("Arial", 12)
-            '    g.DrawString("Drawn via Handle", f, Brushes.Blue, 15, 15)
-            'End Using
-        End Using
+        '    Using g As Graphics = Graphics.FromHwnd(panelHandle)
+        '        ' Example: Drawing a red rectangle
+        '        Using p As New Pen(Color.Red, 2)
+        '            g.DrawRectangle(p, Rectangle.Round(rectF))
+        '        End Using
 
-
-
-        'Using Pen As New Pen(Color.CadetBlue, 1)
-        'g.DrawRectangle(pen, Rectangle.Round(rectF))
-        'End Using
+        '        '' Example: Drawing text
+        '        'Using f As New Font("Arial", 12)
+        '        '    g.DrawString("Drawn via Handle", f, Brushes.Blue, 15, 15)
+        '        'End Using
+        '    End Using
 
 
-        ' Material dimensions in inches
-        'Dim materialWidth As Double = 96
-        'Dim materialHeight As Double = 48
 
-        '' Panel size
-        'Dim panelWidth As Integer = frmMain.pnlPicmodeler.Width
-        'Dim panelHeight As Integer = frmMain.pnlPicmodeler.Height
+        '    'Using Pen As New Pen(Color.CadetBlue, 1)
+        '    'g.DrawRectangle(pen, Rectangle.Round(rectF))
+        '    'End Using
 
-        '' Compute scale to fit material inside panel with a margin
-        'Dim margin As Double = 20 ' pixels
-        'Dim scaleX As Double = (panelWidth - 2 * margin) / matLength
-        'Dim scaleY As Double = (panelHeight - 2 * margin) / matWid
-        'Dim scale As Double = Math.Min(scaleX, scaleY)
 
-        '' Compute offsets to center the material in the panel
-        'Dim offsetX As Double = (panelWidth - matLength * scale) / 2
-        'Dim offsetY As Double = (panelHeight - matWid * scale) / 2
+        '    ' Material dimensions in inches
+        '    'Dim materialWidth As Double = 96
+        '    'Dim materialHeight As Double = 48
 
-        '' Convert world (material) coordinates to screen
-        'Dim topLeft As New PointF(CSng(0 * scale + offsetX), CSng(panelHeight - (matWid * scale + offsetY)))
-        'Dim bottomRight As New PointF(CSng(matLength * scale + offsetX), CSng(panelHeight - (0 * scale + offsetY)))
+        '    '' Panel size
+        '    'Dim panelWidth As Integer = frmMain.pnlPicmodeler.Width
+        '    'Dim panelHeight As Integer = frmMain.pnlPicmodeler.Height
 
-        '' Build rectangle
-        'Dim rectF As New RectangleF(topLeft.X, topLeft.Y, bottomRight.X - topLeft.X, bottomRight.Y - topLeft.Y)
+        '    '' Compute scale to fit material inside panel with a margin
+        '    'Dim margin As Double = 20 ' pixels
+        '    'Dim scaleX As Double = (panelWidth - 2 * margin) / matLength
+        '    'Dim scaleY As Double = (panelHeight - 2 * margin) / matWid
+        '    'Dim scale As Double = Math.Min(scaleX, scaleY)
 
-        ' Draw the material
-        ' Using pen As New Pen(Color.CadetBlue, 2)
-        'g.DrawRectangle(pen, rectF.X, rectF.Y, rectF.Width, rectF.Height)
-        'End Using
+        '    '' Compute offsets to center the material in the panel
+        '    'Dim offsetX As Double = (panelWidth - matLength * scale) / 2
+        '    'Dim offsetY As Double = (panelHeight - matWid * scale) / 2
+
+        '    '' Convert world (material) coordinates to screen
+        '    'Dim topLeft As New PointF(CSng(0 * scale + offsetX), CSng(panelHeight - (matWid * scale + offsetY)))
+        '    'Dim bottomRight As New PointF(CSng(matLength * scale + offsetX), CSng(panelHeight - (0 * scale + offsetY)))
+
+        '    '' Build rectangle
+        '    'Dim rectF As New RectangleF(topLeft.X, topLeft.Y, bottomRight.X - topLeft.X, bottomRight.Y - topLeft.Y)
+
+        '    ' Draw the material
+        '    ' Using pen As New Pen(Color.CadetBlue, 2)
+        '    'g.DrawRectangle(pen, rectF.X, rectF.Y, rectF.Width, rectF.Height)
+        '    'End Using
 
     End Sub
     Public Function GetMatlTypeIDFromTypesDescription(sDescrip As String) As Long

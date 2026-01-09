@@ -1,6 +1,7 @@
-﻿Public Class Clamp
+﻿Imports FabV25_WIN8.AppData
+Public Class Clamp
     Public Property Name As String
-
+    Public Property TorchSize As SizeF
     ' Sheet-relative center
     Public Property X As Double
     Public Property Y As Double
@@ -11,11 +12,13 @@
 
     Public ReadOnly Property ExclusionRect As RectangleF
         Get
-            Return New RectangleF(
-                CSng(X - Width / 2),
-                CSng(Y - Height / 2),
-                CSng(Width),
-                CSng(Height))
+            Dim matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+            Dim matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+            Dim bl As PointF = WorldToScreen(0, 0, myTransform, panelHeight)
+            Dim tr As PointF = WorldToScreen(matLength, matWidth, myTransform, panelHeight)
+
+            Return HelperFunctions.RectFromPoints(bl, tr) ' where bl/tr = calculated points
+
         End Get
     End Property
 End Class

@@ -69,7 +69,7 @@ Public Class frmMain
 
     Private _inquireMode As Boolean = False
     Private _dxfImporter As IDxfImporter = New DxfImporter_IxMilia()
-    Public Shared _pnlPicModelerHandle As IntPtr
+
 
     Public _SelectedMaterialID As Integer
 
@@ -635,18 +635,19 @@ Public Class frmMain
         ' Scale radius
         Dim r As Single = CSng(c.Radius * scale)
 
-        ' GDI+ draws circles from top-left of bounding box
-        Dim rect As New RectangleF(
-        centerScreen.X - r,
-        centerScreen.Y - r,
-        r * 2.0F,
-        r * 2.0F
-    )
+        ' Define bounding box points
+        Dim p1 As New PointF(centerScreen.X - r, centerScreen.Y - r) ' bottom-left / top-left
+        Dim p2 As New PointF(centerScreen.X + r, centerScreen.Y + r) ' top-right / bottom-right
 
+        ' Create rectangle from points (normalizes width/height automatically)
+        Dim rect As RectangleF = HelperFunctions.RectFromPoints(p1, p2)
+
+        ' Draw the ellipse
         Using pen As New Pen(color, If(isDefaultMapped, 1.0F, 2.0F))
             g.DrawEllipse(pen, rect)
         End Using
     End Sub
+
 
     Private Sub DrawArc(
     a As DxfArc,
@@ -665,32 +666,25 @@ Public Class frmMain
         Dim centerScreen As PointF = ToScreen(centerWorld, scale, ox, oy, worldMaxY)
 
         ' --------------------------------
-        ' Radius
+        ' Radius scaled
         ' --------------------------------
         Dim r As Single = CSng(a.Radius * scale)
 
         ' --------------------------------
-        ' Bounding rectangle
+        ' Define bounding rectangle points
         ' --------------------------------
-        Dim rect As New RectangleF(
-        centerScreen.X - r,
-        centerScreen.Y - r,
-        r * 2.0F,
-        r * 2.0F
-    )
+        Dim p1 As New PointF(centerScreen.X - r, centerScreen.Y - r) ' top-left
+        Dim p2 As New PointF(centerScreen.X + r, centerScreen.Y + r) ' bottom-right
+
+        ' --------------------------------
+        ' Create rectangle using helper
+        ' --------------------------------
+        Dim rect As RectangleF = HelperFunctions.RectFromPoints(p1, p2)
 
         ' --------------------------------
         ' DXF → GDI+ angle conversion
-        '
-        ' DXF:
-        '   - Degrees
-        '   - Counter-clockwise
-        '   - 0° at +X axis
-        '
-        ' GDI+:
-        '   - Degrees
-        '   - Clockwise
-        '   - 0° at +X axis
+        ' DXF: counter-clockwise, 0° at +X axis
+        ' GDI+: clockwise, 0° at +X axis
         ' --------------------------------
         Dim startAngle As Single = CSng(-a.StartAngle)
         Dim sweepAngle As Single = CSng(-(a.EndAngle - a.StartAngle))
@@ -700,10 +694,12 @@ Public Class frmMain
             sweepAngle += 360.0F
         End If
 
+        ' Draw the arc
         Using pen As New Pen(color, If(isDefaultMapped, 1.0F, 2.0F))
             g.DrawArc(pen, rect, startAngle, sweepAngle)
         End Using
     End Sub
+
 
 
     'Private Sub DrawPolyline(points As List(Of DxfPoint), g As Graphics,
@@ -2153,6 +2149,21 @@ Public Class frmMain
 
         Return cad
     End Function
+
+
+    Private Sub SetupPanelHandlers()
+        ' Redraw when panel is created
+        AddHandler pnlPicmodeler.HandleCreated, Sub() RedrawAll()
+
+        ' Redraw on panel resize
+        AddHandler pnlPicmodeler.Resize, Sub() RedrawAll()
+
+        ' Optional: force redraw when invalidated (e.g., uncovered)
+        AddHandler pnlPicmodeler.Invalidated, Sub() RedrawAll()
+    End Sub
+
+
+
 
 End Class
 
