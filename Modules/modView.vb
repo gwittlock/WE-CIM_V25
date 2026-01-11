@@ -8,6 +8,31 @@ Public Module modView
         Public OffsetX As Double
         Public OffsetY As Double
     End Structure
+
+    Public Function BuildFitTransform(
+    worldBounds As RectangleF,
+    panelWidth As Integer,
+    panelHeight As Integer,
+    padding As Single) As ViewTransform
+
+        Dim scaleX = (panelWidth - padding * 2) / worldBounds.Width
+        Dim scaleY = (panelHeight - padding * 2) / worldBounds.Height
+
+        Dim scale = Math.Min(scaleX, scaleY)
+
+        Dim offsetX = padding - worldBounds.Left * scale
+        Dim offsetY = padding - worldBounds.Top * scale
+
+        Return New ViewTransform With {
+        .Scale = scale,
+        .OffsetX = offsetX,
+        .OffsetY = offsetY
+    }
+
+    End Function
+
+
+
     Public Sub RedrawAll()
         ' Check that the panel handle exists
         If Not frmMain.pnlPicmodeler.IsHandleCreated Then Return
@@ -25,6 +50,8 @@ Public Module modView
 
             ' Draw sheet, workzones, clamps, etc.
             DrawSheetAndWorkzones(g, matLength, matWidth)
+
+            DrawCadEntities(g, myTransform, panelHeight)
 
         End Using
     End Sub

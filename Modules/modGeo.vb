@@ -1,6 +1,6 @@
 ﻿Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
-
+Imports FabV25_WIN8.CadEntity
 
 Module modGeo
 
@@ -61,5 +61,53 @@ Module modGeo
 
     End Sub
 
+    Private Sub DrawCadArc(
+    a As CadArc,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        ' --------------------------------
+        ' Center → screen space
+        ' --------------------------------
+        Dim center = WorldToScreen(a.Center.X, a.Center.Y, vt, panelHeight)
+
+        ' --------------------------------
+        ' Radius (scaled)
+        ' --------------------------------
+        Dim r As Single = CSng(a.Radius * vt.Scale)
+
+        ' --------------------------------
+        ' Bounding rectangle
+        ' --------------------------------
+        Dim p1 As New PointF(center.X - r, center.Y - r)
+        Dim p2 As New PointF(center.X + r, center.Y + r)
+
+        Dim rect As RectangleF = HelperFunctions.RectFromPoints(p1, p2)
+
+        ' --------------------------------
+        ' DXF → GDI+ angle conversion
+        '
+        ' DXF:
+        '   - CCW
+        '   - 0° at +X
+        '
+        ' GDI+:
+        '   - CW
+        '   - 0° at +X
+        ' --------------------------------
+        Dim startAngle As Single = CSng(-a.StartAngle)
+        Dim sweepAngle As Single = CSng(-(a.EndAngle - a.StartAngle))
+
+        ' Normalize sweep
+        If sweepAngle <= 0 Then
+            sweepAngle += 360.0F
+        End If
+
+        Using pen As New Pen(a.Color, 1.0F)
+            g.DrawArc(pen, rect, startAngle, sweepAngle)
+        End Using
+
+    End Sub
 
 End Module

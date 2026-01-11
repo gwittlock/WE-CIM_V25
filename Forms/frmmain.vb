@@ -65,7 +65,7 @@ Public Class frmMain
     ' Each profile is a list of connected entities
     Private _profiles As New List(Of List(Of ImportedEntity))
 
-    Private _importedProfiles As List(Of CamProfile)
+    'Private _importedProfiles As List(Of CamProfile)
 
     Private _inquireMode As Boolean = False
     Private _dxfImporter As IDxfImporter = New DxfImporter_IxMilia()
@@ -279,125 +279,6 @@ Public Class frmMain
 
     Private Sub frmMain_FormClosed(sender As Object, e As FormClosedEventArgs) Handles Me.FormClosed
         End
-    End Sub
-
-    'Public Sub ProcessDXFAndDraw(filePath As String)
-    '    ' Parse lines
-    '    CurrentDXFLines = ParseDXFToLines(filePath)
-
-    '    _loadedDxf = filePath
-
-
-    '    ' Trigger redraw
-    '    pnlPicmodeler.Invalidate()
-    'End Sub
-
-    ''' <summary>
-    ''' Draws a list of CadEntity objects on a specified panel, scaling and centering them automatically.
-    ''' </summary>
-    ''' <param name="panel">The target panel to draw on.</param>
-    ''' <param name="entities">List of CadEntity to render.</param>
-    ''' <param name="penColor">Optional: color of the pen used for drawing. Default is black.</param>
-    ''' <param name="padding">Optional: padding inside the panel. Default is 10.</param>
-    Public Sub DrawEntitiesOnPanel(panel As Panel,
-                               entities As List(Of CadEntity),
-                               Optional penColor As Color = Nothing,
-                               Optional padding As Integer = 10)
-
-        If entities Is Nothing OrElse entities.Count = 0 Then
-            panel.Invalidate()
-            Return
-        End If
-
-        ' Store entities in a panel-specific variable if needed
-        ' Example: use CurrentDXFEntities for main panel or CurrentPreviewEntities for preview
-        ' For demonstration, we'll assume CurrentDXFEntities
-        CurrentDXFEntities = entities
-
-        ' Panel size accounting for padding
-        Dim panelWidth = panel.Width - 2 * padding
-        Dim panelHeight = panel.Height - 2 * padding
-
-        ' Compute scale and offsets
-        Dim offsetX As Double, offsetY As Double, scaleYFlip As Double
-        Dim scale = DxfImport.ComputeScaleAndOffset(entities, panelWidth, panelHeight, padding, offsetX, offsetY, scaleYFlip)
-
-        ' Use default black pen if none specified
-        If penColor = Nothing Then penColor = Color.Black
-
-        ' Attach Paint event
-        RemoveHandler panel.Paint, AddressOf pnlPicModeler_Paint
-        AddHandler panel.Paint, Sub(sender As Object, e As PaintEventArgs)
-                                    Dim g = e.Graphics
-                                    Using pen As New Pen(penColor, 1)
-                                        For Each ent In entities
-                                            ' Transform entity to panel coordinates
-                                            Dim transformed = DxfImport.TransformEntityToPanel(ent, scale, offsetX, offsetY, scaleYFlip)
-                                            Dim startPt = transformed.Item1
-                                            Dim endPt = transformed.Item2
-
-                                            ' Draw line
-                                            g.DrawLine(pen, CSng(startPt.X), CSng(startPt.Y), CSng(endPt.X), CSng(endPt.Y))
-                                        Next
-                                    End Using
-                                End Sub
-
-
-        panel.Invalidate()
-    End Sub
-
-    ''' <summary>
-    ''' Draw a list of CadEntities on the given panel, scaling and centering them.
-    ''' </summary>
-    Public Sub DrawCadEntitiesOnPanel(panel As Panel, entities As List(Of CadEntity))
-        If entities Is Nothing OrElse entities.Count = 0 Then
-            panel.Invalidate()
-            Return
-        End If
-
-        ' Compute bounding box for all entities
-        Dim minX As Double = entities.Min(Function(e) Math.Min(e.StartPt.X, e.EndPt.X))
-        Dim maxX As Double = entities.Max(Function(e) Math.Max(e.StartPt.X, e.EndPt.X))
-        Dim minY As Double = entities.Min(Function(e) Math.Min(e.StartPt.Y, e.EndPt.Y))
-        Dim maxY As Double = entities.Max(Function(e) Math.Max(e.StartPt.Y, e.EndPt.Y))
-
-        Dim dx = maxX - minX
-        Dim dy = maxY - minY
-        If dx = 0 OrElse dy = 0 Then Return
-
-        ' Panel size with optional padding
-        Dim pad As Integer = 10
-        Dim panelWidth = panel.Width - 2 * pad
-        Dim panelHeight = panel.Height - 2 * pad
-
-        ' Compute scale to fit
-        Dim scaleX As Double = panelWidth / dx
-        Dim scaleY As Double = panelHeight / dy
-        Dim scale As Double = Math.Min(scaleX, scaleY)
-
-        ' Compute offsets to center
-        Dim offsetX As Double = pad + (panelWidth - dx * scale) / 2 - minX * scale
-        Dim offsetY As Double = pad + (panelHeight - dy * scale) / 2 + maxY * scale
-        Dim flipY As Double = -1
-
-        ' Attach Paint event
-        ' RemoveHandler panel.Paint, AddressOf panel.Paint
-        AddHandler panel.Paint, Sub(sender As Object, e As PaintEventArgs)
-                                    Dim g = e.Graphics
-                                    Using pen As New Pen(Color.Black, 1)
-                                        For Each cad In entities
-                                            ' Assign tuple to a single variable
-                                            Dim endpoints = DxfImport.TransformEntityToPanel(cad, scale, offsetX, offsetY, flipY)
-                                            Dim startPt = endpoints.Item1
-                                            Dim endPt = endpoints.Item2
-
-                                            g.DrawLine(pen, CSng(startPt.X), CSng(startPt.Y), CSng(endPt.X), CSng(endPt.Y))
-                                        Next
-                                    End Using
-                                End Sub
-
-
-        panel.Invalidate()
     End Sub
 
 
@@ -741,7 +622,7 @@ Public Class frmMain
     ' Helper to draw the default marker (e.g., a "!") at a point
     Private Sub DrawDefaultMarker(g As Graphics, pt As PointF, scale As Double)
         Const markerSize As Single = 8.0F
-        Using brush As New SolidBrush(Color.Red)
+        Using brush As New SolidBrush(System.Drawing.Color.Red)
             g.DrawString("!", New Font("Arial", markerSize), brush, pt.X - markerSize / 2, pt.Y - markerSize / 2)
         End Using
     End Sub
@@ -1189,82 +1070,6 @@ Public Class frmMain
         pnlPicmodeler.Cursor = Cursors.Help
 
     End Sub
-
-
-
-
-    Private Function ArcStartPoint(a As DxfArc) As DxfPoint
-        Dim rad = a.StartAngle * Math.PI / 180.0
-        Return New DxfPoint(
-        a.Center.X + a.Radius * Math.Cos(rad),
-        a.Center.Y + a.Radius * Math.Sin(rad),
-        0
-    )
-    End Function
-
-    Private Function ArcEndPoint(a As DxfArc) As DxfPoint
-        Dim rad = a.EndAngle * Math.PI / 180.0
-        Return New DxfPoint(
-        a.Center.X + a.Radius * Math.Cos(rad),
-        a.Center.Y + a.Radius * Math.Sin(rad),
-        0
-    )
-    End Function
-
-
-    Private Sub AppendLineInfo(sb As StringBuilder, cad As CadEntity)
-
-        Dim sp = cad.StartPt
-        Dim ep = cad.EndPt
-
-        Dim dx As Double = ep.X - sp.X
-        Dim dy As Double = ep.Y - sp.Y
-
-        Dim length As Double = Math.Sqrt(dx * dx + dy * dy)
-        Dim angleDeg As Double = Math.Atan2(dy, dx) * 180.0 / Math.PI
-        If angleDeg < 0 Then angleDeg += 360
-
-        sb.AppendLine("Type: Line")
-        sb.AppendLine($"Start: ({sp.X:0.###}, {sp.Y:0.###})")
-        sb.AppendLine($"End:   ({ep.X:0.###}, {ep.Y:0.###})")
-        sb.AppendLine($"Length: {length:0.###}")
-        sb.AppendLine($"Angle: {angleDeg:0.###}°")
-
-    End Sub
-
-    Private Sub AppendArcInfo(sb As StringBuilder, cad As CadEntity)
-        Dim sp = cad.StartPt
-        Dim ep = cad.EndPt
-        Dim cp = cad.CircleCenter
-
-        sb.AppendLine("Type: Arc")
-        sb.AppendLine($"Start:  ({sp.X:0.###}, {sp.Y:0.###})")
-        sb.AppendLine($"End:    ({ep.X:0.###}, {ep.Y:0.###})")
-
-        If cp.HasValue Then
-            sb.AppendLine($"Center: ({cp.Value.X:0.###}, {cp.Value.Y:0.###})")
-        Else
-            sb.AppendLine("Center: N/A")
-        End If
-
-        sb.AppendLine($"Radius: {If(cad.ArcRadius.HasValue, cad.ArcRadius.Value.ToString("0.###"), "N/A")}")
-        sb.AppendLine($"Direction: {If(cad.ArcIsClockwise.HasValue AndAlso cad.ArcIsClockwise.Value, "CW", "CCW")}")
-    End Sub
-
-    Private Sub AppendCircleInfo(sb As StringBuilder, cad As CadEntity)
-        Dim cp = cad.CircleCenter
-
-        sb.AppendLine("Type: Circle")
-        If cp.HasValue Then
-            sb.AppendLine($"Center: ({cp.Value.X:0.###}, {cp.Value.Y:0.###})")
-        Else
-            sb.AppendLine("Center: N/A")
-        End If
-
-        sb.AppendLine($"Radius: {If(cad.CircleRadius.HasValue, cad.CircleRadius.Value.ToString("0.###"), "N/A")}")
-    End Sub
-
-
 
     Private Sub HandleEntitySelected(ent As ImportedEntity)
 
@@ -2108,49 +1913,6 @@ Public Class frmMain
     ' ------------------------------
     ' From ImportedEntity
     ' ------------------------------
-    Public Shared Function FromImportedEntity(imp As ImportedEntity) As CadEntity
-        If imp Is Nothing Then Return Nothing
-
-        Dim cad As CadEntity = Nothing
-
-        Select Case imp.GeometryType
-            Case ImportedEntity.GeometryTypeEnum.Line
-                ' --- Convert DXF line ---
-                cad = CadEntity.CreateFromLine(
-                startPt:=New CadEntity.Point2D(imp.Line.P1.X, imp.Line.P1.Y),
-                endPt:=New CadEntity.Point2D(imp.Line.P2.X, imp.Line.P2.Y),
-                layer:=imp.Line.Layer
-            )
-
-            Case ImportedEntity.GeometryTypeEnum.Arc
-                ' --- Convert DXF arc ---
-                Dim arcClockwise As Boolean = (imp.Arc.EndAngle - imp.Arc.StartAngle) < 0
-
-                cad = CadEntity.CreateFromArc(
-                center:=New CadEntity.Point2D(imp.Arc.Center.X, imp.Arc.Center.Y),
-                radius:=imp.Arc.Radius,
-                startAngle:=imp.Arc.StartAngle,
-                endAngle:=imp.Arc.EndAngle,
-                layer:=imp.Arc.Layer,
-                clockwise:=arcClockwise
-            )
-
-            Case ImportedEntity.GeometryTypeEnum.Circle
-                ' --- Convert DXF circle ---
-                cad = CadEntity.CreateFromCircle(
-                center:=New CadEntity.Point2D(imp.Circle.Center.X, imp.Circle.Center.Y),
-                radius:=imp.Circle.Radius,
-                layer:=imp.Circle.Layer
-            )
-
-            Case Else
-                Return Nothing
-        End Select
-
-        Return cad
-    End Function
-
-
     Private Sub SetupPanelHandlers()
         ' Redraw when panel is created
         AddHandler pnlPicmodeler.HandleCreated, Sub() RedrawAll()
@@ -2162,9 +1924,10 @@ Public Class frmMain
         AddHandler pnlPicmodeler.Invalidated, Sub() RedrawAll()
     End Sub
 
+    Private Sub pnlPicmodeler_Resize(sender As Object, e As EventArgs) Handles pnlPicmodeler.Resize
 
 
-
+    End Sub
 End Class
 
 

@@ -37,17 +37,17 @@ Public Module DxfGeometryHelpers
         Public Property GeometryType As GeometryTypeEnum
 
         ' Line
-        Public Property StartPoint As CadEntity.Point2D
-        Public Property EndPoint As CadEntity.Point2D
+        'Public Property StartPoint As CadEntity.Point2D
+        'Public Property EndPoint As CadEntity.Point2D
 
-        ' Circle / Arc
-        Public Property Center As CadEntity.Point2D
+        '' Circle / Arc
+        'Public Property Center As CadEntity.Point2D
         Public Property Radius As Double
         Public Property StartAngle As Double
         Public Property EndAngle As Double
 
         ' Polyline
-        Public Property Points As List(Of CadEntity.Point2D)
+        ' Public Property Points As List(Of CadEntity.Point2D)
 
         ' DXF entities
         Public Property Line As DxfLine

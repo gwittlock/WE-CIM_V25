@@ -82,22 +82,26 @@ Module MachineLoader
 
     Public Sub DrawSheetAndWorkzones(g As Graphics, sheetWidth As Double, sheetHeight As Double)
         g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
-
+        Dim margin As Integer = 20
         ' --- Compute scale to fit sheet into panel ---
         Dim scaleX As Double = panelWidth / sheetWidth
         Dim scaleY As Double = panelHeight / sheetHeight
         Dim scale As Double = Math.Min(scaleX, scaleY) ' maintain aspect ratio
 
-        ' Compute offsets to center sheet in panel
-        Dim offsetX As Double = (panelWidth - sheetWidth * scale) / 2
-        Dim offsetY As Double = (panelHeight - sheetHeight * scale) / 2
+        '' Compute offsets to center sheet in panel
+        'Dim offsetX As Double = (panelWidth - sheetWidth * scale) / 2
+        'Dim offsetY As Double = (panelHeight - sheetHeight * scale) / 2
 
-        ' Create transform
-        Dim myTransform As New ViewTransform With {
-            .Scale = scale,
-            .OffsetX = offsetX,
-            .OffsetY = offsetY
-        }
+
+        'Dim offsetX As Double = (panelWidth - sheetWidth * scale) / 2
+        'Dim offsetY As Double = panelHeight - (sheetHeight * scale) - margin
+
+        '' Create transform
+        'Dim myTransform As New ViewTransform With {
+        '    .Scale = scale,
+        '    .OffsetX = offsetX,
+        '    .OffsetY = offsetY
+        '}
 
         ' --- Draw sheet background ---
         Dim bl As PointF = WorldToScreen(0, 0, myTransform, panelHeight)

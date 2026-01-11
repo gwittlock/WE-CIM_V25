@@ -11,6 +11,299 @@ Public Module DxfImport
 
     ' Store imported CadEntities
     Public CurrentDXFEntities As New List(Of CadEntity)
+
+    Public Enum DxfPlacementMode
+        PreserveCoordinates
+        AlignLowerLeftToSheetOrigin
+        AlignLowerLeftToActiveWorkZone
+        CenterInSheet
+    End Enum
+
+    Public Sub ApplyDxfPlacement(
+    entities As List(Of CadEntity),
+    mode As DxfPlacementMode,
+    sheetWidth As Double,
+    sheetHeight As Double,
+    Optional activeWorkZone As WorkZone = Nothing
+)
+        If entities Is Nothing OrElse entities.Count = 0 Then Exit Sub
+
+        Dim bounds = HelperFunctions.GetCadBounds(entities)
+        If bounds.IsEmpty Then Exit Sub
+
+        Dim dx As Single = 0
+        Dim dy As Single = 0
+
+        Select Case mode
+
+            Case DxfPlacementMode.PreserveCoordinates
+                Return
+
+            Case DxfPlacementMode.AlignLowerLeftToSheetOrigin
+                dx = -bounds.Left
+                dy = -bounds.Bottom
+
+            Case DxfPlacementMode.CenterInSheet
+                dx = CSng(sheetWidth / 2 - (bounds.Left + bounds.Width / 2))
+                dy = CSng(sheetHeight / 2 - (bounds.Bottom + bounds.Height / 2))
+
+            Case DxfPlacementMode.AlignLowerLeftToActiveWorkZone
+                If activeWorkZone Is Nothing Then Exit Sub
+                dx = CSng(activeWorkZone.XMin - bounds.Left)
+                dy = CSng(activeWorkZone.YMin - bounds.Bottom)
+
+        End Select
+
+        For Each e In entities
+            e.Translate(dx, dy)
+        Next
+    End Sub
+
+
+    'Converts polylines With bulges into lines/arcs
+    Private Function ExplodePolyline(pl As IxMilia.Dxf.Entities.DxfPolyline) As List(Of CadEntity)
+        Dim result As New List(Of CadEntity)()
+
+        Dim verts = pl.Vertices
+        Dim count = verts.Count
+        For i = 0 To count - 1
+            Dim v1 = verts(i)
+            Dim v2 = verts((i + 1) Mod count) ' wrap if closed
+
+            ' Check for bulge (arc segment)
+            If v1.Bulge = 0 Then
+                ' straight line
+                result.Add(New CadLine With {
+                .StartPoint = New PointF(CSng(v1.Location.X), CSng(v1.Location.Y)),
+                .EndPoint = New PointF(CSng(v2.Location.X), CSng(v2.Location.Y)),
+                .Color = System.Drawing.Color.Black
+            })
+            Else
+                ' arc from bulge
+                result.Add(ArcFromBulge(v1.Location, v2.Location, v1.Bulge))
+            End If
+        Next
+
+        Return result
+    End Function
+
+
+    ' Converts two vertices + bulge into a CadArc
+    Private Function ArcFromBulge(p1 As IxMilia.Dxf.DxfPoint, p2 As IxMilia.Dxf.DxfPoint, bulge As Double) As CadArc
+        ' Calculate chord length
+        Dim dx = p2.X - p1.X
+        Dim dy = p2.Y - p1.Y
+        Dim chord = Math.Sqrt(dx * dx + dy * dy)
+
+        ' Included angle
+        Dim angle = 4 * Math.Atan(bulge)
+
+        ' Radius
+        Dim r = chord / (2 * Math.Sin(angle / 2))
+
+        ' Midpoint
+        Dim mx = (p1.X + p2.X) / 2
+        Dim my = (p1.Y + p2.Y) / 2
+
+        ' Determine center of arc
+        Dim sagitta = r * (1 - Math.Cos(angle / 2))
+        Dim perpX = -dy / chord * sagitta
+        Dim perpY = dx / chord * sagitta
+        Dim cx = mx + perpX
+        Dim cy = my + perpY
+
+        ' Start/End angles
+        Dim startAngle = Math.Atan2(p1.Y - cy, p1.X - cx) * 180 / Math.PI
+        Dim endAngle = Math.Atan2(p2.Y - cy, p2.X - cx) * 180 / Math.PI
+
+        Return New CadArc With {
+        .Center = New PointF(CSng(cx), CSng(cy)),
+        .Radius = CSng(r),
+        .StartAngle = CSng(startAngle),
+        .EndAngle = CSng(endAngle),
+        .Color = System.Drawing.Color.Black
+    }
+    End Function
+
+    Public Function ImportDxf(path As String) As List(Of CadEntity)
+
+        'Dim entities As New List(Of CadEntity)
+
+        'Dim dxf = DxfFile.Load(path)
+
+        'For Each e In dxf.Entities
+
+        '    Select Case e.EntityType
+
+        '        Case DxfEntityType.Line
+        '            Dim l = CType(e, DxfLine)
+
+        '            entities.Add(New CadLine With {
+        '            .StartPoint = New PointF(CSng(l.P1.X), CSng(l.P1.Y)),
+        '            .EndPoint = New PointF(CSng(l.P2.X), CSng(l.P2.Y)),
+        '            .LayerName = l.Layer,
+        '            .Color = System.Drawing.Color.Black
+        '        })
+
+        '        Case DxfEntityType.Circle
+        '            Dim c = CType(e, DxfCircle)
+
+        '            entities.Add(New CadCircle With {
+        '            .Center = New PointF(CSng(c.Center.X), CSng(c.Center.Y)),
+        '            .Radius = c.Radius,
+        '            .LayerName = c.Layer,
+        '            .Color = System.Drawing.Color.Black
+        '        })
+
+        '        Case DxfEntityType.Arc
+        '            Dim a = CType(e, DxfArc)
+
+        '            entities.Add(New CadArc With {
+        '            .Center = New PointF(CSng(a.Center.X), CSng(a.Center.Y)),
+        '            .Radius = a.Radius,
+        '            .StartAngle = a.StartAngle,
+        '            .EndAngle = a.EndAngle,
+        '            .LayerName = a.Layer,
+        '            .Color = System.Drawing.Color.Black
+        '        })
+
+        '    End Select
+
+        'Next
+
+        'Return entities
+
+        Dim entities As New List(Of CadEntity)
+        Dim dxf = DxfFile.Load(path)
+
+        ' -----------------------------
+        ' 1) Import raw entities
+        ' -----------------------------
+        For Each e In dxf.Entities
+
+            Select Case e.EntityType
+
+                Case DxfEntityType.Line
+                    Dim l = CType(e, DxfLine)
+                    entities.Add(New CadLine With {
+                    .StartPoint = New PointF(CSng(l.P1.X), CSng(l.P1.Y)),
+                    .EndPoint = New PointF(CSng(l.P2.X), CSng(l.P2.Y)),
+                    .LayerName = l.Layer,
+                    .Color = System.Drawing.Color.Black
+                })
+
+                Case DxfEntityType.Circle
+                    Dim c = CType(e, DxfCircle)
+                    entities.Add(New CadCircle With {
+                    .Center = New PointF(CSng(c.Center.X), CSng(c.Center.Y)),
+                    .Radius = c.Radius,
+                    .LayerName = c.Layer,
+                    .Color = System.Drawing.Color.Black
+                })
+
+                Case DxfEntityType.Arc
+                    Dim a = CType(e, DxfArc)
+                    entities.Add(New CadArc With {
+                    .Center = New PointF(CSng(a.Center.X), CSng(a.Center.Y)),
+                    .Radius = a.Radius,
+                    .StartAngle = a.StartAngle,
+                    .EndAngle = a.EndAngle,
+                    .LayerName = a.Layer,
+                    .Color = System.Drawing.Color.Black
+                })
+            End Select
+
+        Next
+
+        ' -----------------------------
+        ' 2) Normalize geometry to (0,0)
+        ' -----------------------------
+        Dim bounds As RectangleF = HelperFunctions.GetCadBounds(entities)
+
+        If Not bounds.IsEmpty Then
+            Dim dx As Double = -bounds.X
+            Dim dy As Double = -bounds.Y
+
+            For Each ce In entities
+                ce.Translate(dx, dy)
+            Next
+        End If
+
+        Return entities
+
+    End Function
+
+    Public Sub NormalizeCadToSheet(entities As List(Of CadEntity))
+        If entities Is Nothing OrElse entities.Count = 0 Then Exit Sub
+
+        Dim bounds = HelperFunctions.GetCadBounds(entities)
+
+        Dim dx As Double = -bounds.X
+        Dim dy As Double = -bounds.Y
+
+
+        For Each e In entities
+            e.Translate(dx, dy)
+        Next
+    End Sub
+
+    Private Sub DrawCadLine(
+    l As CadLine,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        Dim p1 = WorldToScreen(l.StartPoint.X, l.StartPoint.Y, vt, panelHeight)
+        Dim p2 = WorldToScreen(l.EndPoint.X, l.EndPoint.Y, vt, panelHeight)
+
+        Using pen As New Pen(l.Color, 1.0F)
+            g.DrawLine(pen, p1, p2)
+        End Using
+    End Sub
+
+    Private Sub DrawCadArc(a As CadArc, g As Graphics, vt As ViewTransform, panelHeight As Integer)
+
+        Dim centerScreen = WorldToScreen(a.Center.X, a.Center.Y, vt, panelHeight)
+        Dim r As Single = CSng(a.Radius * vt.Scale)
+
+        Dim p1 As New PointF(centerScreen.X - r, centerScreen.Y - r)
+        Dim p2 As New PointF(centerScreen.X + r, centerScreen.Y + r)
+
+        Dim rect As RectangleF = HelperFunctions.RectFromPoints(p1, p2)
+
+        Dim sweep As Single = CSng(a.EndAngle - a.StartAngle)
+        If sweep < 0 Then sweep += 360
+
+        Dim startAngle As Single = CSng(-a.StartAngle)
+        Dim sweepAngle As Single = CSng(-sweep)
+
+        Using pen As New Pen(a.Color, 1.0F)
+            g.DrawArc(pen, rect, startAngle, sweepAngle)
+        End Using
+
+    End Sub
+
+
+
+    Private Sub DrawCadCircle(
+    c As CadCircle,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        Dim center = WorldToScreen(c.Center.X, c.Center.Y, vt, panelHeight)
+        Dim r As Single = CSng(c.Radius * vt.Scale)
+
+        Dim p1 As New PointF(center.X - r, center.Y - r)
+        Dim p2 As New PointF(center.X + r, center.Y + r)
+
+        Dim rect = HelperFunctions.RectFromPoints(p1, p2)
+
+        Using pen As New Pen(c.Color, 1.0F)
+            g.DrawEllipse(pen, rect)
+        End Using
+    End Sub
+
     Public Function ToScreen(
     pt As PointF,
     scale As Double,
@@ -24,248 +317,27 @@ Public Module DxfImport
 
         Return New PointF(sx, sy)
     End Function
-    ''' <summary>
-    ''' Parse a DXF file and return a list of CadEntity objects.
-    ''' Only lines, arcs, circles, and polylines are currently supported.
-    ''' </summary>
-    Public Function ParseDXFToCadEntities(filePath As String) As List(Of CadEntity)
-        Dim entities As New List(Of CadEntity)
 
-        Dim dxfDoc As DxfFile = DxfFile.Load(filePath)
+    Public Sub DrawCadEntities(
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
 
-        For Each ent In dxfDoc.Entities
-            Dim cadEnt = CadEntity.FromDxf(ent)
-            If cadEnt IsNot Nothing Then
-                entities.Add(cadEnt)
-            End If
+        If _cadEntities Is Nothing OrElse _cadEntities.Count = 0 Then Exit Sub
+
+        For Each ce In _cadEntities
+            Select Case True
+                Case TypeOf ce Is CadLine
+                    DrawCadLine(CType(ce, CadLine), g, vt, panelHeight)
+
+                Case TypeOf ce Is CadArc
+                    DrawCadArc(CType(ce, CadArc), g, vt, panelHeight)
+
+                Case TypeOf ce Is CadCircle
+                    DrawCadCircle(CType(ce, CadCircle), g, vt, panelHeight)
+            End Select
         Next
 
-        CurrentDXFEntities = entities
-        Return entities
-    End Function
-
-
-    ''' <summary>
-    ''' Computes scale and offsets to fit CadEntities in a panel.
-    ''' </summary>
-    Public Sub ComputePanelTransform(entities As List(Of CadEntity),
-                                     panelWidth As Integer,
-                                     panelHeight As Integer,
-                                     padding As Integer,
-                                     ByRef scale As Double,
-                                     ByRef offsetX As Double,
-                                     ByRef offsetY As Double)
-
-        Dim minX, minY, maxX, maxY As Double
-        CadEntity.GetBoundingBox(entities, minX, minY, maxX, maxY)
-
-        Dim dxfWidth = maxX - minX
-        Dim dxfHeight = maxY - minY
-
-        Dim scaleX = (panelWidth - 2 * padding) / dxfWidth
-        Dim scaleY = (panelHeight - 2 * padding) / dxfHeight
-        scale = Math.Min(scaleX, scaleY)
-
-        offsetX = (panelWidth - (dxfWidth * scale)) / 2 - minX * scale
-        offsetY = (panelHeight + (dxfHeight * scale)) / 2 + minY * scale
     End Sub
-
-    ''' <summary>
-    ''' Transforms DXF coordinates to panel coordinates, centered and flipped Y.
-    ''' </summary>
-    Public Function TransformToPanel(x As Double, y As Double,
-                                     scale As Double,
-                                     offsetX As Double,
-                                     offsetY As Double,
-                                     Optional scaleYFlip As Double = -1) As PointF
-        Return New PointF(
-            CSng(x * scale + offsetX),
-            CSng(y * scale * scaleYFlip + offsetY)
-        )
-    End Function
-
-    ''' <summary>
-    ''' Compute scale and offsets to fit CadEntities in a panel.
-    ''' </summary>
-    Public Function ComputeScaleAndOffset(entities As List(Of CadEntity),
-                                          panelWidth As Integer,
-                                          panelHeight As Integer,
-                                          padding As Integer,
-                                          ByRef offsetX As Double,
-                                          ByRef offsetY As Double,
-                                          Optional ByRef scaleYFlip As Double = 1) As Double
-
-        Dim minX, minY, maxX, maxY As Double
-        CadEntity.GetBoundingBox(entities, minX, minY, maxX, maxY)
-
-        Dim dxfWidth = Math.Max(maxX - minX, 1)
-        Dim dxfHeight = Math.Max(maxY - minY, 1)
-
-        Dim scaleX = (panelWidth - 2 * padding) / dxfWidth
-        Dim scaleY = (panelHeight - 2 * padding) / dxfHeight
-        Dim scale = Math.Min(scaleX, scaleY)
-
-        scaleYFlip = -1
-
-        offsetX = (panelWidth - (dxfWidth * scale)) / 2 - minX * scale
-        offsetY = (panelHeight + (dxfHeight * scale)) / 2 + minY * scale
-
-        Return scale
-    End Function
-
-    ''' <summary>
-    ''' Transform a CadEntity to panel coordinates with Y-axis flip.
-    ''' Returns a tuple of transformed start and end points (works for lines/arcs).
-    ''' </summary>
-    Public Function TransformEntityToPanel(entity As CadEntity,
-                                           scale As Double,
-                                           offsetX As Double,
-                                           offsetY As Double,
-                                           Optional scaleYFlip As Double = -1) As ((X As Double, Y As Double), (X As Double, Y As Double))
-
-        Dim sp = entity.StartPt
-        Dim ep = entity.EndPt
-
-        Dim transformedStart = (
-            sp.X * scale + offsetX,
-            sp.Y * scale * scaleYFlip + offsetY
-        )
-        Dim transformedEnd = (
-            ep.X * scale + offsetX,
-            ep.Y * scale * scaleYFlip + offsetY
-        )
-
-        Return (transformedStart, transformedEnd)
-    End Function
-
-    ''' <summary>
-    ''' Convert a single CadEntity to an ImportedEntity
-    ''' </summary>
-    Public Function ConvertCadToImportedEntity(cad As CadEntity) As ImportedEntity
-        Dim imp As New ImportedEntity()
-        imp.CadEntity = cad
-        imp.CAMLayer = cad.LayerName
-
-        ' IxMilia: ByLayer often comes through as Black
-        If cad.DisplayColor.IsEmpty OrElse cad.DisplayColor = Color.Black Then
-            imp.ColorMode = ColorSourceMode.ByLayer
-        Else
-            imp.ColorMode = ColorSourceMode.ByEntity
-            imp.ExplicitColor = cad.DisplayColor
-        End If
-
-        Return imp
-    End Function
-
-
-
-
-    Public Function ResolveCadColorIndex(index As Integer) As Color
-        ' Example simple mapping, replace with DXF palette if needed
-        Select Case index
-            Case 1 : Return Color.Red
-            Case 2 : Return Color.Yellow
-            Case 3 : Return Color.Green
-        ' ... etc.
-            Case 256 : Return Color.Empty  ' ByLayer
-            Case Else : Return Color.Black
-        End Select
-    End Function
-
-
-    ''' <summary>
-    ''' Returns a System.Drawing.Color for a directive.
-    ''' </summary>
-    Public Function ResolveDirectiveColor(directive As AppData.Directive) As Color
-        If directive Is Nothing Then Return Color.Black
-        If directive.DisplayColor <> Color.Empty Then Return directive.DisplayColor
-        Try
-            Return Color.FromArgb(directive.Color)
-        Catch
-            Return Color.Black
-        End Try
-    End Function
-
-    ''' <summary>
-    ''' Convert CadEntity to DxfDrawable for panel rendering.
-    ''' </summary>
-    'Public Function ConvertCadToDrawable(cad As CadEntity,
-    '                                 resolver As LayerColorResolver) As DxfDrawable
-
-    '    Dim d As New DxfDrawable With {
-    '    .LayerName = cad.LayerName,
-    '    .Color = resolver.Resolve(cad)
-    '}
-
-    '    Select Case cad.Type
-
-    '        Case CadEntity.EntityType.Line
-    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
-    '            d.StartPoint = New PointF(
-    '            CSng(cad.StartPt.X),
-    '            CSng(cad.StartPt.Y))
-    '            d.EndPoint = New PointF(
-    '            CSng(cad.EndPt.X),
-    '            CSng(cad.EndPt.Y))
-
-    '        Case CadEntity.EntityType.Circle
-    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
-    '            d.Center = New PointF(
-    '            CSng(cad.CircleCenter.Value.X),
-    '            CSng(cad.CircleCenter.Value.Y))
-    '            d.Radius = CSng(cad.CircleRadius)
-
-    '        Case CadEntity.EntityType.Arc
-    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
-    '            d.Center = New PointF(
-    '            CSng(cad.CircleCenter.Value.X),
-    '            CSng(cad.CircleCenter.Value.Y))
-    '            d.Radius = CSng(cad.ArcRadius.Value)
-    '            d.StartAngle = CSng(cad.ArcStartAngle)
-    '            d.EndAngle = CSng(cad.ArcEndAngle)
-
-    '        Case Else
-    '            Return Nothing
-
-    '    End Select
-
-    '    Return d
-    'End Function
-    Public Function ConvertImportedToDrawable(
-    imp As ImportedEntity,
-    resolver As LayerColorResolver
-) As DxfDrawable
-
-        Dim cad = imp.CadEntity
-        Dim d As New DxfDrawable With {
-        .LayerName = imp.CAMLayer,
-        .Color = resolver.Resolve(imp)
-    }
-
-        Select Case cad.Type
-            Case CadEntity.EntityType.Line
-                d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
-                d.StartPoint = New PointF(CSng(cad.StartPt.X), CSng(cad.StartPt.Y))
-                d.EndPoint = New PointF(CSng(cad.EndPt.X), CSng(cad.EndPt.Y))
-
-            Case CadEntity.EntityType.Circle
-                d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
-                d.Center = New PointF(CSng(cad.CircleCenter.Value.X), CSng(cad.CircleCenter.Value.Y))
-                d.Radius = CSng(cad.CircleRadius)
-
-            Case CadEntity.EntityType.Arc
-                d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
-                d.Center = New PointF(CSng(cad.CircleCenter.Value.X), CSng(cad.CircleCenter.Value.Y))
-                d.Radius = CSng(cad.ArcRadius.Value)
-                d.StartAngle = CSng(cad.ArcStartAngle)
-                d.EndAngle = CSng(cad.ArcEndAngle)
-
-            Case Else
-                Return Nothing
-        End Select
-
-        Return d
-    End Function
-
 
 End Module

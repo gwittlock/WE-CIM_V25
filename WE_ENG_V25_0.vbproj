@@ -319,10 +319,8 @@
     <Compile Include="Classes\bogus.vb" />
     <Compile Include="Classes\C3dCoord.vb" />
     <Compile Include="Classes\CadEntity.vb" />
-    <Compile Include="Classes\CamBuilder.vb" />
     <Compile Include="Classes\CamEntity.vb" />
     <Compile Include="Classes\CamOperation.vb" />
-    <Compile Include="Classes\CamProfile.vb" />
     <Compile Include="Classes\clamp.vb" />
     <Compile Include="Classes\clsMatList.vb" />
     <Compile Include="Classes\DatabaseConversion.vb" />
@@ -366,6 +364,12 @@
       <DependentUpon>dlgAddParam.vb</DependentUpon>
     </Compile>
     <Compile Include="Forms\dlgAddParam.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\dlgEditClamps.designer.vb">
+      <DependentUpon>dlgEditClamps.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\dlgEditClamps.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\DXFFileSelectionDialog.Designer.vb">
@@ -510,6 +514,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\dlgAddParam.resx">
       <DependentUpon>dlgAddParam.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\dlgEditClamps.resx">
+      <DependentUpon>dlgEditClamps.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\DXFFileSelectionDialog.resx">
       <DependentUpon>DXFFileSelectionDialog.vb</DependentUpon>

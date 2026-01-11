@@ -52,13 +52,6 @@ Public Class AppData
     Public Shared _selectedDxfPath As String = String.Empty
     Public _dxfPath As String = String.Empty
 
-    ' Selected items
-    'Public Shared SelectedMachineID As Integer
-    'Public Shared SelectedToolSetupID As Integer
-    'Public Shared SelectedLayerSetupID As Integer
-    'Public Shared SelectedMaterialID As Integer
-    'Public Shared SelectedMaterial As List(Of MaterialSheet)
-
     Public Enum CutSideEnum
         None = 0
         Left = -1
@@ -130,7 +123,6 @@ Public Class AppData
 
         ValidateConfigurationState()
 
-
     End Sub
 
     Public Shared Sub ValidateConfigurationState()
@@ -163,13 +155,10 @@ Public Class AppData
                     $"Directive ID {d.ID} in LayerSetup ID {ls.ID} has no resolved DisplayColor."
                 )
                 End If
-
             Next
         Next
 
     End Sub
-
-
 
     Private Function LoadToolTypeAttributes() As List(Of ToolTypeAttribute)
         Dim filePath = Path.Combine(DataFolder, "ToolTypeAttributes.json")
@@ -289,7 +278,6 @@ Public Class AppData
 
         Return result
     End Function
-
 
     ' ------------------------------------------
     ' GENERIC JSON TABLE LOADER
@@ -575,6 +563,5 @@ Public Class AppData
         End Sub
 
     End Class
-
 
 End Class

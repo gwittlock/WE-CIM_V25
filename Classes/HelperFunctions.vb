@@ -1,4 +1,5 @@
 ﻿Imports Newtonsoft.Json.Linq
+Imports FabV25_WIN8.CadEntity
 
 Public Class HelperFunctions
     Public Class JsonColumnDef
@@ -47,10 +48,6 @@ Public Class HelperFunctions
         Return RectFromPoints(p1, p2)
     End Function
 
-
-
-
-
     ''' <summary>
     ''' Builds a JSON Columns array from a DataTable.
     ''' Each column will have Field, Header, Visible (True), and optional DataType (0 by default).
@@ -71,5 +68,51 @@ Public Class HelperFunctions
 
         Return columns
     End Function
+
+    Public Shared Function GetCadBounds(entities As List(Of CadEntity)) As RectangleF
+
+        Dim minX As Single = Single.MaxValue
+        Dim minY As Single = Single.MaxValue
+        Dim maxX As Single = Single.MinValue
+        Dim maxY As Single = Single.MinValue
+
+        For Each e In entities
+
+            If TypeOf e Is CadLine Then
+                Dim l = CType(e, CadLine)
+                UpdateBounds(l.StartPoint, minX, minY, maxX, maxY)
+                UpdateBounds(l.EndPoint, minX, minY, maxX, maxY)
+
+            ElseIf TypeOf e Is CadArc Then
+                Dim a = CType(e, CadArc)
+
+                ' Conservative: full circle bounds
+                Dim r As Single = CSng(a.Radius)
+                UpdateBounds(New PointF(a.Center.X - r, a.Center.Y - r), minX, minY, maxX, maxY)
+                UpdateBounds(New PointF(a.Center.X + r, a.Center.Y + r), minX, minY, maxX, maxY)
+            End If
+
+        Next
+
+        If minX = Single.MaxValue Then
+            Return RectangleF.Empty
+        End If
+
+        Return RectangleF.FromLTRB(minX, minY, maxX, maxY)
+
+    End Function
+
+    Private Shared Sub UpdateBounds(
+    p As PointF,
+    ByRef minX As Single, ByRef minY As Single,
+    ByRef maxX As Single, ByRef maxY As Single)
+
+        minX = Math.Min(minX, p.X)
+        minY = Math.Min(minY, p.Y)
+        maxX = Math.Max(maxX, p.X)
+        maxY = Math.Max(maxY, p.Y)
+
+    End Sub
+
 
 End Class

@@ -97,17 +97,26 @@ Public Module modFile
             ' Perform logic with numericWidth
         End If
 
+        Dim margin As Integer = 20
 
-        'DrawMaterial(MaterialSheets, picModelerHandle, numericWidth, numericLength, X, Y)
+        Dim scaleX As Double = (panelWidth - 2 * margin) / matLength
+        Dim scaleY As Double = (panelHeight - 2 * margin) / matWidth
+        Dim scale As Double = Math.Min(scaleX, scaleY)
 
 
+        Dim offsetX As Double = (panelWidth - matLength * scale) / 2
+        Dim offsetY As Double = panelHeight - (matWidth * scale) - margin
+
+        myTransform = New ViewTransform With {
+        .Scale = scale,
+        .OffsetX = offsetX,
+        .OffsetY = offsetY
+    }
 
         '' ---- Resolve machine from configuration ----
         Dim machineDef As MachineDefinition = MachineLoader.LoadMachineDefinition(SelectedMachineID)
 
         _machineDef = machineDef
-
-
 
         If machineDef Is Nothing Then
             Throw New Exception($"Machine with ID {SelectedMachineID} not found.")
@@ -115,74 +124,32 @@ Public Module modFile
 
         Dim g As Graphics = Graphics.FromHwnd(picModelerHandle)
 
+        Dim originScreen = WorldToScreen(0, 0, myTransform, panelHeight)
 
-        'DrawSheetAndWorkzones(g, matLength, matWidth)
+
+        '' ---- Assign to current job ----
         CurrentJob = New JobContext()
         CurrentJob.MachineDefinition = machineDef
 
-
         RestoreAndDrawJob()
-        '' ---- Assign to current job ----
 
+        '' Create / update job context
+        CurrentJob.ToolSetupID = SelectedToolSetupID
+        CurrentJob.MaterialID = SelectedMaterialID
+        CurrentJob.LayerSetupID = SelectedLayerSetupID
 
         If CurrentJob Is Nothing Then Return
         If CurrentJob.WorkZones Is Nothing OrElse CurrentJob.WorkZones.Count = 0 Then Return
 
         DrawSheetAndWorkzones(g, matLength, matWidth)
-        '' ---- Assign to current job ----
-        'CurrentJob = New JobContext()
-        'CurrentJob.MachineDefinition = machineDef
-
-        ''---- Generate workzones from machine definition ----
-
-        'Dim wz = CurrentWorkZoneFactory.WorkZones(0)
-        '' Create / update job context
-
-        'CurrentJob.ToolSetupID = SelectedToolSetupID
-        'CurrentJob.MaterialID = SelectedMaterialID
-        'CurrentJob.LayerSetupID = SelectedLayerSetupID
-
-        'machineDef.SelectedToolSetupID = SelectedToolSetupID
-        'machineDef.SelectedLayerSetupID = SelectedLayerSetupID
-        'machineDef.SelectedMaterialID = SelectedMaterialID
-
-
-
-        'Dim wzFactory As New WorkZoneFactory(_machineDef.Max_Travel_Limit_X, matLength, matWidth)
-
-
-
-        'Using pen As New Pen(System.Drawing.Color.DarkGray, 1)
-        '    pen.DashStyle = Drawing2D.DashStyle.Dash
-
-
-        '    For Each wz In CurrentWorkZoneFactory.WorkZones
-        '        Dim envelopes = New List(Of WorkZone) From {wz}
-        '        For Each env In envelopes
-
-        '            ' World corners
-        '            Dim bl = WorldToScreen(env.XMin, env.YMin, myTransform, panelHeight)
-        '            Dim tr = WorldToScreen(env.XMax, env.YMax, myTransform, panelHeight)
-
-        '            ' Normalize rectangle (important!)
-        '            Dim x As Single = Math.Min(bl.X, tr.X)
-        '            Dim y As Single = Math.Min(bl.Y, tr.Y)
-        '            Dim w As Single = Math.Abs(tr.X - bl.X)
-        '            Dim h As Single = Math.Abs(tr.Y - bl.Y)
-
-        '            If w > 0 AndAlso h > 0 Then
-        '                Using g As Graphics = Graphics.FromHwnd(picModelerHandle)
-        '                    g.DrawRectangle(pen, x, y, w, h)
-        '                End Using
-        '            End If
-
-        '        Next
-        '    Next
-        'End Using
+        g.FillEllipse(Brushes.Red, originScreen.X - 3, originScreen.Y - 3, 6, 6)
+        machineDef.SelectedToolSetupID = SelectedToolSetupID
+        machineDef.SelectedLayerSetupID = SelectedLayerSetupID
+        machineDef.SelectedMaterialID = SelectedMaterialID
 
     End Sub
 
-    Public Function FileOpen() As List(Of CamProfile)
+    Public Function FileOpen()
         Dim importer As New DxfImporter_IxMilia()
 
         Using dlg As New DXFFileSelectionDialog()
@@ -193,249 +160,26 @@ Public Module modFile
                 If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
 
                 PrePareUI(selectedPath, _pnlPicModelerHandle)
-                ' Import DXF as ModelEntities
-                'Dim modelEntities As List(Of ModelEntity) = importer.Import(selectedPath)
-                'If modelEntities Is Nothing OrElse modelEntities.Count = 0 Then
-                '    Return New List(Of CamProfile)()
-                'End If
 
-                '' Convert ModelEntities → CadEntities
-                '_cadEntities = New List(Of CadEntity)
-                'For Each m In modelEntities
-                '    _cadEntities.AddRange(CadEntity.CadEntitiesFromModelEntityIxMilia(m))
-                'Next
+                Dim g As Graphics = Graphics.FromHwnd(_pnlPicModelerHandle)
 
-                '' Convert CadEntities → ImportedEntities (intent + geometry)
-                '' Convert CadEntities → ImportedEntities
-                'Dim importedEntities As New List(Of DxfGeometryHelpers.ImportedEntity)
+                _cadEntities = ImportDxf(selectedPath)
+
+                Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
+
+                NormalizeCadToSheet(_cadEntities)
 
 
+                Dim matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+                Dim matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
 
-                'For Each cad In _cadEntities
-                '    importedEntities.Add(ConvertCadToImportedEntity(cad))
-                'Next
 
-                'For Each imp In importedEntities
-                '    Debug.WriteLine($"Layer={imp.CAMLayer}, Mode={imp.ColorMode}, ExplicitColor={imp.ExplicitColor}")
-                'Next
-                '' Initialize resolver using full LayerSetup (no ToDictionary)
-                '_layerResolver = New LayerColorResolver(SelectedLayerSetup)
+                RedrawAll()
 
-                '' Convert ImportedEntities → Drawables
-                '_drawables = importedEntities _
-                '    .Select(Function(imp) ConvertImportedToDrawable(imp, _layerResolver)) _
-                '    .Where(Function(d) d IsNot Nothing) _
-                '    .ToList()
-
-                '' DEBUG: Count drawables
-                '' Dim lineCount = _drawables.Count(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Line)
-                '' Dim arcCount = _drawables.Count(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc)
-                '' Dim circleCount = _drawables.Count(Function(d) d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle)
-
-                '' Debug.WriteLine($"DRAWABLES → Lines={lineCount}, Arcs={arcCount}, Circles={circleCount}")
-
-                '' Group CadEntities by layer to create CamProfiles
-                'Dim profiles As New List(Of CamProfile)()
-
-                'For Each layerGroup In _cadEntities.GroupBy(Function(c)
-                '                                                ' Use the entity's layer if it exists in setup
-                '                                                If SelectedLayerSetup.Layers.Any(Function(l) l.CADLayer.Equals(c.LayerName, StringComparison.OrdinalIgnoreCase)) Then
-                '                                                    Return c.LayerName
-                '                                                    ' Otherwise, check for "*default*"
-                '                                                ElseIf SelectedLayerSetup.Layers.Any(Function(l) l.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase)) Then
-                '                                                    Return "*default*"
-                '                                                Else
-                '                                                    ' Otherwise, ignore this entity
-                '                                                    Return Nothing
-                '                                                End If
-                '                                            End Function)
-
-                '    Dim key = layerGroup.Key
-                '    If key Is Nothing Then Continue For
-
-                '    Dim profile As New CamProfile() With {
-                '    .LayerName = key,
-                '    .Direction = WindingDirectionEnum.Auto,
-                '    .Entities = layerGroup.ToList()
-                '}
-
-                '    profile.ComputeBoundingBox()
-                '    profile.ComputeTotalLength()
-                '    profiles.Add(profile)
-                'Next
-
-                'Return profiles
             End Using
         End Using
     End Function
 
-
-    'Public Function FileOpen() As List(Of ImportedEntity)
-
-    '    Using dlg As New DXFFileSelectionDialog()
-    '        If dlg.ShowDialog() = DialogResult.OK Then
-
-    '            ' Get the selected DXF file path and DxfFile object
-    '            Dim selectedPath As String = dlg.SelectedDxfPath
-    '            Dim loadedDxf As DxfFile = Nothing
-
-    '            Try
-    '                loadedDxf = DxfFile.Load(selectedPath)
-    '            Catch ex As Exception
-    '                MessageBox.Show("Failed to load DXF: " & ex.Message, "DXF Import", MessageBoxButtons.OK, MessageBoxIcon.Error)
-    '                Return False
-    '            End Try
-
-    '            ' Show Import Dialog to gather context (Machine, ToolSetup, Material, etc.)
-    '            Using frmOpenProject As New frmOpenProject(selectedPath)
-    '                If frmOpenProject.ShowDialog() = DialogResult.OK Then
-
-    '                    ' Process DXF file and draw in pnlPicmodeler
-    '                    ' Use the loaded DxfFile from the dialog instead of re-loading
-    '                    Dim importedEntities = ImportDxfWithLayerSetup(selectedPath, SelectedLayerSetup)
-    '                    Return importedEntities
-    '                End If
-    '            End Using
-    '        End If
-    '    End Using
-
-    'End Function
-
-    'Public Function FileOpen() As List(Of CamProfile)
-
-    'Using dlg As New DXFFileSelectionDialog()
-    'If dlg.ShowDialog() <> DialogResult.OK Then Return Nothing
-
-    '        Dim selectedPath As String = dlg.SelectedDxfPath
-
-    '' Show Import Dialog to gather context
-    'Using frm As New frmOpenProject(selectedPath)
-    'If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
-
-    '            CurrentDXFEntities = ParseDXFToCadEntities(selectedPath)
-
-    '            Dim layerColorDict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
-
-    'For Each layer In _selectedLayerSetup.Layers
-    '                layerColorDict(layer.CADLayer) = layer.DisplayColor
-    '            Next
-
-    'Dim resolver As New LayerColorResolver(layerColorDict)
-
-    'Dim drawables As New List(Of DxfDrawable)
-
-    '            _cadEntities = CurrentDXFEntities
-
-    '            PopulateDrawables(_cadEntities, _selectedLayerSetup)
-
-    '        End Using
-    'End Using
-
-    'End Function
-
-    'Using dlg As New DXFFileSelectionDialog()
-    '    If dlg.ShowDialog() <> DialogResult.OK Then Return Nothing
-
-    '    Dim selectedPath As String = dlg.SelectedDxfPath
-
-    '    ' Show Import Dialog to gather context
-    '    Using frm As New frmOpenProject(selectedPath)
-    '        If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
-
-    '        Dim entities As List(Of ModelEntity) = importer.Import(selectedPath)
-
-
-    'CurrentDXFEntities = ParseDXFToCadEntities(selectedPath)
-
-    'Dim layerColorDict As New Dictionary(Of String, Color)(StringComparer.OrdinalIgnoreCase)
-
-    'For Each layer In _selectedLayerSetup.Layers
-    '    layerColorDict(layer.CADLayer) = layer.DisplayColor
-    'Next
-
-    'Dim resolver As New LayerColorResolver(layerColorDict)
-
-    'Dim drawables As New List(Of DxfDrawable)
-
-    '_cadEntities = CurrentDXFEntities
-
-    'PopulateDrawables(_cadEntities, _selectedLayerSetup)
-
-    ''For Each cad In CurrentDXFEntities
-    ''    drawables.Add(ConvertCadToDrawable(cad, resolver))
-    ''Next
-
-    'End Using
-    'End Using
-
-
-
-
-    '' ==========================
-    '' 1) Helper: Convert Directive -> LayerPunchRule
-    '' ==========================
-    'Private Function DirectiveToLayerPunchRule(dir As AppData.Directive) As LayerPunchRule
-    '    Return New LayerPunchRule With {
-    '    .CADLayer = dir.CADLayer,
-    '    .Station = dir.Station,
-    '    .CutDirection = dir.CutDirection,
-    '    .Distance = dir.Distance,
-    '    .AutoIndex = dir.AutoIndex
-    '}
-    'End Function
-
-    ' ==========================
-    ' 2) Public CreateWorkingProfile (accept Polyline2D)
-    '' ==========================
-    'Public Function CreateWorkingProfile(baseProfile As Polyline2D, directive As Directive, role As ProfileRole) As Polyline2D
-
-    '    ' If Distance > 0, offset the profile
-    '    Dim workingProfile As Polyline2D = baseProfile.Clone() ' make a copy
-
-    '    If LayerPunchRule.Distance <> 0 Then
-    '        workingProfile = workingProfile.Offset(Rule.Distance, Rule.CutSide)
-    '    End If
-
-    '    ' Resolve winding direction
-    '    workingProfile.Winding = ResolveWinding(role, Rule.CutDirection)
-
-    '    Return workingProfile
-    'End Function
-
-    '' ==========================
-    '' 3) Run AutoPunch on a list of circles
-    '' ==========================
-    'Public Sub TestAutoPunchCircles(cadProfiles As List(Of CadProfile))
-    '    ' 1) Loop through each profile
-    '    For Each cp In cadProfiles
-
-    '        ' 1a) Find directive for layer
-    '        Dim dir As AppData.Directive = _selectedLayerSetup.FindRuleByLayer(cp.LayerName)
-    '        If dir Is Nothing OrElse dir.Station = StationMode.None Then Continue For
-
-    '        ' 1b) Convert to LayerPunchRule
-    '        ' Dim rule As LayerPunchRule = DirectiveToLayerPunchRule(dir)
-
-    '        ' 2) Create working profile from Polyline2D
-    '        Dim workingProfile As Polyline2D = CreateWorkingProfile(cp.Profile, rule, cp.Role)
-
-    '        ' 3) Run AutoPunch
-    '        'Dim punchResult As PunchResult = AutoPunch(workingProfile, _selectedToolSetup, rule)
-
-    '        ' 4) Inspect result
-    '        Console.WriteLine($"Profile: {cp.LayerName}, PunchResult: {punchResult.ResultType}")
-    '        If punchResult.ToolIDs.Any() Then
-    '            Console.WriteLine($"Tools Applied: {String.Join(",", punchResult.ToolIDs)}")
-    '        End If
-
-    '    Next
-
-    '    Console.WriteLine("Circle AutoPunch test completed.")
-    'End Sub
-
-    ' ==========================
-    ' 4) ResolveWinding (make Public)
-    ' ==========================
     Public Function ResolveWinding(role As AutoPunchingEngine.ProfileRole, cutDir As AutoPunchingEngine.CutDirection) As AutoPunchingEngine.WindingDirection
         If cutDir = AutoPunchingEngine.CutDirection.Auto Then
             Return If(role = AutoPunchingEngine.ProfileRole.Inside, AutoPunchingEngine.WindingDirection.CCW, AutoPunchingEngine.WindingDirection.CW)
@@ -457,51 +201,6 @@ Public Module modFile
 
         Return dict
     End Function
-    'Function MapEntityToDrawable(cadEntity As Object, layers As List(Of LayerSetup)) As DrawableEntity
-    '    Dim layerName As String = cadEntity.Layer
-    '    Dim layerSetup = layers.FirstOrDefault(Function(l) l.Description = layerName)
-
-    '    Dim drawable As New DrawableEntity With {
-    '    .Type = DetermineType(cadEntity),
-    '    .Geometry = cadEntity,
-    '    .Layer = layerName,
-    '    .Color = If(layerSetup IsNot Nothing, layerSetup.Color, Color.Black),
-    '    .Visible = If(layerSetup IsNot Nothing, layerSetup.Visible, True)
-    '}
-
-    '    Return drawable
-    'End Function
-
-
-
-    'Private Sub DrawEntities(g As Graphics, entities As List(Of DrawableEntity))
-    '    g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
-
-    '    For Each ent In entities
-    '        If Not ent.Visible Then Continue For
-
-    '        Dim pen As New Pen(ent.Color, 1)
-    '        Select Case ent.Type
-    '            Case CamEntityType.Line
-    '                Dim line = CType(ent.Geometry, DxfLine)
-    '                g.DrawLine(pen, line.Start.X, line.Start.Y, line.End.X, line.End.Y)
-
-    '            Case CamEntityType.Circle
-    '                Dim circle = CType(ent.Geometry, DxfCircle)
-    '                g.DrawEllipse(pen, circle.Center.X - circle.Radius, circle.Center.Y - circle.Radius, circle.Radius * 2, circle.Radius * 2)
-
-    '            Case CamEntityType.Arc
-    '                Dim arc = CType(ent.Geometry, DxfArc)
-    '                ' Simplified; you may need angle conversion
-    '                g.DrawArc(pen, arc.BoundingRect, arc.StartAngle, arc.SweepAngle)
-
-    '            Case CamEntityType.Point
-    '                Dim pt = CType(ent.Geometry, DxfPoint)
-    '                g.FillEllipse(New SolidBrush(ent.Color), pt.X - 2, pt.Y - 2, 4, 4)
-    '        End Select
-    '    Next
-    'End Sub
-
 
     Function DetermineType(entity As Object) As CamEntityType
         ' This is simplified; adapt based on your DXF entity type
@@ -512,13 +211,7 @@ Public Module modFile
         Return CamEntityType.Line ' default fallback
     End Function
 
-
-
-
-    Public Function DxfColorToDrawingColor(
-    dxfColor As DxfColor,
-    bgColor As Color
-) As Color
+    Public Function DxfColorToDrawingColor(dxfColor As DxfColor, bgColor As Color) As Color
 
         Dim result As Color = System.Drawing.Color.Black
 
@@ -581,31 +274,6 @@ Public Module modFile
                 Throw New ArgumentException("Unsupported geometry type")
         End Select
     End Function
-    '''' <summary>
-    '''' Returns the start and end points of an ImportedEntity in DXF coordinates.
-    '''' </summary>
-    '''' <param name="entity">The ImportedEntity to query.</param>
-    '''' <returns>A tuple (StartPoint, EndPoint) as DxfPoint.</returns>
-    'Public Function GetEntityEndpoints(entity As ImportedEntity) As (StartPoint As DxfPoint, EndPoint As DxfPoint)
-    '    Select Case entity.GeometryType
-    '        Case ImportedEntity.GeometryTypeEnum.Line
-    '            Return (entity.Line.P1, entity.Line.P2)
-
-    '        Case ImportedEntity.GeometryTypeEnum.Arc
-    '            Return (GetArcStartPoint(entity.Arc), GetArcEndPoint(entity.Arc))
-
-    '        Case ImportedEntity.GeometryTypeEnum.Circle
-    '            ' For circles, pick an arbitrary point on circumference (0°)
-    '            Dim startPt As New DxfPoint(entity.Circle.Center.X + entity.Circle.Radius, entity.Circle.Center.Y, 0)
-    '            Dim endPt As DxfPoint = startPt  ' same for circle
-    '            Return (startPt, endPt)
-
-    '        Case Else
-    '            Throw New ArgumentException("Unsupported geometry type")
-    '    End Select
-    'End Function
-
-
 
     ''' <summary>
     ''' Computes the start point of a DXF Arc based on its center, radius, and start angle.
@@ -651,9 +319,6 @@ Public Module modFile
         Return c
     End Function
 
-
-
-
     Private Function MatchDirective(entity As DxfEntity, layerSetup As AppData.layersetup) As Directive
 
         ' IMPORTANT:
@@ -667,6 +332,7 @@ Public Module modFile
 
         Return Nothing
     End Function
+
     Private Function DirectiveMatchesEntity(directive As AppData.Directive, entity As DxfEntity) As Boolean
 
         If directive Is Nothing OrElse entity Is Nothing Then Return False
@@ -680,60 +346,6 @@ Public Module modFile
     )
 
     End Function
-
-    'Public Function ImportDxfWithLayerSetup(dxfPath As String, Optional layerSetup As LayerSetup = Nothing) As List(Of ImportedEntity)
-    '    Dim importedEntities As New List(Of ImportedEntity)
-
-    '    Dim dxf As DxfFile = DxfFile.Load(dxfPath)
-    '    Dim defaultDirectiveID As Integer = 0 ' fallback if no directive mapping
-    '    Dim color As Color
-
-    '    For Each entity In dxf.Entities
-
-    '        ' Determine display color
-    '        color = Color.Yellow  'DxfColorToColor(entity.Color)
-
-    '        Select Case True
-    '            Case TypeOf entity Is DxfLine
-    '                Dim line As DxfLine = DirectCast(entity, DxfLine)
-    '                importedEntities.Add(New ImportedEntity(line, defaultDirectiveID, color, False))
-
-    '            Case TypeOf entity Is DxfCircle
-    '                Dim circle As DxfCircle = DirectCast(entity, DxfCircle)
-    '                importedEntities.Add(New ImportedEntity(circle, defaultDirectiveID, color, False))
-
-    '            Case TypeOf entity Is DxfArc
-    '                Dim arc As DxfArc = DirectCast(entity, DxfArc)
-    '                importedEntities.Add(New ImportedEntity(arc, defaultDirectiveID, color, False))
-
-    '            Case TypeOf entity Is DxfPolyline
-    '                Dim pline As DxfPolyline = DirectCast(entity, DxfPolyline)
-    '                importedEntities.Add(New ImportedEntity(pline, defaultDirectiveID, color, False))
-
-    '                ' Add other DXF entity types as needed
-    '        End Select
-
-    '    Next
-
-    '    Return importedEntities
-    'End Function
-
-
-
-    '-----------------------------------
-    ' Import DXF with optional LayerSetup
-    '-----------------------------------
-
-
-
-
-
-    ' Adjust function to accept DxfColor
-    '-----------------------------------
-    ' Converts IxMilia DXF color to Drawing.Color
-    ' Avoids background color for contrast
-    '-----------------------------------
-
 
     ' Helper to compute key points for arc bounding box
     Private Function GetArcBoundingPoints(a As DxfArc) As List(Of DxfPoint)
@@ -757,11 +369,6 @@ Public Module modFile
         Return points
     End Function
 
-    '-------------------------------------------------
-    ' Compute gap pairs from a list of ImportedEntity
-    ' Returns: List(Of Tuple(Of ImportedEntity, ImportedEntity))
-    '-------------------------------------------------
-    '-------------------------------------------------
     ' Compute all pairs of entities closer than gapTolerance
     '-------------------------------------------------
     Public Function ComputeGapPairs(entities As List(Of ImportedEntity),
@@ -785,29 +392,25 @@ Public Module modFile
         Return gapPairs
     End Function
 
+    'Public Function ComputeSignedArea(profile As List(Of CadEntity)) As Double
+    '    ' Treat profile as polygon using start points of entities
+    '    Dim points As New List(Of (Double, Double))()
 
-    Public Function ComputeSignedArea(profile As List(Of CadEntity)) As Double
-        ' Treat profile as polygon using start points of entities
-        Dim points As New List(Of (Double, Double))()
+    '    For Each e As CadEntity In profile
+    '        Dim endpoints = GetEntityEndpoints(e)   ' Returns ((X,Y),(X,Y))
+    '        points.Add(endpoints.Item1)             ' take the start point
+    '    Next
 
-        For Each e As CadEntity In profile
-            Dim endpoints = GetEntityEndpoints(e)   ' Returns ((X,Y),(X,Y))
-            points.Add(endpoints.Item1)             ' take the start point
-        Next
+    '    Dim area As Double = 0
+    '    Dim n As Integer = points.Count
 
-        Dim area As Double = 0
-        Dim n As Integer = points.Count
+    '    For i As Integer = 0 To n - 1
+    '        Dim j As Integer = (i + 1) Mod n
+    '        area += (points(i).Item1 * points(j).Item2) - (points(j).Item1 * points(i).Item2)
+    '    Next
 
-        For i As Integer = 0 To n - 1
-            Dim j As Integer = (i + 1) Mod n
-            area += (points(i).Item1 * points(j).Item2) - (points(j).Item1 * points(i).Item2)
-        Next
-
-        Return area / 2.0
-    End Function
-
-
-
+    '    Return area / 2.0
+    'End Function
 
     '-----------------------------------------
     ' Compute 2D distance between DxfPoints
@@ -817,8 +420,6 @@ Public Module modFile
         Dim dy As Double = p2.Y - p1.Y
         Return Math.Sqrt(dx * dx + dy * dy)
     End Function
-
-
 
     Public ReadOnly Property SelectedLayerSetup As AppData.layersetup
         Get
@@ -837,7 +438,5 @@ Public Module modFile
     Private Function FindLayer(dxf As DxfFile, layerName As String) As DxfLayer
         Return dxf.Layers.FirstOrDefault(Function(l) l.Name = layerName)
     End Function
-
-
 
 End Module
