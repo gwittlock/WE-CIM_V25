@@ -12,8 +12,8 @@ Public Class Clamp
 
     Public ReadOnly Property ExclusionRect As RectangleF
         Get
-            Dim matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
-            Dim matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+            matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+            matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
             Dim bl As PointF = WorldToScreen(0, 0, myTransform, panelHeight)
             Dim tr As PointF = WorldToScreen(matLength, matWidth, myTransform, panelHeight)
 

@@ -408,6 +408,7 @@
     <Compile Include="Helpers\MaterialHelper.vb" />
     <Compile Include="Models\DxfGeometryHelpers.vb" />
     <Compile Include="Models\Machine.vb" />
+    <Compile Include="Models\Module1.vb" />
     <Compile Include="Models\tool.vb" />
     <Compile Include="Models\toolSetup.vb" />
     <Compile Include="Models\ToolType.vb" />
@@ -424,6 +425,7 @@
     <Compile Include="Modules\modPath.vb" />
     <Compile Include="Modules\modProject.vb" />
     <Compile Include="Modules\modRegistry.vb" />
+    <Compile Include="Modules\modSnap.vb" />
     <Compile Include="Modules\modView.vb" />
     <Compile Include="Modules\PropertyGridContext.vb" />
     <Compile Include="Modules\ValidationService.vb" />

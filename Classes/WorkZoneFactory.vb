@@ -37,8 +37,8 @@ Public Class WorkZoneFactory
                    sheetLengthX As Double,
                    sheetLengthY As Double)
 
-        Dim matWidth = GetMaterialWidth(AppData.MaterialSheets, _SelectedMaterialID)
-        Dim matLength = GetMaterialLength(AppData.MaterialSheets, _SelectedMaterialID)
+        matWidth = GetMaterialWidth(AppData.MaterialSheets, _SelectedMaterialID)
+        matLength = GetMaterialLength(AppData.MaterialSheets, _SelectedMaterialID)
         _machineMaxX = _machineDef.Max_Travel_Limit_X
         _sheetLengthX = matLength
         _sheetLengthY = matWidth

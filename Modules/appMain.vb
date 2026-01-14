@@ -28,6 +28,7 @@ Public Module appMain
     Public currentMachineID As Integer = -1
 
 
+
     Public Function EncodeTag(DatVarname As String,
                               DialogDisplay As String,
                               VBValue As String,

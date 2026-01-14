@@ -30,6 +30,8 @@ Imports FabV25_WIN8.modView
 
 
 Public Module modFile
+    Public _sceneReady As Boolean = False
+    Public _visibleEntities As List(Of CadEntity) = Nothing
 
     ' Holds the currently selected LayerSetup object
     Public _selectedLayerSetup As layersetup
@@ -44,10 +46,12 @@ Public Module modFile
     Public _cadEntities As List(Of CadEntity)
     ' Optional: layer color resolver
     Public _layerResolver As LayerColorResolver
+    Public _DoPrepareUI As Boolean = False
+    Public _DoDrawUI As Boolean = False
 
 
 
-    Public Sub PrePareUI(sFilename As String, ByVal picModelerHandle As IntPtr)
+    Public Sub PrePareUI(sFilename As String)
         Dim numericWidth As Double
         Dim numericLength As Double
 
@@ -84,8 +88,12 @@ Public Module modFile
         'This is enough information to draw the material. Material is just a representaion of the
         'material. It is not selectable. to get these values we do the following
 
-        Dim matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
-        Dim matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+        ' ===============================
+        ' Snap state
+        ' ===============================
+
+        matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+        matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
 
         If matWidth > 0 Then
             numericWidth = Convert.ToDouble(matWidth)
@@ -122,8 +130,6 @@ Public Module modFile
             Throw New Exception($"Machine with ID {SelectedMachineID} not found.")
         End If
 
-        Dim g As Graphics = Graphics.FromHwnd(picModelerHandle)
-
         Dim originScreen = WorldToScreen(0, 0, myTransform, panelHeight)
 
 
@@ -131,7 +137,7 @@ Public Module modFile
         CurrentJob = New JobContext()
         CurrentJob.MachineDefinition = machineDef
 
-        RestoreAndDrawJob()
+        'RestoreAndDrawJob()
 
         '' Create / update job context
         CurrentJob.ToolSetupID = SelectedToolSetupID
@@ -139,14 +145,26 @@ Public Module modFile
         CurrentJob.LayerSetupID = SelectedLayerSetupID
 
         If CurrentJob Is Nothing Then Return
-        If CurrentJob.WorkZones Is Nothing OrElse CurrentJob.WorkZones.Count = 0 Then Return
+        ' If CurrentJob.WorkZones Is Nothing OrElse CurrentJob.WorkZones.Count = 0 Then Return
 
-        DrawSheetAndWorkzones(g, matLength, matWidth)
-        g.FillEllipse(Brushes.Red, originScreen.X - 3, originScreen.Y - 3, 6, 6)
+        'DrawSheetAndWorkzones(_pnlPicModelerGraphics, matLength, matWidth)
+
         machineDef.SelectedToolSetupID = SelectedToolSetupID
         machineDef.SelectedLayerSetupID = SelectedLayerSetupID
         machineDef.SelectedMaterialID = SelectedMaterialID
 
+        _cadEntities = ImportDxf(_selectedDxfPath)
+
+        _visibleEntities = _cadEntities.ToList()
+
+        _sceneReady = True
+
+
+        Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
+
+        NormalizeCadToSheet(_cadEntities)
+
+        _DoPrepareUI = False
     End Sub
 
     Public Function FileOpen()
@@ -154,28 +172,29 @@ Public Module modFile
 
         Using dlg As New DXFFileSelectionDialog()
             If dlg.ShowDialog() <> DialogResult.OK Then Return Nothing
-            Dim selectedPath As String = dlg.SelectedDxfPath
+            _selectedDxfPath = dlg.SelectedDxfPath
 
-            Using frm As New frmOpenProject(selectedPath)
+            Using frm As New frmOpenProject(_selectedDxfPath)
                 If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
 
-                PrePareUI(selectedPath, _pnlPicModelerHandle)
 
-                Dim g As Graphics = Graphics.FromHwnd(_pnlPicModelerHandle)
-
-                _cadEntities = ImportDxf(selectedPath)
-
-                Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
-
-                NormalizeCadToSheet(_cadEntities)
+                'PrePareUI(_selectedDxfPath)
 
 
-                Dim matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
-                Dim matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+
+                '_cadEntities = ImportDxf(selectedPath)
+
+                'Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
+
+                'NormalizeCadToSheet(_cadEntities)
 
 
-                RedrawAll()
+                'matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+                'matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
 
+
+                'RedrawAll()
+                frmMain.pnlPicmodeler.Invalidate()
             End Using
         End Using
     End Function
@@ -415,7 +434,7 @@ Public Module modFile
     '-----------------------------------------
     ' Compute 2D distance between DxfPoints
     '-----------------------------------------
-    Private Function Distance(p1 As DxfPoint, p2 As DxfPoint) As Double
+    Public Function Distance(p1 As DxfPoint, p2 As DxfPoint) As Double
         Dim dx As Double = p2.X - p1.X
         Dim dy As Double = p2.Y - p1.Y
         Return Math.Sqrt(dx * dx + dy * dy)

@@ -8,4 +8,10 @@
     Public Property DxfPlacement As DxfPlacementMode = DxfPlacementMode.AlignLowerLeftToSheetOrigin
 
 
+    ' Core geometry for the job
+    Public Property Entities As List(Of CadEntity)
+
+    Public Sub New()
+        Entities = New List(Of CadEntity)
+    End Sub
 End Class

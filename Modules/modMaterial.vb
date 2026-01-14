@@ -3,6 +3,10 @@ Imports FabV25_WIN8.AppData
 
 Module modMaterial
     Public myTransform As ViewTransform
+    Public matWidth As Double
+    Public matLength As Double
+
+
     Public Function CheckMaterialWeight(ByRef materialID As Integer) As Double
         'Dim ds As New DataSet
         'Dim connection As OleDbConnection

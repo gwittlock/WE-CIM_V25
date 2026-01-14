@@ -24,7 +24,7 @@ Imports FabV25_WIN8.AppData
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 Imports FabV25_WIN8.ImportedEntity
 Imports FabV25_WIN8.CadEntity
-
+Imports FabV25_WIN8.modView
 Imports FabV25_WIN8.MateriaWrapper
 Imports Newtonsoft.Json
 Imports Formatting = Newtonsoft.Json.Formatting
@@ -44,10 +44,12 @@ Imports FabV25_WIN8.MaterialWrapper
 Public Class frmMain
     Inherits RibbonForm
 
+    ' Application lifecycle
+    Private _uiInitialized As Boolean = False
+
 
     Dim currentScale As Double
-    Dim minScale As Double
-    Dim maxScale As Double
+
     Private _minX As Double
     Private _minY As Double
     Private _offsetX As Double
@@ -55,8 +57,37 @@ Public Class frmMain
     Private _scale As Single = 1.0F
     Private _ox As Double
     Private _oy As Double
+    Private Const ZoomFactor As Single = 1.1F
+    Private Const MinScale As Single = 0.01F
+    Private Const MaxScale As Single = 1000.0F
 
-    Private _isPanning As Boolean = False
+
+    Private isPanning As Boolean
+    Private panStartMouse As Point
+    Private panStartOffsetX As Double
+    Private panStartOffsetY As Double
+
+    Private _measureActive As Boolean = False
+    Private _measureCurrentScreen As Point
+
+
+    ' Hot dot display toggle
+    Private _hotDotsEnabled As Boolean = True
+
+    ' Current snap point in world coordinates
+    Private _currentHotDot As PointF? = Nothing
+    ' ---------- Snap ----------
+    Private _snapEnabled As Boolean = True
+    Private _activeSnap As SnapResult? = Nothing   ' Nullable structure
+    Private _snapScreenPoint As PointF? = Nothing
+
+
+
+    ' Radius in pixels for the hot dot
+    Private Const HotDotRadius As Integer = 4
+
+
+    Private lastMousePos As Point
     Private _panStart As Point
     Private _offsetStartX As Double
     Private _offsetStartY As Double
@@ -71,34 +102,23 @@ Public Class frmMain
     Private _dxfImporter As IDxfImporter = New DxfImporter_IxMilia()
 
 
-    Public _SelectedMaterialID As Integer
+    ' View history stacks
+    Private _viewHistory As New Stack(Of ViewTransform)
+    Private _redoHistory As New Stack(Of ViewTransform)
 
+    Private Const MaxHistorySize As Integer = 20
 
-
-    Private Structure ViewState
-        Public MinX As Double
-        Public MinY As Double
-        Public Scale As Single
-        Public OffsetX As Double
-        Public OffsetY As Double
-    End Structure
-
-    Private _viewHistory As New Stack(Of ViewState)
-
+    Private _isRestoringView As Boolean = False ' to prevent pushing when restoring
     Private _windowSelecting As Boolean = False
     Private _windowStart As Point
     Private _windowEnd As Point
     Private _currentTool As String = "None"
 
-    ' Optional: zoom factor per wheel notch
-    Private Const ZoomFactor As Single = 1.5F
-
-
     Private _isMeasuring As Boolean = False
-    Private _measureStart As Point
-    Private _measureEnd As Point
-
+    Private _measureStartWorld As PointF
+    Private _measureEndWorld As PointF
     Private _measureTooltip As String = ""
+
 
     ' Replace old LineF lists
     Public CurrentDXFEntities As New List(Of CadEntity)         ' Entities for main panel
@@ -106,11 +126,6 @@ Public Class frmMain
 
 
     Private _loadedDxf As DxfFile = Nothing
-
-    'Private _activeDxf As DxfFile
-
-
-    ' Public _selectedLayerSetup As AppData.LayerSetup
 
     Public Property IsDefaultMapped As Boolean
 
@@ -136,9 +151,7 @@ Public Class frmMain
     .AutoPopDelay = 4000
 }
 
-
     Private Const HitTolerance As Double = 0.05 ' pixels
-
 
     Public PicModelerScale As Single = 1.0F
     Public OffsetX As Single = 0
@@ -206,7 +219,14 @@ Public Class frmMain
 
         Try
 
-            ' EnableDoubleBuffering(pnlPicmodeler)
+            EnableDoubleBuffering(pnlPicmodeler)
+
+            _cadEntities = New List(Of CadEntity)
+            _visibleEntities = New List(Of CadEntity)
+
+            _uiInitialized = True
+            _sceneReady = False   ' Nothing loaded yet
+
             '-----------------------------
             ' 1. Load all core JSON data
             '-----------------------------
@@ -383,89 +403,137 @@ Public Class frmMain
 
     End Sub
 
-    Private Sub pnlPicModeler_Paint(sender As Object, e As PaintEventArgs) _
-    Handles pnlPicmodeler.Paint
+    Private Sub pnlPicModeler_Paint(sender As Object, e As PaintEventArgs) Handles pnlPicmodeler.Paint
 
-        _pnlPicModelerHandle = pnlPicmodeler.Handle
-        'Dim margin As Integer = 20
-        '' Compute scale to fit material inside panel with a margin
-        'Dim panelWidth = pnlPicmodeler.Width
-        'Dim panelHeight = pnlPicmodeler.Height
+        ' UI not ready yet (very early startup)
+        If Not _uiInitialized Then Return
 
-        'Dim materialHeight = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
-        'Dim materialWidth = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+        '' Scene not loaded yet → draw empty workspace
+        'If Not _sceneReady OrElse CurrentJob Is Nothing Then
+        '    DrawEmptyWorkspace(e.Graphics)
+        '    Return
+        'End If
 
+        ' --------------------------------------------
+        ' 1) First-time preparation
+        ' --------------------------------------------
 
-        'Dim scaleX As Double = (panelWidth - 2 * margin) / materialWidth
-        'Dim scaleY As Double = (panelHeight - 2 * margin) / materialHeight
-        'Dim scale As Double = Math.Min(scaleX, scaleY)
+        If _selectedDxfPath IsNot Nothing AndAlso _DoPrepareUI Then
+            PrePareUI(_selectedDxfPath)  ' should initialize CurrentJob, _visibleEntities, _cadEntities
+            _DoPrepareUI = False
+            _DoDrawUI = True
+        End If
 
-        '' Compute offsets to center the material in the panel
-        'Dim offsetX As Double = (panelWidth - materialWidth * scale) / 2
-        'Dim offsetY As Double = (panelHeight - materialHeight * scale) / 2
-
-
-
-        'If _drawables Is Nothing OrElse _drawables.Count = 0 Then Exit Sub
-
-        'e.Graphics.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
-        'Dim padding As Integer = 20
-
-        '' Compute scale & offset for panel
-
-        'ComputePanelTransform(_cadEntities,
-        '                  pnlPicmodeler.Width,
-        '                  pnlPicmodeler.Height,
-        '                  padding,
-        '                  scale,
-        '                  offsetX,
-        '                  offsetY)
-
-        ' Draw each entity
-        'For Each d In _drawables
-        '    Using pen As New Pen(d.Color, 1)
-        '        Select Case d.DrawableType
-        '            Case DxfDrawable.DrawableTypeEnum.Line
-        '                Dim sp = TransformToPanel(d.StartPoint.X, d.StartPoint.Y, myTransform.Scale, myTransform.OffsetX, myTransform.OffsetY)
-        '                Dim ep = TransformToPanel(d.EndPoint.X, d.EndPoint.Y, myTransform.Scale, myTransform.OffsetX, myTransform.OffsetY)
-        '                e.Graphics.DrawLine(pen, sp, ep)
-
-        '            Case DxfDrawable.DrawableTypeEnum.Circle
-        '                Dim center = TransformToPanel(d.Center.X, d.Center.Y, myTransform.Scale, myTransform.OffsetX, myTransform.OffsetY)
-        '                Dim r As Single = CSng(d.Radius * myTransform.Scale)
-        '                e.Graphics.DrawEllipse(pen, center.X - r, center.Y - r, 2 * r, 2 * r)
-
-        '            Case DxfDrawable.DrawableTypeEnum.Arc
-
-        '                Debug.Assert(d.EndAngle <> d.StartAngle, "Arc has zero sweep")
-
-        '                Dim center = TransformToPanel(d.Center.X, d.Center.Y, myTransform.Scale, myTransform.OffsetX, myTransform.OffsetY)
-        '                Dim r As Single = CSng(d.Radius * myTransform.Scale)
-
-        '                ' Start and end angles are in degrees
-        '                Dim startDeg As Single = CSng(d.StartAngle)
-        '                Dim endDeg As Single = CSng(d.EndAngle)
-
-        '                ' Compute sweep
-        '                Dim sweep As Single = endDeg - startDeg
-        '                If sweep < 0 Then sweep += 360  ' ensure positive sweep
-
-        '                ' DrawArc expects clockwise sweep, negate to match CAD convention
-        '                e.Graphics.DrawArc(New Pen(d.Color, 1),
-        '                center.X - r, center.Y - r, 2 * r, 2 * r,
-        '                -startDeg, -sweep)
-
-        '                Debug.WriteLine($"Arc: Center=({d.Center.X},{d.Center.Y}) R={r} Start={startDeg} End={endDeg} Sweep = {sweep}")
+        ' --------------------------------------------
+        ' 2) Ensure essential objects exist
+        ' --------------------------------------------
+        If Not _DoDrawUI OrElse CurrentJob Is Nothing Then
+            ' Nothing to draw yet
+            e.Graphics.Clear(System.Drawing.Color.White)
+            Return
+        End If
 
 
+        If _cadEntities Is Nothing Then _cadEntities = New List(Of CadEntity)
 
-        '        End Select
-        '    End Using
-        'Next
+        ' --------------------------------------------
+        ' 3) Draw base scene
+        ' --------------------------------------------
+        RenderScene(e.Graphics) ' Draw sheets, workzones, clamps, entities, etc.
+
+        ' --------------------------------------------
+        ' 4) Draw overlays in proper order
+        ' --------------------------------------------
+        ' Hot-dots / snap indicator
+        If _activeSnap.HasValue AndAlso _hotDotsEnabled Then
+            DrawSnapIndicator(e.Graphics, _activeSnap.Value)
+        End If
+
+        ' ViewWindow rubber-band
+        If _windowSelecting Then
+            DrawRubberBand(_windowStart, _windowEnd, e.Graphics)
+        End If
+
+        ' Measure line & tooltip
+        If _isMeasuring Then
+            DrawMeasureLine(_measureStartWorld, _measureEndWorld, e.Graphics)
+            DrawOverlayText(e.Graphics, _measureTooltip, _measureEndWorld)
+        End If
+
+        ' Any additional overlays
+        DrawOverlay(e.Graphics)
 
     End Sub
 
 
+
+    ' Central overlay routine
+    Private Sub DrawOverlay(g As Graphics)
+        ' --------------------------
+        ' 1) Hot-Dot
+        ' --------------------------
+        If _activeSnap.HasValue AndAlso _hotDotsEnabled Then
+            DrawSnapIndicator(g, _activeSnap.Value)
+        End If
+
+        ' --------------------------
+        ' 2) Measurement line + tooltip
+        ' --------------------------
+        If _isMeasuring Then
+            DrawMeasureLine(_measureStartWorld, _measureEndWorld, g)
+            DrawOverlayText(g, _measureTooltip, WorldToScreen(_measureEndWorld.X, _measureEndWorld.Y,
+                                                          myTransform, pnlPicmodeler.Height))
+        End If
+
+        ' --------------------------
+        ' 3) ViewWindow rubber-band
+        ' --------------------------
+        If _windowSelecting Then
+            DrawRubberBand(_windowStart, _windowEnd, g)
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' Draw a simple overlay text with background for readability.
+    ''' </summary>
+    Private Sub DrawOverlayText(text As String, screenPt As PointF, g As Graphics)
+        Using brushBack As New SolidBrush(System.Drawing.Color.FromArgb(160, System.Drawing.Color.White))
+            Using brushText As New SolidBrush(System.Drawing.Color.Black)
+                Using fnt As New Font("Segoe UI", 9, FontStyle.Regular)
+                    Dim size As SizeF = g.MeasureString(text, fnt)
+                    Dim rect As New RectangleF(screenPt.X + 5, screenPt.Y - size.Height / 2, size.Width + 4, size.Height + 2)
+                    g.FillRectangle(brushBack, rect)
+                    g.DrawString(text, fnt, brushText, rect.X + 2, rect.Y + 1)
+                End Using
+            End Using
+        End Using
+    End Sub
+
+
+    Private Sub RenderScene(g As Graphics)
+
+
+        If CurrentJob Is Nothing Then Exit Sub
+
+        g.SmoothingMode = SmoothingMode.AntiAlias
+        g.Clear(System.Drawing.Color.White)
+
+        RestoreAndDrawJob()
+        DrawSheetAndWorkzones(g, matLength, matWidth)
+        DrawCadEntities(g, myTransform, panelHeight)
+
+    End Sub
+
+    Private Sub DrawEmptyWorkspace(g As Graphics)
+        Using f As New Font("Segoe UI", 10)
+            g.DrawString(
+            "Load a DXF to begin",
+            f,
+            Brushes.Gray,
+            New PointF(20, 20)
+        )
+        End Using
+    End Sub
 
     ' Transforms a DXF circle or arc radius to panel pixels
     Public Function TransformRadius(radius As Double, scale As Double) As Single
@@ -738,109 +806,81 @@ Public Class frmMain
             Return bestEntity
         End If
 
+
+
         Return Nothing
 
     End Function
 
 
-    '------------------------------------------
-    ' MouseMove handler for hover tooltip
-    '------------------------------------------
 
-    Private Sub pnlPicModeler_MouseMove(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseMove
+    Private Sub pnlPicmodeler_MouseMove(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseMove
 
-        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then
-            statusLocation.Caption = "Location: N/A"
-            _hoverEntity = Nothing
-            entityTip.Hide(pnlPicmodeler)
-            Return
+        ' --------------------------
+        ' 1) Handle panning
+        ' --------------------------
+        If isPanning Then
+            SaveCurrentView() ' only first time is fine
+            Dim dxScreen As Integer = e.X - panStartMouse.X
+            Dim dyScreen As Integer = e.Y - panStartMouse.Y
+
+            myTransform.OffsetX = panStartOffsetX + dxScreen
+            myTransform.OffsetY = panStartOffsetY - dyScreen
+
+            lastMousePos = e.Location
+            pnlPicmodeler.Invalidate()
+            Return ' skip rest while panning
         End If
 
-        '--------------------------------------------
-        ' Convert screen → model coordinates using form-level transform
-        '--------------------------------------------
-        Dim modelX As Double = ((e.X - _offsetX) / _scale) + _minX
-        Dim modelY As Double = ((pnlPicmodeler.ClientSize.Height - e.Y - _offsetY) / _scale) + _minY
-        statusLocation.Caption = $"Location: X = {modelX:0.###}, Y = {modelY:0.###}"
+        ' --------------------------
+        ' 2) Update model coordinates display
+        ' --------------------------
+        Dim modelPt As PointF = ScreenToWorld(e.Location, myTransform, pnlPicmodeler.Height)
+        statusLocation.Caption = $"Location: X={modelPt.X:0.###}, Y={modelPt.Y:0.###}"
 
-        '--------------------------------------------
-        ' Hit-test in screen space
-        '--------------------------------------------
-        Dim hitDist As Single
-        Dim worldPt = ScreenToWorld(e.Location)
+        ' --------------------------
+        ' 3) ViewWindow rubber-band
+        ' --------------------------
+        If _windowSelecting Then
+            _windowEnd = e.Location
+        End If
 
-        ' Dim hit = HitTestImportedEntity(_importedEntities, worldPt, HitTolerance)
+        ' --------------------------
+        ' 4) Active Snap
+        ' --------------------------
+        Dim snapTolPx As Single = 10
+        _activeSnap = GetActiveSnap(e.Location, snapTolPx)
 
+        If _activeSnap.HasValue Then
+            _snapScreenPoint = WorldToScreen(_activeSnap.Value.WorldPoint.X, _activeSnap.Value.WorldPoint.Y,
+                                        myTransform, pnlPicmodeler.Height)
+            pnlPicmodeler.Cursor = Cursors.Cross
+        Else
+            _snapScreenPoint = Nothing
+            pnlPicmodeler.Cursor = Cursors.Default
+        End If
 
-        '' Update hover entity only if changed
-        'If Not Object.ReferenceEquals(hit, _hoverEntity) Then
-        '    _hoverEntity = hit
-        '    pnlPicmodeler.Invalidate() ' redraw for hover highlight
-        'End If
+        ' --------------------------
+        ' 5) Measurement tool
+        ' --------------------------
+        If _isMeasuring Then
+            _measureEndWorld = If(_activeSnap.HasValue, _activeSnap.Value.WorldPoint, modelPt)
 
-        ''--------------------------------------------
-        '' Update tooltip
-        ''--------------------------------------------
-        ''--------------------------------------------
-        '' Inquire mode hit-test + tooltip
-        ''--------------------------------------------
-        'If _inquireMode Then
+            Dim dx As Double = _measureEndWorld.X - _measureStartWorld.X
+            Dim dy As Double = _measureEndWorld.Y - _measureStartWorld.Y
+            Dim dist As Double = Math.Sqrt(dx * dx + dy * dy)
 
+            _measureTooltip = $"ΔX={dx:F3}, ΔY={dy:F3}, Δ={dist:F3}"
+        End If
 
-        '    If Not Object.ReferenceEquals(hit, _hoverEntity) Then
-        '        _hoverEntity = hit
-        '        pnlPicmodeler.Invalidate()
-        '    End If
-
-        '    If hit IsNot Nothing Then
-        '        BuildEntityToolTip(hit)
-        '        pnlPicmodeler.Cursor = Cursors.Help
-        '    Else
-        '        entityTip.Hide(pnlPicmodeler)
-        '    End If
-
-        'Else
-        '    ' Normal mode – ensure tooltip is off
-        '    entityTip.Hide(pnlPicmodeler)
-        '    _hoverEntity = Nothing
-        'End If
-
-
-
-        '' Pan
-        'If _isPanning Then
-        '    Dim dx = e.X - _panStart.X
-        '    Dim dy = e.Y - _panStart.Y
-        '    _offsetX = _offsetStartX + dx
-        '    _offsetY = _offsetStartY + dy
-        '    pnlPicmodeler.Invalidate()
-        '    Return
-        'End If
-
-        '' View Window rubber-band
-        'If _windowSelecting Then
-        '    _windowEnd = e.Location
-        '    pnlPicmodeler.Invalidate()
-        'End If
-        'If _isMeasuring Then
-        '    _measureEnd = e.Location
-
-        '    ' Convert to model coordinates
-        '    Dim startModel As DxfPoint = ScreenToModel(_measureStart)
-        '    Dim endModel As DxfPoint = ScreenToModel(_measureEnd)
-
-        '    ' Compute differences
-        '    Dim dx As Double = endModel.X - startModel.X
-        '    Dim dy As Double = endModel.Y - startModel.Y
-        '    Dim dist As Double = Math.Sqrt(dx * dx + dy * dy)
-
-        '    ' Format tooltip text
-        '    _measureTooltip = $"ΔX = {dx:F3}, ΔY = {dy:F3}, Δ = {dist:F3}"
-
-        '    pnlPicmodeler.Invalidate()
-        'End If
+        ' --------------------------
+        ' 6) Trigger redraw
+        ' --------------------------
+        pnlPicmodeler.Invalidate()
 
     End Sub
+
+
 
     '------------------------------------------
     ' Generate tooltip text with color swatch
@@ -942,7 +982,7 @@ Public Class frmMain
         '------------------------------------------
         ' Selection feedback
         '------------------------------------------
-        pnlPicmodeler.Invalidate()
+
 
         If hitEntity Is Nothing Then
             ' Optional: clear property grid / status
@@ -1083,11 +1123,6 @@ Public Class frmMain
         '   Highlight entity
 
     End Sub
-    Public Structure ViewTransform
-        Public Scale As Double
-        Public OffsetX As Double
-        Public OffsetY As Double
-    End Structure
 
     ' Convert machine coordinates to screen coordinates
     Public Function WorldToScreen(x As Double, y As Double, vt As ViewTransform, panelHeight As Integer) As PointF
@@ -1098,70 +1133,112 @@ Public Class frmMain
 
 
     Private Sub ViewFull()
-        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return
+        SaveViewIfChanged()
 
-        SaveCurrentView() ' save current view for ViewPrevious
+        Dim margin As Integer = 20
+        matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+        matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
 
-        Dim minX = _importedEntities.Min(Function(ent) ent.MinX)
-        Dim minY = _importedEntities.Min(Function(ent) ent.MinY)
-        Dim maxX = _importedEntities.Max(Function(ent) ent.MaxX)
-        Dim maxY = _importedEntities.Max(Function(ent) ent.MaxY)
+        Dim scaleX As Double = (panelWidth - 2 * margin) / matLength
+        Dim scaleY As Double = (panelHeight - 2 * margin) / matWidth
+        Dim scale As Double = Math.Min(scaleX, scaleY)
 
-        Dim panelWidth = pnlPicmodeler.ClientSize.Width
-        Dim panelHeight = pnlPicmodeler.ClientSize.Height
 
-        Dim scaleX = panelWidth / (maxX - minX)
-        Dim scaleY = panelHeight / (maxY - minY)
-        _scale = Math.Min(scaleX, scaleY) * 0.9F ' 10% padding
+        Dim offsetX As Double = (panelWidth - matLength * scale) / 2
+        Dim offsetY As Double = panelHeight - (matWidth * scale) - margin
 
-        _minX = minX
-        _minY = minY
-        _offsetX = (panelWidth - (maxX - minX) * _scale) / 2
-        _offsetY = (panelHeight - (maxY - minY) * _scale) / 2
 
-        pnlPicmodeler.Invalidate()
+        myTransform.Scale = scale
+        myTransform.OffsetX = offsetX
+        myTransform.OffsetY = offsetY
+
+        RedrawAll()
     End Sub
 
     Private Sub ViewPrevious()
         If _viewHistory.Count = 0 Then Return
-        Dim prev = _viewHistory.Pop()
-        _minX = prev.MinX
-        _minY = prev.MinY
-        _scale = prev.Scale
-        _offsetX = prev.OffsetX
-        _offsetY = prev.OffsetY
-        pnlPicmodeler.Invalidate()
+
+        ' Save the current view to redo stack
+        _redoHistory.Push(myTransform)
+
+        ' Pop the last view from history
+        myTransform = _viewHistory.Pop()
+
+        ' Redraw everything
+        RedrawAll()
     End Sub
+
+
+    Private Sub ViewNext()
+        If _redoHistory.Count = 0 Then Return
+
+        ' Save current view to history
+        _viewHistory.Push(myTransform)
+
+        ' Pop from redo stack
+        myTransform = _redoHistory.Pop()
+
+        ' Redraw everything
+        RedrawAll()
+    End Sub
+
+
+
 
     Private Sub pnlPicmodeler_MouseDown(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseDown
         ' Pan (Ctrl+Shift)
-        If e.Button = MouseButtons.Left AndAlso (Control.ModifierKeys And Keys.Control) = Keys.Control _
-       AndAlso (Control.ModifierKeys And Keys.Shift) = Keys.Shift Then
-            _isPanning = True
-            _panStart = e.Location
-            _offsetStartX = _offsetX
-            _offsetStartY = _offsetY
-            pnlPicmodeler.Cursor = Cursors.Hand
+        If e.Button = MouseButtons.Left OrElse e.Button = MouseButtons.Right Then
+            If (Control.ModifierKeys And Keys.Control) = Keys.Control AndAlso
+           (Control.ModifierKeys And Keys.Shift) = Keys.Shift Then
+                _windowSelecting = False
+
+                isPanning = True
+
+                SaveViewIfChanged()
+
+                lastMousePos = e.Location
+
+                panStartMouse = e.Location
+                panStartOffsetX = myTransform.OffsetX
+                panStartOffsetY = myTransform.OffsetY
+
+            End If
+        End If
+
+
+        ' Measure
+        If _currentTool = "Measure" AndAlso e.Button = MouseButtons.Left Then
+            _isMeasuring = True
+            _windowSelecting = False
+
+            _measureStartWorld =
+                If(_activeSnap.HasValue,
+                   _activeSnap.Value.WorldPoint,
+                   ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height))
+
+            _measureEndWorld = _measureStartWorld
+            pnlPicmodeler.Invalidate()
             Return
         End If
 
         ' View Window
-        If e.Button = MouseButtons.Left Then
+        If _currentTool = "ViewWindow" AndAlso e.Button = MouseButtons.Left Then
             _windowSelecting = True
             _windowStart = e.Location
             _windowEnd = e.Location
+            pnlPicmodeler.Invalidate()
         End If
 
-        If _currentTool = "Measure" AndAlso e.Button = MouseButtons.Left Then
-            _isMeasuring = True
-            _measureStart = e.Location
-            _measureEnd = e.Location
-            _measureTooltip = ""
-        End If
     End Sub
 
     Private Sub pnlPicmodeler_MouseUp(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseUp
         Dim PopUpPoint As Point
+
+        If isPanning Then
+            isPanning = False
+            pnlPicmodeler.Cursor = Cursors.Default
+            Return
+        End If
 
         If e.Button = Windows.Forms.MouseButtons.Right Then
             PopUpPoint.X = System.Windows.Forms.Cursor.Position.X
@@ -1173,39 +1250,24 @@ Public Class frmMain
         End If
 
         ' End pan
-        If _isPanning Then
-            _isPanning = False
-            pnlPicmodeler.Cursor = Cursors.Default
+
+        If _isMeasuring Then
+            _isMeasuring = False
+            pnlPicmodeler.Invalidate()
             Return
         End If
 
-        ' End View Window
         If _windowSelecting Then
             _windowSelecting = False
+            ApplyViewWindow(_windowStart, _windowEnd)
             pnlPicmodeler.Invalidate()
-            Dim rect As New Rectangle(
-                Math.Min(_windowStart.X, _windowEnd.X),
-                Math.Min(_windowStart.Y, _windowEnd.Y),
-                Math.Abs(_windowEnd.X - _windowStart.X),
-                Math.Abs(_windowEnd.Y - _windowStart.Y)
-            )
-            If rect.Width > 5 AndAlso rect.Height > 5 Then
-                ZoomToRectangle(rect)
-            End If
+            Return
         End If
 
-        ' Finish measurement
-        If _isMeasuring AndAlso e.Button = MouseButtons.Left Then
-            _isMeasuring = False
-            pnlPicmodeler.Invalidate()
-            ' Optionally, keep the tooltip visible for a moment or show a message box
-            MessageBox.Show(_measureTooltip, "Measurement")
-            _measureTooltip = ""
-        End If
     End Sub
 
     Private Sub ZoomToRectangle(rect As Rectangle)
-        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return
+        If _cadEntities Is Nothing OrElse _cadEntities.Count = 0 Then Return
         If rect.Width < 2 OrElse rect.Height < 2 Then Return
 
         SaveCurrentView()
@@ -1233,7 +1295,7 @@ Public Class frmMain
         _offsetX = (panelWidth - (zoomMaxX - zoomMinX) * _scale) / 2
         _offsetY = (panelHeight - (zoomMaxY - zoomMinY) * _scale) / 2
 
-        pnlPicmodeler.Invalidate()
+        RedrawAll()
     End Sub
 
     Private Function ScreenToModel(pt As Point) As DxfPoint
@@ -1242,44 +1304,6 @@ Public Class frmMain
         Dim modelY As Double = _minY + (pnlPicmodeler.ClientSize.Height - pt.Y - _offsetY) / safeScale
         Return New DxfPoint(modelX, modelY, 0)
     End Function
-
-    Private Sub ApplyViewWindow(pt1 As Point, pt2 As Point)
-        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then Return
-
-        ' Push current view — create a proper ViewState
-        Dim vs As New ViewState With {
-        .MinX = _minX,
-        .MinY = _minY,
-        .Scale = _scale,
-        .OffsetX = _offsetX,
-        .OffsetY = _offsetY
-    }
-        _viewHistory.Push(vs)
-
-        ' Convert to model space
-        Dim x1 = ((Math.Min(pt1.X, pt2.X) - _offsetX) / _scale) + _minX
-        Dim y1 = ((pnlPicmodeler.ClientSize.Height - Math.Max(pt1.Y, pt2.Y) - _offsetY) / _scale) + _minY
-        Dim x2 = ((Math.Max(pt1.X, pt2.X) - _offsetX) / _scale) + _minX
-        Dim y2 = ((pnlPicmodeler.ClientSize.Height - Math.Min(pt1.Y, pt2.Y) - _offsetY) / _scale) + _minY
-
-        Dim width = x2 - x1
-        Dim height = y2 - y1
-
-        If width <= 0 OrElse height <= 0 Then Return
-
-        ' Compute new scale
-        Dim scaleX = pnlPicmodeler.ClientSize.Width / width
-        Dim scaleY = pnlPicmodeler.ClientSize.Height / height
-        _scale = Math.Min(scaleX, scaleY) * 0.9F
-
-        ' Update offsets
-        _minX = x1
-        _minY = y1
-        _offsetX = (pnlPicmodeler.ClientSize.Width - width * _scale) / 2
-        _offsetY = (pnlPicmodeler.ClientSize.Height - height * _scale) / 2
-
-        pnlPicmodeler.Invalidate()
-    End Sub
 
     Private Sub ViewRefresh()
         ' Simply invalidate the panel to trigger a repaint
@@ -1296,11 +1320,14 @@ Public Class frmMain
     End Sub
 
     Private Sub bbiMeasure_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbiMeasure.ItemClick
+        _windowSelecting = False
+
         _currentTool = "Measure"
     End Sub
 
     Public Function AllowPan(Button As Integer, Shift As Integer) As Boolean
 
+        _windowSelecting = False
 
         AllowPan =
             (Button = MouseButtons.Left) And
@@ -1328,57 +1355,101 @@ Public Class frmMain
         ViewPrevious()
     End Sub
 
-    Private Sub SaveCurrentView()
-        Dim vs As New ViewState With {
-            .MinX = _minX,
-            .MinY = _minY,
-            .Scale = _scale,
-            .OffsetX = _offsetX,
-            .OffsetY = _offsetY
-        }
-        _viewHistory.Push(vs)
-    End Sub
 
     Private Sub tbViewRefresh_Click(sender As Object, e As EventArgs) Handles tbViewRefresh.Click
         ViewRefresh()
     End Sub
 
     Private Sub pnlPicmodeler_MouseWheel(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseWheel
-        ' Only zoom if Ctrl+Shift are held
-        If (Control.ModifierKeys And Keys.Control) = Keys.Control AndAlso
-           (Control.ModifierKeys And Keys.Shift) = Keys.Shift Then
 
-            ' Mouse position relative to panel
-            Dim mouseX As Double = e.X
-            Dim mouseY As Double = e.Y
+        ' Ctrl + Shift required
+      
+        If (ModifierKeys And Keys.Control) = 0 OrElse
+       (ModifierKeys And Keys.Shift) = 0 Then Exit Sub
 
-            ' Zoom factor per wheel tick
-            Dim zoomFactor As Double = 1.05
-            If e.Delta < 0 Then zoomFactor = 1.0 / zoomFactor
+        Dim zoomFactor As Double =
+        If(e.Delta > 0, 1.1, 1 / 1.1)
 
-            ' Compute new scale
-            Dim newScale As Double = currentScale * zoomFactor
-            newScale = Math.Max(minScale, Math.Min(maxScale, newScale)) ' clamp
+        ' Save the current view before changing
+        SaveCurrentView()
 
-            ' Adjust offsets to keep zoom centered at cursor
-            OffsetX = mouseX - (mouseX - OffsetX) * (newScale / currentScale)
-            OffsetY = mouseY - (mouseY - OffsetY) * (newScale / currentScale)
+        ZoomAtMouse(e.Location, zoomFactor)
 
-            ' Update current scale
-            currentScale = newScale
-
-            ' Trigger redraw
-            pnlPicmodeler.Invalidate()
-            pnlPicmodeler.Invalidate()
-        End If
     End Sub
 
-    Private Sub ZoomIn(center As Point)
-        ZoomAtPoint(center, ZoomFactor)
+    Public Sub ViewPart()
+        If _cadEntities Is Nothing OrElse _cadEntities.Count = 0 Then Exit Sub
+
+        SaveViewIfChanged()
+
+        Dim bounds As RectangleF = HelperFunctions.GetCadBounds(_cadEntities)
+        If bounds.IsEmpty Then Exit Sub
+
+        Dim margin As Integer = 20
+
+        Dim scaleX As Double = (panelWidth - 2 * margin) / bounds.Width
+        Dim scaleY As Double = (panelHeight - 2 * margin) / bounds.Height
+        Dim scale As Double = Math.Min(scaleX, scaleY)
+
+        Dim offsetX As Double = margin - bounds.X * scale
+        Dim offsetY As Double = panelHeight - (bounds.Y + bounds.Height) * scale - margin
+
+        myTransform.Scale = scale
+        myTransform.OffsetX = offsetX
+        myTransform.OffsetY = offsetY
+
+        RedrawAll()
     End Sub
 
-    Private Sub ZoomOut(center As Point)
-        ZoomAtPoint(center, 1 / ZoomFactor)
+
+
+
+    Private Sub ZoomAtMouse(mousePt As Point, zoomFactor As Double)
+
+        Dim oldScale As Double = myTransform.Scale
+        Dim newScale As Double = oldScale * zoomFactor
+
+        ' Clamp scale if you want
+        If newScale < 0.01 OrElse newScale > 1000 Then Exit Sub
+
+        ' Get world point under mouse (using OLD transform)
+        Dim worldPt As PointF =
+        ScreenToWorld(mousePt, myTransform, pnlPicmodeler.ClientSize.Height)
+
+        ' Apply new scale
+        myTransform.Scale = newScale
+
+        ' Recompute offsets so mouse stays fixed
+        myTransform.OffsetX = mousePt.X - worldPt.X * newScale
+        myTransform.OffsetY =
+        pnlPicmodeler.ClientSize.Height - mousePt.Y - worldPt.Y * newScale
+
+        RedrawAll()
+
+    End Sub
+
+
+
+
+    Private Sub Zoom(factor As Double)
+        Dim cx As Double = panelWidth / 2
+        Dim cy As Double = panelHeight / 2
+
+        myTransform.OffsetX = cx + (myTransform.OffsetX - cx) * factor
+        myTransform.OffsetY = cy + (myTransform.OffsetY - cy) * factor
+        myTransform.Scale *= factor
+
+        RedrawAll()
+    End Sub
+
+    Private Sub ZoomIn()
+        SaveViewIfChanged()
+        Zoom(1.25)
+    End Sub
+
+    Private Sub ZoomOut()
+        SaveViewIfChanged()
+        Zoom(0.8)
     End Sub
 
     Private Sub ZoomAtPoint(screenCenter As Point, zoomAmount As Single)
@@ -1400,18 +1471,21 @@ Public Class frmMain
 
     Private Sub tbViewZoomIn_Click(sender As Object, e As EventArgs) Handles tbViewZoomIn.Click
         Dim center As New Point(pnlPicmodeler.ClientSize.Width \ 2, pnlPicmodeler.ClientSize.Height \ 2)
-        ZoomIn(center)
+        'ZoomIn(center)
+        ZoomIn()
     End Sub
 
     Private Sub tbViewZoomOut_Click(sender As Object, e As EventArgs) Handles tbViewZoomOut.Click
         Dim center As New Point(pnlPicmodeler.ClientSize.Width \ 2, pnlPicmodeler.ClientSize.Height \ 2)
-        ZoomOut(center)
+        ' ZoomOut(center)
+        ZoomOut()
+
 
     End Sub
 
     Private Sub pnlPicmodeler_DoubleClick(sender As Object, e As EventArgs) Handles pnlPicmodeler.DoubleClick
 
-        ZoomIn(MousePosition)
+        'ZoomIn(MousePosition)
 
     End Sub
 
@@ -1853,15 +1927,37 @@ Public Class frmMain
     End Sub
 
 
-    Private Function ScreenToWorld(pt As Point) As PointF
+    '    Private Function ScreenToWorld(
+    '    pt As Point,
+    '    vt As ViewTransform,
+    '    panelHeight As Integer
+    ') As PointF
+
+    '        Dim worldX As Single =
+    '        CSng((pt.X - vt.OffsetX) / vt.Scale)
+
+    '        Dim worldY As Single =
+    '        CSng((panelHeight - pt.Y - vt.OffsetY) / vt.Scale)
+
+    '        Return New PointF(worldX, worldY)
+
+    '    End Function
+    Private Function ScreenToWorld(
+    pt As Point,
+    vt As ViewTransform,
+    panelHeight As Integer
+) As PointF
+
         Dim worldX As Single =
-        CSng(((pt.X - _offsetX) / _scale) + _minX)
+        CSng((pt.X - vt.OffsetX) / vt.Scale)
 
         Dim worldY As Single =
-        CSng(((pnlPicmodeler.ClientSize.Height - pt.Y - _offsetY) / _scale) + _minY)
+        CSng((panelHeight - pt.Y - vt.OffsetY) / vt.Scale)
 
         Return New PointF(worldX, worldY)
+
     End Function
+
 
     Private Function F(v As Double) As String
         Return v.ToString("0.###")
@@ -1928,6 +2024,341 @@ Public Class frmMain
 
 
     End Sub
+
+    Private Sub bbViewFull_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbViewFull.ItemClick
+        ViewFull()
+
+    End Sub
+
+    Public Sub FitToPart()
+        If _cadEntities Is Nothing OrElse _cadEntities.Count = 0 Then Exit Sub
+
+        Dim bounds As RectangleF = HelperFunctions.GetCadBounds(_cadEntities)
+        If bounds.IsEmpty Then Exit Sub
+
+        Dim margin As Integer = 20
+
+        Dim scaleX = (panelWidth - 2 * margin) / bounds.Width
+        Dim scaleY = (panelHeight - 2 * margin) / bounds.Height
+        Dim scale = Math.Min(scaleX, scaleY)
+
+        Dim offsetX = panelWidth / 2 - (bounds.X + bounds.Width / 2) * scale
+        Dim offsetY = panelHeight / 2 - (bounds.Y + bounds.Height / 2) * scale
+
+        myTransform = New ViewTransform With {
+            .Scale = scale,
+            .OffsetX = offsetX,
+            .OffsetY = offsetY
+        }
+
+        RedrawAll()
+    End Sub
+    Private Sub ApplyViewWindow(p1 As Point, p2 As Point)
+
+        ' Convert screen points → world points
+        Dim w1 = ScreenToWorld(p1, myTransform, panelHeight)
+        Dim w2 = ScreenToWorld(p2, myTransform, panelHeight)
+
+        ' Normalize world rectangle
+        Dim minX = Math.Min(w1.X, w2.X)
+        Dim maxX = Math.Max(w1.X, w2.X)
+        Dim minY = Math.Min(w1.Y, w2.Y)
+        Dim maxY = Math.Max(w1.Y, w2.Y)
+
+        Dim worldWidth = maxX - minX
+        Dim worldHeight = maxY - minY
+
+        If worldWidth <= 0 OrElse worldHeight <= 0 Then Exit Sub
+
+        ' Compute new scale
+        Dim margin As Integer = 20
+        Dim scaleX = (panelWidth - 2 * margin) / worldWidth
+        Dim scaleY = (panelHeight - 2 * margin) / worldHeight
+        Dim newScale = Math.Min(scaleX, scaleY)
+
+        ' Compute new offsets
+        Dim newOffsetX = margin - minX * newScale
+        Dim newOffsetY = margin - minY * newScale
+
+        myTransform = New ViewTransform With {
+            .Scale = newScale,
+            .OffsetX = newOffsetX,
+            .OffsetY = newOffsetY
+        }
+
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Sub bbViewWindow_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbViewWindow.ItemClick
+        _currentTool = "ViewWindow"
+    End Sub
+
+    Private Sub bbiZoomToPart_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbiZoomToPart.ItemClick
+        ViewPart()
+
+    End Sub
+    Private Sub SaveCurrentView()
+        ' Push a copy of the current transform onto the history stack
+        _viewHistory.Push(myTransform)
+
+        ' Clear redo stack when a new view is saved
+        _redoHistory.Clear()
+    End Sub
+
+
+    Private Function AreTransformsEqual(a As ViewTransform, b As ViewTransform) As Boolean
+        Const epsilon As Double = 0.0001
+        Return Math.Abs(a.Scale - b.Scale) < epsilon AndAlso
+           Math.Abs(a.OffsetX - b.OffsetX) < epsilon AndAlso
+           Math.Abs(a.OffsetY - b.OffsetY) < epsilon
+    End Function
+
+    Private Function CloneViewTransform(vt As ViewTransform) As ViewTransform
+        Return New ViewTransform With {
+        .Scale = vt.Scale,
+        .OffsetX = vt.OffsetX,
+        .OffsetY = vt.OffsetY
+    }
+    End Function
+
+    Private Sub SaveViewIfChanged()
+        ' Compare the current transform with the last saved one
+        If _viewHistory.Count = 0 OrElse Not AreTransformsEqual(myTransform, _viewHistory.Peek()) Then
+            SaveCurrentView()
+        End If
+    End Sub
+
+    Private Sub DrawOverlayText(g As Graphics, text As String, anchor As PointF)
+
+        Using f As New Font("Segoe UI", 9),
+          bg As New SolidBrush(System.Drawing.Color.FromArgb(200, System.Drawing.Color.LightYellow)),
+          fg As New SolidBrush(System.Drawing.Color.Black)
+
+            Dim size = g.MeasureString(text, f)
+            Dim r As New RectangleF(anchor.X + 8, anchor.Y + 8, size.Width + 6, size.Height + 4)
+
+            g.FillRectangle(bg, r)
+            g.DrawRectangle(Pens.Black, Rectangle.Round(r))
+            g.DrawString(text, f, fg, r.Left + 3, r.Top + 2)
+        End Using
+
+    End Sub
+
+    Private Sub DrawSnapIndicator(g As Graphics, snap As SnapResult)
+
+        Dim p = WorldToScreen(
+        snap.WorldPoint.X,
+        snap.WorldPoint.Y,
+        myTransform,
+        pnlPicmodeler.ClientSize.Height)
+
+        Const s As Integer = 6
+
+        Using b As New SolidBrush(System.Drawing.Color.Lime)
+            g.FillRectangle(b, p.X - s \ 2, p.Y - s \ 2, s, s)
+        End Using
+
+    End Sub
+
+    Private Sub CancelMeasure()
+        _isMeasuring = False
+
+        pnlPicmodeler.Invalidate()
+    End Sub
+    Private Function GetActiveSnap(
+    mouseScreen As Point,
+    tolScreenPx As Single
+) As SnapResult?
+
+        Dim mouseWorld = ScreenToWorld(mouseScreen, myTransform, pnlPicmodeler.Height)
+        Dim tolWorld = tolScreenPx / myTransform.Scale
+
+        Dim best As SnapResult
+        Dim bestDist As Single = Single.MaxValue
+        Dim found As Boolean = False
+
+        For Each ent In _cadEntities
+            For Each cand In GetSnapCandidates(ent)
+
+                Dim d = Distance(mouseWorld, cand.WorldPoint)
+                If d <= tolWorld AndAlso d < bestDist Then
+                    cand.Distance = d
+                    best = cand
+                    bestDist = d
+                    found = True
+                End If
+
+            Next
+        Next
+
+        If found Then
+            Return best
+        Else
+            Return Nothing
+        End If
+
+    End Function
+    '    Private Function TryEndpointSnap(
+    '    mouseWorld As PointF,
+    '    tolWorld As Single
+    ') As SnapResult
+
+    '        Dim best As SnapResult
+    '        best.Type = SnapType.None
+    '        best.Distance = Single.MaxValue
+
+    '        For Each ent In _cadEntities
+    '            If TypeOf ent Is CadLine Then
+    '                Dim l = DirectCast(ent, CadLine)
+
+    '                CheckPoint(l.StartPoint, ent)
+    '                CheckPoint(l.EndPoint, ent)
+    '            End If
+    '        Next
+
+    '        Return best
+    '    End Function
+
+
+
+    Private Function TryMidpointSnap(
+    mouseWorld As PointF,
+    tolWorld As Single
+) As SnapResult
+
+        For Each ent In _cadEntities
+            If TypeOf ent Is CadLine Then
+                Dim l = DirectCast(ent, CadLine)
+                Dim mid As New PointF(
+                (l.StartPoint.X + l.EndPoint.X) / 2.0F,
+                (l.StartPoint.Y + l.EndPoint.Y) / 2.0F)
+
+                If Distance(mid, mouseWorld) < tolWorld Then
+                    Return New SnapResult With {
+                    .Type = SnapType.Midpoint,
+                    .WorldPoint = mid,
+                    .Entity = ent
+                }
+                End If
+            End If
+        Next
+
+        Return Nothing
+    End Function
+
+    Private Function TryCenterSnap(
+    mouseWorld As PointF,
+    tolWorld As Single
+) As SnapResult
+
+        For Each ent In _cadEntities
+            If TypeOf ent Is CadCircle Then
+                Dim c = DirectCast(ent, CadCircle)
+                If Distance(c.Center, mouseWorld) < tolWorld Then
+                    Return New SnapResult With {
+                    .Type = SnapType.Center,
+                    .WorldPoint = c.Center,
+                    .Entity = ent
+                }
+                End If
+            End If
+
+            If TypeOf ent Is CadArc Then
+                Dim a = DirectCast(ent, CadArc)
+                If Distance(a.Center, mouseWorld) < tolWorld Then
+                    Return New SnapResult With {
+                    .Type = SnapType.Center,
+                    .WorldPoint = a.Center,
+                    .Entity = ent
+                }
+                End If
+            End If
+        Next
+
+        Return Nothing
+    End Function
+
+    Private Sub tbSelect_HotDot_Click(sender As Object, e As EventArgs) Handles tbSelect_HotDot.Click
+        _hotDotsEnabled = tbSelect_HotDot.Checked
+        pnlPicmodeler.Invalidate() ' redraw panel to reflect change
+    End Sub
+
+    Private Function GetSnapCandidates(ent As CadEntity) As IEnumerable(Of SnapResult)
+
+        Dim list As New List(Of SnapResult)
+
+        Select Case True
+
+            Case TypeOf ent Is CadLine
+                Dim l = DirectCast(ent, CadLine)
+
+                list.Add(New SnapResult With {
+                .Type = SnapType.Endpoint,
+                .WorldPoint = l.StartPoint,
+                .Entity = ent
+            })
+
+                list.Add(New SnapResult With {
+                .Type = SnapType.Endpoint,
+                .WorldPoint = l.EndPoint,
+                .Entity = ent
+            })
+
+                list.Add(New SnapResult With {
+                .Type = SnapType.Midpoint,
+                .WorldPoint = New PointF(
+                    (l.StartPoint.X + l.EndPoint.X) / 2.0F,
+                    (l.StartPoint.Y + l.EndPoint.Y) / 2.0F),
+                .Entity = ent
+            })
+
+            Case TypeOf ent Is CadCircle
+                Dim c = DirectCast(ent, CadCircle)
+
+                list.Add(New SnapResult With {
+                .Type = SnapType.Center,
+                .WorldPoint = c.Center,
+                .Entity = ent
+            })
+
+            Case TypeOf ent Is CadArc
+                Dim a = DirectCast(ent, CadArc)
+
+                list.Add(New SnapResult With {
+                .Type = SnapType.Center,
+                .WorldPoint = a.Center,
+                .Entity = ent
+            })
+        End Select
+
+        Return list
+    End Function
+
+    Private Sub DrawMeasureLine(startPt As PointF, endPt As PointF, g As Graphics)
+        ' Convert world → screen
+        Dim p1 = WorldToScreen(startPt.X, startPt.Y, myTransform, pnlPicmodeler.ClientSize.Height)
+        Dim p2 = WorldToScreen(endPt.X, endPt.Y, myTransform, pnlPicmodeler.ClientSize.Height)
+
+        Using pen As New Pen(System.Drawing.Color.Red, 1)
+            g.DrawLine(pen, p1, p2)
+        End Using
+    End Sub
+
+    Private Sub DrawRubberBand(startPt As Point, endPt As Point, g As Graphics)
+        Using pen As New Pen(System.Drawing.Color.Blue, 1)
+            pen.DashStyle = Drawing2D.DashStyle.Dash
+            g.DrawRectangle(pen, Math.Min(startPt.X, endPt.X),
+                             Math.Min(startPt.Y, endPt.Y),
+                             Math.Abs(endPt.X - startPt.X),
+                             Math.Abs(endPt.Y - startPt.Y))
+        End Using
+    End Sub
+
+
+
+
+
+
 End Class
 
 
