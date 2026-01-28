@@ -7,7 +7,7 @@ Module MachineLoader
     Public _machineDef As MachineDefinition
     Public ReadOnly Property WorkZones As New List(Of WorkZone)
     Public ReadOnly WorkzoneColors As Color() = {
-    Color.LightBlue,
+    Color.DarkBlue,
     Color.LightGreen,
     Color.LightCoral,
     Color.LightGoldenrodYellow,
@@ -80,54 +80,7 @@ Module MachineLoader
         Return def
     End Function
 
-    Public Sub DrawSheetAndWorkzones(picModlerGraphic As Graphics, sheetWidth As Double, sheetHeight As Double)
 
-        Dim margin As Integer = 20
-        ' --- Compute scale to fit sheet into panel ---
-        Dim scaleX As Double = panelWidth / sheetWidth
-        Dim scaleY As Double = panelHeight / sheetHeight
-        Dim scale As Double = Math.Min(scaleX, scaleY) ' maintain aspect ratio
-
-
-        ' --- Draw sheet background ---
-        Dim bl As PointF = WorldToScreen(0, 0, myTransform, panelHeight)
-        Dim tr As PointF = WorldToScreen(sheetWidth, sheetHeight, myTransform, panelHeight)
-        Dim sheetRect = HelperFunctions.RectFromPoints(bl, tr)
-        picModlerGraphic.FillRectangle(Brushes.LightGray, sheetRect)
-
-        ' --- Draw workzones ---
-        For i = 0 To CurrentJob.WorkZones.Count - 1
-            Dim wz = CurrentJob.WorkZones(i)
-            Dim wzColor As Color = WorkzoneColors(i Mod WorkzoneColors.Length)
-            Dim wzBrush As New SolidBrush(Color.FromArgb(60, wzColor))
-            Dim wzPen As New Pen(wzColor, 2)
-
-            ' World-space corners
-            Dim wzBL As PointF = WorldToScreen(wz.XMin, wz.YMin, myTransform, panelHeight)
-            Dim wzTR As PointF = WorldToScreen(wz.XMax, wz.YMax, myTransform, panelHeight)
-            Dim wzRect = HelperFunctions.RectFromPoints(wzBL, wzTR)
-
-            picModlerGraphic.FillRectangle(wzBrush, wzRect)
-            picModlerGraphic.DrawRectangle(wzPen, wzRect.X, wzRect.Y, wzRect.Width, wzRect.Height)
-
-            ' --- Draw clamps ---
-            For Each clamp In wz.Clamps
-                ' Punch rectangle
-                Dim punchBL As PointF = WorldToScreen(clamp.X - clamp.Width / 2, clamp.Y, myTransform, panelHeight)
-                Dim punchTR As PointF = WorldToScreen(clamp.X + clamp.Width / 2, clamp.Y + clamp.Height, myTransform, panelHeight)
-                Dim punchRect = HelperFunctions.RectFromPoints(punchBL, punchTR)
-                picModlerGraphic.FillRectangle(wzBrush, punchRect)
-                picModlerGraphic.DrawRectangle(wzPen, punchRect.X, punchRect.Y, punchRect.Width, punchRect.Height)
-
-                ' Torch rectangle
-                Dim torchBL As PointF = WorldToScreen(clamp.X - clamp.TorchSize.Width / 2, clamp.Y, myTransform, panelHeight)
-                Dim torchTR As PointF = WorldToScreen(clamp.X + clamp.TorchSize.Width / 2, clamp.Y + clamp.TorchSize.Height, myTransform, panelHeight)
-                Dim torchRect = HelperFunctions.RectFromPoints(torchBL, torchTR)
-                picModlerGraphic.FillRectangle(wzBrush, torchRect)
-                picModlerGraphic.DrawRectangle(wzPen, torchRect.X, torchRect.Y, torchRect.Width, torchRect.Height)
-            Next
-        Next
-    End Sub
 
 
 

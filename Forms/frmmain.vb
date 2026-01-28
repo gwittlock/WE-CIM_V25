@@ -26,6 +26,7 @@ Imports FabV25_WIN8.ImportedEntity
 Imports FabV25_WIN8.CadEntity
 Imports FabV25_WIN8.modView
 Imports FabV25_WIN8.MateriaWrapper
+Imports FabV25_WIN8.DxfDrawable
 Imports Newtonsoft.Json
 Imports Formatting = Newtonsoft.Json.Formatting
 Imports System.Drawing
@@ -142,8 +143,8 @@ Public Class frmMain
     '------------------------------------------
     Private WithEvents entityTip As New ToolTip()
     Private lastHoverEntity As CadEntity = Nothing
-    Private _hoverEntity As ImportedEntity = Nothing
-    Private _selectedEntity As ImportedEntity = Nothing
+    Private _hoverEntity As CadEntity = Nothing
+    Private _selectedEntity As CadEntity = Nothing
     Private _modelerToolTip As New ToolTip() With {
     .ShowAlways = False,
     .InitialDelay = 400,
@@ -151,7 +152,12 @@ Public Class frmMain
     .AutoPopDelay = 4000
 }
 
-    Private Const HitTolerance As Double = 0.05 ' pixels
+
+
+    Private Const HitTolerancePx As Single = 6.0F
+
+    Dim tolWorld = HitTolerancePx / myTransform.Scale
+
 
     Public PicModelerScale As Single = 1.0F
     Public OffsetX As Single = 0
@@ -420,6 +426,9 @@ Public Class frmMain
 
         If _selectedDxfPath IsNot Nothing AndAlso _DoPrepareUI Then
             PrePareUI(_selectedDxfPath)  ' should initialize CurrentJob, _visibleEntities, _cadEntities
+
+            BuildDrawables()
+
             _DoPrepareUI = False
             _DoDrawUI = True
         End If
@@ -521,6 +530,218 @@ Public Class frmMain
         RestoreAndDrawJob()
         DrawSheetAndWorkzones(g, matLength, matWidth)
         DrawCadEntities(g, myTransform, panelHeight)
+
+        If _hoverEntity IsNot Nothing Then
+            DrawEntityHighlight(g, _hoverEntity)
+        End If
+
+        If _selectedEntity IsNot Nothing Then
+            DrawEntitySelection(g, _selectedEntity)
+        End If
+
+    End Sub
+    Private Sub DrawEntityHighlight(g As Graphics, ent As CadEntity)
+
+        Using pen As New Pen(System.Drawing.Color.Orange, 2.0F)
+            pen.DashStyle = DashStyle.Dash
+            DrawCadEntity(g, ent, pen)
+        End Using
+
+    End Sub
+
+
+    Private Sub DrawEntitySelection(g As Graphics, ent As CadEntity)
+
+        Using pen As New Pen(System.Drawing.Color.LimeGreen, 2.5F)
+            DrawCadEntity(g, ent, pen)
+        End Using
+
+    End Sub
+
+    Private Sub DrawCadEntity(g As Graphics, ent As CadEntity, pen As Pen)
+
+        Select Case ent.GeometryType
+
+            Case GeometryTypeEnum.Line
+                Dim l = DirectCast(ent, CadLine)
+
+                Dim p1 = WorldToScreen(l.StartPoint.X, l.StartPoint.Y, myTransform, pnlPicmodeler.Height)
+                Dim p2 = WorldToScreen(l.EndPoint.X, l.EndPoint.Y, myTransform, pnlPicmodeler.Height)
+
+                g.DrawLine(pen, p1, p2)
+
+            Case GeometryTypeEnum.Circle
+                Dim c = DirectCast(ent, CadCircle)
+
+                Dim center = WorldToScreen(c.Center.X, c.Center.Y, myTransform, pnlPicmodeler.Height)
+                Dim r = CSng(c.Radius * myTransform.Scale)
+
+                g.DrawEllipse(
+                pen,
+                center.X - r,
+                center.Y - r,
+                2 * r,
+                2 * r
+            )
+
+            Case GeometryTypeEnum.Arc
+
+                Dim a = DirectCast(ent, CadArc)
+
+                Dim center = WorldToScreen(a.Center.X, a.Center.Y, myTransform, pnlPicmodeler.Height)
+                Dim r = CSng(a.Radius * myTransform.Scale)
+
+                Dim sweep As Single
+                If a.IsClockwise Then
+                    sweep = a.EndAngle - a.StartAngle
+                Else
+                    sweep = a.StartAngle - a.EndAngle
+                End If
+
+                If sweep < 0 Then sweep += 360
+
+                Dim startDeg As Single = -a.StartAngle
+                Dim sweepDeg As Single = -sweep
+
+                g.DrawArc(
+                                    pen,
+                                    center.X - r,
+                                    center.Y - r,
+                                    2 * r,
+                                    2 * r,
+                                    startDeg,
+                                    sweepDeg
+                                )
+
+        End Select
+
+    End Sub
+
+    Public Sub DrawSheetAndWorkzones(g As Graphics, sheetWidth As Double, sheetHeight As Double)
+        Dim margin As Integer = 20
+
+        ' --- Draw sheet background ---
+        Dim bl As PointF = WorldToScreen(0, 0, myTransform, panelHeight)
+        Dim tr As PointF = WorldToScreen(sheetWidth, sheetHeight, myTransform, panelHeight)
+        Dim sheetRect = HelperFunctions.RectFromPoints(bl, tr)
+        g.FillRectangle(Brushes.LightGray, sheetRect)
+        g.DrawRectangle(Pens.Black, sheetRect.X, sheetRect.Y, sheetRect.Width, sheetRect.Height)
+
+        ' --- Draw workzones ---
+        For i = 0 To CurrentJob.WorkZones.Count - 1
+            Dim wz = CurrentJob.WorkZones(i)
+            Dim wzColor As Color = WorkzoneColors(i Mod WorkzoneColors.Length)
+            Dim wzBrush As New SolidBrush(System.Drawing.Color.FromArgb(50, wzColor))
+            Dim wzPen As New Pen(wzColor, 2)
+
+            ' Flip Y for workzone bottom-left origin
+            Dim wzBL As PointF = WorldToScreen(wz.XMin, sheetHeight - wz.YMax, myTransform, panelHeight)
+            Dim wzTR As PointF = WorldToScreen(wz.XMax, sheetHeight - wz.YMin, myTransform, panelHeight)
+            Dim wzRect = HelperFunctions.RectFromPoints(wzBL, wzTR)
+
+            g.FillRectangle(wzBrush, wzRect)
+            g.DrawRectangle(wzPen, wzRect.X, wzRect.Y, wzRect.Width, wzRect.Height)
+
+            For Each clamp In wz.Clamps
+
+                ' Machine coordinates: clamp.Y is distance FROM BOTTOM of sheet
+                ' Convert to top-origin before screen transform
+                Dim yBottom = clamp.Y
+                Dim yTop = clamp.Y + clamp.Height
+
+                ' --- Punch rectangle ---
+                Dim punchBL As PointF = WorldToScreen(clamp.X - clamp.Width / 2, yBottom, myTransform, panelHeight)
+
+                Dim punchTR As PointF = WorldToScreen(clamp.X + clamp.Width / 2, yTop, myTransform, panelHeight)
+
+                Dim punchRect = HelperFunctions.RectFromPoints(punchBL, punchTR)
+
+                g.FillRectangle(wzBrush, punchRect)
+                g.DrawRectangle(wzPen,
+                    punchRect.X, punchRect.Y,
+                    punchRect.Width, punchRect.Height)
+
+                ' --- Torch rectangle ---
+                Dim torchBL As PointF = WorldToScreen(clamp.X - clamp.TorchSize.Width / 2, yBottom, myTransform, panelHeight)
+
+                Dim torchTR As PointF = WorldToScreen(clamp.X + clamp.TorchSize.Width / 2, yBottom + clamp.TorchSize.Height, myTransform, panelHeight)
+
+                Dim torchRect = HelperFunctions.RectFromPoints(torchBL, torchTR)
+
+                g.FillRectangle(wzBrush, torchRect)
+                g.DrawRectangle(wzPen,
+                    torchRect.X, torchRect.Y,
+                    torchRect.Width, torchRect.Height)
+
+            Next
+
+        Next
+    End Sub
+
+    Public Sub BuildDrawables()
+        _drawables = New List(Of DxfDrawable)
+
+        For Each cad In _cadEntities
+            Dim d As New DxfDrawable With {
+                .Entity = cad,
+                .LayerName = cad.LayerName,
+                .Color = System.Drawing.Color.Black
+            }
+
+            ' Map geometry by type
+            If TypeOf cad Is CadEntity.CadLine Then
+                Dim line = DirectCast(cad, CadEntity.CadLine)
+                d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
+                d.StartPoint = line.StartPoint
+                d.EndPoint = line.EndPoint
+
+            ElseIf TypeOf cad Is CadEntity.CadCircle Then
+                Dim circle = DirectCast(cad, CadEntity.CadCircle)
+                d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
+                d.Center = circle.Center
+                d.Radius = circle.Radius
+
+            ElseIf TypeOf cad Is CadEntity.CadArc Then
+                Dim arc = DirectCast(cad, CadEntity.CadArc)
+                d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
+                d.Center = arc.Center
+                d.Radius = arc.Radius
+                d.StartAngle = arc.StartAngle
+                d.EndAngle = arc.EndAngle
+
+                'ElseIf TypeOf cad Is CadEntity.CadPolyline Then
+                '    Dim pl = DirectCast(cad, CadEntity.CadPolyline)
+                '    d.DrawableType = DxfDrawable.DrawableTypeEnum.PolyLine
+                '    d.Points = New List(Of PointF)(pl.Points)
+
+                'ElseIf TypeOf cad Is CadEntity.CadRectangle Then
+                '    Dim rect = DirectCast(cad, CadEntity.CadRectangle)
+                '    d.DrawableType = DxfDrawable.DrawableTypeEnum.Rectangle
+                '    d.StartPoint = rect.StartPoint
+                '    d.Width = rect.Width
+                '    d.Height = rect.Height
+            End If
+
+            ' Add to drawables
+            _drawables.Add(d)
+        Next
+
+        Debug.Print("MODEL EXTENTS CHECK")
+
+
+        Dim allBounds As New List(Of RectangleF)
+
+        For Each d In _drawables
+            allBounds.Add(GetBounds(d))
+        Next
+
+        Dim minX = allBounds.Min(Function(r) r.Left)
+        Dim maxX = allBounds.Max(Function(r) r.Right)
+        Dim minY = allBounds.Min(Function(r) r.Top)
+        Dim maxY = allBounds.Max(Function(r) r.Bottom)
+
+        Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
+        Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
 
     End Sub
 
@@ -719,98 +940,132 @@ Public Class frmMain
         Return New PointF(CSng(p.X), CSng(p.Y))
     End Function
 
-    '------------------------------------------
-    ' Hit-testing function
-    '------------------------------------------
-    Private Function HitTestImported(mousePos As Point,
-                                 pnl As Panel,
-                                 hitTolerance As Single,
-                                 ByRef hitDistance As Single) As ImportedEntity
 
-        hitDistance = Single.MaxValue
+    Private Function HitTestCadEntity(mouseScreen As Point, tolPx As Single, ByRef hitDistWorld As Single) As CadEntity
 
-        If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then
-            Return Nothing
-        End If
+        Dim mouseWorld = ScreenToWorld(mouseScreen, myTransform, pnlPicmodeler.Height)
+        Dim tolWorld = tolPx / myTransform.Scale
 
-        '-------------------------------------------------
-        ' Recompute SAME view transform as Paint
-        '-------------------------------------------------
-        Dim minX = _importedEntities.Min(Function(ent) ent.MinX)
-        Dim minY = _importedEntities.Min(Function(ent) ent.MinY)
-        Dim maxX = _importedEntities.Max(Function(ent) ent.MaxX)
-        Dim maxY = _importedEntities.Max(Function(ent) ent.MaxY)
+        hitDistWorld = Single.MaxValue
+        Dim best As CadEntity = Nothing
 
-        Dim panelWidth = pnl.ClientSize.Width
-        Dim panelHeight = pnl.ClientSize.Height
+        For Each ent In _cadEntities
+            Debug.WriteLine($"ENT TYPE = {ent.GetType().Name}, GeometryType = {ent.GeometryType}")
 
-        Dim scaleX = panelWidth / (maxX - minX)
-        Dim scaleY = panelHeight / (maxY - minY)
-        Dim scale = Math.Min(scaleX, scaleY) * 0.9F
-
-        Dim offsetX = (panelWidth - (maxX - minX) * scale) / 2.0F
-        Dim offsetY = (panelHeight - (maxY - minY) * scale) / 2.0F
-
-        '-------------------------------------------------
-        ' Helpers
-        '-------------------------------------------------
-        Dim mouseF As New PointF(mousePos.X, mousePos.Y)
-
-        Dim worldToScreen =
-        Function(p As DxfPoint) As PointF
-            Return New PointF(
-                CSng((p.X - minX) * scale + offsetX),
-                CSng(panelHeight - ((p.Y - minY) * scale) - offsetY)
-            )
-        End Function
-
-        Dim bestEntity As ImportedEntity = Nothing
-
-        '-------------------------------------------------
-        ' Hit test each entity
-        '-------------------------------------------------
-        For Each ent In _importedEntities
-
-            Dim dist As Single = Single.MaxValue
+            Dim d As Single = Single.MaxValue
 
             Select Case ent.GeometryType
 
-                Case ImportedEntity.GeometryTypeEnum.Line
-                    Dim p1 = worldToScreen(ent.Line.P1)
-                    Dim p2 = worldToScreen(ent.Line.P2)
 
-                    dist = DistancePointToLine(mouseF, p1, p2)
 
-                Case ImportedEntity.GeometryTypeEnum.Circle
-                    Dim c = worldToScreen(ent.Circle.Center)
-                    Dim r = CSng(ent.Circle.Radius * scale)
+                Case GeometryTypeEnum.Line
+                    Dim l = DirectCast(ent, CadLine)
 
-                    dist = Math.Abs(Distance(mouseF, c) - r)
+                    d = DistancePointToLineWorld(mouseWorld, l.StartPoint, l.EndPoint)
 
-                Case ImportedEntity.GeometryTypeEnum.Arc
-                    Dim c = worldToScreen(ent.Arc.Center)
-                    Dim r = CSng(ent.Arc.Radius * scale)
+                Case GeometryTypeEnum.Circle
+                    Dim c = DirectCast(ent, CadCircle)
 
-                    dist = Math.Abs(Distance(mouseF, c) - r)
+                    d = Math.Abs(Distance(mouseWorld, c.Center) - c.Radius)
+
+                Case GeometryTypeEnum.Arc
+                    Dim a = DirectCast(ent, CadArc)
+
+                    d = Math.Abs(Distance(mouseWorld, a.Center) - a.Radius)
+                    ' (arc angle gating later)
 
             End Select
 
-            If dist < hitDistance Then
-                hitDistance = dist
-                bestEntity = ent
+            If d <= tolWorld AndAlso d < hitDistWorld Then
+                hitDistWorld = d
+                best = ent
             End If
 
+            Debug.Print($"The ENT is : {best} d for DISTANCE→ {d}   tolworld {tolWorld }  hitDistWorld→ {hitDistWorld} mouseWorld → {mouseWorld}")
         Next
 
-        If hitDistance <= hitTolerance Then
-            Return bestEntity
-        End If
 
-
-
-        Return Nothing
-
+        Return best
     End Function
+
+    ''------------------------------------------
+    '' Hit-testing function
+    ''------------------------------------------
+    'Private Function HitTestImported(mousePos As Point,
+    '                             pnl As Panel,
+    '                             hitTolerance As Single,
+    '                             ByRef hitDistance As Single) As ImportedEntity
+
+    '    hitDistance = Single.MaxValue
+
+    '    If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then
+    '        Return Nothing
+    '    End If
+
+
+
+    '    Dim panelWidth = pnl.ClientSize.Width
+    '    Dim panelHeight = pnl.ClientSize.Height
+
+    '    Dim scaleX = panelWidth / (maxX - minX)
+    '    Dim scaleY = panelHeight / (maxY - minY)
+    '    Dim scale = Math.Min(scaleX, scaleY) * 0.9F
+
+    '    Dim offsetX = (panelWidth - (maxX - minX) * scale) / 2.0F
+    '    Dim offsetY = (panelHeight - (maxY - minY) * scale) / 2.0F
+
+    '    '-------------------------------------------------
+    '    ' Helpers
+    '    '-------------------------------------------------
+    '    Dim mouseF As New PointF(mousePos.X, mousePos.Y)
+
+    '    Dim bestEntity As ImportedEntity = Nothing
+
+    '    '-------------------------------------------------
+    '    ' Hit test each entity
+    '    '-------------------------------------------------
+    '    For Each ent In _importedEntities
+
+    '        Dim dist As Single = Single.MaxValue
+
+    '        Select Case ent.GeometryType
+
+    '            Case ImportedEntity.GeometryTypeEnum.Line
+    '                Dim p1 = worldToScreen(ent.Line.P1)
+    '                Dim p2 = worldToScreen(ent.Line.P2)
+
+    '                dist = DistancePointToLine(mouseF, p1, p2)
+
+    '            Case ImportedEntity.GeometryTypeEnum.Circle
+    '                Dim c = worldToScreen(ent.Circle.Center)
+    '                Dim r = CSng(ent.Circle.Radius * scale)
+
+    '                dist = Math.Abs(Distance(mouseF, c) - r)
+
+    '            Case ImportedEntity.GeometryTypeEnum.Arc
+    '                Dim c = worldToScreen(ent.Arc.Center)
+    '                Dim r = CSng(ent.Arc.Radius * scale)
+
+    '                dist = Math.Abs(Distance(mouseF, c) - r)
+
+    '        End Select
+
+    '        If dist < hitDistance Then
+    '            hitDistance = dist
+    '            bestEntity = ent
+    '        End If
+
+    '    Next
+
+    '    If hitDistance <= hitTolerance Then
+    '        Return bestEntity
+    '    End If
+
+
+
+    '    Return Nothing
+
+    'End Function
 
 
 
@@ -872,6 +1127,17 @@ Public Class frmMain
 
             _measureTooltip = $"ΔX={dx:F3}, ΔY={dy:F3}, Δ={dist:F3}"
         End If
+
+
+        Dim hoverDist As Single
+        _hoverEntity = HitTestCadEntity(e.Location, HitTolerancePx, hoverDist)
+
+        If _hoverEntity IsNot Nothing Then
+            _modelerToolTip.SetToolTip(pnlPicmodeler, _hoverEntity.ToString())
+        Else
+            _modelerToolTip.Hide(pnlPicmodeler)
+        End If
+
 
         ' --------------------------
         ' 6) Trigger redraw
@@ -948,6 +1214,30 @@ Public Class frmMain
         Return Distance(p, proj)
     End Function
 
+    Private Function DistancePointToLineWorld(
+    p As PointF,
+    a As PointF,
+    b As PointF
+) As Single
+
+        Dim dx = b.X - a.X
+        Dim dy = b.Y - a.Y
+
+        If dx = 0 AndAlso dy = 0 Then
+            Return Distance(p, a)
+        End If
+
+        Dim t = ((p.X - a.X) * dx + (p.Y - a.Y) * dy) / (dx * dx + dy * dy)
+        t = Math.Max(0.0F, Math.Min(1.0F, t))
+
+        Dim proj As New PointF(
+        a.X + t * dx,
+        a.Y + t * dy
+    )
+
+        Return Distance(p, proj)
+    End Function
+
     '------------------------------------------
     ' Convert Double() array to PointF
     '------------------------------------------
@@ -975,7 +1265,8 @@ Public Class frmMain
         If e.Button <> MouseButtons.Left Then Return
 
         Dim hitDist As Single
-        Dim hitEntity = HitTestImported(e.Location, pnlPicmodeler, 5.0F, hitDist)
+
+        Dim hitEntity = HitTestCadEntity(e.Location, HitTolerancePx, hitDist)
 
         _selectedEntity = hitEntity
 
@@ -1111,7 +1402,7 @@ Public Class frmMain
 
     End Sub
 
-    Private Sub HandleEntitySelected(ent As ImportedEntity)
+    Private Sub HandleEntitySelected(ent As CadEntity)
 
         If ent Is Nothing Then Exit Sub
 
@@ -2093,10 +2384,6 @@ Public Class frmMain
         _currentTool = "ViewWindow"
     End Sub
 
-    Private Sub bbiZoomToPart_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbiZoomToPart.ItemClick
-        ViewPart()
-
-    End Sub
     Private Sub SaveCurrentView()
         ' Push a copy of the current transform onto the history stack
         _viewHistory.Push(myTransform)
@@ -2354,11 +2641,14 @@ Public Class frmMain
         End Using
     End Sub
 
+    Private Sub bbZoomToPart_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbZoomToPart.ItemClick
+        ViewPart()
 
+    End Sub
 
-
-
-
+    Private Sub iExit_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iExit.ItemClick
+        End
+    End Sub
 End Class
 
 

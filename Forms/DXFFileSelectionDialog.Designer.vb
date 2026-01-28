@@ -31,6 +31,8 @@ Partial Class DXFFileSelectionDialog
         Me.SplitContainer3 = New System.Windows.Forms.SplitContainer()
         Me.lstFiles = New System.Windows.Forms.ListBox()
         Me.pnlPreview = New System.Windows.Forms.Panel()
+        Me.lblFilename = New System.Windows.Forms.Label()
+        Me.txtFilename = New System.Windows.Forms.TextBox()
         CType(Me.PanelControl1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.PanelControl1.SuspendLayout()
         CType(Me.PanelControl2, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -47,6 +49,8 @@ Partial Class DXFFileSelectionDialog
         '
         'PanelControl1
         '
+        Me.PanelControl1.Controls.Add(Me.txtFilename)
+        Me.PanelControl1.Controls.Add(Me.lblFilename)
         Me.PanelControl1.Controls.Add(Me.btnCancel)
         Me.PanelControl1.Controls.Add(Me.btnOK)
         Me.PanelControl1.Dock = System.Windows.Forms.DockStyle.Bottom
@@ -121,7 +125,7 @@ Partial Class DXFFileSelectionDialog
         '
         Me.SplitContainer3.Panel2.Controls.Add(Me.pnlPreview)
         Me.SplitContainer3.Size = New System.Drawing.Size(678, 413)
-        Me.SplitContainer3.SplitterDistance = 226
+        Me.SplitContainer3.SplitterDistance = 318
         Me.SplitContainer3.TabIndex = 0
         '
         'lstFiles
@@ -130,7 +134,7 @@ Partial Class DXFFileSelectionDialog
         Me.lstFiles.FormattingEnabled = True
         Me.lstFiles.Location = New System.Drawing.Point(0, 0)
         Me.lstFiles.Name = "lstFiles"
-        Me.lstFiles.Size = New System.Drawing.Size(226, 413)
+        Me.lstFiles.Size = New System.Drawing.Size(318, 413)
         Me.lstFiles.TabIndex = 0
         '
         'pnlPreview
@@ -138,8 +142,24 @@ Partial Class DXFFileSelectionDialog
         Me.pnlPreview.Dock = System.Windows.Forms.DockStyle.Fill
         Me.pnlPreview.Location = New System.Drawing.Point(0, 0)
         Me.pnlPreview.Name = "pnlPreview"
-        Me.pnlPreview.Size = New System.Drawing.Size(448, 413)
+        Me.pnlPreview.Size = New System.Drawing.Size(356, 413)
         Me.pnlPreview.TabIndex = 0
+        '
+        'lblFilename
+        '
+        Me.lblFilename.AutoSize = True
+        Me.lblFilename.Location = New System.Drawing.Point(344, 10)
+        Me.lblFilename.Name = "lblFilename"
+        Me.lblFilename.Size = New System.Drawing.Size(53, 13)
+        Me.lblFilename.TabIndex = 3
+        Me.lblFilename.Text = "Filename:"
+        '
+        'txtFilename
+        '
+        Me.txtFilename.Location = New System.Drawing.Point(393, 7)
+        Me.txtFilename.Name = "txtFilename"
+        Me.txtFilename.Size = New System.Drawing.Size(252, 21)
+        Me.txtFilename.TabIndex = 4
         '
         'DXFFileSelectionDialog
         '
@@ -152,6 +172,7 @@ Partial Class DXFFileSelectionDialog
         Me.Text = "DXFFileSelectionDialog"
         CType(Me.PanelControl1, System.ComponentModel.ISupportInitialize).EndInit()
         Me.PanelControl1.ResumeLayout(False)
+        Me.PanelControl1.PerformLayout()
         CType(Me.PanelControl2, System.ComponentModel.ISupportInitialize).EndInit()
         Me.PanelControl2.ResumeLayout(False)
         Me.SplitContainer2.Panel1.ResumeLayout(False)
@@ -175,4 +196,6 @@ Partial Class DXFFileSelectionDialog
     Friend WithEvents btnCancel As Button
     Friend WithEvents btnOK As Button
     Friend WithEvents pnlPreview As Panel
+    Friend WithEvents txtFilename As TextBox
+    Friend WithEvents lblFilename As Label
 End Class

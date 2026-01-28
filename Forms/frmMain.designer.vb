@@ -243,7 +243,7 @@ Partial Class frmMain
         Me.repAPPDBFile = New DevExpress.XtraEditors.Repository.RepositoryItemButtonEdit()
         Me.bbiForTesting = New DevExpress.XtraBars.BarButtonItem()
         Me.BarButtonItem14 = New DevExpress.XtraBars.BarButtonItem()
-        Me.BarEditItem2 = New DevExpress.XtraBars.BarEditItem()
+        Me.bbiZoomToPart = New DevExpress.XtraBars.BarEditItem()
         Me.BarEditItem3 = New DevExpress.XtraBars.BarEditItem()
         Me.bbiMeasure = New DevExpress.XtraBars.BarButtonItem()
         Me.puContainerEdit = New DevExpress.XtraBars.BarEditItem()
@@ -283,7 +283,9 @@ Partial Class frmMain
         Me.bbiProfileBlend = New DevExpress.XtraBars.BarButtonItem()
         Me.bbiFlipSheet = New DevExpress.XtraBars.BarButtonItem()
         Me.bbiMaterialList = New DevExpress.XtraBars.BarButtonItem()
-        Me.bbiZoomToPart = New DevExpress.XtraBars.BarStaticItem()
+        Me.BarButtonItem23 = New DevExpress.XtraBars.BarButtonItem()
+        Me.BarStaticItem4 = New DevExpress.XtraBars.BarStaticItem()
+        Me.bbZoomToPart = New DevExpress.XtraBars.BarButtonItem()
         Me.ribbonImageCollectionLarge = New DevExpress.Utils.ImageCollection(Me.components)
         Me.homeRibbonPage = New DevExpress.XtraBars.Ribbon.RibbonPage()
         Me.ConfigPageGroup = New DevExpress.XtraBars.Ribbon.RibbonPageGroup()
@@ -499,10 +501,10 @@ Partial Class frmMain
         Me.RibbonControl.CausesValidation = False
         Me.RibbonControl.ExpandCollapseItem.Id = 0
         Me.RibbonControl.Images = Me.ribbonImageCollection
-        Me.RibbonControl.Items.AddRange(New DevExpress.XtraBars.BarItem() {Me.RibbonControl.ExpandCollapseItem, Me.iNew, Me.iOpen, Me.iSave, Me.iSaveAs, Me.iExit, Me.iHelp, Me.iAbout, Me.statusLocation, Me.statusActiveLayer, Me.rgbiSkins, Me.statusSelection, Me.statusDate, Me.statusTime, Me.iOpenPDB, Me.iMerge, Me.iExportCNC, Me.iPrintGraphics, Me.iPrintTools, Me.iPrintNest, Me.iUndo, Me.iRedo, Me.iDelete, Me.iPurge, Me.iChangeTool, Me.iChangeAttrib, Me.iChangeEntities, Me.iHolePattern, Me.iLabels, Me.iDeletePattern, Me.iExplodePattern, Me.iDisAssociate, Me.iFeatureAdd, Me.iFeatureExtract, Me.iFeatureInsert, Me.iFeatureRemove, Me.chkShowStock, Me.chkShowZones, Me.chkShowTable, Me.chkShowToolpath, Me.chkShowProfiles, Me.chkShowEndPoints, Me.chkShowInstance, Me.chkShowLegend, Me.chkShowHandles, Me.chkHighlightProf, Me.chkShowRapids, Me.chkShowNibble, Me.chkShowSolid, Me.chkWhitBackground, Me.bbViewFull, Me.bbViewWindow, Me.bbViewZoomIn, Me.bbViewZoomOut, Me.bbViewPrevious, Me.bbViewRefresh, Me.bbViewEntityList, Me.bbViewCodeViewer, Me.bbViewHotspot, Me.bbViewTravel, Me.sbViewOptions, Me.BarShowStock, Me.BarShowWorkzones, Me.BarShowTableGraphics, Me.BarShowToolpathDashed, Me.BarShowProfileMarkers, Me.BarShowEndpoints, Me.BarShowInstanceText, Me.BarShowLegend, Me.BarShowHandles, Me.BarHighlightProfiles, Me.BarShowRapidMoves, Me.BarShowNibbleHits, Me.BarShowSolidHits, Me.BarSaveLastUsed, Me.BarUseWhiteBG, Me.bbCreateLine, Me.bbCreateArc, Me.bbCreateHole, Me.bbCreatePoint, Me.bbRubberBand, Me.bbCreateBoundingBox, Me.bbAssociate, Me.bbAutoPunch, Me.bbManualLead, Me.bbAutoLead, Me.bbNotch, Me.bbShakerTab, Me.bbCommad, Me.bbSlit, Me.bbLinearCler, Me.bbAreaClear, Me.bbShapeLIbrary, Me.bbTransformMove, Me.bbTransFormCopy, Me.bbTransFormScale, Me.bbTRansformMirror, Me.bbTransformRotate, Me.bbModTrimExtend, Me.bbModSplit, Me.bbModFillet, Me.bbModChampher, Me.bbModDropStop, Me.bbModChainCut, Me.bbModCutBack, Me.bbModZonesManage, Me.bbModZonesExtract, Me.bbModClamps, Me.bbModReposition, Me.bbEditProject, Me.bbModIndvHIts, Me.bbSequenceChain, Me.bbSequemceUnchain, Me.bbSequenceRevOrder, Me.bbSeqManOrder, Me.bbConfigMan, Me.bbNesting, Me.bbCodeView, Me.bbCadToCode, Me.bbRemnant, Me.bbExport, Me.bbMacroExecute, Me.BarDockingMenuItem1, Me.BarSubItem1, Me.BarSubItem2, Me.BarStaticItem1, Me.BarStaticItem2, Me.BarButtonItem1, Me.BarButtonItem2, Me.BarButtonItem3, Me.BarButtonItem5, Me.BarButtonItem6, Me.BarButtonItem7, Me.BarButtonItem8, Me.BarButtonItem9, Me.ribG_NestingParts, Me.barSnapResolution, Me.bbWallOfset, Me.StstausPlaceHoilder, Me.BarButtonItem11, Me.BarButtonItem12, Me.bbCreatePattern, Me.bbCreateInstance, Me.bbTrueShape, Me.bbManulNestingGrid, Me.bbStaggerNest, Me.bbSkeltonCutOff, Me.bbCMDB, Me.bbEWM, Me.bbAdminDumpModel, Me.bbLogFileRecord, Me.bbLogFileStop, Me.bbbLogFilePlay, Me.bbExecutePortal, Me.BarEditItem1, Me.BarListItem1, Me.barRecentFiles, Me.BarListItem2, Me.BarSubItem4, Me.BarStaticItem3, Me.BarSubItem3, Me.mnuMeasue, Me.mnuProperties, Me.BarStaticItem6, Me.BarStaticItem7, Me.BarSubItem5, Me.bbInquire, Me.bbNestingDefaults, Me.BarButtonItem13, Me.bbManualNestAddPart, Me.bbiTools, Me.bbiSetLayer, Me.bbResetAppdb, Me.bbiForTesting, Me.BarButtonItem14, Me.BarEditItem2, Me.BarEditItem3, Me.bbiMeasure, Me.puContainerEdit, Me.BarEditItem4, Me.bbPatternBump, Me.bbShowWelcome, Me.bbiWECAD, Me.bbiCutShop, Me.bbiDeactivate, Me.bbiBenchMark, Me.BarButtonItem16, Me.beGraphicsPref, Me.BarHeaderItem1, Me.BarButtonItem17, Me.BarButtonItem18, Me.bbiFreightCarAmerica, Me.bbiDiamondLife, Me.bbiTechConnect, Me.BarButtonItem19, Me.bbiMRP, Me.bbi_Rittal, Me.bbiForm1, Me.btmHeatTransfer, Me.BarButtonItem20, Me.BarButtonItem21, Me.bbiFileManage, Me.BarButtonItem22, Me.bbiQuickSave, Me.bbiSaveAs, Me.bbiPartExtents, Me.ProfileBlend, Me.PrintEntityList, Me.PrintCrossData, Me.bbiProfileBlend, Me.bbiFlipSheet, Me.bbiMaterialList, Me.bbiZoomToPart})
+        Me.RibbonControl.Items.AddRange(New DevExpress.XtraBars.BarItem() {Me.RibbonControl.ExpandCollapseItem, Me.iNew, Me.iOpen, Me.iSave, Me.iSaveAs, Me.iExit, Me.iHelp, Me.iAbout, Me.statusLocation, Me.statusActiveLayer, Me.rgbiSkins, Me.statusSelection, Me.statusDate, Me.statusTime, Me.iOpenPDB, Me.iMerge, Me.iExportCNC, Me.iPrintGraphics, Me.iPrintTools, Me.iPrintNest, Me.iUndo, Me.iRedo, Me.iDelete, Me.iPurge, Me.iChangeTool, Me.iChangeAttrib, Me.iChangeEntities, Me.iHolePattern, Me.iLabels, Me.iDeletePattern, Me.iExplodePattern, Me.iDisAssociate, Me.iFeatureAdd, Me.iFeatureExtract, Me.iFeatureInsert, Me.iFeatureRemove, Me.chkShowStock, Me.chkShowZones, Me.chkShowTable, Me.chkShowToolpath, Me.chkShowProfiles, Me.chkShowEndPoints, Me.chkShowInstance, Me.chkShowLegend, Me.chkShowHandles, Me.chkHighlightProf, Me.chkShowRapids, Me.chkShowNibble, Me.chkShowSolid, Me.chkWhitBackground, Me.bbViewFull, Me.bbViewWindow, Me.bbViewZoomIn, Me.bbViewZoomOut, Me.bbViewPrevious, Me.bbViewRefresh, Me.bbViewEntityList, Me.bbViewCodeViewer, Me.bbViewHotspot, Me.bbViewTravel, Me.sbViewOptions, Me.BarShowStock, Me.BarShowWorkzones, Me.BarShowTableGraphics, Me.BarShowToolpathDashed, Me.BarShowProfileMarkers, Me.BarShowEndpoints, Me.BarShowInstanceText, Me.BarShowLegend, Me.BarShowHandles, Me.BarHighlightProfiles, Me.BarShowRapidMoves, Me.BarShowNibbleHits, Me.BarShowSolidHits, Me.BarSaveLastUsed, Me.BarUseWhiteBG, Me.bbCreateLine, Me.bbCreateArc, Me.bbCreateHole, Me.bbCreatePoint, Me.bbRubberBand, Me.bbCreateBoundingBox, Me.bbAssociate, Me.bbAutoPunch, Me.bbManualLead, Me.bbAutoLead, Me.bbNotch, Me.bbShakerTab, Me.bbCommad, Me.bbSlit, Me.bbLinearCler, Me.bbAreaClear, Me.bbShapeLIbrary, Me.bbTransformMove, Me.bbTransFormCopy, Me.bbTransFormScale, Me.bbTRansformMirror, Me.bbTransformRotate, Me.bbModTrimExtend, Me.bbModSplit, Me.bbModFillet, Me.bbModChampher, Me.bbModDropStop, Me.bbModChainCut, Me.bbModCutBack, Me.bbModZonesManage, Me.bbModZonesExtract, Me.bbModClamps, Me.bbModReposition, Me.bbEditProject, Me.bbModIndvHIts, Me.bbSequenceChain, Me.bbSequemceUnchain, Me.bbSequenceRevOrder, Me.bbSeqManOrder, Me.bbConfigMan, Me.bbNesting, Me.bbCodeView, Me.bbCadToCode, Me.bbRemnant, Me.bbExport, Me.bbMacroExecute, Me.BarDockingMenuItem1, Me.BarSubItem1, Me.BarSubItem2, Me.BarStaticItem1, Me.BarStaticItem2, Me.BarButtonItem1, Me.BarButtonItem2, Me.BarButtonItem3, Me.BarButtonItem5, Me.BarButtonItem6, Me.BarButtonItem7, Me.BarButtonItem8, Me.BarButtonItem9, Me.ribG_NestingParts, Me.barSnapResolution, Me.bbWallOfset, Me.StstausPlaceHoilder, Me.BarButtonItem11, Me.BarButtonItem12, Me.bbCreatePattern, Me.bbCreateInstance, Me.bbTrueShape, Me.bbManulNestingGrid, Me.bbStaggerNest, Me.bbSkeltonCutOff, Me.bbCMDB, Me.bbEWM, Me.bbAdminDumpModel, Me.bbLogFileRecord, Me.bbLogFileStop, Me.bbbLogFilePlay, Me.bbExecutePortal, Me.BarEditItem1, Me.BarListItem1, Me.barRecentFiles, Me.BarListItem2, Me.BarSubItem4, Me.BarStaticItem3, Me.BarSubItem3, Me.mnuMeasue, Me.mnuProperties, Me.BarStaticItem6, Me.BarStaticItem7, Me.BarSubItem5, Me.bbInquire, Me.bbNestingDefaults, Me.BarButtonItem13, Me.bbManualNestAddPart, Me.bbiTools, Me.bbiSetLayer, Me.bbResetAppdb, Me.bbiForTesting, Me.BarButtonItem14, Me.bbiZoomToPart, Me.BarEditItem3, Me.bbiMeasure, Me.puContainerEdit, Me.BarEditItem4, Me.bbPatternBump, Me.bbShowWelcome, Me.bbiWECAD, Me.bbiCutShop, Me.bbiDeactivate, Me.bbiBenchMark, Me.BarButtonItem16, Me.beGraphicsPref, Me.BarHeaderItem1, Me.BarButtonItem17, Me.BarButtonItem18, Me.bbiFreightCarAmerica, Me.bbiDiamondLife, Me.bbiTechConnect, Me.BarButtonItem19, Me.bbiMRP, Me.bbi_Rittal, Me.bbiForm1, Me.btmHeatTransfer, Me.BarButtonItem20, Me.BarButtonItem21, Me.bbiFileManage, Me.BarButtonItem22, Me.bbiQuickSave, Me.bbiSaveAs, Me.bbiPartExtents, Me.ProfileBlend, Me.PrintEntityList, Me.PrintCrossData, Me.bbiProfileBlend, Me.bbiFlipSheet, Me.bbiMaterialList, Me.BarButtonItem23, Me.BarStaticItem4, Me.bbZoomToPart})
         Me.RibbonControl.LargeImages = Me.ribbonImageCollectionLarge
         Me.RibbonControl.Location = New System.Drawing.Point(0, 0)
-        Me.RibbonControl.MaxItemId = 432
+        Me.RibbonControl.MaxItemId = 435
         Me.RibbonControl.Name = "RibbonControl"
         Me.RibbonControl.OptionsCustomizationForm.FormIcon = CType(resources.GetObject("resource.FormIcon"), System.Drawing.Icon)
         Me.RibbonControl.PageHeaderItemLinks.Add(Me.iAbout)
@@ -2160,11 +2162,11 @@ Partial Class frmMain
         Me.BarButtonItem14.Id = 320
         Me.BarButtonItem14.Name = "BarButtonItem14"
         '
-        'BarEditItem2
+        'bbiZoomToPart
         '
-        Me.BarEditItem2.Edit = Nothing
-        Me.BarEditItem2.Id = 326
-        Me.BarEditItem2.Name = "BarEditItem2"
+        Me.bbiZoomToPart.Edit = Nothing
+        Me.bbiZoomToPart.Id = 326
+        Me.bbiZoomToPart.Name = "bbiZoomToPart"
         '
         'BarEditItem3
         '
@@ -2452,12 +2454,25 @@ Partial Class frmMain
         Me.bbiMaterialList.ImageOptions.LargeImageIndex = 222
         Me.bbiMaterialList.Name = "bbiMaterialList"
         '
-        'bbiZoomToPart
+        'BarButtonItem23
         '
-        Me.bbiZoomToPart.Caption = "Zoom To Part"
-        Me.bbiZoomToPart.Id = 431
-        Me.bbiZoomToPart.ImageOptions.Image = CType(resources.GetObject("bbiZoomToPart.ImageOptions.Image"), System.Drawing.Image)
-        Me.bbiZoomToPart.Name = "bbiZoomToPart"
+        Me.BarButtonItem23.Caption = "BarButtonItem23"
+        Me.BarButtonItem23.Id = 432
+        Me.BarButtonItem23.Name = "BarButtonItem23"
+        '
+        'BarStaticItem4
+        '
+        Me.BarStaticItem4.Caption = "BarStaticItem4"
+        Me.BarStaticItem4.Id = 433
+        Me.BarStaticItem4.Name = "BarStaticItem4"
+        '
+        'bbZoomToPart
+        '
+        Me.bbZoomToPart.Caption = "Zoom To Part"
+        Me.bbZoomToPart.Id = 434
+        Me.bbZoomToPart.ImageOptions.Image = CType(resources.GetObject("bbZoomToPart.ImageOptions.Image"), System.Drawing.Image)
+        Me.bbZoomToPart.ImageOptions.LargeImage = CType(resources.GetObject("bbZoomToPart.ImageOptions.LargeImage"), System.Drawing.Image)
+        Me.bbZoomToPart.Name = "bbZoomToPart"
         '
         'ribbonImageCollectionLarge
         '
@@ -3581,7 +3596,7 @@ Partial Class frmMain
         Me.tbSelect.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.tbSelect_Enable, Me.tbSelect_Layers, Me.tbSelect_Tools, Me.tbSelect_Lines, Me.tbSelect_Arcs, Me.tbSelect_Holes, Me.tbSelect_Points, Me.tbSelect_Command, Me.tbSelect_Profiles, Me.tbSelect_Features, Me.tbSelect_ByWindow, Me.tbSelect_AddAllByFilter, Me.tbSelect_RemoveAllByFilter, Me.tbSelect_All, Me.tbSelect_RemoveAll, Me.tbSelect_HotDot})
         Me.tbSelect.Location = New System.Drawing.Point(458, 0)
         Me.tbSelect.Name = "tbSelect"
-        Me.tbSelect.Size = New System.Drawing.Size(503, 32)
+        Me.tbSelect.Size = New System.Drawing.Size(472, 32)
         Me.tbSelect.TabIndex = 3
         '
         'tbSelect_Enable
@@ -3836,9 +3851,9 @@ Partial Class frmMain
         Me.mnuPopUp3.AllowRibbonQATMenu = False
         Me.mnuPopUp3.ItemLinks.Add(Me.bbViewWindow, True)
         Me.mnuPopUp3.ItemLinks.Add(Me.bbViewFull)
-        Me.mnuPopUp3.ItemLinks.Add(Me.bbiZoomToPart)
         Me.mnuPopUp3.ItemLinks.Add(Me.bbViewPrevious)
         Me.mnuPopUp3.ItemLinks.Add(Me.bbViewRefresh)
+        Me.mnuPopUp3.ItemLinks.Add(Me.bbZoomToPart)
         Me.mnuPopUp3.ItemLinks.Add(Me.bbInquire, True)
         Me.mnuPopUp3.ItemLinks.Add(Me.bbiMeasure)
         Me.mnuPopUp3.ItemLinks.Add(Me.iDelete, True)
@@ -4257,7 +4272,7 @@ Partial Class frmMain
     Friend WithEvents rpgForTesting As DevExpress.XtraBars.Ribbon.RibbonPageGroup
     Public WithEvents galleryDropDown1 As DevExpress.XtraBars.Ribbon.GalleryDropDown
     Friend WithEvents BarButtonItem14 As DevExpress.XtraBars.BarButtonItem
-    Friend WithEvents BarEditItem2 As DevExpress.XtraBars.BarEditItem
+    Friend WithEvents bbiZoomToPart As DevExpress.XtraBars.BarEditItem
     Friend WithEvents BarEditItem3 As DevExpress.XtraBars.BarEditItem
     Friend WithEvents repHandleX As DevExpress.XtraEditors.Repository.RepositoryItemTextEdit
     Friend WithEvents repHandleY As DevExpress.XtraEditors.Repository.RepositoryItemTextEdit
@@ -4361,5 +4376,7 @@ Partial Class frmMain
     Friend WithEvents tbViewSelShow As ToolStripButton
     Friend WithEvents bbiFlipSheet As BarButtonItem
     Friend WithEvents bbiMaterialList As BarButtonItem
-    Friend WithEvents bbiZoomToPart As BarStaticItem
+    Friend WithEvents BarButtonItem23 As BarButtonItem
+    Friend WithEvents BarStaticItem4 As BarStaticItem
+    Friend WithEvents bbZoomToPart As BarButtonItem
 End Class

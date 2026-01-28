@@ -158,6 +158,7 @@ Public Class frmOpenProject
     ' ----------------------------
     Private Sub InitMachineCombo()
         Dim ni As Integer
+        Dim selectedMachine As myItemData = Nothing
 
         cboMachine.Properties.Items.Clear()
 
@@ -165,11 +166,16 @@ Public Class frmOpenProject
         cboMachine.Properties.Items.Add(New myItemData("None", 0))
 
         For Each m In _machines
-            cboMachine.Properties.Items.Add(New myItemData(m.Description, m.ID))
+            Dim item As New myItemData(m.Description, m.ID)
+            cboMachine.Properties.Items.Add(item)
 
+            If m.ID = nMyMachineID Then
+                selectedMachine = item   ' ← remember the exact instance we just added
+            End If
         Next
 
-        cboMachine.SelectedIndex = 0
+        cboMachine.EditValue = selectedMachine
+
     End Sub
 
 
@@ -190,8 +196,8 @@ Public Class frmOpenProject
     End Sub
 
     Private Sub cboMachine_EditValueChanged(sender As Object, e As EventArgs) Handles cboMachine.EditValueChanged
-
-        If _loadingDefaults Then Return
+        Dim selectedToolSetup As myItemData = Nothing
+        'If _loadingDefaults Then Return
 
         Dim selectedItem = TryCast(cboMachine.SelectedItem, myItemData)
         If selectedItem Is Nothing Then Return
@@ -204,13 +210,18 @@ Public Class frmOpenProject
         cboToolSetup.Properties.Items.Add(New myItemData("None", 0))
 
         Dim setups = _toolSetups.Where(Function(ts) ts.MachineID = SelectedMachineID)
+
         For Each ts In setups
-            cboToolSetup.Properties.Items.Add(New myItemData(ts.Description, ts.ID))
+            Dim item As New myItemData(ts.Description, ts.ID)
+            cboToolSetup.Properties.Items.Add(item)
+
+            If ts.ID = nMyToolSetupID Then
+                selectedToolSetup = item   ' ← remember the exact instance we just added
+            End If
         Next
 
-        '_selectedMachine = Machines.FirstOrDefault(Function(ms) ms.ID = SelectedMachineID)
+        cboToolSetup.EditValue = selectedToolSetup
 
-        cboToolSetup.SelectedIndex = 0
 
         ' Reload Layer Setups filtered by machine
         LoadLayerSetupsForMachine(SelectedMachineID)
@@ -219,7 +230,7 @@ Public Class frmOpenProject
 
     Private Sub cboToolSetup_EditValueChanged(sender As Object, e As EventArgs) Handles cboToolSetup.EditValueChanged
 
-        If _loadingDefaults Then Return
+        'If _loadingDefaults Then Return
 
         Dim selectedItem = TryCast(cboToolSetup.SelectedItem, myItemData)
         If selectedItem Is Nothing Then Return
@@ -274,6 +285,7 @@ Public Class frmOpenProject
                     MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
+        ' Dim selectedItem = TryCast(cboLayerSetup.SelectedItem, myItemData)
 
         ' Save optional fields
         CustomerName = txtCustomer.Text

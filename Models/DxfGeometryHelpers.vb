@@ -18,11 +18,11 @@ Public Module DxfGeometryHelpers
         ' Geometry Type Enum
         '----------------------------------
         Public Enum GeometryTypeEnum
-            Unknown
             Line
             Circle
             Arc
             PolyLine
+            Unknown
         End Enum
 
 

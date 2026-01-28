@@ -340,12 +340,14 @@
     <Compile Include="Classes\MachineLoader.vb" />
     <Compile Include="Classes\MachineMapAttribute.vb" />
     <Compile Include="Classes\Material.vb" />
+    <Compile Include="Classes\MaterialParameterDescriptor.vb" />
     <Compile Include="Classes\MaterialPicker.vb">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Classes\MaterialPickerTree.vb">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Classes\MaterialSheet.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
     <Compile Include="Classes\PuncfResult.vb" />
     <Compile Include="Classes\ToolPathGenerator.vb" />

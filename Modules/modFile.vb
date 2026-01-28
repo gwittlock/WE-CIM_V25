@@ -137,7 +137,7 @@ Public Module modFile
         CurrentJob = New JobContext()
         CurrentJob.MachineDefinition = machineDef
 
-        'RestoreAndDrawJob()
+        RestoreAndDrawJob()
 
         '' Create / update job context
         CurrentJob.ToolSetupID = SelectedToolSetupID
@@ -162,7 +162,8 @@ Public Module modFile
 
         Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
 
-        NormalizeCadToSheet(_cadEntities)
+        NormalizeCadToSheet(_cadEntities, matLength, matWidth)
+
 
         _DoPrepareUI = False
     End Sub

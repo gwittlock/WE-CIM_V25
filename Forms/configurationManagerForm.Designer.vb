@@ -71,8 +71,12 @@ Partial Class ConfigurationManagerForm
         Me.btnMaterialCancel = New System.Windows.Forms.Button()
         Me.btnSaveMaterial = New System.Windows.Forms.Button()
         Me.tabLayerSetup = New System.Windows.Forms.TabPage()
+        Me.pnlLayerSetSaveCancel = New System.Windows.Forms.Panel()
+        Me.btnSaveLayerSetp = New System.Windows.Forms.Button()
         Me.propgrdLayerSetup = New System.Windows.Forms.PropertyGrid()
         Me.tabLayer = New System.Windows.Forms.TabPage()
+        Me.pnlLayerMapSave = New System.Windows.Forms.Panel()
+        Me.btnLayerMapSave = New System.Windows.Forms.Button()
         Me.propgrdLayer = New System.Windows.Forms.PropertyGrid()
         Me.cmsTreeActions = New System.Windows.Forms.ContextMenuStrip(Me.components)
         Me.AddMachineTSM = New System.Windows.Forms.ToolStripMenuItem()
@@ -88,10 +92,6 @@ Partial Class ConfigurationManagerForm
         Me.DeleteMaterialTypeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteMaterialSizeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteLayerTSM = New System.Windows.Forms.ToolStripMenuItem()
-        Me.pnlLayerSetSaveCancel = New System.Windows.Forms.Panel()
-        Me.btnSaveLayerSetp = New System.Windows.Forms.Button()
-        Me.pnlLayerMapSave = New System.Windows.Forms.Panel()
-        Me.btnLayerMapSave = New System.Windows.Forms.Button()
         CType(Me.SplitContainer1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SplitContainer1.Panel1.SuspendLayout()
         Me.SplitContainer1.Panel2.SuspendLayout()
@@ -117,10 +117,10 @@ Partial Class ConfigurationManagerForm
         Me.Panel3.SuspendLayout()
         Me.Panel2.SuspendLayout()
         Me.tabLayerSetup.SuspendLayout()
-        Me.tabLayer.SuspendLayout()
-        Me.cmsTreeActions.SuspendLayout()
         Me.pnlLayerSetSaveCancel.SuspendLayout()
+        Me.tabLayer.SuspendLayout()
         Me.pnlLayerMapSave.SuspendLayout()
+        Me.cmsTreeActions.SuspendLayout()
         Me.SuspendLayout()
         '
         'SplitContainer1
@@ -611,10 +611,9 @@ Partial Class ConfigurationManagerForm
         '
         'propgridMaterial
         '
-        Me.propgridMaterial.Dock = System.Windows.Forms.DockStyle.Fill
         Me.propgridMaterial.Location = New System.Drawing.Point(0, 0)
         Me.propgridMaterial.Name = "propgridMaterial"
-        Me.propgridMaterial.Size = New System.Drawing.Size(723, 449)
+        Me.propgridMaterial.Size = New System.Drawing.Size(556, 285)
         Me.propgridMaterial.TabIndex = 0
         '
         'Panel2
@@ -656,7 +655,7 @@ Partial Class ConfigurationManagerForm
         Me.btnMaterialCancel.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.btnMaterialCancel.Location = New System.Drawing.Point(612, 6)
         Me.btnMaterialCancel.Name = "btnMaterialCancel"
-        Me.btnMaterialCancel.Size = New System.Drawing.Size(104, 23)
+        Me.btnMaterialCancel.Size = New System.Drawing.Size(104, 27)
         Me.btnMaterialCancel.TabIndex = 1
         Me.btnMaterialCancel.Text = "Cancel"
         Me.btnMaterialCancel.UseVisualStyleBackColor = True
@@ -684,6 +683,24 @@ Partial Class ConfigurationManagerForm
         Me.tabLayerSetup.Text = "Layer Setup"
         Me.tabLayerSetup.UseVisualStyleBackColor = True
         '
+        'pnlLayerSetSaveCancel
+        '
+        Me.pnlLayerSetSaveCancel.Controls.Add(Me.btnSaveLayerSetp)
+        Me.pnlLayerSetSaveCancel.Dock = System.Windows.Forms.DockStyle.Bottom
+        Me.pnlLayerSetSaveCancel.Location = New System.Drawing.Point(3, 447)
+        Me.pnlLayerSetSaveCancel.Name = "pnlLayerSetSaveCancel"
+        Me.pnlLayerSetSaveCancel.Size = New System.Drawing.Size(723, 55)
+        Me.pnlLayerSetSaveCancel.TabIndex = 1
+        '
+        'btnSaveLayerSetp
+        '
+        Me.btnSaveLayerSetp.Location = New System.Drawing.Point(624, 21)
+        Me.btnSaveLayerSetp.Name = "btnSaveLayerSetp"
+        Me.btnSaveLayerSetp.Size = New System.Drawing.Size(75, 23)
+        Me.btnSaveLayerSetp.TabIndex = 0
+        Me.btnSaveLayerSetp.Text = "Save"
+        Me.btnSaveLayerSetp.UseVisualStyleBackColor = True
+        '
         'propgrdLayerSetup
         '
         Me.propgrdLayerSetup.Dock = System.Windows.Forms.DockStyle.Top
@@ -703,6 +720,24 @@ Partial Class ConfigurationManagerForm
         Me.tabLayer.TabIndex = 7
         Me.tabLayer.Text = "Layer Map"
         Me.tabLayer.UseVisualStyleBackColor = True
+        '
+        'pnlLayerMapSave
+        '
+        Me.pnlLayerMapSave.Controls.Add(Me.btnLayerMapSave)
+        Me.pnlLayerMapSave.Dock = System.Windows.Forms.DockStyle.Bottom
+        Me.pnlLayerMapSave.Location = New System.Drawing.Point(3, 451)
+        Me.pnlLayerMapSave.Name = "pnlLayerMapSave"
+        Me.pnlLayerMapSave.Size = New System.Drawing.Size(723, 51)
+        Me.pnlLayerMapSave.TabIndex = 1
+        '
+        'btnLayerMapSave
+        '
+        Me.btnLayerMapSave.Location = New System.Drawing.Point(619, 17)
+        Me.btnLayerMapSave.Name = "btnLayerMapSave"
+        Me.btnLayerMapSave.Size = New System.Drawing.Size(75, 23)
+        Me.btnLayerMapSave.TabIndex = 0
+        Me.btnLayerMapSave.Text = "Save"
+        Me.btnLayerMapSave.UseVisualStyleBackColor = True
         '
         'propgrdLayer
         '
@@ -795,42 +830,6 @@ Partial Class ConfigurationManagerForm
         Me.DeleteLayerTSM.Size = New System.Drawing.Size(196, 22)
         Me.DeleteLayerTSM.Text = "Delete Layer"
         '
-        'pnlLayerSetSaveCancel
-        '
-        Me.pnlLayerSetSaveCancel.Controls.Add(Me.btnSaveLayerSetp)
-        Me.pnlLayerSetSaveCancel.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.pnlLayerSetSaveCancel.Location = New System.Drawing.Point(3, 447)
-        Me.pnlLayerSetSaveCancel.Name = "pnlLayerSetSaveCancel"
-        Me.pnlLayerSetSaveCancel.Size = New System.Drawing.Size(723, 55)
-        Me.pnlLayerSetSaveCancel.TabIndex = 1
-        '
-        'btnSaveLayerSetp
-        '
-        Me.btnSaveLayerSetp.Location = New System.Drawing.Point(624, 21)
-        Me.btnSaveLayerSetp.Name = "btnSaveLayerSetp"
-        Me.btnSaveLayerSetp.Size = New System.Drawing.Size(75, 23)
-        Me.btnSaveLayerSetp.TabIndex = 0
-        Me.btnSaveLayerSetp.Text = "Save"
-        Me.btnSaveLayerSetp.UseVisualStyleBackColor = True
-        '
-        'pnlLayerMapSave
-        '
-        Me.pnlLayerMapSave.Controls.Add(Me.btnLayerMapSave)
-        Me.pnlLayerMapSave.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.pnlLayerMapSave.Location = New System.Drawing.Point(3, 451)
-        Me.pnlLayerMapSave.Name = "pnlLayerMapSave"
-        Me.pnlLayerMapSave.Size = New System.Drawing.Size(723, 51)
-        Me.pnlLayerMapSave.TabIndex = 1
-        '
-        'btnLayerMapSave
-        '
-        Me.btnLayerMapSave.Location = New System.Drawing.Point(619, 17)
-        Me.btnLayerMapSave.Name = "btnLayerMapSave"
-        Me.btnLayerMapSave.Size = New System.Drawing.Size(75, 23)
-        Me.btnLayerMapSave.TabIndex = 0
-        Me.btnLayerMapSave.Text = "Save"
-        Me.btnLayerMapSave.UseVisualStyleBackColor = True
-        '
         'ConfigurationManagerForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
@@ -876,10 +875,10 @@ Partial Class ConfigurationManagerForm
         Me.Panel2.ResumeLayout(False)
         Me.Panel2.PerformLayout()
         Me.tabLayerSetup.ResumeLayout(False)
-        Me.tabLayer.ResumeLayout(False)
-        Me.cmsTreeActions.ResumeLayout(False)
         Me.pnlLayerSetSaveCancel.ResumeLayout(False)
+        Me.tabLayer.ResumeLayout(False)
         Me.pnlLayerMapSave.ResumeLayout(False)
+        Me.cmsTreeActions.ResumeLayout(False)
         Me.ResumeLayout(False)
 
     End Sub
@@ -890,7 +889,6 @@ Partial Class ConfigurationManagerForm
     Friend WithEvents tabMachine As TabPage
     Friend WithEvents btmRemoveMachineParam As Button
     Friend WithEvents btnAddMachineParam As Button
-    Friend WithEvents propgrdMachine As PropertyGrid
     Friend WithEvents tabStations As TabPage
     Friend WithEvents btnAutoFill As Button
     Friend WithEvents btnRemoveStation As Button
@@ -931,7 +929,6 @@ Partial Class ConfigurationManagerForm
     Friend WithEvents DeleteMaterialSizeTSM As ToolStripMenuItem
     Friend WithEvents tabMaterialInventory As TabPage
     Friend WithEvents Panel3 As Panel
-    Friend WithEvents propgridMaterial As PropertyGrid
     Friend WithEvents Panel2 As Panel
     Friend WithEvents btnMaterialCancel As Button
     Friend WithEvents btnSaveMaterial As Button
@@ -952,4 +949,6 @@ Partial Class ConfigurationManagerForm
     Friend WithEvents btnSaveLayerSetp As Button
     Friend WithEvents pnlLayerMapSave As Panel
     Friend WithEvents btnLayerMapSave As Button
+    Friend WithEvents propgrdMachine As PropertyGrid
+    Friend WithEvents propgridMaterial As PropertyGrid
 End Class

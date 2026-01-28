@@ -13,6 +13,7 @@ Public Class DXFFileSelectionDialog
     Private _selectedDxfPath As String
     Private _previewDxf As DxfFile = Nothing
     Private _previewEntities As List(Of ImportedEntity)
+    Private _suppressEvents As Boolean = False
 
     ' Folder icons
     Private _folderImages As ImageList
@@ -41,6 +42,9 @@ Public Class DXFFileSelectionDialog
     Private Sub DXFFileSelectionDialog_Load(sender As Object, e As EventArgs) Handles Me.Load
         InitializeFolderIcons()
         LoadRootFolders()
+
+        txtFilename.AutoCompleteMode = AutoCompleteMode.SuggestAppend
+        txtFilename.AutoCompleteSource = AutoCompleteSource.CustomSource
 
         Dim defPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
         _initialFolder = RegGetString("Fabrication\FileOpen", "LastDXF", defPath)
@@ -118,6 +122,7 @@ Public Class DXFFileSelectionDialog
     End Sub
 
     Private Sub LoadDxfFiles(folderPath As String)
+
         lstFiles.Items.Clear()
         _previewDxf = Nothing
         _previewEntities = Nothing
@@ -125,33 +130,50 @@ Public Class DXFFileSelectionDialog
 
         If Not Directory.Exists(folderPath) Then Return
 
+        Dim auto As New AutoCompleteStringCollection()
+
         For Each file As String In Directory.GetFiles(folderPath, "*.dxf")
-            lstFiles.Items.Add(Path.GetFileName(file))
+            Dim name = Path.GetFileName(file)
+
+            lstFiles.Items.Add(name)
+            auto.Add(name)
         Next
+
+        txtFilename.AutoCompleteCustomSource = auto
+
     End Sub
+
 
     '-------------------------------
     ' DXF selection changed
     '-------------------------------
     Private Sub lstFiles_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstFiles.SelectedIndexChanged
-        If lstFiles.SelectedItem Is Nothing OrElse tvFolders.SelectedNode Is Nothing Then Return
 
-        _selectedDxfPath = Path.Combine(tvFolders.SelectedNode.Tag.ToString(), lstFiles.SelectedItem.ToString())
+        If _suppressEvents Then Return
+
+        If lstFiles.SelectedItem Is Nothing OrElse tvFolders.SelectedNode Is Nothing Then
+            Return
+        End If
 
         Try
-            _previewDxf = DxfFile.Load(_selectedDxfPath)
+            _suppressEvents = True
 
-            ' Import entities for preview
-            _previewEntities = ImportDxfForPreview(_previewDxf, pnlPreview.BackColor)
+            txtFilename.Text = lstFiles.SelectedItem.ToString()
 
-            pnlPreview.Invalidate()
+            _selectedDxfPath =
+                Path.Combine(tvFolders.SelectedNode.Tag.ToString(),
+                             lstFiles.SelectedItem.ToString())
+
+            PreviewFile(_selectedDxfPath)
+
         Catch ex As Exception
-            _previewDxf = Nothing
-            _previewEntities = Nothing
-            pnlPreview.Invalidate()
-            MessageBox.Show("Failed to load DXF: " & ex.Message, "DXF Preview", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            _suppressEvents = False
+            MessageBox.Show("Failed to load DXF: " & _selectedDxfPath & ".  " & ex.Message, "DXF Preview", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
+
     End Sub
+
+
 
     '-------------------------------
     ' Import entities for preview
@@ -262,19 +284,35 @@ Public Class DXFFileSelectionDialog
     End Sub
 
     Private Sub btnOK_Click(sender As Object, e As EventArgs) Handles btnOK.Click
-        If String.IsNullOrEmpty(_selectedDxfPath) Then
-            MessageBox.Show("Please select a DXF file.", "DXF Import", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+
+        If String.IsNullOrWhiteSpace(txtFilename.Text) Then
+            MessageBox.Show("Please select a DXF file.")
             Return
         End If
 
-        Dim folder = Path.GetDirectoryName(_selectedDxfPath)
+        Dim folder = tvFolders.SelectedNode?.Tag?.ToString()
+
+        If folder Is Nothing Then Return
+
+        Dim full = Path.Combine(folder, txtFilename.Text)
+
+        If Not File.Exists(full) Then
+            MessageBox.Show("File does not exist.")
+            Return
+        End If
+
+        _selectedDxfPath = full
+
+        ' Remember last folder
         If Directory.Exists(folder) Then
             RegPutString("Fabrication\FileOpen", "LastDXF", folder)
         End If
 
         Me.DialogResult = DialogResult.OK
         Me.Close()
+
     End Sub
+
 
     Private Sub btnCancel_Click(sender As Object, e As EventArgs) Handles btnCancel.Click
         Me.DialogResult = DialogResult.Cancel
@@ -358,6 +396,84 @@ Public Class DXFFileSelectionDialog
         End Select
     End Function
 
+    Private Sub txtFileName_TextChanged(sender As Object, e As EventArgs) Handles txtFilename.TextChanged
 
+        If _suppressEvents Then Return
+
+        If tvFolders.SelectedNode Is Nothing Then Return
+
+        Dim folder = tvFolders.SelectedNode.Tag.ToString()
+
+        If Not Directory.Exists(folder) Then Return
+
+        Dim pattern = "*" & txtFilename.Text & "*.dxf"
+
+        Dim auto As New AutoCompleteStringCollection()
+
+        Try
+            _suppressEvents = True
+
+            lstFiles.Items.Clear()
+
+            For Each file As String In Directory.GetFiles(folder, pattern)
+                Dim name = Path.GetFileName(file)
+
+                lstFiles.Items.Add(name)
+                auto.Add(name)
+            Next
+
+            txtFilename.AutoCompleteCustomSource = auto
+
+        Finally
+            _suppressEvents = False
+        End Try
+
+    End Sub
+
+
+    Private Sub txtFileName_KeyDown(sender As Object, e As KeyEventArgs) Handles txtFilename.KeyDown
+
+        If e.KeyCode = Keys.Enter Then
+
+            If tvFolders.SelectedNode Is Nothing Then Return
+
+            Dim full = Path.Combine(
+                tvFolders.SelectedNode.Tag.ToString(),
+                txtFilename.Text)
+
+            If File.Exists(full) Then
+                _selectedDxfPath = full
+                PreviewFile(full)
+            End If
+
+            e.SuppressKeyPress = True
+
+        End If
+
+    End Sub
+
+    Private Sub PreviewFile(path As String)
+
+        Try
+            _previewDxf = DxfFile.Load(path)
+
+            _previewEntities =
+            ImportDxfForPreview(_previewDxf, pnlPreview.BackColor)
+
+            pnlPreview.Invalidate()
+
+        Catch ex As Exception
+
+            _previewDxf = Nothing
+            _previewEntities = Nothing
+            pnlPreview.Invalidate()
+
+            MessageBox.Show("Failed to load DXF: " & ex.Message,
+                        "DXF Preview",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+        End Try
+
+    End Sub
 
 End Class

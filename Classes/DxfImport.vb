@@ -127,51 +127,7 @@ Public Module DxfImport
 
     Public Function ImportDxf(path As String) As List(Of CadEntity)
 
-        'Dim entities As New List(Of CadEntity)
 
-        'Dim dxf = DxfFile.Load(path)
-
-        'For Each e In dxf.Entities
-
-        '    Select Case e.EntityType
-
-        '        Case DxfEntityType.Line
-        '            Dim l = CType(e, DxfLine)
-
-        '            entities.Add(New CadLine With {
-        '            .StartPoint = New PointF(CSng(l.P1.X), CSng(l.P1.Y)),
-        '            .EndPoint = New PointF(CSng(l.P2.X), CSng(l.P2.Y)),
-        '            .LayerName = l.Layer,
-        '            .Color = System.Drawing.Color.Black
-        '        })
-
-        '        Case DxfEntityType.Circle
-        '            Dim c = CType(e, DxfCircle)
-
-        '            entities.Add(New CadCircle With {
-        '            .Center = New PointF(CSng(c.Center.X), CSng(c.Center.Y)),
-        '            .Radius = c.Radius,
-        '            .LayerName = c.Layer,
-        '            .Color = System.Drawing.Color.Black
-        '        })
-
-        '        Case DxfEntityType.Arc
-        '            Dim a = CType(e, DxfArc)
-
-        '            entities.Add(New CadArc With {
-        '            .Center = New PointF(CSng(a.Center.X), CSng(a.Center.Y)),
-        '            .Radius = a.Radius,
-        '            .StartAngle = a.StartAngle,
-        '            .EndAngle = a.EndAngle,
-        '            .LayerName = a.Layer,
-        '            .Color = System.Drawing.Color.Black
-        '        })
-
-        '    End Select
-
-        'Next
-
-        'Return entities
 
         Dim entities As New List(Of CadEntity)
         Dim dxf = DxfFile.Load(path)
@@ -232,20 +188,24 @@ Public Module DxfImport
         Return entities
 
     End Function
-
-    Public Sub NormalizeCadToSheet(entities As List(Of CadEntity))
+    Public Sub NormalizeCadToSheet(entities As List(Of CadEntity), sheetWidth As Double, sheetHeight As Double)
         If entities Is Nothing OrElse entities.Count = 0 Then Exit Sub
 
+        ' Get CAD model bounds
         Dim bounds = HelperFunctions.GetCadBounds(entities)
 
-        Dim dx As Double = -bounds.X
-        Dim dy As Double = -bounds.Y
-
+        ' Translate part to sheet bottom-left
+        Dim dx As Double = -bounds.X               ' move part left edge to X=0
+        Dim dy As Double = -bounds.Y              ' move part bottom edge to Y=0
 
         For Each e In entities
             e.Translate(dx, dy)
+
+            ' Flip part vertically to match sheet bottom-left origin
+            'e.FlipY(bounds.Height)
         Next
     End Sub
+
 
     Private Sub DrawCadLine(
     l As CadLine,

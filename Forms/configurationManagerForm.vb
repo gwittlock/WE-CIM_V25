@@ -66,6 +66,7 @@ Public Class ConfigurationManagerForm
 
     Private materialTypesTable As JsonTable(Of MaterialType)
     Private materialInventoryTable As JsonTable(Of MaterialSheet)
+    Private mat As MaterialSheet
 
     ' Stores the currently edited MaterialSheet
     Private CurrentEditingSheet As MaterialSheet = Nothing
@@ -196,19 +197,6 @@ Public Class ConfigurationManagerForm
     Private Sub PopulateTreeView()
         ' Clear the existing tree
         TreeViewMachines.Nodes.Clear()
-
-
-        ' --- Load Layer Setups and Directives ---
-        'Dim layerSetupsFile = Path.Combine(dataFolder, "LayerSetups.json")
-        'Dim directivesFile = Path.Combine(dataFolder, "Directives.json")
-
-        'LayerSetups = If(File.Exists(layerSetupsFile),
-        '                 JObject.Parse(File.ReadAllText(layerSetupsFile))("Rows").ToObject(Of List(Of LayerSetup))(),
-        '                 New List(Of LayerSetup)())
-
-        'Directives = If(File.Exists(directivesFile),
-        '                JObject.Parse(File.ReadAllText(directivesFile))("Rows").ToObject(Of List(Of Directive))(),
-        '                New List(Of Directive)())
 
         ' Map directives to each LayerSetup
         For Each ls In layerSetups
@@ -662,14 +650,27 @@ Public Class ConfigurationManagerForm
             Dim WhichNode As Integer
 
             ' Determine node type
-            If TypeOf selectedNode.Tag Is String Then
-                WhichNode = CInt(GetValueFromDelimitedData(CStr(selectedNode.Tag), "NodeType", "0"))
-            ElseIf TypeOf selectedNode.Tag Is MaterialSheet Then
+
+            ' MATERIAL MUST HAVE PRIORITY
+            WhichNode = -1
+
+            ' --- MATERIAL HAS PRIORITY ---
+            If TypeOf selectedNode.Tag Is MaterialSheet Then
+
                 WhichNode = 102
+
+            ElseIf TypeOf selectedNode.Tag Is String Then
+
+                WhichNode = CInt(GetValueFromDelimitedData(
+                        CStr(selectedNode.Tag),
+                        "NodeType",
+                        "0"))
             End If
+
 
             Select Case WhichNode
                 Case 0 To 9
+                    If TypeOf selectedNode.Tag Is MaterialSheet Then Exit Select
                     txtPreamble.Text = $"You are on the {selectedNode.Text} Node"
                     tabControlMain.SelectedTab = tabDefinition
 
@@ -735,13 +736,28 @@ Public Class ConfigurationManagerForm
                     txtPreamble.Text = $"Viewing Layer: {selectedNode.Text}"
                     tabControlMain.SelectedTab = tabLayer
 
-                Case 100 To 102 ' Material nodes
-                    If TypeOf selectedNode.Tag Is MaterialSheet Then
-                        propgridMaterial.SelectedObject = DirectCast(selectedNode.Tag, MaterialSheet)
+                Case 100 To 102
+
+                    ' Materials are independent from machine context
+                    currentMachineID = 0
+                    currenttoolSetupID = 0
+
+                    mat = TryCast(selectedNode.Tag, MaterialSheet)
+
+                    If mat IsNot Nothing Then
+                        tabControlMain.SelectedTab = tabMaterialInventory
+
+                        propgridMaterial.Dock = DockStyle.Fill
+                        propgridMaterial.PropertySort = PropertySort.Alphabetical
+                        propgridMaterial.SelectedObject = mat
+
+
                     Else
                         propgridMaterial.SelectedObject = Nothing
                     End If
-                    tabControlMain.SelectedTab = tabMaterialInventory
+
+                    propgridMaterial.Refresh()
+
             End Select
 
         Catch ex As Exception
@@ -3093,7 +3109,7 @@ Public Class ConfigurationManagerForm
         End Try
     End Sub
 
-    Private Sub propgridMaterial_TextChanged(sender As Object, e As EventArgs) Handles propgridMaterial.TextChanged
+    Private Sub propgridMaterial_TextChanged(sender As Object, e As EventArgs)
 
     End Sub
 
@@ -3466,4 +3482,14 @@ Public Class ConfigurationManagerForm
         End If
     End Function
 
+    Private Sub TreeViewMachines_MouseEnter(sender As Object, e As EventArgs) Handles TreeViewMachines.MouseEnter
+
+    End Sub
+
+    Private Sub btnMaterialCancel_Click(sender As Object, e As EventArgs) Handles btnMaterialCancel.Click
+        tabControlMain.SelectedTab = tabDefinition
+        TreeViewMachines.SelectedNode = Nothing
+
+
+    End Sub
 End Class

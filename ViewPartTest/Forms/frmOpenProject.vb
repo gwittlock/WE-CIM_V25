@@ -1,0 +1,360 @@
+﻿
+Imports DevExpress.XtraEditors.Controls
+Imports DevExpress.XtraTreeList
+Imports DevExpress.XtraTreeList.Nodes
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.State
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
+Imports FabV25_WIN8.AppData
+Imports System.IO
+Imports IxMilia.Dxf
+
+'========================================================
+' frmOpenProject.vb
+' Fully rewritten version using frmMain global JSON collections
+' Handles DXF project opening with machine, tool, material, layer selection
+'========================================================
+
+Public Class frmOpenProject
+    ' ----------------------------
+    ' Private Fields
+    ' ----------------------------
+
+    Private CFG_ROOT_NODE As TreeListNode
+    Private CFG_MATERIAL_ROOT_NODE As TreeListNode
+    Private CFG_MATERIAL_CATEGORY_NODE As TreeListNode
+    Private CFG_MATERIAL_NODE As TreeListNode
+    Private Const TAG_MATERIAL_ROOT_NODE = -200
+    Private Const TAG_MATERIAL_CATEGORY_NODE = -201
+    Private Const TAG_MATERIAL_NODE = -202
+    Dim sUsage As String
+
+
+    Private _selectedDxfPath As String
+
+    Private _machines As List(Of Machine)
+    Private _toolSetups As List(Of ToolSetUp)
+    Private _layerSetups As List(Of LayerSetup)
+    Private _materialTypes As List(Of MaterialType)
+    Private _materialSheets As List(Of MaterialSheet)
+
+    ' Selected items
+    Public SelectedMachineID As Integer
+    Public SelectedToolSetupID As Integer
+    Public SelectedLayerSetupID As Integer
+    Public SelectedMaterialID As Integer
+    Public CustomerName As String
+    Public OrderPO As String
+    Public DueDate As DateTime
+
+
+    Private sMyToolSetup As String
+    Private sMyLayerSetup As String
+    Private sMyMaterial As String
+    Private sMyMachine As String
+    Private nMyToolSetupID As Integer
+    Private nMyLayerSetupID As Integer
+    Private nMyMaterialID As Integer
+    Private nMyMachineID As Integer
+
+    ' Holds the imported DXF entities, classified by directive
+    Private _importedEntities As List(Of ImportedEntity)
+
+    Private _loadingDefaults As Boolean = False
+
+
+
+    ' Stores the currently loaded DXF file path
+    Private _currentDxfPath As String
+
+    ' Material picker control
+    Private matPicker As MaterialPickerTree
+    Dim importer As IDxfImporter = New DxfImporter_IxMilia()
+
+
+
+    ' ----------------------------
+    ' Constructor
+    ' ----------------------------
+    Public Sub New(selectedDxfPath As String)
+        InitializeComponent()
+        _selectedDxfPath = selectedDxfPath
+    End Sub
+
+    ' ----------------------------
+    ' Form Load
+    ' ----------------------------
+    Private Sub frmOpenProject_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+        _loadingDefaults = True
+
+        sMyToolSetup = RegGetString("Global", "ToolSetup", "")
+        sMyLayerSetup = RegGetString("Global", "LayerSetup", "")
+        sMyMaterial = RegGetString("Global", "Material", "")
+        sMyMachine = RegGetString("Global", "Machine", "")
+
+        nMyToolSetupID = RegGetInt("Global", "ToolSetupID", "")
+        nMyLayerSetupID = RegGetInt("Global", "LayerSetupID", "")
+        nMyMaterialID = RegGetInt("Global", "MaterialID", "")
+        nMyMachineID = RegGetInt("Global", "MachineID", "")
+
+
+
+        ' Load all JSON data
+        _machines = AppData.Machines
+        _toolSetups = AppData.ToolSetups
+        _layerSetups = AppData.LayerSetups
+        _materialTypes = AppData.MaterialTypes
+        _materialSheets = AppData.MaterialSheets
+
+        ' Initialize ComboBoxes
+        InitMachineCombo()
+        'InitLayerSetupCombo()
+
+        ' Initialize Material Picker
+        'matPicker = New MaterialPickerTree With {
+        '    .Location = cboMaterial.Location,
+        '    .Size = cboMaterial.Size
+        '}
+        ' Me.Controls.Add(matPicker)
+        cboMaterial.Visible = False ' hide old combo
+        ' matPicker.LoadMaterials(_materialTypes, _materialSheets)
+
+        ' Set optional fields defaults
+        dtDueDate.EditValue = DateTime.Now
+
+
+        MatListTree1.LoadMaterials(
+            AppData.MaterialTypes,
+            AppData.MaterialSheets
+        )
+
+
+        ' Restore selections safely by ID
+        'RestoreComboSelection(cboMachine, nMyMachineID)
+        'RestoreComboSelection(cboToolSetup, nMyToolSetupID)
+        'RestoreComboSelection(cboMaterial, nMyMaterialID)
+        'RestoreComboSelection(cboLayerSetup, nMyLayerSetupID)
+
+        _loadingDefaults = False
+    End Sub
+
+    Private Sub RestoreComboSelection(combo As DevExpress.XtraEditors.ComboBoxEdit, id As Integer)
+
+        If id <= 0 Then Return
+
+        For Each item In combo.Properties.Items
+            Dim data = TryCast(item, myItemData)
+            If data IsNot Nothing AndAlso data.ItemData = id Then
+                'Combo.EditValue = data.ItemData
+                combo.SelectedItem = item
+                Return
+            End If
+        Next
+
+    End Sub
+    ' ----------------------------
+    ' Initialize Machine ComboBox
+    ' ----------------------------
+    Private Sub InitMachineCombo()
+        Dim ni As Integer
+
+        cboMachine.Properties.Items.Clear()
+
+        ' Add None
+        cboMachine.Properties.Items.Add(New myItemData("None", 0))
+
+        For Each m In _machines
+            cboMachine.Properties.Items.Add(New myItemData(m.Description, m.ID))
+
+        Next
+
+        cboMachine.SelectedIndex = 0
+    End Sub
+
+
+    ' ----------------------------
+    ' Initialize LayerSetup ComboBox
+    ' ----------------------------
+    Private Sub InitLayerSetupCombo()
+        cboLayerSetup.Properties.Items.Clear()
+
+        ' Add None
+        cboLayerSetup.Properties.Items.Add(New myItemData("None", 0))
+
+        For Each ls In _layerSetups
+            cboLayerSetup.Properties.Items.Add(New myItemData(ls.Description, ls.ID))
+        Next
+
+        cboLayerSetup.SelectedIndex = 0
+    End Sub
+
+    Private Sub cboMachine_EditValueChanged(sender As Object, e As EventArgs) Handles cboMachine.EditValueChanged
+
+        If _loadingDefaults Then Return
+
+        Dim selectedItem = TryCast(cboMachine.SelectedItem, myItemData)
+        If selectedItem Is Nothing Then Return
+
+        SelectedMachineID = selectedItem.ItemData
+
+        ' Filter ToolSetup ComboBox for this machine
+        cboToolSetup.Properties.Items.Clear()
+        cboToolSetup.Properties.Items.Add(New myItemData("None", 0))
+
+        Dim setups = _toolSetups.Where(Function(ts) ts.MachineID = SelectedMachineID)
+        For Each ts In setups
+            cboToolSetup.Properties.Items.Add(New myItemData(ts.Description, ts.ID))
+        Next
+
+        cboToolSetup.SelectedIndex = 0
+
+
+        ' Reload Layer Setups filtered by machine
+        LoadLayerSetupsForMachine(SelectedMachineID)
+
+    End Sub
+
+    Private Sub cboToolSetup_EditValueChanged(sender As Object, e As EventArgs) Handles cboToolSetup.EditValueChanged
+
+        If _loadingDefaults Then Return
+
+        Dim selectedItem = TryCast(cboToolSetup.SelectedItem, myItemData)
+        If selectedItem Is Nothing Then Return
+        SelectedToolSetupID = selectedItem.ItemData
+        _selectedToolSetup = ToolSetups.FirstOrDefault(Function(ts) ts.ID = SelectedToolSetupID)
+    End Sub
+
+    Private Sub cboLayerSetup_EditValueChanged(sender As Object, e As EventArgs) Handles cboLayerSetup.EditValueChanged
+
+        If _loadingDefaults Then Return
+
+        Dim selectedItem = TryCast(cboLayerSetup.SelectedItem, myItemData)
+        If selectedItem Is Nothing Then Return
+        If UCase(selectedItem.Name) = "NONE" Then Return
+
+        ' Update the selected ID
+        SelectedLayerSetupID = selectedItem.ItemData
+
+        ' Lookup the selected LayerSetup object
+        _selectedLayerSetup = LayerSetups.FirstOrDefault(Function(ls) ls.ID = SelectedLayerSetupID)
+
+        If _selectedLayerSetup Is Nothing Then
+            MessageBox.Show("Selected Layer Setup not found.")
+            Return
+        End If
+
+        '' Optional: refresh preview if a DXF is already loaded
+        'If _importedEntities IsNot Nothing AndAlso _importedEntities.Count > 0 Then
+        '    ' Re-classify imported entities with the new LayerSetup
+        '    _importedEntities = ImportDxfWithLayerSetup(_currentDxfPath, _selectedLayerSetup)
+        '    pnlPicModeler.LoadImportedEntities(_importedEntities)
+        'End If
+
+    End Sub
+
+
+    Private Sub cmdOK_Click(sender As Object, e As EventArgs) Handles cmdOK.Click
+        ' Validate selections
+        If SelectedMachineID = 0 Then
+            MessageBox.Show("Please select a machine.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Return
+        End If
+
+        If SelectedToolSetupID = 0 Then
+            MessageBox.Show("Please select a tool setup.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Return
+        End If
+
+        If MatListTree1.SelectedMaterialID = 0 Then
+
+            MessageBox.Show("Please select a material.", "Validation",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Return
+        End If
+
+        ' Save optional fields
+        CustomerName = txtCustomer.Text
+        OrderPO = txtOrderPO.Text
+        DueDate = dtDueDate.EditValue
+        Dim selectedMaterialID As Integer = MatListTree1.SelectedMaterialID
+
+        RegPutString("Global", "Machine", cboMachine.Text )
+        RegPutString("Global", "MachineID", CStr(SelectedMachineID))
+        RegPutString("Global", "ToolSetup", cboToolSetup.Text)
+        RegPutString("Global", "ToolSetupID", CStr(SelectedToolSetupID))
+        RegPutString("Global", "Material", cboMaterial.Text)
+        RegPutString("Global", "MaterialID", CStr(selectedMaterialID))
+        RegPutString("Global", "LayerSetup", cboLayerSetup.Text)
+        RegPutString("Global", "LayerSetupID", CStr(SelectedLayerSetupID))
+
+        ' Close dialog
+        Me.DialogResult = DialogResult.OK
+        Me.Close()
+    End Sub
+
+    Private Sub cmdCancel_Click(sender As Object, e As EventArgs) Handles cmdCancel.Click
+        Me.DialogResult = DialogResult.Cancel
+        Me.Close()
+    End Sub
+
+
+    Private Sub popupContainerEdit1_EditValueChanged(sender As Object, e As EventArgs)
+        Dim sPieces() As String
+        Try
+
+
+            If (popupContainerEdit1.Tag IsNot Nothing) Then
+                sPieces = Split(popupContainerEdit1.Tag, ",")
+
+                Dim materialID As Long
+
+                'MsgBox("The material ID is < " & e.ToString)
+
+                materialID = (sPieces(1))
+
+                tebMaterialLength.Text = modMaterial.GetMaterialLength(materialID)
+                tebMaterialWidth.Text = modMaterial.GetMaterialWidth(materialID)
+                tebMaterialThickness.Text = modMaterial.GetMaterialThickness(materialID)
+            End If
+
+        Catch ex As Exception
+            MessageBox.Show("popupContainerEdit1_EditValueChanged: " & ex.Message)
+        End Try
+        'EnableOkButton()
+    End Sub
+
+
+    Private Sub popupContainerEdit1_QueryDisplayText(sender As Object, e As QueryDisplayTextEventArgs)
+        e.DisplayText = If(e.EditValue IsNot Nothing, e.EditValue.ToString(), "")
+
+    End Sub
+
+
+
+    Private Sub LoadLayerSetupsForMachine(machineID As Integer)
+
+        cboLayerSetup.Properties.Items.Clear()
+
+        ' Assume _layerSetups is a List(Of LayerSetup) loaded from JSON
+        Dim filteredSetups = _layerSetups.Where(Function(l) l.MachineID = machineID).ToList()
+
+        ' Add default "None" item
+        cboLayerSetup.Properties.Items.Add(New myItemData("None", 0))
+
+        For Each ls In filteredSetups
+            cboLayerSetup.Properties.Items.Add(New myItemData(ls.Description, ls.ID))
+        Next
+
+        ' Optionally select first item
+        If cboLayerSetup.Properties.Items.Count > 0 Then
+            cboLayerSetup.SelectedIndex = 0
+        End If
+
+        cboLayerSetup.Text = RegGetString("Global", "LayerSetup", "")
+    End Sub
+
+
+End Class
+
+
+
