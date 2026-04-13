@@ -96,73 +96,76 @@ Public Class ConfigurationManagerForm
     ' --- Form Load ---
     Private Sub ConfigurationManagerForm_Load(sender As Object, e As EventArgs) Handles Me.Load
 
+
+
         ' Commit edits on ToolSetup grid immediately
         AddHandler dgvToolSetup.CurrentCellDirtyStateChanged, Sub(s, args)
-                                                                  If dgvToolSetup.IsCurrentCellDirty Then
-                                                                      dgvToolSetup.CommitEdit(DataGridViewDataErrorContexts.Commit)
-                                                                  End If
-                                                              End Sub
+                                                                      If dgvToolSetup.IsCurrentCellDirty Then
+                                                                          dgvToolSetup.CommitEdit(DataGridViewDataErrorContexts.Commit)
+                                                                      End If
+                                                                  End Sub
 
-        Dim materialTypesPath = Path.Combine(dataFolder, "materialtypes.json")
-        Dim materialInventoryPath = Path.Combine(dataFolder, "materialinventory.json")
+            Dim materialTypesPath = Path.Combine(dataFolder, "materialtypes.json")
+            Dim materialInventoryPath = Path.Combine(dataFolder, "materialinventory.json")
 
-        ' ----------------------------
-        ' Load Material Types
-        ' ----------------------------
-        If File.Exists(materialTypesPath) Then
-            Dim json = File.ReadAllText(materialTypesPath)
-            materialTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MaterialType))(json)
-        Else
-            materialTypesTable = New JsonTable(Of MaterialType)()
-        End If
+            ' ----------------------------
+            ' Load Material Types
+            ' ----------------------------
+            If File.Exists(materialTypesPath) Then
+                Dim json = File.ReadAllText(materialTypesPath)
+                materialTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MaterialType))(json)
+            Else
+                materialTypesTable = New JsonTable(Of MaterialType)()
+            End If
 
-        ' ----------------------------
-        ' Load Material Sheets / Inventory
-        ' ----------------------------
-        If File.Exists(materialInventoryPath) Then
-            Dim materialInventoryJson = File.ReadAllText(materialInventoryPath)
+            ' ----------------------------
+            ' Load Material Sheets / Inventory
+            ' ----------------------------
+            If File.Exists(materialInventoryPath) Then
+                Dim materialInventoryJson = File.ReadAllText(materialInventoryPath)
 
-            ' Deserialize as JsonTable(Of JObject) first
-            Dim tmpTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(materialInventoryJson)
+                ' Deserialize as JsonTable(Of JObject) first
+                Dim tmpTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(materialInventoryJson)
 
-            Dim sheets As New List(Of MaterialSheet)
-            For Each row In tmpTable.Rows
-                Dim sheet As New MaterialSheet With {
-                .ID = row("ID")?.ToObject(Of Integer)(),
-                .TypeID = row("TypeID")?.ToObject(Of Integer)()
+                Dim sheets As New List(Of MaterialSheet)
+                For Each row In tmpTable.Rows
+                    Dim sheet As New MaterialSheet With {
+                    .ID = row("ID")?.ToObject(Of Integer)(),
+                    .TypeID = row("TypeID")?.ToObject(Of Integer)()
+                }
+
+                    ' Populate Values array
+                    Dim vals = row("Values")?.ToObject(Of List(Of MaterialParameter))()
+                    If vals IsNot Nothing Then sheet.Values = vals
+
+                    ' Optional: populate convenience properties from Values for PropertyGrid
+                    sheet.Description = GetMaterialValue(sheet.Values, "Description")
+                    sheet.Length = CDbl(GetMaterialValue(sheet.Values, "Length", 0))
+                    sheet.Width = CDbl(GetMaterialValue(sheet.Values, "Width", 0))
+                    sheet.Thickness = CDbl(GetMaterialValue(sheet.Values, "Thickness", 0))
+
+                    sheets.Add(sheet)
+                Next
+
+                materialInventoryTable = New JsonTable(Of MaterialSheet) With {
+                .TableName = tmpTable.TableName,
+                .Columns = tmpTable.Columns,
+                .Rows = sheets
             }
 
-                ' Populate Values array
-                Dim vals = row("Values")?.ToObject(Of List(Of MaterialParameter))()
-                If vals IsNot Nothing Then sheet.Values = vals
+            Else
+                materialInventoryTable = New JsonTable(Of MaterialSheet)()
+            End If
 
-                ' Optional: populate convenience properties from Values for PropertyGrid
-                sheet.Description = GetMaterialValue(sheet.Values, "Description")
-                sheet.Length = CDbl(GetMaterialValue(sheet.Values, "Length", 0))
-                sheet.Width = CDbl(GetMaterialValue(sheet.Values, "Width", 0))
-                sheet.Thickness = CDbl(GetMaterialValue(sheet.Values, "Thickness", 0))
+            ' Bind the first MaterialSheet to the property grid for testing
+            If AppData.MaterialSheets.Any() Then
+                propgridMaterial.SelectedObject = AppData.MaterialSheets(0)
+            End If
 
-                sheets.Add(sheet)
-            Next
+            LoadToolTypes()
+            PopulateTreeView()
+            HookTreeViewEvents()
 
-            materialInventoryTable = New JsonTable(Of MaterialSheet) With {
-            .TableName = tmpTable.TableName,
-            .Columns = tmpTable.Columns,
-            .Rows = sheets
-        }
-
-        Else
-            materialInventoryTable = New JsonTable(Of MaterialSheet)()
-        End If
-
-        ' Bind the first MaterialSheet to the property grid for testing
-        If AppData.MaterialSheets.Any() Then
-            propgridMaterial.SelectedObject = AppData.MaterialSheets(0)
-        End If
-
-        LoadToolTypes()
-        PopulateTreeView()
-        HookTreeViewEvents()
 
     End Sub
 
@@ -2742,6 +2745,8 @@ Public Class ConfigurationManagerForm
         'Dim outputfolder As String '= "C:\_Gary\AI\WE-CIM_ConfigMan\WE-CIM_ConfigMan_174\bin\Debug\net9.0-windows\Data\"
 
         'ExportMaterialJson(CMDBPath, outpurfolder)
+
+
         frmConvertCMDB.ShowDialog(Me)
 
     End Sub

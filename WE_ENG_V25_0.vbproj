@@ -47,7 +47,7 @@
     <DebugType>full</DebugType>
     <DefineDebug>true</DefineDebug>
     <DefineTrace>true</DefineTrace>
-    <OutputPath>..\..\Program Files %28x86%29\WE-CIM\25.0\</OutputPath>
+    <OutputPath>bin\Debug\</OutputPath>
     <DocumentationFile>
     </DocumentationFile>
     <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
@@ -65,7 +65,7 @@
     <DefineDebug>false</DefineDebug>
     <DefineTrace>true</DefineTrace>
     <Optimize>true</Optimize>
-    <OutputPath>..\..\..\..\Program Files %28x86%29\WE-CIM\21.0\</OutputPath>
+    <OutputPath>bin\Release\</OutputPath>
     <DocumentationFile>
     </DocumentationFile>
     <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
@@ -92,7 +92,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DefineDebug>true</DefineDebug>
     <DefineTrace>true</DefineTrace>
-    <OutputPath>..\..\Program Files %28x86%29\WE-CIM\25.0\</OutputPath>
+    <OutputPath>bin\Debug\</OutputPath>
     <DocumentationFile>
     </DocumentationFile>
     <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
@@ -112,12 +112,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
     <DefineTrace>false</DefineTrace>
-    <OutputPath>..\..\..\Program Files %28x86%29\WE-CIM\23.0\</OutputPath>
+    <OutputPath>bin\Release\</OutputPath>
     <DocumentationFile>
     </DocumentationFile>
     <Optimize>false</Optimize>
     <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
-    <DebugType>pdbonly</DebugType>
+    <DebugType>full</DebugType>
     <PlatformTarget>x86</PlatformTarget>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <Prefer32Bit>true</Prefer32Bit>
@@ -136,7 +136,7 @@
     <ApplicationManifest>My Project\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>Resources\V23_KeyHole_Icon.ico</ApplicationIcon>
+    <ApplicationIcon>SetupV25.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
     <ManifestCertificateThumbprint>061474EFA84686107AB3E79BEA573B30AF687BB3</ManifestCertificateThumbprint>
@@ -332,6 +332,7 @@
     <Compile Include="Classes\DynamicPropertyBag.vb" />
     <Compile Include="Classes\DynamicToolAttributes.vb" />
     <Compile Include="Classes\HelperFunctions.vb" />
+    <Compile Include="Classes\ISelectable.vb" />
     <Compile Include="Classes\JobContext.vb" />
     <Compile Include="Classes\JsonLoader.vb" />
     <Compile Include="Classes\LayerDefinition.vb" />
@@ -350,6 +351,7 @@
     <Compile Include="Classes\MaterialSheet.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
     <Compile Include="Classes\PuncfResult.vb" />
+    <Compile Include="Classes\QuadTree.vb" />
     <Compile Include="Classes\ToolPathGenerator.vb" />
     <Compile Include="Classes\ToolSelection.vb" />
     <Compile Include="Classes\ToolShapes.vb" />
@@ -406,8 +408,10 @@
     </Compile>
     <Compile Include="Helpers\ConversionHelpers.vb" />
     <Compile Include="Helpers\Extensions.vb" />
+    <Compile Include="Helpers\IsSelectable.vb" />
     <Compile Include="Helpers\Logging.vb" />
     <Compile Include="Helpers\MaterialHelper.vb" />
+    <Compile Include="Helpers\SelectionManager.vb" />
     <Compile Include="Models\DxfGeometryHelpers.vb" />
     <Compile Include="Models\Machine.vb" />
     <Compile Include="Models\Module1.vb" />
@@ -427,6 +431,7 @@
     <Compile Include="Modules\modPath.vb" />
     <Compile Include="Modules\modProject.vb" />
     <Compile Include="Modules\modRegistry.vb" />
+    <Compile Include="Modules\modSelection.vb" />
     <Compile Include="Modules\modSnap.vb" />
     <Compile Include="Modules\modView.vb" />
     <Compile Include="Modules\PropertyGridContext.vb" />
@@ -746,8 +751,20 @@
     <PackageReference Include="Newtonsoft.Json">
       <Version>13.0.4</Version>
     </PackageReference>
+    <PackageReference Include="System.Buffers">
+      <Version>4.5.1</Version>
+    </PackageReference>
+    <PackageReference Include="System.Memory">
+      <Version>4.5.4</Version>
+    </PackageReference>
+    <PackageReference Include="System.Numerics.Vectors">
+      <Version>4.5.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe">
+      <Version>5.0.0</Version>
+    </PackageReference>
     <PackageReference Include="System.Text.Json">
-      <Version>10.0.0</Version>
+      <Version>5.0.2</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.VisualBasic.targets" />

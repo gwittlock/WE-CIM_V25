@@ -7,6 +7,9 @@ Public MustInherit Class CadEntity
     Public Property LayerName As String
     Public Property Color As Color
     Public Property GeometryType As EntityType
+    Public Property Drawable As DxfDrawable
+    Public Property IsSelected As Boolean = False
+
     ' Required for DXF → sheet normalization
     Public MustOverride Sub Translate(dx As Single, dy As Single)
 
@@ -14,10 +17,11 @@ Public MustInherit Class CadEntity
     ' Entity type enum
     ' =============================
     Public Enum EntityType
-        Line
-        Circle
-        Arc
-        Polyline
+        Line = 0
+        Circle = 1
+        Arc = 2
+        Polyline = 3
+        Rectangle = 4
     End Enum
 
 

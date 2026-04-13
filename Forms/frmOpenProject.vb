@@ -88,15 +88,15 @@ Public Class frmOpenProject
 
         _loadingDefaults = True
 
-        sMyToolSetup = RegGetString("Global", "ToolSetup", "")
-        sMyLayerSetup = RegGetString("Global", "LayerSetup", "")
-        sMyMaterial = RegGetString("Global", "Material", "")
-        sMyMachine = RegGetString("Global", "Machine", "")
+        sMyToolSetup = RegGetString("Global", "ToolSetup", "PunchDemo6")
+        sMyLayerSetup = RegGetString("Global", "LayerSetup", "DXFDemo")
+        sMyMaterial = RegGetString("Global", "Material", "ALUM .250 X 96 X 48")
+        sMyMachine = RegGetString("Global", "Machine", "Amada Pega")
 
-        nMyToolSetupID = RegGetInt("Global", "ToolSetupID", "")
-        nMyLayerSetupID = RegGetInt("Global", "LayerSetupID", "")
-        nMyMaterialID = RegGetInt("Global", "MaterialID", "")
-        nMyMachineID = RegGetInt("Global", "MachineID", "")
+        nMyToolSetupID = RegGetInt("Global", "ToolSetupID", 55)
+        nMyLayerSetupID = RegGetInt("Global", "LayerSetupID", 0)
+        nMyMaterialID = RegGetInt("Global", "MaterialID", 5)
+        nMyMachineID = RegGetInt("Global", "MachineID", 2)
 
 
 

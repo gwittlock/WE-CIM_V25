@@ -16,7 +16,7 @@ Public Class AppData
 
     ' Folder where JSON files are stored
     ' App data folder
-    Public Shared DataFolder As String = Path.Combine(Application.StartupPath, "Data")
+    Public Shared DataFolder As String = Path.Combine(Application.StartupPath, "Data\")
 
     ' -------------------------------
     ' MACHINES / MATERIALS
@@ -68,12 +68,16 @@ Public Class AppData
     '  LOAD ALL JSON FILES (once)
     ' ------------------------------------------
     Public Shared Sub LoadAllJson()
-        If Not Directory.Exists(DataFolder) Then
-            Directory.CreateDirectory(DataFolder)
-        End If
 
         ' ---- MACHINE DATA ----
         MachineTypes = LoadTableWrapped(Of MachineType)("MachineTypes.json")
+
+        If MachineTypes.Count = 0 Then
+            MessageBox.Show("Configuration Files Not Found! Make sure the you have converted your CMDB before continuing!", "Configuration File Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            ConfigurationManagerForm.Show()
+            Exit Sub 
+
+        End If
         Machines = LoadTableWrapped(Of Machine)("Machines.json")
         MachineAttributeTypes = LoadTableWrapped(Of MachineAttributeType)("MachineAttributeTypes.json")
         MachineAttributes = LoadTableWrapped(Of MachineAttribute)("MachineAttributes.json")

@@ -3558,7 +3558,7 @@ Partial Class frmMain
         Me.tbUndo.GripMargin = New System.Windows.Forms.Padding(6)
         Me.tbUndo.ImageScalingSize = New System.Drawing.Size(24, 24)
         Me.tbUndo.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.tbUndo_Undo, Me.tbUndo_Redo})
-        Me.tbUndo.Location = New System.Drawing.Point(999, 0)
+        Me.tbUndo.Location = New System.Drawing.Point(1061, 0)
         Me.tbUndo.Name = "tbUndo"
         Me.HelpProvider1.SetShowHelp(Me.tbUndo, True)
         Me.tbUndo.Size = New System.Drawing.Size(76, 31)
@@ -3596,11 +3596,12 @@ Partial Class frmMain
         Me.tbSelect.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.tbSelect_Enable, Me.tbSelect_Layers, Me.tbSelect_Tools, Me.tbSelect_Lines, Me.tbSelect_Arcs, Me.tbSelect_Holes, Me.tbSelect_Points, Me.tbSelect_Command, Me.tbSelect_Profiles, Me.tbSelect_Features, Me.tbSelect_ByWindow, Me.tbSelect_AddAllByFilter, Me.tbSelect_RemoveAllByFilter, Me.tbSelect_All, Me.tbSelect_RemoveAll, Me.tbSelect_HotDot})
         Me.tbSelect.Location = New System.Drawing.Point(458, 0)
         Me.tbSelect.Name = "tbSelect"
-        Me.tbSelect.Size = New System.Drawing.Size(472, 32)
+        Me.tbSelect.Size = New System.Drawing.Size(503, 32)
         Me.tbSelect.TabIndex = 3
         '
         'tbSelect_Enable
         '
+        Me.tbSelect_Enable.CheckOnClick = True
         Me.tbSelect_Enable.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image
         Me.tbSelect_Enable.Image = Global.FabV25_WIN8.My.Resources.Resources.Orange_Select_Arrow
         Me.tbSelect_Enable.ImageTransparentColor = System.Drawing.Color.DarkOrange

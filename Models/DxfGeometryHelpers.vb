@@ -18,13 +18,13 @@ Public Module DxfGeometryHelpers
         ' Geometry Type Enum
         '----------------------------------
         Public Enum GeometryTypeEnum
-            Line
-            Circle
-            Arc
-            PolyLine
-            Unknown
+            Line = 0
+            Circle = 1
+            Arc = 2
+            PolyLine = 3
+            Rectangle = 4
+            Unknown = -1
         End Enum
-
 
         Public Property ColorMode As ColorSourceMode
         Public Property ExplicitColor As Color

@@ -7,13 +7,17 @@
     Public Property Width As Single
     Public Property Height As Single
 
+
+    Public Property IsHovered As Boolean = False
+
     Public Enum DrawableTypeEnum
-            Line
-            Circle
+        Line
+        Circle
         Arc
         PolyLine
         Rectangle
     End Enum
+
 
     ' Type of entity
     Public DrawableType As DrawableTypeEnum
@@ -81,5 +85,13 @@
         End Select
 
     End Function
+    Public Interface ISelectable
+        Function HitTest(pt As PointF, tolerance As Single) As Boolean
+        Function GetEntityType() As DrawableTypeEnum
+        Function GetLayer() As String
+        Function GetTool() As String
 
+        Property IsSelected As Boolean
+        Property IsHovered As Boolean
+    End Interface
 End Class

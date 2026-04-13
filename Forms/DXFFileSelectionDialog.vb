@@ -170,7 +170,7 @@ Public Class DXFFileSelectionDialog
             _suppressEvents = False
             MessageBox.Show("Failed to load DXF: " & _selectedDxfPath & ".  " & ex.Message, "DXF Preview", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
-
+        _suppressEvents = False
     End Sub
 
 
@@ -182,7 +182,7 @@ Public Class DXFFileSelectionDialog
         Dim results As New List(Of ImportedEntity)
 
         For Each ent As DxfEntity In dxf.Entities
-            Dim displayColor As Color = Color.Black
+            Dim displayColor As Color = Color.Yellow
 
             If ent.Color IsNot Nothing Then
                 displayColor = DxfColorToDrawingColor(ent.Color, pnlPreview.BackColor)

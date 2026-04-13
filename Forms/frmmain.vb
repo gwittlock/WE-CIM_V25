@@ -41,6 +41,8 @@ Imports System.Reflection
 Imports System.Text
 Imports FabV25_WIN8.MachineEnvelope
 Imports FabV25_WIN8.MaterialWrapper
+Imports FabV25_WIN8.SelectionSet
+
 
 Public Class frmMain
     Inherits RibbonForm
@@ -48,6 +50,7 @@ Public Class frmMain
     ' Application lifecycle
     Private _uiInitialized As Boolean = False
 
+    Private _hoverDrawable As DxfDrawable = Nothing
 
     Dim currentScale As Double
 
@@ -70,6 +73,10 @@ Public Class frmMain
 
     Private _measureActive As Boolean = False
     Private _measureCurrentScreen As Point
+
+    Private _selectionManager As New SelectionManager()
+    Private _selectionEnabled As Boolean = False
+
 
 
     ' Hot dot display toggle
@@ -144,7 +151,6 @@ Public Class frmMain
     Private WithEvents entityTip As New ToolTip()
     Private lastHoverEntity As CadEntity = Nothing
     Private _hoverEntity As CadEntity = Nothing
-    Private _selectedEntity As CadEntity = Nothing
     Private _modelerToolTip As New ToolTip() With {
     .ShowAlways = False,
     .InitialDelay = 400,
@@ -155,9 +161,6 @@ Public Class frmMain
 
 
     Private Const HitTolerancePx As Single = 6.0F
-
-    Dim tolWorld = HitTolerancePx / myTransform.Scale
-
 
     Public PicModelerScale As Single = 1.0F
     Public OffsetX As Single = 0
@@ -173,7 +176,10 @@ Public Class frmMain
 
         InitializeComponent()
 
+
         Me.InitSkinGallery()
+
+        AddHandler _selectionManager.SelectionChanged, AddressOf OnSelectionChanged
 
         Me.splitContainerControl.SuspendLayout()
         Me.splitContainerControl.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel2
@@ -216,6 +222,13 @@ Public Class frmMain
         End Try
     End Sub
 
+
+    Private Sub OnSelectionChanged()
+
+        Me.Invalidate()
+
+    End Sub
+
     Private Sub rgbiSkins_GalleryInitDropDownGallery(ByVal sender As Object, ByVal e As DevExpress.XtraBars.Ribbon.InplaceGalleryEventArgs) Handles rgbiSkins.GalleryInitDropDownGallery
 
     End Sub
@@ -254,6 +267,8 @@ Public Class frmMain
 
             statusDate.Caption = "Date: " & Now.ToString("MMMM dd, yyyy")
             statusTime.Caption = "Time: " & Now.ToString("hh:mm tt")
+
+        
 
             Logging.Log("AppState loaded successfully.")
 
@@ -438,7 +453,7 @@ Public Class frmMain
         ' --------------------------------------------
         If Not _DoDrawUI OrElse CurrentJob Is Nothing Then
             ' Nothing to draw yet
-            e.Graphics.Clear(System.Drawing.Color.White)
+            e.Graphics.Clear(System.Drawing.Color.Black)
             Return
         End If
 
@@ -506,8 +521,8 @@ Public Class frmMain
     ''' Draw a simple overlay text with background for readability.
     ''' </summary>
     Private Sub DrawOverlayText(text As String, screenPt As PointF, g As Graphics)
-        Using brushBack As New SolidBrush(System.Drawing.Color.FromArgb(160, System.Drawing.Color.White))
-            Using brushText As New SolidBrush(System.Drawing.Color.Black)
+        Using brushBack As New SolidBrush(System.Drawing.Color.FromArgb(160, System.Drawing.Color.Black))
+            Using brushText As New SolidBrush(System.Drawing.Color.White)
                 Using fnt As New Font("Segoe UI", 9, FontStyle.Regular)
                     Dim size As SizeF = g.MeasureString(text, fnt)
                     Dim rect As New RectangleF(screenPt.X + 5, screenPt.Y - size.Height / 2, size.Width + 4, size.Height + 2)
@@ -518,31 +533,97 @@ Public Class frmMain
         End Using
     End Sub
 
-
     Private Sub RenderScene(g As Graphics)
-
 
         If CurrentJob Is Nothing Then Exit Sub
 
-        g.SmoothingMode = SmoothingMode.AntiAlias
-        g.Clear(System.Drawing.Color.White)
+        g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+        g.Clear(System.Drawing.Color.Black)
 
+        ' -------------------------------------------------
+        ' 1) BASE SCENE
+        ' -------------------------------------------------
         RestoreAndDrawJob()
         DrawSheetAndWorkzones(g, matLength, matWidth)
         DrawCadEntities(g, myTransform, panelHeight)
 
+        ' -------------------------------------------------
+        ' 2) HOVER HIGHLIGHT (still View-owned for now)
+        ' -------------------------------------------------
         If _hoverEntity IsNot Nothing Then
             DrawEntityHighlight(g, _hoverEntity)
         End If
 
-        If _selectedEntity IsNot Nothing Then
-            DrawEntitySelection(g, _selectedEntity)
+        ' -------------------------------------------------
+        ' 3) SELECTION HIGHLIGHT (SelectionManager-owned)
+        ' -------------------------------------------------
+        If _selectionManager.HasSelection Then
+
+            Using pen As New Pen(System.Drawing.Color.Yellow, 2.0F)
+
+                For Each sel In _selectionManager.SelectedEntities
+
+                    Dim ent As CadEntity = TryCast(sel, CadEntity)
+                    If ent Is Nothing Then Continue For
+
+                    Select Case ent.GeometryType
+
+                        Case GeometryTypeEnum.Line
+
+                            Dim line As CadLine = TryCast(ent, CadLine)
+                            If line Is Nothing Then Continue For
+
+                            Dim p1 = WorldToScreen(line.StartPoint.X, line.StartPoint.Y, myTransform, panelHeight)
+                            Dim p2 = WorldToScreen(line.EndPoint.X, line.EndPoint.Y, myTransform, panelHeight)
+
+                            g.DrawLine(pen, p1, p2)
+
+                        Case GeometryTypeEnum.Circle
+
+                            Dim circle As CadCircle = TryCast(ent, CadCircle)
+                            If circle Is Nothing Then Continue For
+
+                            Dim center = WorldToScreen(circle.Center.X, circle.Center.Y, myTransform, panelHeight)
+                            Dim r As Single = CSng(circle.Radius * myTransform.Scale)
+
+                            g.DrawEllipse(pen,
+                                      CSng(center.X - r),
+                                      CSng(center.Y - r),
+                                      CSng(r * 2),
+                                      CSng(r * 2))
+
+                        Case GeometryTypeEnum.Arc
+
+                            Dim arc As CadArc = TryCast(ent, CadArc)
+                            If arc Is Nothing Then Continue For
+
+                            Dim center = WorldToScreen(arc.Center.X, arc.Center.Y, myTransform, panelHeight)
+                            Dim r As Single = CSng(arc.Radius * myTransform.Scale)
+
+                            Dim startAngle As Single = CSng(arc.StartAngle)
+                            Dim sweepAngle As Single = CSng(arc.EndAngle - arc.StartAngle)
+
+                            g.DrawArc(pen,
+                                  CSng(center.X - r),
+                                  CSng(center.Y - r),
+                                  CSng(r * 2),
+                                  CSng(r * 2),
+                                  startAngle,
+                                  sweepAngle)
+
+                    End Select
+
+                Next
+
+            End Using
+
         End If
 
     End Sub
+
     Private Sub DrawEntityHighlight(g As Graphics, ent As CadEntity)
 
-        Using pen As New Pen(System.Drawing.Color.Orange, 2.0F)
+        Using pen As New Pen(System.Drawing.Color.Red, 2.0F)
             pen.DashStyle = DashStyle.Dash
             DrawCadEntity(g, ent, pen)
         End Using
@@ -678,15 +759,133 @@ Public Class frmMain
         Next
     End Sub
 
+    'Public Sub BuildDrawables()
+    '    _drawables = New List(Of DxfDrawable)
+
+    '    For Each cad In _cadEntities
+    '        Dim d As New DxfDrawable With {
+    '            .Entity = cad,
+    '            .LayerName = cad.LayerName,
+    '            .Color = System.Drawing.Color.Black
+    '        }
+
+    '        ' Map geometry by type
+    '        If TypeOf cad Is CadEntity.CadLine Then
+    '            Dim line = DirectCast(cad, CadEntity.CadLine)
+    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
+    '            d.StartPoint = line.StartPoint
+    '            d.EndPoint = line.EndPoint
+
+    '        ElseIf TypeOf cad Is CadEntity.CadCircle Then
+    '            Dim circle = DirectCast(cad, CadEntity.CadCircle)
+    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
+    '            d.Center = circle.Center
+    '            d.Radius = circle.Radius
+
+    '        ElseIf TypeOf cad Is CadEntity.CadArc Then
+    '            Dim arc = DirectCast(cad, CadEntity.CadArc)
+    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
+    '            d.Center = arc.Center
+    '            d.Radius = arc.Radius
+    '            d.StartAngle = arc.StartAngle
+    '            d.EndAngle = arc.EndAngle
+
+    '            'ElseIf TypeOf cad Is CadEntity.CadPolyline Then
+    '            '    Dim pl = DirectCast(cad, CadEntity.CadPolyline)
+    '            '    d.DrawableType = DxfDrawable.DrawableTypeEnum.PolyLine
+    '            '    d.Points = New List(Of PointF)(pl.Points)
+
+    '            'ElseIf TypeOf cad Is CadEntity.CadRectangle Then
+    '            '    Dim rect = DirectCast(cad, CadEntity.CadRectangle)
+    '            '    d.DrawableType = DxfDrawable.DrawableTypeEnum.Rectangle
+    '            '    d.StartPoint = rect.StartPoint
+    '            '    d.Width = rect.Width
+    '            '    d.Height = rect.Height
+    '        End If
+
+    '        ' Add to drawables
+    '        _drawables.Add(d)
+
+    '        Dim cad As CadEntity = sourceCad
+
+    '        Dim d As New DxfDrawable()
+
+    '        d.Entity = cad
+
+    '        cad.Drawable = d
+
+    '    Next
+
+    '    Debug.Print("MODEL EXTENTS CHECK")
+
+
+    '    Dim allBounds As New List(Of RectangleF)
+
+    '    For Each d In _drawables
+    '        allBounds.Add(GetBounds(d))
+    '    Next
+
+    '    Dim minX = allBounds.Min(Function(r) r.Left)
+    '    Dim maxX = allBounds.Max(Function(r) r.Right)
+    '    Dim minY = allBounds.Min(Function(r) r.Top)
+    '    Dim maxY = allBounds.Max(Function(r) r.Bottom)
+
+    '    Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
+    '    Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
+
+    'End Sub
+
     Public Sub BuildDrawables()
+
         _drawables = New List(Of DxfDrawable)
 
         For Each cad In _cadEntities
             Dim d As New DxfDrawable With {
-                .Entity = cad,
-                .LayerName = cad.LayerName,
-                .Color = System.Drawing.Color.Black
-            }
+        .Entity = cad,
+        .LayerName = cad.LayerName,
+        .Color = System.Drawing.Color.Black
+    }
+
+
+            _drawables = New List(Of DxfDrawable)
+
+            'For Each cad As CadEntity In _cadEntities
+
+            ' Dim d As New DxfDrawable()
+
+            d.Entity = cad
+        cad.Drawable = d   ' THIS LINE IS CRITICAL
+
+        ' set geometry
+        If TypeOf cad Is CadLine Then
+            Dim line = DirectCast(cad, CadLine)
+            d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
+            d.StartPoint = line.StartPoint
+            d.EndPoint = line.EndPoint
+
+        ElseIf TypeOf cad Is CadCircle Then
+            Dim circle = DirectCast(cad, CadCircle)
+            d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
+            d.Center = circle.Center
+            d.Radius = circle.Radius
+
+        ElseIf TypeOf cad Is CadArc Then
+            Dim arc = DirectCast(cad, CadArc)
+            d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
+            d.Center = arc.Center
+            d.Radius = arc.Radius
+            d.StartAngle = arc.StartAngle
+            d.EndAngle = arc.EndAngle
+        End If
+
+        _drawables.Add(d)
+
+            'Next
+
+
+
+
+
 
             ' Map geometry by type
             If TypeOf cad Is CadEntity.CadLine Then
@@ -694,12 +893,14 @@ Public Class frmMain
                 d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
                 d.StartPoint = line.StartPoint
                 d.EndPoint = line.EndPoint
+                cad.GeometryType = CadEntity.EntityType.Line
 
             ElseIf TypeOf cad Is CadEntity.CadCircle Then
                 Dim circle = DirectCast(cad, CadEntity.CadCircle)
                 d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
                 d.Center = circle.Center
                 d.Radius = circle.Radius
+                cad.GeometryType = CadEntity.EntityType.Circle
 
             ElseIf TypeOf cad Is CadEntity.CadArc Then
                 Dim arc = DirectCast(cad, CadEntity.CadArc)
@@ -708,31 +909,27 @@ Public Class frmMain
                 d.Radius = arc.Radius
                 d.StartAngle = arc.StartAngle
                 d.EndAngle = arc.EndAngle
-
-                'ElseIf TypeOf cad Is CadEntity.CadPolyline Then
-                '    Dim pl = DirectCast(cad, CadEntity.CadPolyline)
-                '    d.DrawableType = DxfDrawable.DrawableTypeEnum.PolyLine
-                '    d.Points = New List(Of PointF)(pl.Points)
-
-                'ElseIf TypeOf cad Is CadEntity.CadRectangle Then
-                '    Dim rect = DirectCast(cad, CadEntity.CadRectangle)
-                '    d.DrawableType = DxfDrawable.DrawableTypeEnum.Rectangle
-                '    d.StartPoint = rect.StartPoint
-                '    d.Width = rect.Width
-                '    d.Height = rect.Height
+                cad.GeometryType = CadEntity.EntityType.Arc
             End If
 
-            ' Add to drawables
+            ' ✅ Link drawable to cad entity
+            cad.Drawable = d
+
+            ' Add to drawables list
             _drawables.Add(d)
         Next
 
-        Debug.Print("MODEL EXTENTS CHECK")
 
+        ' ----------------------------
+        ' Debug extents verification
+        ' ----------------------------
+
+        Debug.Print("MODEL EXTENTS CHECK")
 
         Dim allBounds As New List(Of RectangleF)
 
         For Each d In _drawables
-            allBounds.Add(GetBounds(d))
+            allBounds.Add(DxfDrawable.GetBounds(d))
         Next
 
         Dim minX = allBounds.Min(Function(r) r.Left)
@@ -741,9 +938,9 @@ Public Class frmMain
         Dim maxY = allBounds.Max(Function(r) r.Bottom)
 
         Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
-        Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
 
     End Sub
+
 
     Private Sub DrawEmptyWorkspace(g As Graphics)
         Using f As New Font("Segoe UI", 10)
@@ -939,55 +1136,119 @@ Public Class frmMain
     Private Function DxfToPointF(p As IxMilia.Dxf.DxfPoint) As PointF
         Return New PointF(CSng(p.X), CSng(p.Y))
     End Function
+    Private Function HitTestCadEntity(mouseScreen As PointF,
+                                   tolPx As Single,
+                                   ByRef hitDistWorld As Single) As CadEntity
 
+        Dim mouseWorld As PointF =
+        ScreenToWorld(mouseScreen, myTransform, pnlPicmodeler.Height)
 
-    Private Function HitTestCadEntity(mouseScreen As Point, tolPx As Single, ByRef hitDistWorld As Single) As CadEntity
-
-        Dim mouseWorld = ScreenToWorld(mouseScreen, myTransform, pnlPicmodeler.Height)
-        Dim tolWorld = tolPx / myTransform.Scale
+        Dim tolWorld As Single = tolPx / myTransform.Scale
 
         hitDistWorld = Single.MaxValue
-        Dim best As CadEntity = Nothing
 
-        For Each ent In _cadEntities
-            Debug.WriteLine($"ENT TYPE = {ent.GetType().Name}, GeometryType = {ent.GeometryType}")
+        Dim results As New List(Of HitResult)
+
+        For Each ent As CadEntity In _cadEntities
 
             Dim d As Single = Single.MaxValue
 
             Select Case ent.GeometryType
 
-
-
                 Case GeometryTypeEnum.Line
-                    Dim l = DirectCast(ent, CadLine)
-
-                    d = DistancePointToLineWorld(mouseWorld, l.StartPoint, l.EndPoint)
+                    Dim line = DirectCast(ent, CadLine)
+                    d = DistancePointToLineWorld(mouseWorld, line.StartPoint, line.EndPoint)
 
                 Case GeometryTypeEnum.Circle
-                    Dim c = DirectCast(ent, CadCircle)
-
-                    d = Math.Abs(Distance(mouseWorld, c.Center) - c.Radius)
+                    Dim circle = DirectCast(ent, CadCircle)
+                    d = Math.Abs(Distance(mouseWorld, circle.Center) - circle.Radius)
 
                 Case GeometryTypeEnum.Arc
-                    Dim a = DirectCast(ent, CadArc)
+                    Dim arc = DirectCast(ent, CadArc)
 
-                    d = Math.Abs(Distance(mouseWorld, a.Center) - a.Radius)
-                    ' (arc angle gating later)
+                    Dim distToCircle = Math.Abs(Distance(mouseWorld, arc.Center) - arc.Radius)
+
+                    Dim angle As Double =
+                    Math.Atan2(mouseWorld.Y - arc.Center.Y,
+                               mouseWorld.X - arc.Center.X) * 180 / Math.PI
+
+                    Dim startAngle As Double = arc.StartAngle
+                    Dim endAngle As Double = arc.EndAngle
+
+                    Dim inArc As Boolean
+
+                    If arc.IsClockwise Then
+                        If startAngle < endAngle Then startAngle += 360
+                        If angle < endAngle Then angle += 360
+
+                        inArc = angle <= startAngle AndAlso angle >= endAngle
+                    Else
+                        If endAngle < startAngle Then endAngle += 360
+                        If angle < startAngle Then angle += 360
+
+                        inArc = angle >= startAngle AndAlso angle <= endAngle
+                    End If
+
+                    If inArc Then
+                        d = distToCircle
+                    End If
 
             End Select
 
-            If d <= tolWorld AndAlso d < hitDistWorld Then
-                hitDistWorld = d
-                best = ent
+            If d <= tolWorld Then
+                results.Add(New HitResult With {
+                .Entity = ent,
+                .Distance = d
+            })
             End If
 
-            Debug.Print($"The ENT is : {best} d for DISTANCE→ {d}   tolworld {tolWorld }  hitDistWorld→ {hitDistWorld} mouseWorld → {mouseWorld}")
         Next
 
+        ' -----------------------------
+        ' RESOLVE BEST HIT
+        ' -----------------------------
+        Dim best = results.
+        OrderBy(Function(h) h.Distance).
+        FirstOrDefault()
 
-        Return best
+        If best IsNot Nothing Then
+            hitDistWorld = best.Distance
+
+            Debug.Print($"Best Entity: {best.Entity.GeometryType} Type={best.Entity.GetType().Name}")
+
+            Return best.Entity
+        End If
+
+        Return Nothing
+
     End Function
+    Public Class HitResult
+        Public Property Entity As CadEntity
+        Public Property Distance As Single
+    End Class
+    Private Function PassesFilter(ent As CadEntity, filter As SELECTION_FILTER) As Boolean
 
+        If filter = SELECTION_FILTER.SEL_ALL Then Return True
+
+        Select Case ent.GeometryType
+
+            Case GeometryTypeEnum.Line
+                Return (filter And SELECTION_FILTER.SEL_LINE) <> 0
+
+            Case GeometryTypeEnum.Arc
+                Return (filter And SELECTION_FILTER.SEL_ARC) <> 0
+
+            Case GeometryTypeEnum.Circle
+                ' You need to decide this:
+                ' Is a circle a HOLE or just geometry?
+                Return (filter And SELECTION_FILTER.SEL_HOLE) <> 0
+
+            Case Else
+                Return False
+
+        End Select
+
+    End Function
     ''------------------------------------------
     '' Hit-testing function
     ''------------------------------------------
@@ -1067,15 +1328,14 @@ Public Class frmMain
 
     'End Function
 
-
-
     Private Sub pnlPicmodeler_MouseMove(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseMove
 
         ' --------------------------
         ' 1) Handle panning
         ' --------------------------
         If isPanning Then
-            SaveCurrentView() ' only first time is fine
+            SaveCurrentView()
+
             Dim dxScreen As Integer = e.X - panStartMouse.X
             Dim dyScreen As Integer = e.Y - panStartMouse.Y
 
@@ -1084,7 +1344,7 @@ Public Class frmMain
 
             lastMousePos = e.Location
             pnlPicmodeler.Invalidate()
-            Return ' skip rest while panning
+            Return
         End If
 
         ' --------------------------
@@ -1098,6 +1358,7 @@ Public Class frmMain
         ' --------------------------
         If _windowSelecting Then
             _windowEnd = e.Location
+            pnlPicmodeler.Invalidate()
         End If
 
         ' --------------------------
@@ -1107,8 +1368,12 @@ Public Class frmMain
         _activeSnap = GetActiveSnap(e.Location, snapTolPx)
 
         If _activeSnap.HasValue Then
-            _snapScreenPoint = WorldToScreen(_activeSnap.Value.WorldPoint.X, _activeSnap.Value.WorldPoint.Y,
-                                        myTransform, pnlPicmodeler.Height)
+            _snapScreenPoint = WorldToScreen(
+            _activeSnap.Value.WorldPoint.X,
+            _activeSnap.Value.WorldPoint.Y,
+            myTransform,
+            pnlPicmodeler.Height)
+
             pnlPicmodeler.Cursor = Cursors.Cross
         Else
             _snapScreenPoint = Nothing
@@ -1119,7 +1384,9 @@ Public Class frmMain
         ' 5) Measurement tool
         ' --------------------------
         If _isMeasuring Then
-            _measureEndWorld = If(_activeSnap.HasValue, _activeSnap.Value.WorldPoint, modelPt)
+            _measureEndWorld = If(_activeSnap.HasValue,
+                             _activeSnap.Value.WorldPoint,
+                             modelPt)
 
             Dim dx As Double = _measureEndWorld.X - _measureStartWorld.X
             Dim dy As Double = _measureEndWorld.Y - _measureStartWorld.Y
@@ -1128,21 +1395,24 @@ Public Class frmMain
             _measureTooltip = $"ΔX={dx:F3}, ΔY={dy:F3}, Δ={dist:F3}"
         End If
 
+        ' --------------------------
+        ' 6) Hover detection (ALWAYS ACTIVE)
 
         Dim hoverDist As Single
-        _hoverEntity = HitTestCadEntity(e.Location, HitTolerancePx, hoverDist)
+        Dim newHover As CadEntity = HitTestCadEntity(e.Location, HitTolerancePx, hoverDist)
 
-        If _hoverEntity IsNot Nothing Then
-            _modelerToolTip.SetToolTip(pnlPicmodeler, _hoverEntity.ToString())
-        Else
-            _modelerToolTip.Hide(pnlPicmodeler)
+        If Not Object.ReferenceEquals(newHover, _hoverEntity) Then
+
+            _hoverEntity = newHover
+
+            If _hoverEntity IsNot Nothing Then
+                _modelerToolTip.SetToolTip(pnlPicmodeler, _hoverEntity.ToString())
+            Else
+                _modelerToolTip.Hide(pnlPicmodeler)
+            End If
+
+            pnlPicmodeler.Invalidate()
         End If
-
-
-        ' --------------------------
-        ' 6) Trigger redraw
-        ' --------------------------
-        pnlPicmodeler.Invalidate()
 
     End Sub
 
@@ -1261,30 +1531,28 @@ Public Class frmMain
 
     Private Sub pnlPicmodeler_MouseClick(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseClick
 
+        'If e.Button <> MouseButtons.Left Then Return
 
-        If e.Button <> MouseButtons.Left Then Return
+        'Dim hitDist As Single
+        'Dim hitCad As CadEntity = HitTestCadEntity(e.Location, HitTolerancePx, hitDist)
 
-        Dim hitDist As Single
+        'If hitCad IsNot Nothing AndAlso hitCad.Drawable IsNot Nothing Then
+        '    _selectionManager.Toggle(hitCad.Drawable)
+        'Else
+        '    _selectionManager.ClearSelection()
+        'End If
 
-        Dim hitEntity = HitTestCadEntity(e.Location, HitTolerancePx, hitDist)
-
-        _selectedEntity = hitEntity
-
-        '------------------------------------------
-        ' Selection feedback
-        '------------------------------------------
-
-
-        If hitEntity Is Nothing Then
-            ' Optional: clear property grid / status
-            Return
-        End If
-
-        '------------------------------------------
-        ' Selection action
-        '------------------------------------------
-        HandleEntitySelected(hitEntity)
+        'If hitCad Is Nothing Then
+        '    Debug.Print("CLICK HIT: Nothing")
+        'Else
+        '    Debug.Print("CLICK HIT: " & hitCad.GeometryType.ToString() &
+        '        "  Drawable is Nothing? " & (hitCad.Drawable Is Nothing).ToString())
+        'End If
+        '' Trigger redraw to show selection
+        'pnlPicmodeler.Invalidate()
     End Sub
+
+
 
     'Private Function BuildEntityToolTip(ent As CadEntity) As String
 
@@ -1473,52 +1741,173 @@ Public Class frmMain
         RedrawAll()
     End Sub
 
+    Private Function IsSelectionAllowedForCurrentTool() As Boolean
+
+        If Not _selectionEnabled Then Return False
+
+        Select Case _currentTool
+
+            Case "", "Select"
+                Return True
+
+            Case "Measure"
+                Return False
+
+            Case "ViewWindow"
+                Return False
+
+        ' Future tools that should NOT trigger selection
+            Case "DrawLine", "DrawArc", "Edit", "Trim", "Move"
+                Return False
+
+            Case Else
+                ' Default safe behavior:
+                Return False
+
+        End Select
+
+    End Function
+    'Private Sub pnlPicmodeler_MouseDown(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseDown
 
 
+    '    Debug.Print("MouseDown - SelectionEnabled = " & _selectionEnabled.ToString())
+    '    ' -----------------------------
+    '    ' 1) Handle panning (Ctrl+Shift)
+    '    ' -----------------------------
+    '    If e.Button = MouseButtons.Left OrElse e.Button = MouseButtons.Right Then
+    '        If (Control.ModifierKeys And Keys.Control) = Keys.Control AndAlso
+    '       (Control.ModifierKeys And Keys.Shift) = Keys.Shift Then
 
+    '            _windowSelecting = False
+    '            isPanning = True
+    '            SaveViewIfChanged()
+
+    '            panStartMouse = e.Location
+    '            panStartOffsetX = myTransform.OffsetX
+    '            panStartOffsetY = myTransform.OffsetY
+
+    '            lastMousePos = e.Location
+    '            Return
+    '        End If
+    '    End If
+
+    '    ' -----------------------------
+    '    ' 2) Measurement tool
+    '    ' -----------------------------
+    '    If _currentTool = "Measure" AndAlso e.Button = MouseButtons.Left Then
+    '        _isMeasuring = True
+    '        _windowSelecting = False
+
+    '        _measureStartWorld = If(_activeSnap.HasValue,
+    '                            _activeSnap.Value.WorldPoint,
+    '                            ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height))
+    '        _measureEndWorld = _measureStartWorld
+    '        pnlPicmodeler.Invalidate()
+    '        Return
+    '    End If
+
+    '    ' -----------------------------
+    '    ' 3) View Window selection
+    '    ' -----------------------------
+    '    If _currentTool = "ViewWindow" AndAlso e.Button = MouseButtons.Left Then
+    '        _windowSelecting = True
+    '        _windowStart = e.Location
+    '        _windowEnd = e.Location
+    '        pnlPicmodeler.Invalidate()
+    '        Return
+    '    End If
+    '    ' -----------------------------
+    '    ' 4) Hit test for entity selection
+    '    ' -----------------------------
+    '    If Not _selectionEnabled Then Return
+
+    '    Dim hitDist As Single
+    '    Dim hitCad As CadEntity = HitTestCadEntity(e.Location, HitTolerancePx, hitDist)
+
+    '    If hitCad IsNot Nothing AndAlso hitCad.Drawable IsNot Nothing Then
+
+    '        _selectionManager.Toggle(hitCad.Drawable)
+    '        HandleEntitySelected(hitCad)
+    '        _hoverEntity = hitCad
+
+    '        'Else
+    '        '    _selectionManager.ClearSelection()
+    '        '    HandleEntitySelected(Nothing)
+    '        '    _hoverEntity = Nothing
+    '    End If
+
+    '    pnlPicmodeler.Invalidate()
+    'End Sub
     Private Sub pnlPicmodeler_MouseDown(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseDown
-        ' Pan (Ctrl+Shift)
+
+        Debug.Print("MouseDown - SelectionEnabled = " & _selectionEnabled.ToString())
+
+        ' -----------------------------
+        ' 1) PANNING
+        ' -----------------------------
         If e.Button = MouseButtons.Left OrElse e.Button = MouseButtons.Right Then
             If (Control.ModifierKeys And Keys.Control) = Keys.Control AndAlso
            (Control.ModifierKeys And Keys.Shift) = Keys.Shift Then
+
                 _windowSelecting = False
-
                 isPanning = True
-
                 SaveViewIfChanged()
-
-                lastMousePos = e.Location
 
                 panStartMouse = e.Location
                 panStartOffsetX = myTransform.OffsetX
                 panStartOffsetY = myTransform.OffsetY
 
+                lastMousePos = e.Location
+                Return
             End If
         End If
 
-
-        ' Measure
+        ' -----------------------------
+        ' 2) MEASURE TOOL
+        ' -----------------------------
         If _currentTool = "Measure" AndAlso e.Button = MouseButtons.Left Then
+
             _isMeasuring = True
             _windowSelecting = False
 
             _measureStartWorld =
-                If(_activeSnap.HasValue,
-                   _activeSnap.Value.WorldPoint,
-                   ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height))
+            If(_activeSnap.HasValue,
+               _activeSnap.Value.WorldPoint,
+               ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height))
 
             _measureEndWorld = _measureStartWorld
+
             pnlPicmodeler.Invalidate()
             Return
         End If
 
-        ' View Window
+        ' -----------------------------
+        ' 3) VIEW WINDOW
+        ' -----------------------------
         If _currentTool = "ViewWindow" AndAlso e.Button = MouseButtons.Left Then
+
             _windowSelecting = True
             _windowStart = e.Location
             _windowEnd = e.Location
+
             pnlPicmodeler.Invalidate()
+            Return
         End If
+
+        ' -----------------------------
+        ' 4) SELECTION (DELEGATED)
+        ' -----------------------------
+        If Not _selectionEnabled Then Return
+
+        If e.Button = MouseButtons.Right Then Return
+
+        If Not IsSelectionAllowedForCurrentTool() Then Return
+
+        _selectionManager.SelectAtPoint(e.Location, HitTolerancePx)
+        _selectionManager.UpdateHover(e.Location, HitTolerancePx)
+
+
+        pnlPicmodeler.Invalidate()
 
     End Sub
 
@@ -2233,11 +2622,7 @@ Public Class frmMain
     '        Return New PointF(worldX, worldY)
 
     '    End Function
-    Private Function ScreenToWorld(
-    pt As Point,
-    vt As ViewTransform,
-    panelHeight As Integer
-) As PointF
+    Private Function ScreenToWorld(pt As PointF, vt As ViewTransform, panelHeight As Integer) As PointF
 
         Dim worldX As Single =
         CSng((pt.X - vt.OffsetX) / vt.Scale)
@@ -2309,11 +2694,6 @@ Public Class frmMain
 
         ' Optional: force redraw when invalidated (e.g., uncovered)
         AddHandler pnlPicmodeler.Invalidated, Sub() RedrawAll()
-    End Sub
-
-    Private Sub pnlPicmodeler_Resize(sender As Object, e As EventArgs) Handles pnlPicmodeler.Resize
-
-
     End Sub
 
     Private Sub bbViewFull_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbViewFull.ItemClick
@@ -2508,11 +2888,7 @@ Public Class frmMain
 
 
 
-    Private Function TryMidpointSnap(
-    mouseWorld As PointF,
-    tolWorld As Single
-) As SnapResult
-
+    Private Function TryMidpointSnap(mouseWorld As PointF, tolWorld As Single) As SnapResult
         For Each ent In _cadEntities
             If TypeOf ent Is CadLine Then
                 Dim l = DirectCast(ent, CadLine)
@@ -2533,10 +2909,7 @@ Public Class frmMain
         Return Nothing
     End Function
 
-    Private Function TryCenterSnap(
-    mouseWorld As PointF,
-    tolWorld As Single
-) As SnapResult
+    Private Function TryCenterSnap(mouseWorld As PointF, tolWorld As Single) As SnapResult
 
         For Each ent In _cadEntities
             If TypeOf ent Is CadCircle Then
@@ -2649,6 +3022,27 @@ Public Class frmMain
     Private Sub iExit_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iExit.ItemClick
         End
     End Sub
+
+
+    Private Function GetHoverDrawable() As DxfDrawable
+
+        If _hoverEntity Is Nothing Then Return Nothing
+
+        Return _hoverEntity.drawable
+
+    End Function
+
+    Private Sub tbSelect_Enable_Click(sender As Object, e As EventArgs) Handles tbSelect_Enable.Click
+
+
+        _selectionEnabled = tbSelect_Enable.Checked
+
+        Debug.Print("Selection Enabled: " & _selectionEnabled.ToString())
+
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
 End Class
 
 
