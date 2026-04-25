@@ -319,6 +319,7 @@
     <Compile Include="Classes\bogus.vb" />
     <Compile Include="Classes\C3dCoord.vb" />
     <Compile Include="Classes\CadEntity.vb" />
+    <Compile Include="Classes\CadPoint.vb" />
     <Compile Include="Classes\CamEntity.vb" />
     <Compile Include="Classes\CamOperation.vb" />
     <Compile Include="Classes\clamp.vb" />

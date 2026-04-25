@@ -16,6 +16,7 @@
         Arc
         PolyLine
         Rectangle
+        Point
     End Enum
 
 

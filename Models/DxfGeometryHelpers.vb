@@ -1,10 +1,24 @@
 ﻿Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
+Imports System.Drawing
 
 Public Module DxfGeometryHelpers
+
     Public Property CADLayer As String
     Public Property CAMLayer As String
 
+    '----------------------------------
+    ' GLOBAL ENUM (FIXES YOUR ERROR)
+    '----------------------------------
+    Public Enum GeometryTypeEnum
+        Line = 0
+        Circle = 1
+        Arc = 2
+        PolyLine = 3
+        Rectangle = 4
+        Point = 5
+        Unknown = -1
+    End Enum
 
     Public Enum ColorSourceMode
         ByLayer
@@ -12,22 +26,14 @@ Public Module DxfGeometryHelpers
         Fallback
     End Enum
 
+    '----------------------------------
+    ' IMPORTED ENTITY
+    '----------------------------------
     Public Class ImportedEntity
-
-        '----------------------------------
-        ' Geometry Type Enum
-        '----------------------------------
-        Public Enum GeometryTypeEnum
-            Line = 0
-            Circle = 1
-            Arc = 2
-            PolyLine = 3
-            Rectangle = 4
-            Unknown = -1
-        End Enum
 
         Public Property ColorMode As ColorSourceMode
         Public Property ExplicitColor As Color
+
         '----------------------------------
         ' Properties
         '----------------------------------
@@ -36,42 +42,54 @@ Public Module DxfGeometryHelpers
         Public Property DisplayColor As Color
         Public Property GeometryType As GeometryTypeEnum
 
-        ' Line
-        'Public Property StartPoint As CadEntity.Point2D
-        'Public Property EndPoint As CadEntity.Point2D
-
-        '' Circle / Arc
-        'Public Property Center As CadEntity.Point2D
         Public Property Radius As Double
         Public Property StartAngle As Double
         Public Property EndAngle As Double
-
-        ' Polyline
-        ' Public Property Points As List(Of CadEntity.Point2D)
 
         ' DXF entities
         Public Property Line As DxfLine
         Public Property Circle As DxfCircle
         Public Property Arc As DxfArc
+        Public Property Point As DxfPoint
 
-        ' NEW: Original CadEntity reference
+        ' Link back to runtime entity
         Public Property CadEntity As CadEntity
 
         Public Property WindingDirection As String
 
         '----------------------------------
-        ' Bounding Box Properties
+        ' GLOBAL ENUM (FIXES YOUR ERROR)
+        '----------------------------------
+        Public Enum GeometryTypeEnum
+            Line = 0
+            Circle = 1
+            Arc = 2
+            PolyLine = 3
+            Rectangle = 4
+            Point = 5
+            Unknown = -1
+        End Enum
+        '----------------------------------
+        ' BOUNDING BOX (SAFE + POINT SUPPORT)
         '----------------------------------
         Public ReadOnly Property MinX As Double
             Get
                 Select Case GeometryType
                     Case GeometryTypeEnum.Line
+                        If Line Is Nothing Then Return 0
                         Return Math.Min(Line.P1.X, Line.P2.X)
+
                     Case GeometryTypeEnum.Circle
+                        If Circle Is Nothing Then Return 0
                         Return Circle.Center.X - Circle.Radius
+
                     Case GeometryTypeEnum.Arc
-                        ' Approximate bounding box for arc
-                        Return Math.Min(Arc.Center.X - Arc.Radius, Arc.Center.X + Arc.Radius)
+                        If Arc Is Nothing Then Return 0
+                        Return Arc.Center.X - Arc.Radius
+
+                    Case GeometryTypeEnum.Point
+                        Return Point.X
+
                     Case Else
                         Return 0
                 End Select
@@ -82,12 +100,21 @@ Public Module DxfGeometryHelpers
             Get
                 Select Case GeometryType
                     Case GeometryTypeEnum.Line
+                        If Line Is Nothing Then Return 0
                         Return Math.Min(Line.P1.Y, Line.P2.Y)
+
                     Case GeometryTypeEnum.Circle
+                        If Circle Is Nothing Then Return 0
                         Return Circle.Center.Y - Circle.Radius
+
                     Case GeometryTypeEnum.Arc
-                        ' Approximate bounding box for arc
-                        Return Math.Min(Arc.Center.Y - Arc.Radius, Arc.Center.Y + Arc.Radius)
+                        If Arc Is Nothing Then Return 0
+                        Return Arc.Center.Y - Arc.Radius
+
+                    Case GeometryTypeEnum.Point
+
+                        Return Point.Y
+
                     Case Else
                         Return 0
                 End Select
@@ -98,12 +125,20 @@ Public Module DxfGeometryHelpers
             Get
                 Select Case GeometryType
                     Case GeometryTypeEnum.Line
+                        If Line Is Nothing Then Return 0
                         Return Math.Max(Line.P1.X, Line.P2.X)
+
                     Case GeometryTypeEnum.Circle
+                        If Circle Is Nothing Then Return 0
                         Return Circle.Center.X + Circle.Radius
+
                     Case GeometryTypeEnum.Arc
-                        ' Approximate bounding box for arc
-                        Return Math.Max(Arc.Center.X - Arc.Radius, Arc.Center.X + Arc.Radius)
+                        If Arc Is Nothing Then Return 0
+                        Return Arc.Center.X + Arc.Radius
+
+                    Case GeometryTypeEnum.Point
+                        Return Point.X
+
                     Case Else
                         Return 0
                 End Select
@@ -114,19 +149,75 @@ Public Module DxfGeometryHelpers
             Get
                 Select Case GeometryType
                     Case GeometryTypeEnum.Line
+                        If Line Is Nothing Then Return 0
                         Return Math.Max(Line.P1.Y, Line.P2.Y)
+
                     Case GeometryTypeEnum.Circle
+                        If Circle Is Nothing Then Return 0
                         Return Circle.Center.Y + Circle.Radius
+
                     Case GeometryTypeEnum.Arc
-                        ' Approximate bounding box for arc
-                        Return Math.Max(Arc.Center.Y - Arc.Radius, Arc.Center.Y + Arc.Radius)
+                        If Arc Is Nothing Then Return 0
+                        Return Arc.Center.Y + Arc.Radius
+
+                    Case GeometryTypeEnum.Point
+                        Return Point.Y
                     Case Else
                         Return 0
                 End Select
             End Get
         End Property
 
-        ' ---------- LINE ----------
+        Public Function GetBounds() As RectangleF
+
+            Select Case GeometryType
+
+                Case GeometryTypeEnum.Line
+                    If Line Is Nothing Then Return RectangleF.Empty
+
+                    Dim minX = Math.Min(Line.P1.X, Line.P2.X)
+                    Dim maxX = Math.Max(Line.P1.X, Line.P2.X)
+                    Dim minY = Math.Min(Line.P1.Y, Line.P2.Y)
+                    Dim maxY = Math.Max(Line.P1.Y, Line.P2.Y)
+
+                    Return RectangleF.FromLTRB(minX, minY, maxX, maxY)
+
+                Case GeometryTypeEnum.Circle
+                    If Circle Is Nothing Then Return RectangleF.Empty
+
+                    Return New RectangleF(
+                Circle.Center.X - Circle.Radius,
+                Circle.Center.Y - Circle.Radius,
+                Circle.Radius * 2,
+                Circle.Radius * 2)
+
+                Case GeometryTypeEnum.Arc
+                    If Arc Is Nothing Then Return RectangleF.Empty
+
+                    Return New RectangleF(
+                Arc.Center.X - Arc.Radius,
+                Arc.Center.Y - Arc.Radius,
+                Arc.Radius * 2,
+                Arc.Radius * 2)
+
+                Case GeometryTypeEnum.Point
+
+                    Const eps As Single = 0.001F
+
+                    Return New RectangleF(CSng(Point.X - eps), CSng(Point.Y - eps), eps * 2, eps * 2)
+
+                Case Else
+                    Return RectangleF.Empty
+
+            End Select
+
+        End Function
+
+        '----------------------------------
+        ' HELPERS
+        '----------------------------------
+
+        ' LINE
         Public Function GetLineStart(line As DxfLine) As DxfPoint
             Return line.P1
         End Function
@@ -135,7 +226,7 @@ Public Module DxfGeometryHelpers
             Return line.P2
         End Function
 
-        ' ---------- CIRCLE ----------
+        ' CIRCLE
         Public Function GetCircleCenter(circle As DxfCircle) As DxfPoint
             Return circle.Center
         End Function
@@ -144,7 +235,7 @@ Public Module DxfGeometryHelpers
             Return circle.Radius
         End Function
 
-        ' ---------- ARC ----------
+        ' ARC
         Public Function GetArcCenter(arc As DxfArc) As DxfPoint
             Return arc.Center
         End Function
@@ -153,12 +244,10 @@ Public Module DxfGeometryHelpers
             Return arc.Radius
         End Function
 
-        ' ---------- POLYLINE ----------
+        ' POLYLINE
         Public Function GetPolylinePoints(pl As DxfPolyline) As IEnumerable(Of DxfPoint)
             Return pl.Vertices.Select(Function(v) v.Location)
         End Function
-
-
 
     End Class
 

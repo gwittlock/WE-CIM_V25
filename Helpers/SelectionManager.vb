@@ -43,6 +43,40 @@ Public Class SelectionManager
             Return _selected.Count > 0
         End Get
     End Property
+    Private Class HitResult
+        Public Entity As CadEntity
+        Public Distance As Single
+        Public Priority As Integer
+    End Class
+
+    Private Function GetPriority(ent As CadEntity) As Integer
+
+        Select Case ent.GeometryType
+            Case GeometryTypeEnum.Point : Return 0
+            Case GeometryTypeEnum.Line : Return 1
+            Case GeometryTypeEnum.Arc : Return 2
+            Case GeometryTypeEnum.Circle : Return 3
+            Case Else : Return 10
+        End Select
+
+    End Function
+
+    Private Function DistanceToArc(pt As PointF, a As CadArc) As Single
+
+        Dim distToCircle = Math.Abs(Distance(pt, a.Center) - a.Radius)
+
+        Dim angle = Math.Atan2(pt.Y - a.Center.Y, pt.X - a.Center.X) * 180 / Math.PI
+
+        If IsAngleOnArc(angle, a.StartAngle, a.EndAngle, a.IsClockwise) Then
+            Return distToCircle
+        End If
+
+        Return Single.MaxValue ' IMPORTANT: means "not on arc"
+
+    End Function
+
+
+
 
     ' =========================================================
     ' QUADTREE BUILD
@@ -133,25 +167,19 @@ Public Class SelectionManager
         RaiseEvent SelectionChanged(_selected)
 
     End Sub
-
-    ' =========================================================
-    ' CORE HIT LOGIC (ONLY PLACE THAT MATTERS)
-    ' =========================================================
     Private Function HitTestInternal(pt As PointF, tolPx As Single) As ISelectable
 
         If _spatialIndex Is Nothing Then Return Nothing
 
         Dim searchArea As New RectangleF(
-            pt.X - tolPx,
-            pt.Y - tolPx,
-            tolPx * 2,
-            tolPx * 2
-        )
+        pt.X - tolPx,
+        pt.Y - tolPx,
+        tolPx * 2,
+        tolPx * 2)
 
         Dim candidates = _spatialIndex.Query(searchArea)
 
-        Dim best As CadEntity = Nothing
-        Dim bestDist As Single = Single.MaxValue
+        Dim best As HitResult = Nothing
 
         For Each ent In candidates
 
@@ -171,17 +199,46 @@ Public Class SelectionManager
                     Dim a = DirectCast(ent, CadArc)
                     d = Math.Abs(Distance(pt, a.Center) - a.Radius)
 
+                Case GeometryTypeEnum.Point
+                    Dim p = DirectCast(ent, CadPoint)
+                    d = Distance(pt, p.Position)
+
             End Select
 
-            If d <= tolPx AndAlso d < bestDist Then
-                bestDist = d
-                best = ent
+            If d <= tolPx Then
+
+                Dim candidate As New HitResult With {
+                .Entity = ent,
+                .Distance = d,
+                .Priority = GetPriority(ent)
+            }
+
+                If best Is Nothing Then
+                    best = candidate
+                ElseIf candidate.Priority < best.Priority OrElse
+                   (candidate.Priority = best.Priority AndAlso candidate.Distance < best.Distance) Then
+                    best = candidate
+                End If
+
             End If
 
         Next
 
         If best Is Nothing Then Return Nothing
-        Return TryCast(best, ISelectable)
+        Return TryCast(best.Entity, ISelectable)
+
+    End Function
+
+    Private Function IsAngleOnArc(angle As Double,
+                             startAngle As Double,
+                             endAngle As Double,
+                             isClockwise As Boolean) As Boolean
+
+        If isClockwise Then
+            Return angle <= startAngle AndAlso angle >= endAngle
+        Else
+            Return angle >= startAngle AndAlso angle <= endAngle
+        End If
 
     End Function
 
