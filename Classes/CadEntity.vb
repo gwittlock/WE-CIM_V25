@@ -3,14 +3,16 @@
 ' CadEntity base class
 ' =============================
 Public MustInherit Class CadEntity
+    Implements IsSelectable
 
     Public Property LayerName As String
     Public Property Color As Color
     Public Property GeometryType As EntityType
     Public Property Drawable As DxfDrawable
-    Public Property IsSelected As Boolean = False
 
-    ' Required for DXF → sheet normalization
+    Public Property IsSelected As Boolean Implements isSelectable.IsSelected
+    Public Property IsHovered As Boolean Implements isSelectable.IsHovered
+
     Public MustOverride Sub Translate(dx As Single, dy As Single)
 
     ' =============================
@@ -22,6 +24,7 @@ Public MustInherit Class CadEntity
         Arc = 2
         Polyline = 3
         Rectangle = 4
+        Point = 5
     End Enum
 
 

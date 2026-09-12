@@ -429,6 +429,7 @@
     <Compile Include="Modules\modFile.vb" />
     <Compile Include="Modules\modGeo.vb" />
     <Compile Include="Modules\modMaterial.vb" />
+    <Compile Include="Modules\GeometryMath.vb" />
     <Compile Include="Modules\modPath.vb" />
     <Compile Include="Modules\modProject.vb" />
     <Compile Include="Modules\modRegistry.vb" />

@@ -1,38 +1,35 @@
 ﻿Imports FabV25_WIN8.CadEntity
-Imports FabV25_WIN8.ImportedEntity
+Imports FabV25_WIN8.DxfGeometryHelpers.ImportedEntity
+Imports System.Linq
+
 Public Class SelectionManager
 
-    ' =========================================================
-    ' STATE
-    ' =========================================================
-    Private ReadOnly _selected As New HashSet(Of ISelectable)
-    Private _hovered As ISelectable
+#Region "State"
 
-    Private _allEntities As List(Of CadEntity)
+    Private _entities As List(Of CadEntity) = New List(Of CadEntity)
     Private _spatialIndex As QuadTree(Of CadEntity)
 
-    ' =========================================================
-    ' EVENTS
-    ' =========================================================
-    Public Event SelectionChanged As Action(Of IEnumerable(Of ISelectable))
-    Public Event HoverChanged As Action(Of ISelectable)
+    Private ReadOnly _selected As New HashSet(Of isSelectable)
+    Private _hovered As isSelectable
 
-    ' =========================================================
-    ' PUBLIC STATE ACCESS
-    ' =========================================================
-    Public ReadOnly Property Selected As IEnumerable(Of ISelectable)
+#End Region
+
+#Region "Events"
+
+    Public Event SelectionChanged As Action(Of IEnumerable(Of isSelectable))
+    Public Event HoverChanged As Action(Of isSelectable)
+
+#End Region
+
+#Region "Public Access"
+
+    Public ReadOnly Property Selected As IEnumerable(Of isSelectable)
         Get
             Return _selected
         End Get
     End Property
 
-    Public ReadOnly Property SelectedEntities As IEnumerable(Of ISelectable)
-        Get
-            Return _selected
-        End Get
-    End Property
-
-    Public ReadOnly Property Hovered As ISelectable
+    Public ReadOnly Property Hovered As isSelectable
         Get
             Return _hovered
         End Get
@@ -43,106 +40,249 @@ Public Class SelectionManager
             Return _selected.Count > 0
         End Get
     End Property
-    Private Class HitResult
-        Public Entity As CadEntity
-        Public Distance As Single
-        Public Priority As Integer
-    End Class
 
-    Private Function GetPriority(ent As CadEntity) As Integer
+#End Region
 
-        Select Case ent.GeometryType
-            Case GeometryTypeEnum.Point : Return 0
-            Case GeometryTypeEnum.Line : Return 1
-            Case GeometryTypeEnum.Arc : Return 2
-            Case GeometryTypeEnum.Circle : Return 3
-            Case Else : Return 10
-        End Select
+#Region "Initialization"
 
-    End Function
+    Public Sub SetEntities(entities As IEnumerable(Of CadEntity))
 
-    Private Function DistanceToArc(pt As PointF, a As CadArc) As Single
-
-        Dim distToCircle = Math.Abs(Distance(pt, a.Center) - a.Radius)
-
-        Dim angle = Math.Atan2(pt.Y - a.Center.Y, pt.X - a.Center.X) * 180 / Math.PI
-
-        If IsAngleOnArc(angle, a.StartAngle, a.EndAngle, a.IsClockwise) Then
-            Return distToCircle
+        If entities Is Nothing Then
+            _entities = New List(Of CadEntity)
+        Else
+            _entities = entities.ToList()
         End If
 
-        Return Single.MaxValue ' IMPORTANT: means "not on arc"
+        _spatialIndex = Nothing
 
-    End Function
+        Debug.WriteLine(
+        $"SelectionManager.SetEntities: {_entities.Count} entities")
 
+    End Sub
 
+    Public Sub BuildSpatialIndex()
 
+        If _entities Is Nothing OrElse _entities.Count = 0 Then
+            _spatialIndex = Nothing
+            Return
+        End If
 
-    ' =========================================================
-    ' QUADTREE BUILD
-    ' =========================================================
-    Public Sub BuildSpatialIndex(entities As IEnumerable(Of CadEntity))
+        Dim minX As Single = Single.MaxValue
+        Dim minY As Single = Single.MaxValue
+        Dim maxX As Single = Single.MinValue
+        Dim maxY As Single = Single.MinValue
 
-        _allEntities = entities.ToList()
-
-        ' TODO: replace with real model bounds if available
-        Dim bounds As New RectangleF(-100000, -100000, 200000, 200000)
-
-        _spatialIndex = New QuadTree(Of CadEntity)(bounds, 8)
-
-        For Each ent In _allEntities
-
+        For Each ent In _entities
             Dim b = GetBounds(ent)
+            If b = RectangleF.Empty Then Continue For
 
+            minX = Math.Min(minX, b.Left)
+            minY = Math.Min(minY, b.Top)
+            maxX = Math.Max(maxX, b.Right)
+            maxY = Math.Max(maxY, b.Bottom)
+        Next
+
+        Dim rootBounds As New RectangleF(minX, minY, maxX - minX, maxY - minY)
+        _spatialIndex = New QuadTree(Of CadEntity)(rootBounds, 8)
+
+        For Each ent In _entities
+            Dim b = GetBounds(ent)
             If b = RectangleF.Empty Then Continue For
 
             _spatialIndex.Insert(New QuadTree(Of CadEntity).QuadItem With {
-            .Bounds = b,
-            .Value = ent
-        })
-
+                .Bounds = b,
+                .Value = ent
+            })
         Next
 
     End Sub
 
-    ' =========================================================
-    ' PUBLIC HIT ENTRY POINT (AUTHORITATIVE)
-    ' =========================================================
-    Public Function HitTest(pt As PointF, tolPx As Single) As ISelectable
-        Return HitTestInternal(pt, tolPx)
+#End Region
+
+#Region "Selection Entry Point (PRIMARY API)"
+    Public Function SelectAtPoint(ptWorld As PointF, tolWorld As Single) As isSelectable
+
+        Dim best As HitResult = Nothing
+        Dim candidates As List(Of CadEntity)
+
+        Debug.WriteLine("========================================")
+        Debug.WriteLine("SelectionManager.SelectAtPoint")
+        Debug.WriteLine($"_entities Count = {_entities.Count}")
+        Debug.WriteLine($"_spatialIndex Is Nothing = {_spatialIndex Is Nothing}")
+        Debug.WriteLine($"WorldPt = {ptWorld}")
+        Debug.WriteLine($"TolWorld = {tolWorld}")
+
+        If _spatialIndex IsNot Nothing Then
+
+            Debug.WriteLine("Querying spatial index...")
+
+            candidates = _spatialIndex.Query(
+            New RectangleF(
+                ptWorld.X - tolWorld,
+                ptWorld.Y - tolWorld,
+                tolWorld * 2,
+                tolWorld * 2))
+
+            Debug.WriteLine($"Spatial query result count = {candidates.Count}")
+
+        Else
+
+            Debug.WriteLine("SPATIAL INDEX NOT BUILT - USING _entities")
+
+            candidates = _entities
+
+            Debug.WriteLine($"Fallback entity count = {candidates.Count}")
+
+        End If
+
+        For Each ent In candidates
+
+            Dim d = EvaluateDistance(ent, ptWorld)
+
+            If d > tolWorld Then Continue For
+
+            Dim candidate As New HitResult With {
+            .Entity = ent,
+            .Distance = d,
+            .Priority = GetPriority(ent)
+        }
+
+            Debug.WriteLine(
+            $"HIT CANDIDATE: {ent.GetType().Name} " &
+            $"Distance={d:F6} " &
+            $"Priority={candidate.Priority}")
+
+            If best Is Nothing OrElse IsBetter(candidate, best) Then
+                best = candidate
+
+                Debug.WriteLine(
+                $"BEST HIT: {ent.GetType().Name} " &
+                $"Distance={d:F6}")
+            End If
+
+        Next
+
+        If best Is Nothing Then
+            Debug.WriteLine("NO HIT FROM SELECTION MANAGER")
+            Return Nothing
+        End If
+
+        Dim result As isSelectable = TryCast(best.Entity, isSelectable)
+
+        If result Is Nothing Then
+            Debug.WriteLine(
+            $"BEST ENTITY DOES NOT IMPLEMENT IsSelectable: " &
+            $"{best.Entity.GetType().Name}")
+            Return Nothing
+        End If
+
+        ApplySelection(result)
+
+        Return result
+
     End Function
 
-    Public Function ResolveBestHit(pt As PointF, tol As Single) As ISelectable
-        Return HitTest(pt, tol)
+#End Region
+
+
+#Region "Hit Test"
+
+    Private Function HitTestAtPoint(ptWorld As PointF,
+                                tolWorld As Single) As isSelectable
+
+        Debug.WriteLine("========================================")
+        Debug.WriteLine("SelectionManager.HitTestAtPoint")
+        Debug.WriteLine($"_entities Count = {_entities.Count}")
+        Debug.WriteLine($"_spatialIndex Is Nothing = {_spatialIndex Is Nothing}")
+        Debug.WriteLine($"WorldPt = {ptWorld}")
+        Debug.WriteLine($"TolWorld = {tolWorld}")
+
+        Dim candidates As List(Of CadEntity)
+
+        If _spatialIndex IsNot Nothing Then
+
+            candidates = _spatialIndex.Query(
+            New RectangleF(
+                ptWorld.X - tolWorld,
+                ptWorld.Y - tolWorld,
+                tolWorld * 2,
+                tolWorld * 2))
+
+            Debug.WriteLine(
+            $"Spatial query result count = {candidates.Count}")
+
+        Else
+
+            candidates = _entities
+
+            Debug.WriteLine(
+            $"Spatial index not built - fallback count = {candidates.Count}")
+
+        End If
+
+        Dim best As HitResult = Nothing
+
+        For Each ent In candidates
+
+            Dim d As Single = EvaluateDistance(ent, ptWorld)
+
+            If d > tolWorld Then Continue For
+
+            Dim candidate As New HitResult With {
+            .Entity = ent,
+            .Distance = d,
+            .Priority = GetPriority(ent)
+        }
+
+            Debug.WriteLine(
+            $"HIT CANDIDATE: {ent.GetType().Name} " &
+            $"Distance={d:F6} Priority={candidate.Priority}")
+
+            If best Is Nothing OrElse IsBetter(candidate, best) Then
+                best = candidate
+            End If
+
+        Next
+
+        If best Is Nothing Then
+            Debug.WriteLine("NO HIT FROM SELECTION MANAGER")
+            Return Nothing
+        End If
+
+        Debug.WriteLine(
+        $"BEST HIT: {best.Entity.GetType().Name} " &
+        $"Distance={best.Distance:F6}")
+
+        Return TryCast(best.Entity, isSelectable)
+
     End Function
 
-    ' =========================================================
-    ' HOVER PIPELINE
-    ' =========================================================
-    Public Sub UpdateHover(screenPt As PointF, tolerance As Single)
+#End Region
 
-        Dim hit = HitTest(screenPt, tolerance)
+
+#Region "Hover"
+
+    Public Sub UpdateHover(ptWorld As PointF, tolWorld As Single)
+
+        Dim hit As isSelectable = HitTestAtPoint(ptWorld, tolWorld)
 
         If Not Object.ReferenceEquals(hit, _hovered) Then
+
             _hovered = hit
+
             RaiseEvent HoverChanged(_hovered)
+
         End If
 
     End Sub
 
-    ' =========================================================
-    ' SELECTION PIPELINE
-    ' =========================================================
-    Public Sub SelectAtPoint(screenPt As PointF, tolerance As Single)
+#End Region
 
-        Dim hit = HitTest(screenPt, tolerance)
-        If hit Is Nothing Then Return
+#Region "Selection Core"
 
-        ApplySelection(hit)
+    Private Sub ApplySelection(ent As isSelectable)
 
-    End Sub
-
-    Private Sub ApplySelection(ent As ISelectable)
+        If ent Is Nothing Then Return
 
         If _selected.Contains(ent) Then
             _selected.Remove(ent)
@@ -158,138 +298,118 @@ Public Class SelectionManager
 
     Public Sub Clear()
 
-        For Each item In _selected
-            item.IsSelected = False
+        For Each s In _selected
+            s.IsSelected = False
         Next
 
         _selected.Clear()
-
         RaiseEvent SelectionChanged(_selected)
 
     End Sub
-    Private Function HitTestInternal(pt As PointF, tolPx As Single) As ISelectable
 
-        If _spatialIndex Is Nothing Then Return Nothing
+#End Region
 
-        Dim searchArea As New RectangleF(
-        pt.X - tolPx,
-        pt.Y - tolPx,
-        tolPx * 2,
-        tolPx * 2)
+#Region "Hit Testing"
 
-        Dim candidates = _spatialIndex.Query(searchArea)
+    Private Class HitResult
+        Public Entity As CadEntity
+        Public Distance As Single
+        Public Priority As Integer
+    End Class
 
-        Dim best As HitResult = Nothing
+    Private Function IsBetter(a As HitResult, b As HitResult) As Boolean
+        If a.Priority <> b.Priority Then Return a.Priority < b.Priority
+        Return a.Distance < b.Distance
+    End Function
 
-        For Each ent In candidates
+    Private Function GetPriority(ent As CadEntity) As Integer
+        Select Case ent.GeometryType
+            Case GeometryTypeEnum.Point : Return 0
+            Case GeometryTypeEnum.Line : Return 1
+            Case GeometryTypeEnum.Arc : Return 2
+            Case GeometryTypeEnum.Circle : Return 3
+            Case Else : Return 10
+        End Select
+    End Function
 
-            Dim d As Single = Single.MaxValue
+    Private Function EvaluateDistance(ent As CadEntity, pt As PointF) As Single
 
-            Select Case ent.GeometryType
+        Select Case ent.GeometryType
 
-                Case GeometryTypeEnum.Line
-                    Dim l = DirectCast(ent, CadLine)
-                    d = DistancePointToLineWorld(pt, l.StartPoint, l.EndPoint)
+            Case GeometryTypeEnum.Line
+                Dim l = DirectCast(ent, CadLine)
+                Return DistancePointToSegment(pt, l.StartPoint, l.EndPoint)
 
-                Case GeometryTypeEnum.Circle
-                    Dim c = DirectCast(ent, CadCircle)
-                    d = Math.Abs(Distance(pt, c.Center) - c.Radius)
+            Case GeometryTypeEnum.Circle
+                Dim c = DirectCast(ent, CadCircle)
+                Return Math.Abs(Distance(pt, c.Center) - c.Radius)
 
-                Case GeometryTypeEnum.Arc
-                    Dim a = DirectCast(ent, CadArc)
-                    d = Math.Abs(Distance(pt, a.Center) - a.Radius)
+            Case GeometryTypeEnum.Arc
+                Dim a = DirectCast(ent, CadArc)
 
-                Case GeometryTypeEnum.Point
-                    Dim p = DirectCast(ent, CadPoint)
-                    d = Distance(pt, p.Position)
+                Dim dist = Math.Abs(Distance(pt, a.Center) - a.Radius)
+                Dim ang = NormalizeAngle(Math.Atan2(pt.Y - a.Center.Y,
+                                                    pt.X - a.Center.X) * 180 / Math.PI)
 
-            End Select
-
-            If d <= tolPx Then
-
-                Dim candidate As New HitResult With {
-                .Entity = ent,
-                .Distance = d,
-                .Priority = GetPriority(ent)
-            }
-
-                If best Is Nothing Then
-                    best = candidate
-                ElseIf candidate.Priority < best.Priority OrElse
-                   (candidate.Priority = best.Priority AndAlso candidate.Distance < best.Distance) Then
-                    best = candidate
+                If Not IsAngleOnArc(ang, a.StartAngle, a.EndAngle, a.IsClockwise) Then
+                    Return Single.MaxValue
                 End If
 
-            End If
+                Return dist
 
-        Next
+        End Select
 
-        If best Is Nothing Then Return Nothing
-        Return TryCast(best.Entity, ISelectable)
-
-    End Function
-
-    Private Function IsAngleOnArc(angle As Double,
-                             startAngle As Double,
-                             endAngle As Double,
-                             isClockwise As Boolean) As Boolean
-
-        If isClockwise Then
-            Return angle <= startAngle AndAlso angle >= endAngle
-        Else
-            Return angle >= startAngle AndAlso angle <= endAngle
-        End If
+        Return Single.MaxValue
 
     End Function
 
-    ' =========================================================
-    ' GEOMETRY BOUNDS (QUADTREE SUPPORT)
-    ' =========================================================
+#End Region
+
+#Region "Bounds"
+
     Private Function GetBounds(ent As CadEntity) As RectangleF
 
         Select Case ent.GeometryType
 
             Case GeometryTypeEnum.Line
                 Dim l = DirectCast(ent, CadLine)
-
-                Dim minX = Math.Min(l.StartPoint.X, l.EndPoint.X)
-                Dim maxX = Math.Max(l.StartPoint.X, l.EndPoint.X)
-                Dim minY = Math.Min(l.StartPoint.Y, l.EndPoint.Y)
-                Dim maxY = Math.Max(l.StartPoint.Y, l.EndPoint.Y)
-
-                Return RectangleF.FromLTRB(minX, minY, maxX, maxY)
+                Return RectangleF.FromLTRB(
+                    Math.Min(l.StartPoint.X, l.EndPoint.X),
+                    Math.Min(l.StartPoint.Y, l.EndPoint.Y),
+                    Math.Max(l.StartPoint.X, l.EndPoint.X),
+                    Math.Max(l.StartPoint.Y, l.EndPoint.Y))
 
             Case GeometryTypeEnum.Circle
                 Dim c = DirectCast(ent, CadCircle)
-
                 Return New RectangleF(
                     c.Center.X - c.Radius,
                     c.Center.Y - c.Radius,
                     c.Radius * 2,
-                    c.Radius * 2
-                )
+                    c.Radius * 2)
 
             Case GeometryTypeEnum.Arc
                 Dim a = DirectCast(ent, CadArc)
-
                 Return New RectangleF(
                     a.Center.X - a.Radius,
                     a.Center.Y - a.Radius,
                     a.Radius * 2,
-                    a.Radius * 2
-                )
-
-            Case Else
-                Return RectangleF.Empty
+                    a.Radius * 2)
 
         End Select
 
+        Return RectangleF.Empty
+
     End Function
 
+#End Region
 
-    Private Function DistancePointToLineWorld(p As PointF,
-                                          a As PointF,
-                                          b As PointF) As Single
+#Region "Geometry Helpers"
+
+    Private Function Distance(a As PointF, b As PointF) As Single
+        Return CSng(Math.Sqrt((a.X - b.X) ^ 2 + (a.Y - b.Y) ^ 2))
+    End Function
+
+    Private Function DistancePointToSegment(p As PointF, a As PointF, b As PointF) As Single
 
         Dim ap = New PointF(p.X - a.X, p.Y - a.Y)
         Dim ab = New PointF(b.X - a.X, b.Y - a.Y)
@@ -301,12 +421,41 @@ Public Class SelectionManager
         t = Math.Max(0, Math.Min(1, t))
 
         Dim closest = New PointF(a.X + ab.X * t, a.Y + ab.Y * t)
-
         Return Distance(p, closest)
 
     End Function
 
-    Private Function Distance(a As PointF, b As PointF) As Single
-        Return CSng(Math.Sqrt((a.X - b.X) ^ 2 + (a.Y - b.Y) ^ 2))
+    Private Function NormalizeAngle(a As Double) As Double
+        a = a Mod 360
+        If a < 0 Then a += 360
+        Return a
     End Function
+
+    Private Function IsAngleOnArc(testAngle As Double,
+                                  startAngle As Double,
+                                  endAngle As Double,
+                                  cw As Boolean) As Boolean
+
+        testAngle = NormalizeAngle(testAngle)
+        startAngle = NormalizeAngle(startAngle)
+        endAngle = NormalizeAngle(endAngle)
+
+        If Not cw Then
+            If startAngle <= endAngle Then
+                Return testAngle >= startAngle AndAlso testAngle <= endAngle
+            Else
+                Return testAngle >= startAngle OrElse testAngle <= endAngle
+            End If
+        Else
+            If endAngle <= startAngle Then
+                Return testAngle <= startAngle AndAlso testAngle >= endAngle
+            Else
+                Return testAngle <= startAngle OrElse testAngle >= endAngle
+            End If
+        End If
+
+    End Function
+
+#End Region
+
 End Class

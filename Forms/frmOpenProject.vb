@@ -268,27 +268,36 @@ Public Class frmOpenProject
 
 
     Private Sub cmdOK_Click(sender As Object, e As EventArgs) Handles cmdOK.Click
-        ' Validate selections
-        If SelectedMachineID = 0 Then
-            MessageBox.Show("Please select a machine.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            Return
-        End If
+
+        Try
+
+            ' Validate selections
+            If SelectedMachineID = 0 Then
+                MessageBox.Show("Please select a machine.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Exit Sub
+            End If
 
         If SelectedToolSetupID = 0 Then
             MessageBox.Show("Please select a tool setup.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            Return
-        End If
+                Exit Sub
+            End If
 
-        If MatListTree1.SelectedMaterialID = 0 Then
-
-            MessageBox.Show("Please select a material.", "Validation",
+            If MatListTree1.SelectedMaterialID = -1 Then
+                MessageBox.Show("Please select a material.", "Validation",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            Return
-        End If
-        ' Dim selectedItem = TryCast(cboLayerSetup.SelectedItem, myItemData)
+                Exit Sub
 
-        ' Save optional fields
-        CustomerName = txtCustomer.Text
+            End If
+            If MatListTree1.SelectedMaterialID = 0 Then
+
+                MessageBox.Show("Please select a material.", "Validation",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Exit Sub
+            End If
+            ' Dim selectedItem = TryCast(cboLayerSetup.SelectedItem, myItemData)
+
+            ' Save optional fields
+            CustomerName = txtCustomer.Text
         OrderPO = txtOrderPO.Text
         DueDate = dtDueDate.EditValue
         Dim selectedMaterialID As Integer = MatListTree1.SelectedMaterialID
@@ -308,7 +317,13 @@ Public Class frmOpenProject
 
         ' Close dialog
         Me.DialogResult = DialogResult.OK
-        Me.Close()
+            Me.Close()
+
+
+        Catch ex As Exception
+            MessageBox.Show("frmOpenProject cmdOK_Click: " & ex.Message)
+        End Try
+
     End Sub
 
     Private Sub cmdCancel_Click(sender As Object, e As EventArgs) Handles cmdCancel.Click

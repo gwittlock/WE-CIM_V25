@@ -1,12 +1,6 @@
-﻿Module IsSelectable
-    Public Interface ISelectable
-        Function HitTest(pt As PointF, tolerance As Single) As Boolean
+﻿
+Public Interface isSelectable
+    Property IsSelected As Boolean
+    Property IsHovered As Boolean
+End Interface
 
-        Function GetEntityType() As DxfDrawable.DrawableTypeEnum
-        Function GetLayer() As String
-        Function GetTool() As String
-
-        Property IsSelected As Boolean
-        Property IsHovered As Boolean
-    End Interface
-End Module

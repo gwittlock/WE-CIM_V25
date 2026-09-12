@@ -74,8 +74,9 @@ Public Class AppData
 
         If MachineTypes.Count = 0 Then
             MessageBox.Show("Configuration Files Not Found! Make sure the you have converted your CMDB before continuing!", "Configuration File Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
-            ConfigurationManagerForm.Show()
-            Exit Sub 
+            End
+            'ConfigurationManagerForm.Show()
+
 
         End If
         Machines = LoadTableWrapped(Of Machine)("Machines.json")

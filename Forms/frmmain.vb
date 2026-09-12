@@ -26,6 +26,7 @@ Imports FabV25_WIN8.ImportedEntity
 Imports FabV25_WIN8.CadEntity
 Imports FabV25_WIN8.modView
 Imports FabV25_WIN8.MateriaWrapper
+
 Imports FabV25_WIN8.DxfDrawable
 Imports Newtonsoft.Json
 Imports Formatting = Newtonsoft.Json.Formatting
@@ -42,6 +43,7 @@ Imports System.Text
 Imports FabV25_WIN8.MachineEnvelope
 Imports FabV25_WIN8.MaterialWrapper
 Imports FabV25_WIN8.SelectionSet
+Imports System.Runtime.CompilerServices
 
 
 Public Class frmMain
@@ -158,7 +160,7 @@ Public Class frmMain
     .AutoPopDelay = 4000
 }
 
-
+    Private _selectionMode As GeometryTypeEnum? = Nothing
 
     Private Const HitTolerancePx As Single = 6.0F
 
@@ -561,7 +563,7 @@ Public Class frmMain
 
             Using pen As New Pen(System.Drawing.Color.Yellow, 2.0F)
 
-                For Each sel In _selectionManager.SelectedEntities
+                For Each sel In _selectionManager.Selected
 
                     Dim ent As CadEntity = TryCast(sel, CadEntity)
                     If ent Is Nothing Then Continue For
@@ -837,100 +839,99 @@ Public Class frmMain
 
     Public Sub BuildDrawables()
 
+        ' ---------------------------------
+        ' INIT (ONLY ONCE)
+        ' ---------------------------------
         _drawables = New List(Of DxfDrawable)
 
+        ' ---------------------------------
+        ' BUILD DRAWABLES FROM CAD ENTITIES
+        ' ---------------------------------
         For Each cad In _cadEntities
+
             Dim d As New DxfDrawable With {
-        .Entity = cad,
-        .LayerName = cad.LayerName,
-        .Color = System.Drawing.Color.Black
-    }
+            .Entity = cad,
+            .LayerName = cad.LayerName,
+            .Color = System.Drawing.Color.Black
+        }
 
+            ' Link BOTH directions (important for selection + rendering)
+            cad.Drawable = d
 
-            _drawables = New List(Of DxfDrawable)
+            ' ---------------------------------
+            ' GEOMETRY MAPPING (SINGLE SOURCE)
+            ' ---------------------------------
+            If TypeOf cad Is CadLine Then
 
-            'For Each cad As CadEntity In _cadEntities
+                Dim line = DirectCast(cad, CadLine)
 
-            ' Dim d As New DxfDrawable()
-
-            d.Entity = cad
-        cad.Drawable = d   ' THIS LINE IS CRITICAL
-
-        ' set geometry
-        If TypeOf cad Is CadLine Then
-            Dim line = DirectCast(cad, CadLine)
-            d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
-            d.StartPoint = line.StartPoint
-            d.EndPoint = line.EndPoint
-
-        ElseIf TypeOf cad Is CadCircle Then
-            Dim circle = DirectCast(cad, CadCircle)
-            d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
-            d.Center = circle.Center
-            d.Radius = circle.Radius
-
-        ElseIf TypeOf cad Is CadArc Then
-            Dim arc = DirectCast(cad, CadArc)
-            d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
-            d.Center = arc.Center
-            d.Radius = arc.Radius
-            d.StartAngle = arc.StartAngle
-            d.EndAngle = arc.EndAngle
-        End If
-
-        _drawables.Add(d)
-
-            'Next
-
-
-
-
-
-
-            ' Map geometry by type
-            If TypeOf cad Is CadEntity.CadLine Then
-                Dim line = DirectCast(cad, CadEntity.CadLine)
                 d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
                 d.StartPoint = line.StartPoint
                 d.EndPoint = line.EndPoint
-                cad.GeometryType = CadEntity.EntityType.Line
 
-            ElseIf TypeOf cad Is CadEntity.CadCircle Then
-                Dim circle = DirectCast(cad, CadEntity.CadCircle)
+                cad.GeometryType = GeometryTypeEnum.Line
+
+            ElseIf TypeOf cad Is CadCircle Then
+
+                Dim circle = DirectCast(cad, CadCircle)
+
                 d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
                 d.Center = circle.Center
                 d.Radius = circle.Radius
-                cad.GeometryType = CadEntity.EntityType.Circle
 
-            ElseIf TypeOf cad Is CadEntity.CadArc Then
-                Dim arc = DirectCast(cad, CadEntity.CadArc)
+                cad.GeometryType = GeometryTypeEnum.Circle
+
+            ElseIf TypeOf cad Is CadArc Then
+
+                Dim arc = DirectCast(cad, CadArc)
+
                 d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
                 d.Center = arc.Center
                 d.Radius = arc.Radius
                 d.StartAngle = arc.StartAngle
                 d.EndAngle = arc.EndAngle
-                cad.GeometryType = CadEntity.EntityType.Arc
+
+                cad.GeometryType = GeometryTypeEnum.Arc
+
+            ElseIf TypeOf cad Is CadPoint Then
+
+                Dim pt = DirectCast(cad, CadPoint)
+
+                d.DrawableType = DxfDrawable.DrawableTypeEnum.Point
+                d.Center = pt.Position   ' assuming Position is PointF
+
+                cad.GeometryType = GeometryTypeEnum.Point
+
+            Else
+                cad.GeometryType = GeometryTypeEnum.Unknown
             End If
 
-            ' ✅ Link drawable to cad entity
-            cad.Drawable = d
-
-            ' Add to drawables list
+            ' ---------------------------------
+            ' ADD ONCE
+            ' ---------------------------------
             _drawables.Add(d)
+
         Next
 
-
-        ' ----------------------------
-        ' Debug extents verification
-        ' ----------------------------
-
+        ' ---------------------------------
+        ' DEBUG EXTENTS (NOW TRUSTWORTHY)
+        ' ---------------------------------
         Debug.Print("MODEL EXTENTS CHECK")
 
-        Dim allBounds As New List(Of RectangleF)
+        If _drawables.Count = 0 Then
+            Debug.Print("NO DRAWABLES")
+            Return
+        End If
 
-        For Each d In _drawables
-            allBounds.Add(DxfDrawable.GetBounds(d))
-        Next
+        Dim allBounds = _drawables.
+        Select(Function(d) DxfDrawable.GetBounds(d)).
+        Where(Function(r) r <> RectangleF.Empty).
+        ToList()
+
+        If allBounds.Count = 0 Then
+            Debug.Print("NO VALID BOUNDS")
+            Return
+        End If
 
         Dim minX = allBounds.Min(Function(r) r.Left)
         Dim maxX = allBounds.Max(Function(r) r.Right)
@@ -938,6 +939,19 @@ Public Class frmMain
         Dim maxY = allBounds.Max(Function(r) r.Bottom)
 
         Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
+
+        ' ---------------------------------
+        ' BUILD SPATIAL INDEX (CRITICAL)
+        ' ---------------------------------
+        ' ---------------------------------
+        ' SYNC SELECTION MANAGER
+        ' ---------------------------------
+        _selectionManager.SetEntities(_cadEntities)
+
+        ' ---------------------------------
+        ' BUILD SPATIAL INDEX
+        ' ---------------------------------
+        _selectionManager.BuildSpatialIndex()
 
     End Sub
 
@@ -1136,17 +1150,86 @@ Public Class frmMain
     Private Function DxfToPointF(p As IxMilia.Dxf.DxfPoint) As PointF
         Return New PointF(CSng(p.X), CSng(p.Y))
     End Function
-    Private Function HitTestCadEntity(mouseScreen As PointF,
-                                   tolPx As Single,
-                                   ByRef hitDistWorld As Single) As CadEntity
 
-        Dim mouseWorld As PointF =
-        ScreenToWorld(mouseScreen, myTransform, pnlPicmodeler.Height)
+    Private Function HitTestCadEntity(mouseScreen As PointF,
+                                  tolPx As Single,
+                                  ByRef hitDistWorld As Single) As CadEntity
 
         Dim tolWorld As Single = tolPx / myTransform.Scale
 
+        If myTransform.Scale <= 0.000001 OrElse
+   Single.IsNaN(myTransform.Scale) OrElse
+   Single.IsInfinity(myTransform.Scale) Then
+
+            Debug.Print("HitTestCadEntity ABORT - invalid transform scale = " &
+                myTransform.Scale.ToString())
+
+            Return Nothing
+        End If
+
+
+        Dim worldPt As PointF =
+    ScreenToWorld(mouseScreen, myTransform, pnlPicmodeler.Height)
+
+        If Single.IsNaN(worldPt.X) OrElse
+   Single.IsNaN(worldPt.Y) OrElse
+   Single.IsInfinity(worldPt.X) OrElse
+   Single.IsInfinity(worldPt.Y) Then
+
+            Debug.Print("HitTestCadEntity ABORT - invalid world point")
+            Return Nothing
+        End If
+
+
+        If Single.IsNaN(tolWorld) OrElse
+   Single.IsInfinity(tolWorld) Then
+
+            Debug.Print("HitTestCadEntity ABORT - invalid tolerance")
+            Return Nothing
+        End If
+        'Dim tolWorld As Single = tolPx / myTransform.Scale
+        ' =========================================================
+        ' SCREEN -> WORLD
+        ' =========================================================
+        Dim mouseWorld As PointF =
+        ScreenToWorld(
+            mouseScreen,
+            myTransform,
+            pnlPicmodeler.ClientSize.Height
+        )
+
+        ' =========================================================
+        ' PIXEL TOLERANCE -> WORLD TOLERANCE
+        '
+        ' Scale = pixels per world unit
+        ' Therefore:
+        '
+        '     tolWorld = tolPx / Scale
+        ' =========================================================
+        Dim scale As Single =
+        If(myTransform.Scale > 0.0001F,
+           myTransform.Scale,
+           0.0001F)
+
+        'Dim tolWorld As Single = tolPx / scale
+
+        ' Minimum usable tolerance in model units.
+        tolWorld = Math.Max(tolWorld, 0.1F)
+
         hitDistWorld = Single.MaxValue
 
+        Debug.Print("========================================")
+        Debug.Print("HitTestCadEntity")
+        Debug.Print($"Screen     = {mouseScreen.X:F3}, {mouseScreen.Y:F3}")
+        Debug.Print($"World      = {mouseWorld.X:F3}, {mouseWorld.Y:F3}")
+        Debug.Print($"Scale      = {scale:F6}")
+        Debug.Print($"TolPx      = {tolPx:F3}")
+        Debug.Print($"TolWorld   = {tolWorld:F6}")
+        Debug.Print("========================================")
+
+        ' =========================================================
+        ' HIT CANDIDATES
+        ' =========================================================
         Dim results As New List(Of HitResult)
 
         For Each ent As CadEntity In _cadEntities
@@ -1155,73 +1238,207 @@ Public Class frmMain
 
             Select Case ent.GeometryType
 
+            ' =================================================
+            ' LINE
+            ' =================================================
                 Case GeometryTypeEnum.Line
-                    Dim line = DirectCast(ent, CadLine)
-                    d = DistancePointToLineWorld(mouseWorld, line.StartPoint, line.EndPoint)
 
+                    Dim line As CadLine =
+                    DirectCast(ent, CadLine)
+
+                    d =
+                    DistancePointToLineWorld(
+                        mouseWorld,
+                        line.StartPoint,
+                        line.EndPoint
+                    )
+
+
+            ' =================================================
+            ' CIRCLE
+            ' =================================================
                 Case GeometryTypeEnum.Circle
-                    Dim circle = DirectCast(ent, CadCircle)
-                    d = Math.Abs(Distance(mouseWorld, circle.Center) - circle.Radius)
 
+                    Dim circle As CadCircle =
+                    DirectCast(ent, CadCircle)
+
+                    Dim centerDistance As Single =
+                    Distance(
+                        mouseWorld,
+                        circle.Center
+                    )
+
+                    d =
+                    Math.Abs(
+                        centerDistance -
+                        circle.Radius
+                    )
+
+
+            ' =================================================
+            ' ARC
+            ' =================================================
                 Case GeometryTypeEnum.Arc
-                    Dim arc = DirectCast(ent, CadArc)
 
-                    Dim distToCircle = Math.Abs(Distance(mouseWorld, arc.Center) - arc.Radius)
+                    Dim arc As CadArc =
+                    DirectCast(ent, CadArc)
 
+                    Dim centerDistance As Single =
+                    Distance(
+                        mouseWorld,
+                        arc.Center
+                    )
+
+                    Dim radialDistance As Single =
+                    Math.Abs(
+                        centerDistance -
+                        arc.Radius
+                    )
+
+                    ' ---------------------------------------------
+                    ' Determine angle of mouse point around arc
+                    ' ---------------------------------------------
                     Dim angle As Double =
-                    Math.Atan2(mouseWorld.Y - arc.Center.Y,
-                               mouseWorld.X - arc.Center.X) * 180 / Math.PI
+                    Math.Atan2(
+                        mouseWorld.Y - arc.Center.Y,
+                        mouseWorld.X - arc.Center.X
+                    ) * 180.0 / Math.PI
 
-                    Dim startAngle As Double = arc.StartAngle
-                    Dim endAngle As Double = arc.EndAngle
+                    ' Normalize to 0-360.
+                    angle = angle Mod 360.0
 
+                    If angle < 0 Then
+                        angle += 360.0
+                    End If
+
+                    Dim startAngle As Double =
+                    arc.StartAngle Mod 360.0
+
+                    If startAngle < 0 Then
+                        startAngle += 360.0
+                    End If
+
+                    Dim endAngle As Double =
+                    arc.EndAngle Mod 360.0
+
+                    If endAngle < 0 Then
+                        endAngle += 360.0
+                    End If
+
+                    ' ---------------------------------------------
+                    ' Determine whether point lies on arc sweep
+                    ' ---------------------------------------------
                     Dim inArc As Boolean
 
-                    If arc.IsClockwise Then
-                        If startAngle < endAngle Then startAngle += 360
-                        If angle < endAngle Then angle += 360
+                    If Not arc.IsClockwise Then
 
-                        inArc = angle <= startAngle AndAlso angle >= endAngle
+                        ' -----------------------------------------
+                        ' Counter-clockwise
+                        ' -----------------------------------------
+                        If startAngle <= endAngle Then
+
+                            inArc =
+                            angle >= startAngle AndAlso
+                            angle <= endAngle
+
+                        Else
+
+                            ' Arc crosses 0 degrees.
+                            inArc =
+                            angle >= startAngle OrElse
+                            angle <= endAngle
+
+                        End If
+
                     Else
-                        If endAngle < startAngle Then endAngle += 360
-                        If angle < startAngle Then angle += 360
 
-                        inArc = angle >= startAngle AndAlso angle <= endAngle
+                        ' -----------------------------------------
+                        ' Clockwise
+                        ' -----------------------------------------
+                        If endAngle <= startAngle Then
+
+                            inArc =
+                            angle <= startAngle AndAlso
+                            angle >= endAngle
+
+                        Else
+
+                            ' Arc crosses 0 degrees.
+                            inArc =
+                            angle <= startAngle OrElse
+                            angle >= endAngle
+
+                        End If
+
                     End If
 
                     If inArc Then
-                        d = distToCircle
+                        d = radialDistance
+                    Else
+                        d = Single.MaxValue
                     End If
+
+
+                    ' =================================================
+                    ' UNSUPPORTED ENTITY
+                    ' =================================================
+                Case Else
+
+                    d = Single.MaxValue
 
             End Select
 
+            ' =====================================================
+            ' ADD HIT CANDIDATE
+            ' =====================================================
             If d <= tolWorld Then
-                results.Add(New HitResult With {
-                .Entity = ent,
-                .Distance = d
-            })
+
+                results.Add(
+                New HitResult With {
+                    .Entity = ent,
+                    .Distance = d
+                }
+            )
+
+                Debug.Print(
+                $"HIT CANDIDATE: " &
+                $"{ent.GetType().Name} " &
+                $"Distance={d:F6}"
+            )
+
             End If
 
         Next
 
-        ' -----------------------------
-        ' RESOLVE BEST HIT
-        ' -----------------------------
-        Dim best = results.
+        ' =========================================================
+        ' RESOLVE CLOSEST HIT
+        ' =========================================================
+        Dim best As HitResult =
+        results.
         OrderBy(Function(h) h.Distance).
         FirstOrDefault()
 
-        If best IsNot Nothing Then
-            hitDistWorld = best.Distance
+        If best Is Nothing Then
 
-            Debug.Print($"Best Entity: {best.Entity.GeometryType} Type={best.Entity.GetType().Name}")
+            Debug.Print("NO HIT ON CLICK")
+            Return Nothing
 
-            Return best.Entity
         End If
 
-        Return Nothing
+        hitDistWorld = best.Distance
+
+        Debug.Print(
+        $"BEST HIT: {best.Entity.GetType().Name} " &
+        $"Distance={best.Distance:F6}"
+    )
+
+        Return best.Entity
 
     End Function
+
+
+
+
     Public Class HitResult
         Public Property Entity As CadEntity
         Public Property Distance As Single
@@ -1350,7 +1567,7 @@ Public Class frmMain
         ' --------------------------
         ' 2) Update model coordinates display
         ' --------------------------
-        Dim modelPt As PointF = ScreenToWorld(e.Location, myTransform, pnlPicmodeler.Height)
+        Dim modelPt As PointF = ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height)
         statusLocation.Caption = $"Location: X={modelPt.X:0.###}, Y={modelPt.Y:0.###}"
 
         ' --------------------------
@@ -1531,23 +1748,9 @@ Public Class frmMain
 
     Private Sub pnlPicmodeler_MouseClick(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseClick
 
-        'If e.Button <> MouseButtons.Left Then Return
-
-        'Dim hitDist As Single
-        'Dim hitCad As CadEntity = HitTestCadEntity(e.Location, HitTolerancePx, hitDist)
-
-        'If hitCad IsNot Nothing AndAlso hitCad.Drawable IsNot Nothing Then
-        '    _selectionManager.Toggle(hitCad.Drawable)
-        'Else
-        '    _selectionManager.ClearSelection()
-        'End If
-
-        'If hitCad Is Nothing Then
-        '    Debug.Print("CLICK HIT: Nothing")
-        'Else
-        '    Debug.Print("CLICK HIT: " & hitCad.GeometryType.ToString() &
-        '        "  Drawable is Nothing? " & (hitCad.Drawable Is Nothing).ToString())
-        'End If
+        Debug.Print($"Screen Click: {e.Location.X}, {e.Location.Y}")
+        Debug.Print($"Panel Height Used: {pnlPicmodeler.ClientSize.Height}")
+        Debug.Print($"OffsetY: {myTransform.OffsetY}, Scale: {myTransform.Scale}")
         '' Trigger redraw to show selection
         'pnlPicmodeler.Invalidate()
     End Sub
@@ -1740,104 +1943,34 @@ Public Class frmMain
         ' Redraw everything
         RedrawAll()
     End Sub
-
     Private Function IsSelectionAllowedForCurrentTool() As Boolean
 
         If Not _selectionEnabled Then Return False
 
+        Debug.Print("CurrentTool = [" & _currentTool & "]")
+
         Select Case _currentTool
 
-            Case "", "Select"
+            Case "", "Select", "Selection", "Pointer", "None"
                 Return True
 
-            Case "Measure"
-                Return False
-
-            Case "ViewWindow"
-                Return False
-
-        ' Future tools that should NOT trigger selection
-            Case "DrawLine", "DrawArc", "Edit", "Trim", "Move"
+            Case "Measure",
+             "ViewWindow",
+             "DrawLine",
+             "DrawArc",
+             "Edit",
+             "Trim",
+             "Move"
                 Return False
 
             Case Else
-                ' Default safe behavior:
-                Return False
+                ' Default permissive behavior
+                Return True
 
         End Select
 
     End Function
-    'Private Sub pnlPicmodeler_MouseDown(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseDown
 
-
-    '    Debug.Print("MouseDown - SelectionEnabled = " & _selectionEnabled.ToString())
-    '    ' -----------------------------
-    '    ' 1) Handle panning (Ctrl+Shift)
-    '    ' -----------------------------
-    '    If e.Button = MouseButtons.Left OrElse e.Button = MouseButtons.Right Then
-    '        If (Control.ModifierKeys And Keys.Control) = Keys.Control AndAlso
-    '       (Control.ModifierKeys And Keys.Shift) = Keys.Shift Then
-
-    '            _windowSelecting = False
-    '            isPanning = True
-    '            SaveViewIfChanged()
-
-    '            panStartMouse = e.Location
-    '            panStartOffsetX = myTransform.OffsetX
-    '            panStartOffsetY = myTransform.OffsetY
-
-    '            lastMousePos = e.Location
-    '            Return
-    '        End If
-    '    End If
-
-    '    ' -----------------------------
-    '    ' 2) Measurement tool
-    '    ' -----------------------------
-    '    If _currentTool = "Measure" AndAlso e.Button = MouseButtons.Left Then
-    '        _isMeasuring = True
-    '        _windowSelecting = False
-
-    '        _measureStartWorld = If(_activeSnap.HasValue,
-    '                            _activeSnap.Value.WorldPoint,
-    '                            ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height))
-    '        _measureEndWorld = _measureStartWorld
-    '        pnlPicmodeler.Invalidate()
-    '        Return
-    '    End If
-
-    '    ' -----------------------------
-    '    ' 3) View Window selection
-    '    ' -----------------------------
-    '    If _currentTool = "ViewWindow" AndAlso e.Button = MouseButtons.Left Then
-    '        _windowSelecting = True
-    '        _windowStart = e.Location
-    '        _windowEnd = e.Location
-    '        pnlPicmodeler.Invalidate()
-    '        Return
-    '    End If
-    '    ' -----------------------------
-    '    ' 4) Hit test for entity selection
-    '    ' -----------------------------
-    '    If Not _selectionEnabled Then Return
-
-    '    Dim hitDist As Single
-    '    Dim hitCad As CadEntity = HitTestCadEntity(e.Location, HitTolerancePx, hitDist)
-
-    '    If hitCad IsNot Nothing AndAlso hitCad.Drawable IsNot Nothing Then
-
-    '        _selectionManager.Toggle(hitCad.Drawable)
-    '        HandleEntitySelected(hitCad)
-    '        _hoverEntity = hitCad
-
-    '        'Else
-    '        '    _selectionManager.ClearSelection()
-    '        '    HandleEntitySelected(Nothing)
-    '        '    _hoverEntity = Nothing
-    '    End If
-
-    '    pnlPicmodeler.Invalidate()
-    'End Sub
     Private Sub pnlPicmodeler_MouseDown(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseDown
 
         Debug.Print("MouseDown - SelectionEnabled = " & _selectionEnabled.ToString())
@@ -1894,20 +2027,74 @@ Public Class frmMain
             Return
         End If
 
+
+        'vb
         ' -----------------------------
-        ' 4) SELECTION (DELEGATED)
+        ' 4) SELECTION
         ' -----------------------------
         If Not _selectionEnabled Then Return
-
         If e.Button = MouseButtons.Right Then Return
 
-        If Not IsSelectionAllowedForCurrentTool() Then Return
+        Debug.Print("Selection Mode = " & _selectionMode.ToString())
+        Debug.Print("Current Tool = [" & _currentTool & "]")
 
-        _selectionManager.SelectAtPoint(e.Location, HitTolerancePx)
-        _selectionManager.UpdateHover(e.Location, HitTolerancePx)
+        'Dim selectionAllowed As Boolean = IsSelectionAllowedForCurrentTool()
 
+        If Not _selectionEnabled Then
+            Debug.Print("SELECTION BLOCKED: _selectionEnabled = False")
+            Return
+        End If
+
+        If e.Button = MouseButtons.Right Then
+            Debug.Print("SELECTION BLOCKED: Right mouse button")
+            Return
+        End If
+
+        Dim selectionAllowed As Boolean = IsSelectionAllowedForCurrentTool()
+
+        Debug.Print("Current Tool = [" & _currentTool & "]")
+        Debug.Print("IsSelectionAllowedForCurrentTool = " & selectionAllowed.ToString())
+
+        If Not selectionAllowed Then
+            Debug.Print("SELECTION BLOCKED: Current tool does not allow selection")
+            Return
+        End If
+
+
+
+        Debug.Print("Selection Allowed = " & selectionAllowed.ToString())
+
+        If Not selectionAllowed Then
+            Debug.Print("SELECTION BLOCKED")
+            Return
+        End If
+
+        Dim worldPt = ScreenToWorld(
+    e.Location,
+    myTransform,
+    pnlPicmodeler.ClientSize.Height)
+
+        Dim scale = Math.Max(myTransform.Scale, 0.0001F)
+        Dim tolWorld As Single = HitTolerancePx / scale
+
+        Const minTolWorld As Single = 0.001F
+        tolWorld = Math.Max(tolWorld, minTolWorld)
+
+        Debug.Print("Calling SelectAtPoint...")
+        Debug.Print("WorldPt = " & worldPt.ToString())
+        Debug.Print("TolWorld = " & tolWorld.ToString())
+
+        Dim hit = _selectionManager.SelectAtPoint(worldPt, tolWorld)
+
+        If hit IsNot Nothing Then
+            Debug.Print("SELECTED: " & hit.GetType().Name)
+            Debug.Print("IsSelected = " & hit.IsSelected.ToString())
+        Else
+            Debug.Print("NO HIT FROM SELECTION MANAGER")
+        End If
 
         pnlPicmodeler.Invalidate()
+
 
     End Sub
 
@@ -2837,7 +3024,7 @@ Public Class frmMain
     tolScreenPx As Single
 ) As SnapResult?
 
-        Dim mouseWorld = ScreenToWorld(mouseScreen, myTransform, pnlPicmodeler.Height)
+        Dim mouseWorld = ScreenToWorld(mouseScreen, myTransform, pnlPicmodeler.ClientSize.Height)
         Dim tolWorld = tolScreenPx / myTransform.Scale
 
         Dim best As SnapResult
@@ -3034,13 +3221,28 @@ Public Class frmMain
 
     Private Sub tbSelect_Enable_Click(sender As Object, e As EventArgs) Handles tbSelect_Enable.Click
 
-
         _selectionEnabled = tbSelect_Enable.Checked
 
+        If Not _selectionEnabled Then
+            _selectionMode = Nothing
+        End If
+
         Debug.Print("Selection Enabled: " & _selectionEnabled.ToString())
-
         pnlPicmodeler.Invalidate()
+    End Sub
 
+    Private Sub tbSelect_Lines_Click(sender As Object, e As EventArgs) Handles tbSelect_Lines.Click
+        _selectionEnabled = True
+        _selectionMode = GeometryTypeEnum.Line
+
+        Debug.Print("Selection Mode = LINE")
+    End Sub
+
+    Private Sub tbSelect_Arcs_Click(sender As Object, e As EventArgs) Handles tbSelect_Arcs.Click
+        _selectionEnabled = True
+        _selectionMode = GeometryTypeEnum.Arc
+
+        Debug.Print("Selection Mode = CIRCLE")
     End Sub
 
 End Class
