@@ -2227,6 +2227,15 @@ Public Class frmMain
         Debug.Print("TolWorld = " & tolWorld.ToString("0.000000"))
         Debug.Print("Calling SelectAtPoint...")
 
+        Debug.WriteLine(
+    "PointSelect: Mode=" &
+    If(_selectionMode.HasValue,
+       _selectionMode.Value.ToString(),
+       "Nothing") &
+    " Filter=" &
+    _selectionFilter.ToString())
+
+
         Dim hit As isSelectable =
     _selectionManager.SelectAtPoint(
         worldPt,
@@ -2283,9 +2292,39 @@ Public Class frmMain
 
         ' Select By Window
         If _selectWindowActive AndAlso
-           _currentTool = "SelectWindow" AndAlso
-           e.Button = MouseButtons.Left Then
+                                           _currentTool = "SelectWindow" AndAlso
+                                           e.Button = MouseButtons.Left Then
 
+            ' Convert the screen rectangle to world coordinates.
+            Dim w1 As PointF = ScreenToWorld(
+            _selectWindowStart,
+            myTransform,
+            pnlPicmodeler.ClientSize.Height)
+
+            Dim w2 As PointF = ScreenToWorld(
+            _selectWindowEnd,
+            myTransform,
+            pnlPicmodeler.ClientSize.Height)
+
+            ' Normalize the world rectangle.
+            Dim minX As Single = Math.Min(w1.X, w2.X)
+            Dim maxX As Single = Math.Max(w1.X, w2.X)
+            Dim minY As Single = Math.Min(w1.Y, w2.Y)
+            Dim maxY As Single = Math.Max(w1.Y, w2.Y)
+
+            Dim worldRect As New RectangleF(
+        minX,
+        minY,
+        maxX - minX,
+        maxY - minY)
+
+            ' Perform the actual selection.
+            _selectionManager.SelectByWindow(
+                                                                        worldRect,
+                                                                        Nothing,
+                                                                        _selectionFilter)
+
+            ' End the window operation.
             _selectWindowActive = False
 
             pnlPicmodeler.Cursor = Cursors.Default
@@ -3440,7 +3479,7 @@ Public Class frmMain
     Private Sub tbSelect_AddAllByFilter_Click(sender As Object, e As EventArgs) Handles tbSelect_AddAllByFilter.Click
 
         _selectionManager.SelectAllByFilter(
-        _selectionMode,
+        Nothing,
         _selectionFilter)
 
         pnlPicmodeler.Invalidate()
@@ -3512,7 +3551,7 @@ Public Class frmMain
     Private Sub tbSelect_RemoveAllByFilter_Click(sender As Object, e As EventArgs) Handles tbSelect_RemoveAllByFilter.Click
 
         _selectionManager.RemoveAllByFilter(
-        _selectionMode,
+        Nothing,
         _selectionFilter)
 
         pnlPicmodeler.Invalidate()

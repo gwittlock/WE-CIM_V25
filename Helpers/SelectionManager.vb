@@ -487,6 +487,204 @@ Public Class SelectionManager
         RaiseEvent SelectionChanged(_selected)
 
     End Sub
+
+    Public Sub SelectByWindow(
+    worldRect As RectangleF,
+    selectionMode As GeometryTypeEnum?,
+    selectionFilter As SelectionFilter)
+
+        If worldRect.Width <= 0 OrElse worldRect.Height <= 0 Then
+            Return
+        End If
+
+        Dim candidates As List(Of CadEntity)
+
+        ' Use the spatial index when available.
+        If _spatialIndex IsNot Nothing Then
+            candidates = _spatialIndex.Query(worldRect)
+        Else
+            candidates = _entities
+        End If
+
+        Dim selectionChanged As Boolean = False
+
+        For Each ent As CadEntity In candidates
+
+            If ent Is Nothing Then Continue For
+
+            ' Respect the current geometry mode.
+            If selectionMode.HasValue AndAlso
+           ent.GeometryType <> selectionMode.Value Then
+                Continue For
+            End If
+
+            ' Respect the toolbar selection filter.
+            If Not IsEntityAllowedBySelectionFilter(
+            ent,
+            selectionFilter) Then
+                Continue For
+            End If
+
+            ' Entity must be completely contained by the window.
+            If Not IsEntityFullyInsideWindow(ent, worldRect) Then
+                Continue For
+            End If
+
+            Dim selectable As isSelectable =
+            TryCast(ent, isSelectable)
+
+            If selectable Is Nothing Then
+                Continue For
+            End If
+
+            If Not _selected.Contains(selectable) Then
+                _selected.Add(selectable)
+                selectable.IsSelected = True
+                selectionChanged = True
+            Else
+                ' Make sure the entity remains visually selected.
+                selectable.IsSelected = True
+            End If
+
+        Next
+
+        If selectionChanged Then
+            RaiseEvent selectionChanged(_selected)
+        End If
+
+    End Sub
+
+    Private Function IsEntityFullyInsideWindow(
+    ent As CadEntity,
+    worldRect As RectangleF) As Boolean
+
+        If ent Is Nothing Then Return False
+
+        Select Case ent.GeometryType
+
+            Case GeometryTypeEnum.Line
+
+                Dim line As CadLine = TryCast(ent, CadLine)
+                If line Is Nothing Then Return False
+
+                Return worldRect.Contains(line.StartPoint) AndAlso
+                   worldRect.Contains(line.EndPoint)
+
+
+            Case GeometryTypeEnum.Point
+
+                Dim point As CadPoint = TryCast(ent, CadPoint)
+                If point Is Nothing Then Return False
+
+                Return worldRect.Contains(point.Position)
+
+
+            Case GeometryTypeEnum.Circle
+
+                Dim circle As CadCircle = TryCast(ent, CadCircle)
+                If circle Is Nothing Then Return False
+
+                Dim cx As Single = circle.Center.X
+                Dim cy As Single = circle.Center.Y
+                Dim r As Single = circle.Radius
+
+                Return (
+                            cx - r >= worldRect.Left AndAlso
+                            cx + r <= worldRect.Right AndAlso
+                            cy - r >= worldRect.Top AndAlso
+                            cy + r <= worldRect.Bottom)
+
+
+            Case GeometryTypeEnum.Arc
+
+                Dim arc As CadArc = TryCast(ent, CadArc)
+                If arc Is Nothing Then Return False
+
+                Return IsArcFullyInsideWindow(arc, worldRect)
+
+
+            Case Else
+
+                ' Polyline / Rectangle and any future geometry
+                ' are intentionally not selected until their
+                ' exact containment rules are defined.
+                Return False
+
+        End Select
+
+    End Function
+
+    Private Function IsArcFullyInsideWindow(
+    arc As CadArc,
+    worldRect As RectangleF) As Boolean
+
+        If arc Is Nothing Then Return False
+
+        Dim cx As Double = arc.Center.X
+        Dim cy As Double = arc.Center.Y
+        Dim r As Double = arc.Radius
+
+        ' First verify the complete circle containing the arc
+        ' is not required to be inside the window. We only need
+        ' to test the actual arc.
+        '
+        ' Test:
+        '   1. Arc start point
+        '   2. Arc end point
+        '   3. Every quadrant direction that lies on the arc
+        '
+        ' Those points are sufficient because an arc's extrema
+        ' occur at the cardinal angles.
+
+        Dim testAngles As New List(Of Double)
+
+        testAngles.Add(arc.StartAngle)
+        testAngles.Add(arc.EndAngle)
+
+        Dim cardinalAngles() As Double = {
+        0.0,
+        90.0,
+        180.0,
+        270.0
+    }
+
+        For Each angle As Double In cardinalAngles
+
+            If IsAngleOnArc(
+                                    angle,
+                                    arc.StartAngle,
+                                    arc.EndAngle,
+                                    arc.IsClockwise) Then
+
+                testAngles.Add(angle)
+
+            End If
+
+        Next
+
+        For Each angle As Double In testAngles
+
+            Dim radians As Double =
+            angle * Math.PI / 180.0
+
+            Dim x As Single =
+            CSng(cx + r * Math.Cos(radians))
+
+            Dim y As Single =
+            CSng(cy + r * Math.Sin(radians))
+
+            If Not worldRect.Contains(x, y) Then
+                Return False
+            End If
+
+        Next
+
+        Return True
+
+    End Function
+
+
+
     Public Sub RemoveAllByFilter(
     selectionMode As GeometryTypeEnum?,
     selectionFilter As SelectionFilter)
