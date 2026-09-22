@@ -1,4 +1,4 @@
-﻿
+
 Imports DevExpress.UserSkins
 Imports DevExpress.Skins
 Imports DevExpress.LookAndFeel
@@ -78,9 +78,19 @@ Public Class frmMain
 
     Private _selectionManager As New SelectionManager()
     Private _selectionEnabled As Boolean = False
-
-
-
+    'Bitwise selection-filter state.
+    Public _selectionFilter As Long
+    <Flags>
+    Public Enum SelectionFilter
+        None = 0
+        Line = 1 << 0
+        Circle = 1 << 1
+        Arc = 1 << 2
+        Polyline = 1 << 3
+        Rectangle = 1 << 4
+        Point = 1 << 5
+        AllGeometry = Line Or Circle Or Arc Or Polyline Or Rectangle Or Point
+    End Enum
     ' Hot dot display toggle
     Private _hotDotsEnabled As Boolean = True
 
@@ -91,11 +101,8 @@ Public Class frmMain
     Private _activeSnap As SnapResult? = Nothing   ' Nullable structure
     Private _snapScreenPoint As PointF? = Nothing
 
-
-
     ' Radius in pixels for the hot dot
     Private Const HotDotRadius As Integer = 4
-
 
     Private lastMousePos As Point
     Private _panStart As Point
@@ -133,7 +140,6 @@ Public Class frmMain
     ' Replace old LineF lists
     Public CurrentDXFEntities As New List(Of CadEntity)         ' Entities for main panel
     Public CurrentPreviewEntities As New List(Of CadEntity)     ' Entities for file open preview
-
 
     Private _loadedDxf As DxfFile = Nothing
 
@@ -182,6 +188,7 @@ Public Class frmMain
         Me.InitSkinGallery()
 
         AddHandler _selectionManager.SelectionChanged, AddressOf OnSelectionChanged
+        AddHandler _selectionManager.HoverChanged, AddressOf OnHoverChanged
 
         Me.splitContainerControl.SuspendLayout()
         Me.splitContainerControl.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel2
@@ -224,11 +231,11 @@ Public Class frmMain
         End Try
     End Sub
 
-
     Private Sub OnSelectionChanged()
+        Debug.Print("frmMain.OnSelectionChanged FIRED")
+        Debug.Print("Selected Count = " & _selectionManager.Selected.Count.ToString())
 
-        Me.Invalidate()
-
+        pnlPicmodeler.Invalidate()
     End Sub
 
     Private Sub rgbiSkins_GalleryInitDropDownGallery(ByVal sender As Object, ByVal e As DevExpress.XtraBars.Ribbon.InplaceGalleryEventArgs) Handles rgbiSkins.GalleryInitDropDownGallery
@@ -602,16 +609,22 @@ Public Class frmMain
                             Dim center = WorldToScreen(arc.Center.X, arc.Center.Y, myTransform, panelHeight)
                             Dim r As Single = CSng(arc.Radius * myTransform.Scale)
 
-                            Dim startAngle As Single = CSng(arc.StartAngle)
-                            Dim sweepAngle As Single = CSng(arc.EndAngle - arc.StartAngle)
+                            Dim sweep As Single = CSng(arc.EndAngle - arc.StartAngle)
+
+                            If sweep < 0 Then
+                                sweep += 360
+                            End If
+
+                            Dim startAngle As Single = CSng(-arc.StartAngle)
+                            Dim sweepAngle As Single = CSng(-sweep)
 
                             g.DrawArc(pen,
-                                  CSng(center.X - r),
-                                  CSng(center.Y - r),
-                                  CSng(r * 2),
-                                  CSng(r * 2),
-                                  startAngle,
-                                  sweepAngle)
+                                            CSng(center.X - r),
+                                            CSng(center.Y - r),
+                                            CSng(r * 2),
+                                            CSng(r * 2),
+                                            startAngle,
+                                            sweepAngle)
 
                     End Select
 
@@ -645,18 +658,35 @@ Public Class frmMain
 
         Select Case ent.GeometryType
 
-            Case GeometryTypeEnum.Line
+            Case CadEntity.EntityType.Line
+
                 Dim l = DirectCast(ent, CadLine)
 
-                Dim p1 = WorldToScreen(l.StartPoint.X, l.StartPoint.Y, myTransform, pnlPicmodeler.Height)
-                Dim p2 = WorldToScreen(l.EndPoint.X, l.EndPoint.Y, myTransform, pnlPicmodeler.Height)
+                Dim p1 = WorldToScreen(
+                l.StartPoint.X,
+                l.StartPoint.Y,
+                myTransform,
+                pnlPicmodeler.Height)
+
+                Dim p2 = WorldToScreen(
+                l.EndPoint.X,
+                l.EndPoint.Y,
+                myTransform,
+                pnlPicmodeler.Height)
 
                 g.DrawLine(pen, p1, p2)
 
-            Case GeometryTypeEnum.Circle
+
+            Case CadEntity.EntityType.Circle
+
                 Dim c = DirectCast(ent, CadCircle)
 
-                Dim center = WorldToScreen(c.Center.X, c.Center.Y, myTransform, pnlPicmodeler.Height)
+                Dim center = WorldToScreen(
+                c.Center.X,
+                c.Center.Y,
+                myTransform,
+                pnlPicmodeler.Height)
+
                 Dim r = CSng(c.Radius * myTransform.Scale)
 
                 g.DrawEllipse(
@@ -664,17 +694,23 @@ Public Class frmMain
                 center.X - r,
                 center.Y - r,
                 2 * r,
-                2 * r
-            )
+                2 * r)
 
-            Case GeometryTypeEnum.Arc
+
+            Case CadEntity.EntityType.Arc
 
                 Dim a = DirectCast(ent, CadArc)
 
-                Dim center = WorldToScreen(a.Center.X, a.Center.Y, myTransform, pnlPicmodeler.Height)
+                Dim center = WorldToScreen(
+                a.Center.X,
+                a.Center.Y,
+                myTransform,
+                pnlPicmodeler.Height)
+
                 Dim r = CSng(a.Radius * myTransform.Scale)
 
                 Dim sweep As Single
+
                 If a.IsClockwise Then
                     sweep = a.EndAngle - a.StartAngle
                 Else
@@ -687,14 +723,34 @@ Public Class frmMain
                 Dim sweepDeg As Single = -sweep
 
                 g.DrawArc(
-                                    pen,
-                                    center.X - r,
-                                    center.Y - r,
-                                    2 * r,
-                                    2 * r,
-                                    startDeg,
-                                    sweepDeg
-                                )
+                pen,
+                center.X - r,
+                center.Y - r,
+                2 * r,
+                2 * r,
+                startDeg,
+                sweepDeg)
+
+
+            Case CadEntity.EntityType.Point
+
+                Dim p = DirectCast(ent, CadPoint)
+
+                Dim screenPt =
+                WorldToScreen(
+                    p.Position.X,
+                    p.Position.Y,
+                    myTransform,
+                    pnlPicmodeler.Height)
+
+                Const pointSize As Single = 6.0F
+
+                g.FillRectangle(
+                Brushes.Black,
+                screenPt.X - pointSize / 2.0F,
+                screenPt.Y - pointSize / 2.0F,
+                pointSize,
+                pointSize)
 
         End Select
 
@@ -844,6 +900,28 @@ Public Class frmMain
         ' ---------------------------------
         _drawables = New List(Of DxfDrawable)
 
+        Debug.Print("========== CAD ENTITY CHECK ==========")
+        Debug.Print("_cadEntities.Count = " & _cadEntities.Count.ToString())
+
+        Dim pointCount As Integer = 0
+
+        For Each cad In _cadEntities
+
+            If TypeOf cad Is CadPoint Then
+                pointCount += 1
+
+                Dim pt = DirectCast(cad, CadPoint)
+
+                Debug.Print(
+            $"CAD POINT: X={pt.Position.X}, Y={pt.Position.Y}")
+
+            End If
+
+        Next
+
+        Debug.Print("CadPoint Count = " & pointCount.ToString())
+        Debug.Print("======================================")
+
         ' ---------------------------------
         ' BUILD DRAWABLES FROM CAD ENTITIES
         ' ---------------------------------
@@ -946,6 +1024,19 @@ Public Class frmMain
         ' ---------------------------------
         ' SYNC SELECTION MANAGER
         ' ---------------------------------
+        Debug.Print("========== SELECTION INPUT ==========")
+        Debug.Print("Selection input count = " & _cadEntities.Count)
+
+        For Each ce As CadEntity In _cadEntities
+            If TypeOf ce Is CadPoint Then
+                Dim cp As CadPoint = DirectCast(ce, CadPoint)
+                Debug.Print("Selection CadPoint: X=" &
+                    cp.Position.X.ToString() &
+                    ", Y=" &
+                    cp.Position.Y.ToString())
+            End If
+        Next
+
         _selectionManager.SetEntities(_cadEntities)
 
         ' ---------------------------------
@@ -1081,7 +1172,29 @@ Public Class frmMain
         End Using
     End Sub
 
+    Private Sub DrawCadPoint(
+    pt As CadPoint,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
 
+        Dim screenPt As PointF =
+        WorldToScreen(
+            pt.Position.X,
+            pt.Position.Y,
+            vt,
+            panelHeight)
+
+        Const PointSize As Single = 6.0F
+
+        g.FillRectangle(
+        Brushes.Black,
+        screenPt.X - PointSize / 2.0F,
+        screenPt.Y - PointSize / 2.0F,
+        PointSize,
+        PointSize)
+
+    End Sub
 
     'Private Sub DrawPolyline(points As List(Of DxfPoint), g As Graphics,
     '                     scale As Double, ox As Double, oy As Double,
@@ -1614,22 +1727,10 @@ Public Class frmMain
 
         ' --------------------------
         ' 6) Hover detection (ALWAYS ACTIVE)
+        ' --------------------------
+        Dim tolWorld As Single = HitTolerancePx / myTransform.Scale
 
-        Dim hoverDist As Single
-        Dim newHover As CadEntity = HitTestCadEntity(e.Location, HitTolerancePx, hoverDist)
-
-        If Not Object.ReferenceEquals(newHover, _hoverEntity) Then
-
-            _hoverEntity = newHover
-
-            If _hoverEntity IsNot Nothing Then
-                _modelerToolTip.SetToolTip(pnlPicmodeler, _hoverEntity.ToString())
-            Else
-                _modelerToolTip.Hide(pnlPicmodeler)
-            End If
-
-            pnlPicmodeler.Invalidate()
-        End If
+        _selectionManager.UpdateHover(modelPt, tolWorld)
 
     End Sub
 
@@ -1970,7 +2071,6 @@ Public Class frmMain
         End Select
 
     End Function
-
     Private Sub pnlPicmodeler_MouseDown(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseDown
 
         Debug.Print("MouseDown - SelectionEnabled = " & _selectionEnabled.ToString())
@@ -2027,19 +2127,9 @@ Public Class frmMain
             Return
         End If
 
-
-        'vb
         ' -----------------------------
         ' 4) SELECTION
         ' -----------------------------
-        If Not _selectionEnabled Then Return
-        If e.Button = MouseButtons.Right Then Return
-
-        Debug.Print("Selection Mode = " & _selectionMode.ToString())
-        Debug.Print("Current Tool = [" & _currentTool & "]")
-
-        'Dim selectionAllowed As Boolean = IsSelectionAllowedForCurrentTool()
-
         If Not _selectionEnabled Then
             Debug.Print("SELECTION BLOCKED: _selectionEnabled = False")
             Return
@@ -2050,9 +2140,11 @@ Public Class frmMain
             Return
         End If
 
+        Debug.Print("Selection Mode = " & _selectionMode.ToString())
+        Debug.Print("Current Tool = [" & _currentTool & "]")
+
         Dim selectionAllowed As Boolean = IsSelectionAllowedForCurrentTool()
 
-        Debug.Print("Current Tool = [" & _currentTool & "]")
         Debug.Print("IsSelectionAllowedForCurrentTool = " & selectionAllowed.ToString())
 
         If Not selectionAllowed Then
@@ -2060,41 +2152,42 @@ Public Class frmMain
             Return
         End If
 
-
-
         Debug.Print("Selection Allowed = " & selectionAllowed.ToString())
 
-        If Not selectionAllowed Then
-            Debug.Print("SELECTION BLOCKED")
-            Return
-        End If
-
         Dim worldPt = ScreenToWorld(
-    e.Location,
-    myTransform,
-    pnlPicmodeler.ClientSize.Height)
+        e.Location,
+        myTransform,
+        pnlPicmodeler.ClientSize.Height)
 
-        Dim scale = Math.Max(myTransform.Scale, 0.0001F)
+        Dim scale As Single = Math.Max(CSng(myTransform.Scale), 0.0001F)
+
+        ' Keep selection tolerance consistent with HitTestCadEntity.
         Dim tolWorld As Single = HitTolerancePx / scale
+        tolWorld = Math.Max(tolWorld, 0.1F)
 
-        Const minTolWorld As Single = 0.001F
-        tolWorld = Math.Max(tolWorld, minTolWorld)
-
-        Debug.Print("Calling SelectAtPoint...")
+        Debug.Print("========================================")
+        Debug.Print("MOUSE CLICK SELECTION")
+        Debug.Print("ScreenPt = " & e.Location.ToString())
         Debug.Print("WorldPt = " & worldPt.ToString())
-        Debug.Print("TolWorld = " & tolWorld.ToString())
+        Debug.Print("Scale = " & scale.ToString("0.000000"))
+        Debug.Print("HitTolerancePx = " & HitTolerancePx.ToString("0.000000"))
+        Debug.Print("TolWorld = " & tolWorld.ToString("0.000000"))
+        Debug.Print("Calling SelectAtPoint...")
 
-        Dim hit = _selectionManager.SelectAtPoint(worldPt, tolWorld)
+        Dim hit As isSelectable =
+    _selectionManager.SelectAtPoint(worldPt, tolWorld, _selectionMode)
 
         If hit IsNot Nothing Then
-            Debug.Print("SELECTED: " & hit.GetType().Name)
+            Debug.Print("CLICK RESULT: HIT")
+            Debug.Print("Hit Type = " & hit.GetType().Name)
             Debug.Print("IsSelected = " & hit.IsSelected.ToString())
         Else
-            Debug.Print("NO HIT FROM SELECTION MANAGER")
+            Debug.Print("CLICK RESULT: NO HIT")
         End If
 
-        pnlPicmodeler.Invalidate()
+        Debug.Print("========================================")
 
+        pnlPicmodeler.Invalidate()
 
     End Sub
 
@@ -3220,31 +3313,191 @@ Public Class frmMain
     End Function
 
     Private Sub tbSelect_Enable_Click(sender As Object, e As EventArgs) Handles tbSelect_Enable.Click
-
         _selectionEnabled = tbSelect_Enable.Checked
 
         If Not _selectionEnabled Then
             _selectionMode = Nothing
         End If
 
-        Debug.Print("Selection Enabled: " & _selectionEnabled.ToString())
+        UpdateSelectionIcons()
         pnlPicmodeler.Invalidate()
+
     End Sub
 
     Private Sub tbSelect_Lines_Click(sender As Object, e As EventArgs) Handles tbSelect_Lines.Click
-        _selectionEnabled = True
-        _selectionMode = GeometryTypeEnum.Line
 
-        Debug.Print("Selection Mode = LINE")
+        _selectionFilter = CType(
+        CInt(_selectionFilter) Xor CInt(SelectionFilter.Line), SelectionFilter)
+
+        UpdateSelectionIcons()
+
+        pnlPicmodeler.Invalidate()
+
+
     End Sub
 
     Private Sub tbSelect_Arcs_Click(sender As Object, e As EventArgs) Handles tbSelect_Arcs.Click
-        _selectionEnabled = True
-        _selectionMode = GeometryTypeEnum.Arc
 
-        Debug.Print("Selection Mode = CIRCLE")
+        _selectionFilter = CType(CInt(_selectionFilter) Xor CInt(SelectionFilter.Arc), SelectionFilter)
+
+        UpdateSelectionIcons()
+
+        pnlPicmodeler.Invalidate()
+
+
     End Sub
 
+
+    Private Sub OnHoverChanged(ent As isSelectable)
+
+        _hoverEntity = TryCast(ent, CadEntity)
+
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Private Sub tbSelect_AddAllByFilter_Click(sender As Object, e As EventArgs) Handles tbSelect_AddAllByFilter.Click
+        _selectionManager.SelectAllByFilter(_selectionMode)
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Sub tbSelect_All_Click(sender As Object, e As EventArgs) Handles tbSelect_All.Click
+        _selectionManager.SelectAll()
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Sub tbSelect_RemoveAll_Click(sender As Object, e As EventArgs) Handles tbSelect_RemoveAll.Click
+        _selectionManager.Clear()
+        pnlPicmodeler.Invalidate()
+    End Sub
+
+    Private Sub tbSelect_ByWindow_Click(sender As Object, e As EventArgs) Handles tbSelect_ByWindow.Click
+
+    End Sub
+
+    Private Sub tbSelect_Command_Click(sender As Object, e As EventArgs) Handles tbSelect_Command.Click
+
+    End Sub
+
+    Private Sub tbSelect_Features_Click(sender As Object, e As EventArgs) Handles tbSelect_Features.Click
+
+    End Sub
+
+    Private Sub tbSelect_Holes_Click(sender As Object, e As EventArgs) Handles tbSelect_Holes.Click
+
+    End Sub
+
+    Private Sub tbSelect_Layers_Click(sender As Object, e As EventArgs) Handles tbSelect_Layers.Click
+
+    End Sub
+
+    Private Sub tbSelect_Points_Click(sender As Object, e As EventArgs) Handles tbSelect_Points.Click
+
+        _selectionFilter = CType(
+        CInt(_selectionFilter) Xor CInt(SelectionFilter.Point),
+        SelectionFilter)
+
+        If (CInt(_selectionFilter) And CInt(SelectionFilter.Point)) <> 0 Then
+            _selectionMode = GeometryTypeEnum.Point
+        Else
+            _selectionMode = Nothing
+        End If
+
+        UpdateSelectionIcons()
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Private Sub tbSelect_Profiles_Click(sender As Object, e As EventArgs) Handles tbSelect_Profiles.Click
+
+    End Sub
+
+    Private Sub tbSelect_RemoveAllByFilter_Click(sender As Object, e As EventArgs) Handles tbSelect_RemoveAllByFilter.Click
+        _selectionManager.RemoveAllByFilter(_selectionMode)
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Private Sub tbSelect_Tools_Click(sender As Object, e As EventArgs) Handles tbSelect_Tools.Click
+
+    End Sub
+
+    Private Sub tbSelect_Click(sender As Object, e As EventArgs) Handles tbSelect.Click
+
+    End Sub
+    Private Sub UpdateSelectionIcons()
+
+        '--------------------------------------------------
+        ' Selection Enabled icon
+        '--------------------------------------------------
+        If _selectionEnabled Then
+            tbSelect_Enable.Image =
+            FabV25_WIN8.My.Resources.Blue_Select_Arrow
+        Else
+            tbSelect_Enable.Image =
+            FabV25_WIN8.My.Resources.Orange_Select_Arrow
+        End If
+
+
+        '--------------------------------------------------
+        ' Selection Mode icons
+        '--------------------------------------------------
+
+        ' Line
+        Dim lineActive As Boolean =
+    (CInt(_selectionFilter) And CInt(SelectionFilter.Line)) <> 0
+
+        If lineActive Then
+            tbSelect_Lines.Image = FabV25_WIN8.My.Resources.Blue_Select_By_Line
+        Else
+            tbSelect_Lines.Image = FabV25_WIN8.My.Resources.Orange_Select_By_Line
+        End If
+
+        ' Arc
+        Dim ArcActive As Boolean =
+    (CInt(_selectionFilter) And CInt(SelectionFilter.Arc)) <> 0
+
+        If ArcActive Then
+            tbSelect_Arcs.Image = FabV25_WIN8.My.Resources.Blue_Select_By_Arc
+        Else
+            tbSelect_Arcs.Image = FabV25_WIN8.My.Resources.Orange_Select_By_Arc
+        End If
+
+        'Circle
+        Dim CircleActive As Boolean =
+     (CInt(_selectionFilter) And CInt(SelectionFilter.Circle)) <> 0
+
+        If CircleActive Then
+            tbSelect_Circle.Image = FabV25_WIN8.My.Resources.Circle_Cyan1
+        Else
+            tbSelect_Circle.Image = FabV25_WIN8.My.Resources.Circle_orange1
+        End If
+
+        'Point
+
+        Dim PointActive As Boolean =
+     (CInt(_selectionFilter) And CInt(SelectionFilter.Point)) <> 0
+
+        If PointActive Then
+            tbSelect_Points.Image = FabV25_WIN8.My.Resources.Blue_Select_By_Point
+        Else
+            tbSelect_Points.Image = FabV25_WIN8.My.Resources.Orange_Select_By_Point
+        End If
+    End Sub
+
+    Private Sub tbSelect_Circle_Click(sender As Object, e As EventArgs) Handles tbSelect_Circle.Click
+        _selectionFilter = CType(
+              CInt(_selectionFilter) Xor CInt(SelectionFilter.Circle), SelectionFilter)
+
+        UpdateSelectionIcons()
+
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Private Sub bbCreatePoint_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbCreatePoint.ItemClick
+
+    End Sub
 End Class
 
 

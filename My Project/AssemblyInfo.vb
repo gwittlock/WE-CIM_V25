@@ -12,7 +12,7 @@ Imports System.Runtime.InteropServices
 <Assembly: AssemblyDescription("WE-CIM Advanced Fabrication V25.0")>
 <Assembly: AssemblyCompany("Wittlock Engineering LLC")>
 <Assembly: AssemblyProduct("WE-CIM Advanced Fabrication V25.0")>
-<Assembly: AssemblyCopyright("©Wittlock Engineering LLC 2001 2025")>
+<Assembly: AssemblyCopyright("©Wittlock Engineering LLC 2001 2026")>
 <Assembly: AssemblyTrademark("")>
 
 <Assembly: ComVisible(False)>

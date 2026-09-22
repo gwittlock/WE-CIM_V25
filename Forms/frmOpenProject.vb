@@ -387,6 +387,9 @@ Public Class frmOpenProject
         cboLayerSetup.Text = RegGetString("Global", "LayerSetup", "")
     End Sub
 
+    Private Sub cmdOK_DragDrop(sender As Object, e As DragEventArgs) Handles cmdOK.DragDrop
+
+    End Sub
 End Class
 
 

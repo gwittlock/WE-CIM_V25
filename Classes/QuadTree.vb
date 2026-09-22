@@ -50,18 +50,23 @@ Public Class QuadTree(Of T)
 
         End If
 
-        ' Only move an item into a child if the child completely
-        ' contains the item. Items crossing a boundary remain here.
-        If _nw._bounds.Contains(item.Bounds) Then
+        ' Only move an item into a child if the child's bounds
+        ' completely contain the item's bounds.
+        '
+        ' If the item touches or crosses a quadrant boundary,
+        ' keep it in this node so it can never become unreachable
+        ' from a neighboring query region.
+
+        If ContainsBounds(_nw._bounds, item.Bounds) Then
             _nw.Insert(item)
 
-        ElseIf _ne._bounds.Contains(item.Bounds) Then
+        ElseIf ContainsBounds(_ne._bounds, item.Bounds) Then
             _ne.Insert(item)
 
-        ElseIf _sw._bounds.Contains(item.Bounds) Then
+        ElseIf ContainsBounds(_sw._bounds, item.Bounds) Then
             _sw.Insert(item)
 
-        ElseIf _se._bounds.Contains(item.Bounds) Then
+        ElseIf ContainsBounds(_se._bounds, item.Bounds) Then
             _se.Insert(item)
 
         Else
@@ -131,6 +136,15 @@ Public Class QuadTree(Of T)
            (a.X + a.Width >= b.X) AndAlso
            (a.Y <= b.Y + b.Height) AndAlso
            (a.Y + a.Height >= b.Y)
+    End Function
+    Private Shared Function ContainsBounds(container As RectangleF,
+                                       item As RectangleF) As Boolean
+
+        Return item.Left >= container.Left AndAlso
+               item.Right <= container.Right AndAlso
+               item.Top >= container.Top AndAlso
+               item.Bottom <= container.Bottom
+
     End Function
 
 End Class

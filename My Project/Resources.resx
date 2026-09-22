@@ -300,7 +300,7 @@
   <data name="UseSelected" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAO
-        wgAADsIBFShKgAAAAUZJREFUaEPtlkuOwzAMQ33/S88sirqyTClWYoTNDN/OFPUhEKBtPw+neeFpKAAb
+        wAAADsABataJCQAAAUZJREFUaEPtlkuOwzAMQ33/S88sirqyTClWYoTNDN/OFPUhEKBtPw+neeFpKAAb
         BWCjAGwUgI0CsFEANgrAphygNdACxXsoL4a3QvEeyovhrVC8h/JieKsVmyEXt1AeBy/oYl6Fz4uUZ8H1
         fyeA/VpmZS5dpzwLrs9FWN3FmdGLn8T3BnBfRVXfm2fnLAoKwEYB2CgAm/8aYO+P0SHJOvx7aUXIimcj
         ybpPwZqShheHhohzjUlX4WhLyWw515h0HQeAf8KcGXqsntig6Hqj24YAvccp8JmHmXUoJs854cc0Agpw
@@ -618,5 +618,17 @@
   </data>
   <data name="SetupV25" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\SetupV25.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Circle_Cyan" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Circle_Cyan.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Circle_orange" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Circle-orange.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Circle_Cyan1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Circle_Cyan.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Circle_orange1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Circle-orange.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

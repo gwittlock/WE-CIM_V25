@@ -21,6 +21,26 @@ Public Class SelectionManager
 
 #End Region
 
+#Region "Selection icon states"
+    'Public Enum SELECTION_FILTER
+    '    SEL_NONE = &H0
+    '    SEL_LAYER = &H1         'OBSOLETE
+    '    SEL_WORK = &H2
+    '    SEL_TOOL = &H4
+    '    SEL_POINT = &H8
+    '    SEL_LINE = &H10
+    '    SEL_ARC = &H20
+    '    SEL_HOLE = &H40
+    '    SEL_PROFILE = &H80
+    '    SEL_COMMAND = &H100
+    '    SEL_FEATURE = &H200
+    '    SEL_SEQUENCE = &H400
+    '    SEL_PATTERN = &H800
+    '    SEL_ALL = &HFFF
+    'End Enum
+
+#End Region
+
 #Region "Public Access"
 
     Public ReadOnly Property Selected As IEnumerable(Of isSelectable)
@@ -95,12 +115,37 @@ Public Class SelectionManager
             })
         Next
 
+
+        Debug.Print("========== QUADTREE CHECK ==========")
+        Debug.Print("Entity count = " & _entities.Count)
+
+        Dim pointCount As Integer = 0
+
+        For Each entity As CadEntity In _entities
+            If TypeOf entity Is CadPoint Then
+                pointCount += 1
+
+                Dim cp As CadPoint = DirectCast(entity, CadPoint)
+
+                Debug.Print(
+                    "QuadTree input POINT: X=" &
+                    cp.Position.X.ToString("0.######") &
+                    ", Y=" &
+                    cp.Position.Y.ToString("0.######"))
+            End If
+        Next
+
+        Debug.Print("CadPoint count entering QuadTree = " & pointCount)
+        Debug.Print("====================================")
     End Sub
 
 #End Region
 
 #Region "Selection Entry Point (PRIMARY API)"
-    Public Function SelectAtPoint(ptWorld As PointF, tolWorld As Single) As isSelectable
+    Public Function SelectAtPoint(
+    ptWorld As PointF,
+    tolWorld As Single,
+    selectionMode As GeometryTypeEnum?) As isSelectable
 
         Dim best As HitResult = Nothing
         Dim candidates As List(Of CadEntity)
@@ -136,6 +181,10 @@ Public Class SelectionManager
         End If
 
         For Each ent In candidates
+
+            If selectionMode.HasValue AndAlso ent.GeometryType <> selectionMode.Value Then
+                Continue For
+            End If
 
             Dim d = EvaluateDistance(ent, ptWorld)
 
@@ -211,6 +260,35 @@ Public Class SelectionManager
             Debug.WriteLine(
             $"Spatial query result count = {candidates.Count}")
 
+            If candidates.Count = 0 Then
+
+                Debug.WriteLine("QUADTREE RETURNED ZERO - PERFORMING DIRECT ENTITY SCAN")
+
+                Dim directHit As CadEntity = Nothing
+                Dim directDistance As Single = Single.MaxValue
+
+                For Each ent In _entities
+                    Dim d As Single = EvaluateDistance(ent, ptWorld)
+
+                    If d <= tolWorld AndAlso d <directDistance Then
+                        directDistance= d
+                        directHit= ent
+                    End If
+        Next
+
+                If directHit IsNot Nothing Then
+                    Debug.WriteLine(
+                        $"DIRECT SCAN FOUND: {directHit.GetType().Name}, " &
+                        $"Distance = {directDistance:0.000000}, " &
+                        $"Tolerance = {tolWorld:0.000000}")
+                Else
+                    Debug.WriteLine(
+                        $"DIRECT SCAN FOUND NOTHING. " &
+                        $"Tolerance = {tolWorld:0.000000}")
+                End If
+
+            End If
+
         Else
 
             candidates = _entities
@@ -279,20 +357,45 @@ Public Class SelectionManager
 #End Region
 
 #Region "Selection Core"
-
     Private Sub ApplySelection(ent As isSelectable)
 
-        If ent Is Nothing Then Return
+        Debug.WriteLine("========================================")
+        Debug.WriteLine("SelectionManager.ApplySelection")
 
-        If _selected.Contains(ent) Then
-            _selected.Remove(ent)
-            ent.IsSelected = False
-        Else
-            _selected.Add(ent)
-            ent.IsSelected = True
+        If ent Is Nothing Then
+            Debug.WriteLine("ApplySelection: ent = Nothing")
+            Return
         End If
 
+        Debug.WriteLine("Entity Type = " & ent.GetType().Name)
+        Debug.WriteLine("Before IsSelected = " & ent.IsSelected.ToString())
+        Debug.WriteLine("Currently In Selected Set = " & _selected.Contains(ent).ToString())
+
+        If _selected.Contains(ent) Then
+
+            _selected.Remove(ent)
+            ent.IsSelected = False
+
+            Debug.WriteLine("ACTION = REMOVE")
+            Debug.WriteLine("After IsSelected = " & ent.IsSelected.ToString())
+
+        Else
+
+            _selected.Add(ent)
+            ent.IsSelected = True
+
+            Debug.WriteLine("ACTION = ADD")
+            Debug.WriteLine("After IsSelected = " & ent.IsSelected.ToString())
+
+        End If
+
+        Debug.WriteLine("Selected Count = " & _selected.Count.ToString())
+        Debug.WriteLine("Raising SelectionChanged...")
+
         RaiseEvent SelectionChanged(_selected)
+
+        Debug.WriteLine("SelectionChanged raised")
+        Debug.WriteLine("========================================")
 
     End Sub
 
@@ -307,6 +410,96 @@ Public Class SelectionManager
 
     End Sub
 
+    Public Sub SelectAll()
+
+        If _entities Is Nothing OrElse _entities.Count = 0 Then
+            Return
+        End If
+
+        For Each ent As CadEntity In _entities
+
+            Dim selectable As isSelectable = TryCast(ent, isSelectable)
+
+            If selectable Is Nothing Then
+                Continue For
+            End If
+
+            If Not _selected.Contains(selectable) Then
+                _selected.Add(selectable)
+            End If
+
+            selectable.IsSelected = True
+
+        Next
+
+        RaiseEvent SelectionChanged(_selected)
+
+    End Sub
+
+    Public Sub SelectAllByFilter(selectionMode As GeometryTypeEnum?)
+
+        If _entities Is Nothing OrElse _entities.Count = 0 Then
+            Return
+        End If
+
+        For Each ent As CadEntity In _entities
+
+            If selectionMode.HasValue AndAlso
+           ent.GeometryType <> selectionMode.Value Then
+                Continue For
+            End If
+
+            Dim selectable As isSelectable = TryCast(ent, isSelectable)
+
+            If selectable Is Nothing Then
+                Continue For
+            End If
+
+            If Not _selected.Contains(selectable) Then
+                _selected.Add(selectable)
+            End If
+
+            selectable.IsSelected = True
+
+        Next
+
+        RaiseEvent SelectionChanged(_selected)
+
+    End Sub
+
+    Public Sub RemoveAllByFilter(selectionMode As GeometryTypeEnum?)
+
+        If _selected.Count = 0 Then
+            Return
+        End If
+
+        Dim toRemove As New List(Of isSelectable)
+
+        For Each selectable As isSelectable In _selected
+
+            Dim ent As CadEntity = TryCast(selectable, CadEntity)
+
+            If ent Is Nothing Then
+                Continue For
+            End If
+
+            If selectionMode.HasValue AndAlso
+           ent.GeometryType <> selectionMode.Value Then
+                Continue For
+            End If
+
+            toRemove.Add(selectable)
+
+        Next
+
+        For Each selectable As isSelectable In toRemove
+            selectable.IsSelected = False
+            _selected.Remove(selectable)
+        Next
+
+        RaiseEvent SelectionChanged(_selected)
+
+    End Sub
 #End Region
 
 #Region "Hit Testing"
@@ -331,27 +524,84 @@ Public Class SelectionManager
             Case Else : Return 10
         End Select
     End Function
-
     Private Function EvaluateDistance(ent As CadEntity, pt As PointF) As Single
 
         Select Case ent.GeometryType
 
             Case GeometryTypeEnum.Line
+
                 Dim l = DirectCast(ent, CadLine)
-                Return DistancePointToSegment(pt, l.StartPoint, l.EndPoint)
+                Dim dist As Single = DistancePointToSegment(pt, l.StartPoint, l.EndPoint)
+
+                Debug.WriteLine(
+                $"EVAL LINE: " &
+                $"Pt={pt}, " &
+                $"Start={l.StartPoint}, " &
+                $"End={l.EndPoint}, " &
+                $"Dist={dist:0.000000}")
+
+                Return dist
+
 
             Case GeometryTypeEnum.Circle
+
                 Dim c = DirectCast(ent, CadCircle)
-                Return Math.Abs(Distance(pt, c.Center) - c.Radius)
+                Dim radialDist As Single = Distance(pt, c.Center)
+                Dim dist As Single = Math.Abs(radialDist - c.Radius)
+
+                Debug.WriteLine(
+                $"EVAL CIRCLE: " &
+                $"Pt={pt}, " &
+                $"Center={c.Center}, " &
+                $"Radius={c.Radius:0.000000}, " &
+                $"RadialDist={radialDist:0.000000}, " &
+                $"Dist={dist:0.000000}")
+
+                Return dist
+
 
             Case GeometryTypeEnum.Arc
+
                 Dim a = DirectCast(ent, CadArc)
 
-                Dim dist = Math.Abs(Distance(pt, a.Center) - a.Radius)
-                Dim ang = NormalizeAngle(Math.Atan2(pt.Y - a.Center.Y,
-                                                    pt.X - a.Center.X) * 180 / Math.PI)
+                Dim radialDist As Single = Distance(pt, a.Center)
 
-                If Not IsAngleOnArc(ang, a.StartAngle, a.EndAngle, a.IsClockwise) Then
+                Dim dist As Single =
+                Math.Abs(radialDist - a.Radius)
+
+                Dim rawAng As Double =
+                Math.Atan2(
+                    pt.Y - a.Center.Y,
+                    pt.X - a.Center.X) *
+                180.0 / Math.PI
+
+                Dim ang As Double =
+                NormalizeAngle(rawAng)
+
+                Dim angleOnArc As Boolean =
+                IsAngleOnArc(
+                    ang,
+                    a.StartAngle,
+                    a.EndAngle,
+                    a.IsClockwise)
+
+                Debug.WriteLine(
+                $"EVAL ARC: " &
+                $"Pt={pt}, " &
+                $"Center={a.Center}, " &
+                $"Radius={a.Radius:0.000000}, " &
+                $"Start={a.StartAngle:0.000000}, " &
+                $"End={a.EndAngle:0.000000}, " &
+                $"CW={a.IsClockwise}, " &
+                $"RawAng={rawAng:0.000000}, " &
+                $"Ang={ang:0.000000}, " &
+                $"RadialDist={radialDist:0.000000}, " &
+                $"Dist={dist:0.000000}, " &
+                $"AngleOnArc={angleOnArc}")
+
+                If Not angleOnArc Then
+                    Debug.WriteLine(
+                    "EVAL ARC REJECTED: point is outside arc angular range.")
                     Return Single.MaxValue
                 End If
 
@@ -395,6 +645,14 @@ Public Class SelectionManager
                     a.Radius * 2,
                     a.Radius * 2)
 
+            Case GeometryTypeEnum.Point
+                Dim p = DirectCast(ent, CadPoint)
+
+                Return New RectangleF(
+                    p.Position.X,
+                    p.Position.Y,
+                    0.0F,
+                    0.0F)
         End Select
 
         Return RectangleF.Empty

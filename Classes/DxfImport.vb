@@ -167,6 +167,22 @@ Public Module DxfImport
                     .LayerName = a.Layer,
                     .Color = System.Drawing.Color.Black
                 })
+
+                Case DxfEntityType.Point
+                    Debug.Print("DXF POINT ENTITY CLASS = " & e.GetType().FullName)
+
+                    Dim p = CType(e, IxMilia.Dxf.Entities.DxfModelPoint)
+                    Debug.Print("Count:" & p.XData.Count)
+
+                    entities.Add(New CadPoint(
+                        New PointF(
+                            CSng(p.Location.X),
+                            CSng(p.Location.Y))) With {
+                        .LayerName = p.Layer,
+                        .Color = System.Drawing.Color.Black
+                    })
+
+
             End Select
 
         Next
@@ -206,7 +222,6 @@ Public Module DxfImport
         Next
     End Sub
 
-
     Private Sub DrawCadLine(
     l As CadLine,
     g As Graphics,
@@ -216,9 +231,42 @@ Public Module DxfImport
         Dim p1 = WorldToScreen(l.StartPoint.X, l.StartPoint.Y, vt, panelHeight)
         Dim p2 = WorldToScreen(l.EndPoint.X, l.EndPoint.Y, vt, panelHeight)
 
-        Using pen As New Pen(l.Color, 1.0F)
+        Dim drawColor As System.Drawing.Color = l.Color
+        Dim drawWidth As Single = 1.0F
+
+        If l.IsSelected Then
+            drawColor = System.Drawing.Color.Yellow
+            drawWidth = 3.0F
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
             g.DrawLine(pen, p1, p2)
         End Using
+
+    End Sub
+
+    Private Sub DrawCadPoint(
+    pt As CadPoint,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        Dim screenPt As PointF =
+        WorldToScreen(
+            pt.Position.X,
+            pt.Position.Y,
+            vt,
+            panelHeight)
+
+        Const pointSize As Single = 6.0F
+
+        g.FillRectangle(
+        Brushes.Black,
+        screenPt.X - pointSize / 2.0F,
+        screenPt.Y - pointSize / 2.0F,
+        pointSize,
+        pointSize)
+
     End Sub
 
     Private Sub DrawCadArc(a As CadArc, g As Graphics, vt As ViewTransform, panelHeight As Integer)
@@ -242,8 +290,6 @@ Public Module DxfImport
         End Using
 
     End Sub
-
-
 
     Private Sub DrawCadCircle(
     c As CadCircle,
@@ -295,6 +341,9 @@ Public Module DxfImport
 
                 Case TypeOf ce Is CadCircle
                     DrawCadCircle(CType(ce, CadCircle), g, vt, panelHeight)
+
+                Case TypeOf ce Is CadPoint
+                    DrawCadPoint(CType(ce, CadPoint), g, vt, panelHeight)
             End Select
         Next
 
