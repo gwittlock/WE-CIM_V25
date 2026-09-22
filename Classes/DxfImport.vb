@@ -258,6 +258,17 @@ Public Module DxfImport
             vt,
             panelHeight)
 
+        Debug.WriteLine(
+        $"DRAW POINT: " &
+        $"World={pt.Position}, " &
+        $"Scale={vt.Scale:0.000000}, " &
+        $"OffsetX={vt.OffsetX:0.000000}, " &
+        $"OffsetY={vt.OffsetY:0.000000}, " &
+        $"PanelHeight={panelHeight}")
+
+        Debug.WriteLine(
+        $"DRAW POINT SCREEN: {screenPt}")
+
         Const pointSize As Single = 6.0F
 
         g.FillRectangle(
@@ -268,8 +279,11 @@ Public Module DxfImport
         pointSize)
 
     End Sub
-
-    Private Sub DrawCadArc(a As CadArc, g As Graphics, vt As ViewTransform, panelHeight As Integer)
+    Private Sub DrawCadArc(
+    a As CadArc,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
 
         Dim centerScreen = WorldToScreen(a.Center.X, a.Center.Y, vt, panelHeight)
         Dim r As Single = CSng(a.Radius * vt.Scale)
@@ -285,12 +299,19 @@ Public Module DxfImport
         Dim startAngle As Single = CSng(-a.StartAngle)
         Dim sweepAngle As Single = CSng(-sweep)
 
-        Using pen As New Pen(a.Color, 1.0F)
+        Dim drawColor As System.Drawing.Color = a.Color
+        Dim drawWidth As Single = 1.0F
+
+        If a.IsSelected Then
+            drawColor = System.Drawing.Color.Yellow
+            drawWidth = 3.0F
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
             g.DrawArc(pen, rect, startAngle, sweepAngle)
         End Using
 
     End Sub
-
     Private Sub DrawCadCircle(
     c As CadCircle,
     g As Graphics,
@@ -305,9 +326,18 @@ Public Module DxfImport
 
         Dim rect = HelperFunctions.RectFromPoints(p1, p2)
 
-        Using pen As New Pen(c.Color, 1.0F)
+        Dim drawColor As System.Drawing.Color = c.Color
+        Dim drawWidth As Single = 1.0F
+
+        If c.IsSelected Then
+            drawColor = System.Drawing.Color.Yellow
+            drawWidth = 3.0F
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
             g.DrawEllipse(pen, rect)
         End Using
+
     End Sub
 
     Public Function ToScreen(

@@ -1,7 +1,16 @@
 ﻿Imports FabV25_WIN8.CadEntity
 Imports FabV25_WIN8.DxfGeometryHelpers.ImportedEntity
 Imports System.Linq
-
+Public Enum SelectionFilter
+    None = 0
+    Line = 1 << 0
+    Circle = 1 << 1
+    Arc = 1 << 2
+    Polyline = 1 << 3
+    Rectangle = 1 << 4
+    Point = 1 << 5
+    AllGeometry = Line Or Circle Or Arc Or Polyline Or Rectangle Or Point
+End Enum
 Public Class SelectionManager
 
 #Region "State"
@@ -22,6 +31,7 @@ Public Class SelectionManager
 #End Region
 
 #Region "Selection icon states"
+
     'Public Enum SELECTION_FILTER
     '    SEL_NONE = &H0
     '    SEL_LAYER = &H1         'OBSOLETE
@@ -145,7 +155,8 @@ Public Class SelectionManager
     Public Function SelectAtPoint(
     ptWorld As PointF,
     tolWorld As Single,
-    selectionMode As GeometryTypeEnum?) As isSelectable
+    selectionMode As GeometryTypeEnum?,
+    selectionFilter As SelectionFilter) As isSelectable
 
         Dim best As HitResult = Nothing
         Dim candidates As List(Of CadEntity)
@@ -186,9 +197,16 @@ Public Class SelectionManager
                 Continue For
             End If
 
-            Dim d = EvaluateDistance(ent, ptWorld)
+            If Not IsEntityAllowedBySelectionFilter(ent, selectionFilter) Then
+                    Debug.WriteLine(
+                        $"FILTERED OUT: {ent.GetType().Name} " &
+                        $"GeometryType={ent.GeometryType}")
+                    Continue For
+                End If
 
-            If d > tolWorld Then Continue For
+                Dim d = EvaluateDistance(ent, ptWorld)
+
+                If d > tolWorld Then Continue For
 
             Dim candidate As New HitResult With {
             .Entity = ent,
@@ -257,35 +275,29 @@ Public Class SelectionManager
                 tolWorld * 2,
                 tolWorld * 2))
 
+
+            Debug.WriteLine(
+                        $"HOVER QUERY: " &
+                        $"WorldPt={ptWorld}, " &
+                        $"Tol={tolWorld:0.000000}, " &
+                        $"QueryRect=" &
+                        $"{New RectangleF(
+                            ptWorld.X - tolWorld,
+                            ptWorld.Y - tolWorld,
+                            tolWorld * 2,
+                            tolWorld * 2)}")
+
             Debug.WriteLine(
             $"Spatial query result count = {candidates.Count}")
 
             If candidates.Count = 0 Then
 
-                Debug.WriteLine("QUADTREE RETURNED ZERO - PERFORMING DIRECT ENTITY SCAN")
+                Debug.WriteLine("QUADTREE RETURNED ZERO - FALLING BACK TO DIRECT ENTITY SCAN")
 
-                Dim directHit As CadEntity = Nothing
-                Dim directDistance As Single = Single.MaxValue
+                candidates = _entities
 
-                For Each ent In _entities
-                    Dim d As Single = EvaluateDistance(ent, ptWorld)
-
-                    If d <= tolWorld AndAlso d <directDistance Then
-                        directDistance= d
-                        directHit= ent
-                    End If
-        Next
-
-                If directHit IsNot Nothing Then
-                    Debug.WriteLine(
-                        $"DIRECT SCAN FOUND: {directHit.GetType().Name}, " &
-                        $"Distance = {directDistance:0.000000}, " &
-                        $"Tolerance = {tolWorld:0.000000}")
-                Else
-                    Debug.WriteLine(
-                        $"DIRECT SCAN FOUND NOTHING. " &
-                        $"Tolerance = {tolWorld:0.000000}")
-                End If
+                Debug.WriteLine(
+                $"DIRECT ENTITY SCAN COUNT = {candidates.Count}")
 
             End If
 
@@ -436,7 +448,9 @@ Public Class SelectionManager
 
     End Sub
 
-    Public Sub SelectAllByFilter(selectionMode As GeometryTypeEnum?)
+    Public Sub SelectAllByFilter(
+    selectionMode As GeometryTypeEnum?,
+    selectionFilter As SelectionFilter)
 
         If _entities Is Nothing OrElse _entities.Count = 0 Then
             Return
@@ -446,6 +460,13 @@ Public Class SelectionManager
 
             If selectionMode.HasValue AndAlso
            ent.GeometryType <> selectionMode.Value Then
+                Continue For
+            End If
+
+            If Not IsEntityAllowedBySelectionFilter(
+            ent,
+            selectionFilter) Then
+
                 Continue For
             End If
 
@@ -466,8 +487,9 @@ Public Class SelectionManager
         RaiseEvent SelectionChanged(_selected)
 
     End Sub
-
-    Public Sub RemoveAllByFilter(selectionMode As GeometryTypeEnum?)
+    Public Sub RemoveAllByFilter(
+    selectionMode As GeometryTypeEnum?,
+    selectionFilter As SelectionFilter)
 
         If _selected.Count = 0 Then
             Return
@@ -485,6 +507,13 @@ Public Class SelectionManager
 
             If selectionMode.HasValue AndAlso
            ent.GeometryType <> selectionMode.Value Then
+                Continue For
+            End If
+
+            If Not IsEntityAllowedBySelectionFilter(
+            ent,
+            selectionFilter) Then
+
                 Continue For
             End If
 
@@ -527,6 +556,18 @@ Public Class SelectionManager
     Private Function EvaluateDistance(ent As CadEntity, pt As PointF) As Single
 
         Select Case ent.GeometryType
+            Case GeometryTypeEnum.Point
+
+                Dim p = DirectCast(ent, CadPoint)
+                Dim dist As Single = Distance(pt, p.Position)
+
+                Debug.WriteLine(
+                    $"EVAL POINT: " &
+                    $"Pt={pt}, " &
+                    $"Position={p.Position}, " &
+                    $"Dist={dist:0.000000}")
+
+                Return dist
 
             Case GeometryTypeEnum.Line
 
@@ -715,5 +756,48 @@ Public Class SelectionManager
     End Function
 
 #End Region
+
+    Private Function IsEntityAllowedBySelectionFilter(
+    ent As CadEntity,
+    selectionFilter As SelectionFilter) As Boolean
+
+        If ent Is Nothing Then Return False
+
+        If selectionFilter = selectionFilter.None Then
+            Return False
+        End If
+
+        Select Case ent.GeometryType
+
+            Case GeometryTypeEnum.Line
+                Return (CInt(selectionFilter) And
+                        CInt(selectionFilter.Line)) <> 0
+
+            Case GeometryTypeEnum.Circle
+                Return (CInt(selectionFilter) And
+                        CInt(selectionFilter.Circle)) <> 0
+
+            Case GeometryTypeEnum.Arc
+                Return (CInt(selectionFilter) And
+                        CInt(selectionFilter.Arc)) <> 0
+
+            Case GeometryTypeEnum.Point
+                Return (CInt(selectionFilter) And
+                        CInt(selectionFilter.Point)) <> 0
+
+            Case GeometryTypeEnum.PolyLine
+                Return (CInt(selectionFilter) And
+                        CInt(selectionFilter.Polyline)) <> 0
+
+            Case GeometryTypeEnum.Rectangle
+                Return (CInt(selectionFilter) And
+                        CInt(selectionFilter.Rectangle)) <> 0
+
+            Case Else
+                Return False
+
+        End Select
+
+    End Function
 
 End Class

@@ -80,17 +80,7 @@ Public Class frmMain
     Private _selectionEnabled As Boolean = False
     'Bitwise selection-filter state.
     Public _selectionFilter As Long
-    <Flags>
-    Public Enum SelectionFilter
-        None = 0
-        Line = 1 << 0
-        Circle = 1 << 1
-        Arc = 1 << 2
-        Polyline = 1 << 3
-        Rectangle = 1 << 4
-        Point = 1 << 5
-        AllGeometry = Line Or Circle Or Arc Or Polyline Or Rectangle Or Point
-    End Enum
+
     ' Hot dot display toggle
     Private _hotDotsEnabled As Boolean = True
 
@@ -129,6 +119,12 @@ Public Class frmMain
     Private _windowSelecting As Boolean = False
     Private _windowStart As Point
     Private _windowEnd As Point
+
+    Private _selectWindowActive As Boolean = False
+    Private _selectWindowStart As Point
+    Private _selectWindowEnd As Point
+
+
     Private _currentTool As String = "None"
 
     Private _isMeasuring As Boolean = False
@@ -626,11 +622,44 @@ Public Class frmMain
                                             startAngle,
                                             sweepAngle)
 
+                        Case GeometryTypeEnum.Point
+
+                            Dim point As CadPoint = TryCast(ent, CadPoint)
+                            If point Is Nothing Then Continue For
+
+                            Dim screenPt As PointF =
+                                WorldToScreen(
+                                    point.Position.X,
+                                    point.Position.Y,
+                                    myTransform,
+                                    panelHeight)
+
+                            Const pointSize As Single = 8.0F
+
+                            g.DrawRectangle(
+                                pen,
+                                screenPt.X - pointSize / 2.0F,
+                                screenPt.Y - pointSize / 2.0F,
+                                pointSize,
+                                pointSize)
+
                     End Select
 
                 Next
 
             End Using
+
+        End If
+
+        ' Select By Window rubber-band
+        If _selectWindowActive AndAlso
+           _currentTool = "SelectWindow" AndAlso
+           _selectWindowStart <> System.Drawing.Point.Empty Then
+
+            DrawRubberBand(
+                _selectWindowStart,
+                _selectWindowEnd,
+                g)
 
         End If
 
@@ -737,21 +766,20 @@ Public Class frmMain
                 Dim p = DirectCast(ent, CadPoint)
 
                 Dim screenPt =
-                WorldToScreen(
-                    p.Position.X,
-                    p.Position.Y,
-                    myTransform,
-                    pnlPicmodeler.Height)
+                    WorldToScreen(
+                        p.Position.X,
+                        p.Position.Y,
+                        myTransform,
+                        pnlPicmodeler.Height)
 
-                Const pointSize As Single = 6.0F
+                Const pointSize As Single = 8.0F
 
-                g.FillRectangle(
-                Brushes.Black,
-                screenPt.X - pointSize / 2.0F,
-                screenPt.Y - pointSize / 2.0F,
-                pointSize,
-                pointSize)
-
+                g.DrawRectangle(
+                    pen,
+                    screenPt.X - pointSize / 2.0F,
+                    screenPt.Y - pointSize / 2.0F,
+                    pointSize,
+                    pointSize)
         End Select
 
     End Sub
@@ -1682,12 +1710,26 @@ Public Class frmMain
         ' --------------------------
         Dim modelPt As PointF = ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height)
         statusLocation.Caption = $"Location: X={modelPt.X:0.###}, Y={modelPt.Y:0.###}"
-
+        Debug.WriteLine(
+                    $"MOUSE WORLD DEBUG: " &
+                    $"Screen={e.Location}, " &
+                    $"PanelHeight={pnlPicmodeler.ClientSize.Height}, " &
+                    $"Scale={myTransform.Scale:0.000000}, " &
+                    $"OffsetX={myTransform.OffsetX:0.000000}, " &
+                    $"OffsetY={myTransform.OffsetY:0.000000}")
         ' --------------------------
         ' 3) ViewWindow rubber-band
         ' --------------------------
         If _windowSelecting Then
             _windowEnd = e.Location
+            pnlPicmodeler.Invalidate()
+        End If
+
+        ' 3a) Select By Window rubber-band
+        If _selectWindowActive AndAlso
+                                             _currentTool = "SelectWindow" Then
+
+            _selectWindowEnd = e.Location
             pnlPicmodeler.Invalidate()
         End If
 
@@ -2127,6 +2169,17 @@ Public Class frmMain
             Return
         End If
 
+        ' 3a) SELECT BY WINDOW
+        If _selectWindowActive AndAlso
+                                           _currentTool = "SelectWindow" AndAlso
+                                           e.Button = MouseButtons.Left Then
+
+            _selectWindowStart = e.Location
+            _selectWindowEnd = e.Location
+
+            pnlPicmodeler.Invalidate()
+            Return
+        End If
         ' -----------------------------
         ' 4) SELECTION
         ' -----------------------------
@@ -2175,7 +2228,11 @@ Public Class frmMain
         Debug.Print("Calling SelectAtPoint...")
 
         Dim hit As isSelectable =
-    _selectionManager.SelectAtPoint(worldPt, tolWorld, _selectionMode)
+    _selectionManager.SelectAtPoint(
+        worldPt,
+        tolWorld,
+        _selectionMode,
+        _selectionFilter)
 
         If hit IsNot Nothing Then
             Debug.Print("CLICK RESULT: HIT")
@@ -2220,6 +2277,18 @@ Public Class frmMain
         If _windowSelecting Then
             _windowSelecting = False
             ApplyViewWindow(_windowStart, _windowEnd)
+            pnlPicmodeler.Invalidate()
+            Return
+        End If
+
+        ' Select By Window
+        If _selectWindowActive AndAlso
+           _currentTool = "SelectWindow" AndAlso
+           e.Button = MouseButtons.Left Then
+
+            _selectWindowActive = False
+
+            pnlPicmodeler.Cursor = Cursors.Default
             pnlPicmodeler.Invalidate()
             Return
         End If
@@ -2340,6 +2409,12 @@ Public Class frmMain
     Public Sub ViewPart()
         If _cadEntities Is Nothing OrElse _cadEntities.Count = 0 Then Exit Sub
 
+
+        Debug.WriteLine(
+    $"VIEWPART SET: Scale={myTransform.Scale:0.000000}, " &
+    $"OffsetX={myTransform.OffsetX:0.000000}, " &
+    $"OffsetY={myTransform.OffsetY:0.000000}")
+
         SaveViewIfChanged()
 
         Dim bounds As RectangleF = HelperFunctions.GetCadBounds(_cadEntities)
@@ -2357,6 +2432,12 @@ Public Class frmMain
         myTransform.Scale = scale
         myTransform.OffsetX = offsetX
         myTransform.OffsetY = offsetY
+
+        Debug.WriteLine(
+    $"VIEWPART AFTER: Scale={myTransform.Scale:0.000000}, " &
+    $"OffsetX={myTransform.OffsetX:0.000000}, " &
+    $"OffsetY={myTransform.OffsetY:0.000000}")
+
 
         RedrawAll()
     End Sub
@@ -3357,8 +3438,13 @@ Public Class frmMain
     End Sub
 
     Private Sub tbSelect_AddAllByFilter_Click(sender As Object, e As EventArgs) Handles tbSelect_AddAllByFilter.Click
-        _selectionManager.SelectAllByFilter(_selectionMode)
+
+        _selectionManager.SelectAllByFilter(
+        _selectionMode,
+        _selectionFilter)
+
         pnlPicmodeler.Invalidate()
+
     End Sub
 
     Private Sub tbSelect_All_Click(sender As Object, e As EventArgs) Handles tbSelect_All.Click
@@ -3370,8 +3456,20 @@ Public Class frmMain
         _selectionManager.Clear()
         pnlPicmodeler.Invalidate()
     End Sub
-
     Private Sub tbSelect_ByWindow_Click(sender As Object, e As EventArgs) Handles tbSelect_ByWindow.Click
+
+        ' Activate Select By Window.
+        _selectWindowActive = True
+
+        ' Clear any previous selection-window rectangle.
+        _selectWindowStart = System.Drawing.Point.Empty
+        _selectWindowEnd = System.Drawing.Point.Empty
+
+        ' Select By Window is a selection operation, not View Window.
+        _currentTool = "SelectWindow"
+
+        pnlPicmodeler.Cursor = Cursors.Cross
+        pnlPicmodeler.Invalidate()
 
     End Sub
 
@@ -3411,9 +3509,12 @@ Public Class frmMain
     Private Sub tbSelect_Profiles_Click(sender As Object, e As EventArgs) Handles tbSelect_Profiles.Click
 
     End Sub
-
     Private Sub tbSelect_RemoveAllByFilter_Click(sender As Object, e As EventArgs) Handles tbSelect_RemoveAllByFilter.Click
-        _selectionManager.RemoveAllByFilter(_selectionMode)
+
+        _selectionManager.RemoveAllByFilter(
+        _selectionMode,
+        _selectionFilter)
+
         pnlPicmodeler.Invalidate()
 
     End Sub
@@ -3496,6 +3597,14 @@ Public Class frmMain
     End Sub
 
     Private Sub bbCreatePoint_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbCreatePoint.ItemClick
+
+    End Sub
+
+    Private Sub tbSelect_Lines_DragOver(sender As Object, e As DragEventArgs) Handles tbSelect_Lines.DragOver
+
+    End Sub
+
+    Private Sub pnlPicmodeler_Enter(sender As Object, e As EventArgs) Handles pnlPicmodeler.Enter
 
     End Sub
 End Class
