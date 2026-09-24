@@ -99,7 +99,7 @@
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
-    <Prefer32Bit>false</Prefer32Bit>
+    <Prefer32Bit>true</Prefer32Bit>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningsAsErrors>
     </WarningsAsErrors>
@@ -333,6 +333,8 @@
     <Compile Include="Classes\DynamicPropertyBag.vb" />
     <Compile Include="Classes\DynamicToolAttributes.vb" />
     <Compile Include="Classes\HelperFunctions.vb" />
+    <Compile Include="Classes\HotSpot.vb" />
+    <Compile Include="Classes\HotSpotManager.vb" />
     <Compile Include="Classes\ISelectable.vb" />
     <Compile Include="Classes\JobContext.vb" />
     <Compile Include="Classes\JsonLoader.vb" />
@@ -442,6 +444,7 @@
     <Compile Include="My Project\Application.Designer.vb">
       <AutoGen>True</AutoGen>
       <DependentUpon>Application.myapp</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <Compile Include="My Project\Resources.Designer.vb">
       <AutoGen>True</AutoGen>

@@ -26,7 +26,7 @@ Namespace My
             MyBase.New(Global.Microsoft.VisualBasic.ApplicationServices.AuthenticationMode.ApplicationDefined)
             Me.IsSingleInstance = false
             Me.EnableVisualStyles = false
-            Me.SaveMySettingsOnExit = true
+            Me.SaveMySettingsOnExit = false
             Me.ShutDownStyle = Global.Microsoft.VisualBasic.ApplicationServices.ShutdownMode.AfterAllFormsClose
         End Sub
         

@@ -82,7 +82,7 @@ Public Class frmMain
     Public _selectionFilter As Long
 
     ' Hot dot display toggle
-    Private _hotDotsEnabled As Boolean = True
+    Private _hotSpotEnabled As Boolean = False
 
     ' Current snap point in world coordinates
     Private _currentHotDot As PointF? = Nothing
@@ -191,6 +191,12 @@ Public Class frmMain
 
         Me.splitContainerControl.ResumeLayout()
 
+#If DEBUG Then
+
+        Dim hotSpotTest As New HotSpotManager(_cadEntities)
+        hotSpotTest.DebugTestLineHotSpots()
+
+#End If
     End Sub
     Sub InitSkins()
         Try
@@ -474,7 +480,7 @@ Public Class frmMain
         ' 4) Draw overlays in proper order
         ' --------------------------------------------
         ' Hot-dots / snap indicator
-        If _activeSnap.HasValue AndAlso _hotDotsEnabled Then
+        If _activeSnap.HasValue AndAlso _hotSpotEnabled Then
             DrawSnapIndicator(e.Graphics, _activeSnap.Value)
         End If
 
@@ -501,7 +507,7 @@ Public Class frmMain
         ' --------------------------
         ' 1) Hot-Dot
         ' --------------------------
-        If _activeSnap.HasValue AndAlso _hotDotsEnabled Then
+        If _activeSnap.HasValue AndAlso _hotSpotEnabled Then
             DrawSnapIndicator(g, _activeSnap.Value)
         End If
 
@@ -3339,7 +3345,7 @@ Public Class frmMain
     End Function
 
     Private Sub tbSelect_HotDot_Click(sender As Object, e As EventArgs) Handles tbSelect_HotDot.Click
-        _hotDotsEnabled = tbSelect_HotDot.Checked
+        _hotSpotEnabled = tbSelect_HotDot.Checked
         pnlPicmodeler.Invalidate() ' redraw panel to reflect change
     End Sub
 
