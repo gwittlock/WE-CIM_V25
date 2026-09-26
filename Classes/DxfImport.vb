@@ -145,7 +145,7 @@ Public Module DxfImport
                     .StartPoint = New PointF(CSng(l.P1.X), CSng(l.P1.Y)),
                     .EndPoint = New PointF(CSng(l.P2.X), CSng(l.P2.Y)),
                     .LayerName = l.Layer,
-                    .Color = System.Drawing.Color.Black
+                   .Color = GetLayerColor(dxf, l.Layer)
                 })
 
                 Case DxfEntityType.Circle
@@ -154,7 +154,7 @@ Public Module DxfImport
                     .Center = New PointF(CSng(c.Center.X), CSng(c.Center.Y)),
                     .Radius = c.Radius,
                     .LayerName = c.Layer,
-                    .Color = System.Drawing.Color.Black
+                   .Color = GetLayerColor(dxf, c.Layer)
                 })
 
                 Case DxfEntityType.Arc
@@ -165,7 +165,7 @@ Public Module DxfImport
                     .StartAngle = a.StartAngle,
                     .EndAngle = a.EndAngle,
                     .LayerName = a.Layer,
-                    .Color = System.Drawing.Color.Black
+                    .Color = GetLayerColor(dxf, a.Layer)
                 })
 
                 Case DxfEntityType.Point
@@ -179,7 +179,7 @@ Public Module DxfImport
                             CSng(p.Location.X),
                             CSng(p.Location.Y))) With {
                         .LayerName = p.Layer,
-                        .Color = System.Drawing.Color.Black
+                       .Color = GetLayerColor(dxf, p.Layer)
                     })
 
 
@@ -293,11 +293,35 @@ Public Module DxfImport
 
         Dim rect As RectangleF = HelperFunctions.RectFromPoints(p1, p2)
 
-        Dim sweep As Single = CSng(a.EndAngle - a.StartAngle)
-        If sweep < 0 Then sweep += 360
+        Dim sweep As Single
+
+        If a.IsClockwise Then
+
+            sweep = CSng(a.StartAngle - a.EndAngle)
+
+            If sweep < 0 Then
+                sweep += 360
+            End If
+
+        Else
+
+            sweep = CSng(a.EndAngle - a.StartAngle)
+
+            If sweep < 0 Then
+                sweep += 360
+            End If
+
+        End If
 
         Dim startAngle As Single = CSng(-a.StartAngle)
-        Dim sweepAngle As Single = CSng(-sweep)
+
+        Dim sweepAngle As Single
+
+        If a.IsClockwise Then
+            sweepAngle = sweep
+        Else
+            sweepAngle = -sweep
+        End If
 
         Dim drawColor As System.Drawing.Color = a.Color
         Dim drawWidth As Single = 1.0F
@@ -379,5 +403,52 @@ Public Module DxfImport
 
 
     End Sub
+
+
+    Private Function GetLayerColor(
+    dxfFile As DxfFile,
+    layerName As String) As System.Drawing.Color
+
+        If dxfFile Is Nothing Then
+            Return System.Drawing.Color.Black
+        End If
+
+        If String.IsNullOrWhiteSpace(layerName) Then
+            Return System.Drawing.Color.Black
+        End If
+
+        Dim layer As DxfLayer =
+            dxfFile.Layers.FirstOrDefault(
+                Function(x) String.Equals(
+                    x.Name,
+                    layerName,
+                    StringComparison.OrdinalIgnoreCase))
+
+        If layer Is Nothing Then
+            Return System.Drawing.Color.Black
+        End If
+
+        Dim dxfColor As DxfColor = layer.Color
+
+        Dim rgb As Integer = dxfColor.ToRGB()
+
+        Debug.WriteLine(
+    "LAYER COLOR: Layer=[" &
+    layer.Name &
+    "] Index=[" &
+    dxfColor.Index &
+    "] RGB=[" &
+    rgb.ToString() &
+    "]"
+)
+
+        Return System.Drawing.Color.FromArgb(rgb)
+
+        ' We will convert the ACI color here.
+        Return System.Drawing.Color.Black
+
+
+    End Function
+
 
 End Module

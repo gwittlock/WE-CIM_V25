@@ -403,6 +403,12 @@
     <Compile Include="Forms\frmOpenProject.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\frmSelectLayer.designer.vb">
+      <DependentUpon>frmSelectLayer.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmSelectLayer.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\MaterialPickerPopUp.Designer.vb">
       <DependentUpon>MaterialPickerPopUp.vb</DependentUpon>
     </Compile>
@@ -539,6 +545,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmOpenProject.resx">
       <DependentUpon>frmOpenProject.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmSelectLayer.resx">
+      <DependentUpon>frmSelectLayer.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="My Project\licenses.licx" />
     <EmbeddedResource Include="My Project\Resources.resx">

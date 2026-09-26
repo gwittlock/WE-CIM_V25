@@ -84,6 +84,7 @@ Public Class frmMain
     ' Hot dot display toggle
     Private _hotSpotEnabled As Boolean = False
 
+
     ' Current snap point in world coordinates
     Private _currentHotDot As PointF? = Nothing
     ' ---------- Snap ----------
@@ -479,10 +480,6 @@ Public Class frmMain
         ' --------------------------------------------
         ' 4) Draw overlays in proper order
         ' --------------------------------------------
-        ' Hot-dots / snap indicator
-        If _activeSnap.HasValue AndAlso _hotSpotEnabled Then
-            DrawSnapIndicator(e.Graphics, _activeSnap.Value)
-        End If
 
         ' ViewWindow rubber-band
         If _windowSelecting Then
@@ -732,39 +729,60 @@ Public Class frmMain
                 2 * r)
 
 
+
             Case CadEntity.EntityType.Arc
 
                 Dim a = DirectCast(ent, CadArc)
 
                 Dim center = WorldToScreen(
-                a.Center.X,
-                a.Center.Y,
-                myTransform,
-                pnlPicmodeler.Height)
+        a.Center.X,
+        a.Center.Y,
+        myTransform,
+        pnlPicmodeler.Height)
 
                 Dim r = CSng(a.Radius * myTransform.Scale)
 
                 Dim sweep As Single
 
+                ' World-space sweep
                 If a.IsClockwise Then
-                    sweep = a.EndAngle - a.StartAngle
-                Else
+
                     sweep = a.StartAngle - a.EndAngle
+
+                    If sweep < 0 Then
+                        sweep += 360
+                    End If
+
+                Else
+
+                    sweep = a.EndAngle - a.StartAngle
+
+                    If sweep < 0 Then
+                        sweep += 360
+                    End If
+
                 End If
 
-                If sweep < 0 Then sweep += 360
+                Dim startDeg As Single =
+        -a.StartAngle
 
-                Dim startDeg As Single = -a.StartAngle
-                Dim sweepDeg As Single = -sweep
+                Dim sweepDeg As Single
+
+                ' World Y+ is up, screen Y+ is down.
+                If a.IsClockwise Then
+                    sweepDeg = sweep
+                Else
+                    sweepDeg = -sweep
+                End If
 
                 g.DrawArc(
-                pen,
-                center.X - r,
-                center.Y - r,
-                2 * r,
-                2 * r,
-                startDeg,
-                sweepDeg)
+        pen,
+        center.X - r,
+        center.Y - r,
+        2 * r,
+        2 * r,
+        startDeg,
+        sweepDeg)
 
 
             Case CadEntity.EntityType.Point
@@ -1742,8 +1760,26 @@ Public Class frmMain
         ' --------------------------
         ' 4) Active Snap
         ' --------------------------
-        Dim snapTolPx As Single = 10
-        _activeSnap = GetActiveSnap(e.Location, snapTolPx)
+
+        If Not _hotSpotEnabled Then
+            _activeSnap = Nothing
+            _snapScreenPoint = Nothing
+        Else
+            Dim snapTolPx As Single = 12
+            _activeSnap = GetActiveSnap(e.Location, snapTolPx)
+        End If
+
+        If _activeSnap.HasValue Then
+            Debug.WriteLine(
+        "HOTSPOT: " &
+        _activeSnap.Value.Type.ToString() &
+        "  X=" &
+        _activeSnap.Value.WorldPoint.X.ToString("0.000") &
+        "  Y=" &
+        _activeSnap.Value.WorldPoint.Y.ToString("0.000"))
+        Else
+            Debug.WriteLine("HOTSPOT: NONE")
+        End If
 
         If _activeSnap.HasValue Then
             _snapScreenPoint = WorldToScreen(
@@ -1757,7 +1793,7 @@ Public Class frmMain
             _snapScreenPoint = Nothing
             pnlPicmodeler.Cursor = Cursors.Default
         End If
-
+        pnlPicmodeler.Invalidate()
         ' --------------------------
         ' 5) Measurement tool
         ' --------------------------
@@ -3216,22 +3252,42 @@ Public Class frmMain
         End Using
 
     End Sub
+    Private Sub DrawSnapIndicator(
+    g As Graphics,
+    snap As SnapResult)
 
-    Private Sub DrawSnapIndicator(g As Graphics, snap As SnapResult)
+        If g Is Nothing Then
+            Return
+        End If
 
-        Dim p = WorldToScreen(
+        Dim pt As PointF = WorldToScreen(
         snap.WorldPoint.X,
         snap.WorldPoint.Y,
         myTransform,
         pnlPicmodeler.ClientSize.Height)
 
-        Const s As Integer = 6
+        ' Hot Spot marker size in screen pixels.
+        Dim markerSize As Single = 10.0F
 
-        Using b As New SolidBrush(System.Drawing.Color.Lime)
-            g.FillRectangle(b, p.X - s \ 2, p.Y - s \ 2, s, s)
+        Dim halfSize As Single = markerSize / 2.0F
+
+        Dim rect As New RectangleF(
+        pt.X - halfSize,
+        pt.Y - halfSize,
+        markerSize,
+        markerSize)
+
+        Using pen As New Pen(System.Drawing.Color.Yellow, 2.0F)
+            g.DrawRectangle(
+            pen,
+            rect.X,
+            rect.Y,
+            rect.Width,
+            rect.Height)
         End Using
 
     End Sub
+
 
     Private Sub CancelMeasure()
         _isMeasuring = False
@@ -3243,32 +3299,108 @@ Public Class frmMain
     tolScreenPx As Single
 ) As SnapResult?
 
-        Dim mouseWorld = ScreenToWorld(mouseScreen, myTransform, pnlPicmodeler.ClientSize.Height)
-        Dim tolWorld = tolScreenPx / myTransform.Scale
+        Debug.WriteLine(
+    "HOTSPOT STATE: Enabled=" &
+    _hotSpotEnabled.ToString() &
+    " Active=" &
+    _activeSnap.HasValue.ToString())
+        Debug.WriteLine(
+    "HOTSPOT DEBUG: Manager=" &
+    (_hotSpotManager IsNot Nothing).ToString() &
+    " Entities=" &
+    If(_cadEntities Is Nothing, -1, _cadEntities.Count).ToString() &
+    " Scale=" &
+    myTransform.Scale.ToString("0.000000"))
 
-        Dim best As SnapResult
-        Dim bestDist As Single = Single.MaxValue
-        Dim found As Boolean = False
-
-        For Each ent In _cadEntities
-            For Each cand In GetSnapCandidates(ent)
-
-                Dim d = Distance(mouseWorld, cand.WorldPoint)
-                If d <= tolWorld AndAlso d < bestDist Then
-                    cand.Distance = d
-                    best = cand
-                    bestDist = d
-                    found = True
-                End If
-
-            Next
-        Next
-
-        If found Then
-            Return best
-        Else
+        If _hotSpotManager Is Nothing Then
             Return Nothing
         End If
+
+        If _cadEntities Is Nothing OrElse
+       _cadEntities.Count = 0 Then
+
+            Return Nothing
+
+        End If
+
+
+        '--------------------------------------------------
+        ' Convert mouse position to world coordinates
+        '--------------------------------------------------
+
+        Dim mouseWorld As PointF =
+        ScreenToWorld(
+            mouseScreen,
+            myTransform,
+            pnlPicmodeler.ClientSize.Height)
+
+
+        '--------------------------------------------------
+        ' Convert screen tolerance to world tolerance
+        '--------------------------------------------------
+
+        If myTransform.Scale <= 0.0F Then
+            Return Nothing
+        End If
+
+        Dim tolWorld As Single =
+        tolScreenPx / myTransform.Scale
+
+
+        '--------------------------------------------------
+        ' Ask HotSpotManager for the closest hot spot
+        '--------------------------------------------------
+
+        Dim hotSpot As HotSpot =
+        _hotSpotManager.FindHotSpot(
+            mouseWorld,
+            tolWorld)
+
+
+        If hotSpot Is Nothing Then
+            Return Nothing
+        End If
+
+
+        '--------------------------------------------------
+        ' Adapt HotSpot to existing SnapResult
+        '--------------------------------------------------
+
+        Dim result As New SnapResult
+
+        Select Case hotSpot.Type
+            Case HotSpotType.Endpoint
+                result.Type = SnapType.Endpoint
+
+            Case HotSpotType.Midpoint
+                result.Type = SnapType.Midpoint
+
+            Case HotSpotType.Center
+                result.Type = SnapType.Center
+
+            Case HotSpotType.Intersection
+                result.Type = SnapType.Intersection
+
+            Case HotSpotType.Quadrant
+                result.Type = SnapType.Quadrant
+
+            Case Else
+                Return Nothing
+        End Select
+
+
+        result.WorldPoint = hotSpot.WorldPoint
+        result.Entity = hotSpot.Entity1
+
+
+        ' HotSpotManager resolved the active Hot Spot.
+        result.Distance =
+        Distance(
+            mouseWorld,
+            hotSpot.WorldPoint)
+
+
+        Return result
 
     End Function
     '    Private Function TryEndpointSnap(
@@ -3345,8 +3477,20 @@ Public Class frmMain
     End Function
 
     Private Sub tbSelect_HotDot_Click(sender As Object, e As EventArgs) Handles tbSelect_HotDot.Click
-        _hotSpotEnabled = tbSelect_HotDot.Checked
-        pnlPicmodeler.Invalidate() ' redraw panel to reflect change
+
+
+        _hotSpotEnabled = Not _hotSpotEnabled
+
+        tbSelect_HotDot.Checked = _hotSpotEnabled
+
+        If Not _hotSpotEnabled Then
+            _activeSnap = Nothing
+            _snapScreenPoint = Nothing
+            pnlPicmodeler.Cursor = Cursors.Default
+        End If
+
+        pnlPicmodeler.Invalidate()
+
     End Sub
 
     Private Function GetSnapCandidates(ent As CadEntity) As IEnumerable(Of SnapResult)
@@ -3531,6 +3675,22 @@ Public Class frmMain
     End Sub
 
     Private Sub tbSelect_Layers_Click(sender As Object, e As EventArgs) Handles tbSelect_Layers.Click
+
+
+        Using dlg As New frmSelectLayer()
+
+            If dlg.ShowDialog(Me) = DialogResult.OK Then
+
+                Dim selectedLayer As String = dlg.SelectedLayerName
+
+                Debug.WriteLine("SELECT BY LAYER RESULT")
+                Debug.WriteLine("Selected Layer = [" & selectedLayer & "]")
+
+                _selectionManager.SelectByLayer(selectedLayer)
+
+            End If
+
+        End Using
 
     End Sub
 

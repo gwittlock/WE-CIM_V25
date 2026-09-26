@@ -488,6 +488,55 @@ Public Class SelectionManager
 
     End Sub
 
+    Public Sub SelectByLayer(layerName As String)
+
+        If String.IsNullOrWhiteSpace(layerName) Then
+            Return
+        End If
+
+        If _entities Is Nothing OrElse _entities.Count = 0 Then
+            Return
+        End If
+
+        Dim selectionChanged As Boolean = False
+
+        For Each ent As CadEntity In _entities
+
+            If ent Is Nothing Then
+                Continue For
+            End If
+
+            If Not String.Equals(
+            ent.LayerName,
+            layerName,
+            StringComparison.OrdinalIgnoreCase) Then
+
+                Continue For
+            End If
+
+            Dim selectable As isSelectable =
+            TryCast(ent, isSelectable)
+
+            If selectable Is Nothing Then
+                Continue For
+            End If
+
+            If Not _selected.Contains(selectable) Then
+                _selected.Add(selectable)
+                selectionChanged = True
+            End If
+
+            selectable.IsSelected = True
+
+        Next
+
+        If selectionChanged Then
+            RaiseEvent selectionChanged(_selected)
+        End If
+
+    End Sub
+
+
     Public Sub SelectByWindow(
     worldRect As RectangleF,
     selectionMode As GeometryTypeEnum?,

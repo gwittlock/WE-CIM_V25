@@ -30,6 +30,9 @@ Imports FabV25_WIN8.modView
 
 
 Public Module modFile
+
+    Public _hotSpotManager As HotSpotManager
+
     Public _sceneReady As Boolean = False
     Public _visibleEntities As List(Of CadEntity) = Nothing
 
@@ -145,15 +148,15 @@ Public Module modFile
         CurrentJob.LayerSetupID = SelectedLayerSetupID
 
         If CurrentJob Is Nothing Then Return
-        ' If CurrentJob.WorkZones Is Nothing OrElse CurrentJob.WorkZones.Count = 0 Then Return
 
-        'DrawSheetAndWorkzones(_pnlPicModelerGraphics, matLength, matWidth)
 
         machineDef.SelectedToolSetupID = SelectedToolSetupID
         machineDef.SelectedLayerSetupID = SelectedLayerSetupID
         machineDef.SelectedMaterialID = SelectedMaterialID
 
         _cadEntities = ImportDxf(_selectedDxfPath)
+
+        _hotSpotManager = New HotSpotManager(_cadEntities)
 
         _visibleEntities = _cadEntities.ToList()
 

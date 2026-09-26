@@ -9,6 +9,7 @@ Module modSnap
         Midpoint
         Center
         Intersection
+        Quadrant
     End Enum
     Public Structure SnapResult
         Public Type As SnapType

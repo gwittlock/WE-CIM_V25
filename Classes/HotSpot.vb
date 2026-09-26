@@ -6,6 +6,7 @@ Public Enum HotSpotType
     Midpoint = 2
     Center = 3
     Intersection = 4
+    Quadrant = 5
 End Enum
 
 Public Class HotSpot

@@ -46,7 +46,6 @@ Public Class HotSpotManager
                 Continue For
             End If
 
-
             '==================================================
             ' Circle
             '==================================================
@@ -54,25 +53,137 @@ Public Class HotSpotManager
             If ent.GeometryType = GeometryTypeEnum.Circle Then
 
                 Dim cadcircle As CadEntity.CadCircle =
-                TryCast(ent, CadEntity.CadCircle)
+        TryCast(ent, CadEntity.CadCircle)
 
                 If cadcircle IsNot Nothing Then
 
+                    '----------------------------------------------
+                    ' Center
+                    '----------------------------------------------
+
                     Dim circleDistance As Single =
-                    CalculateDistance(
-                        worldPoint,
-                        cadcircle.Center)
+            CalculateDistance(
+                worldPoint,
+                cadcircle.Center)
 
                     If circleDistance <= toleranceWorld AndAlso
-                   circleDistance < bestDistance Then
+           circleDistance < bestDistance Then
 
                         bestDistance = circleDistance
 
                         _currentHotSpot =
-                        New HotSpot(
-                            HotSpotType.Center,
-                            cadcircle.Center,
-                            ent)
+                New HotSpot(
+                    HotSpotType.Center,
+                    cadcircle.Center,
+                    ent)
+
+                    End If
+
+
+                    '----------------------------------------------
+                    ' 3 o'clock
+                    '----------------------------------------------
+
+                    Dim rightPoint As New PointF(
+            cadcircle.Center.X + cadcircle.Radius,
+            cadcircle.Center.Y)
+
+                    Dim distanceRight As Single =
+            CalculateDistance(
+                worldPoint,
+                rightPoint)
+
+                    If distanceRight <= toleranceWorld AndAlso
+           distanceRight < bestDistance Then
+
+                        bestDistance = distanceRight
+
+                        _currentHotSpot =
+                New HotSpot(
+                    HotSpotType.Quadrant,
+                    rightPoint,
+                    ent)
+
+                    End If
+
+
+                    '----------------------------------------------
+                    ' 9 o'clock
+                    '----------------------------------------------
+
+                    Dim leftPoint As New PointF(
+            cadcircle.Center.X - cadcircle.Radius,
+            cadcircle.Center.Y)
+
+                    Dim distanceLeft As Single =
+            CalculateDistance(
+                worldPoint,
+                leftPoint)
+
+                    If distanceLeft <= toleranceWorld AndAlso
+           distanceLeft < bestDistance Then
+
+                        bestDistance = distanceLeft
+
+                        _currentHotSpot =
+                New HotSpot(
+                    HotSpotType.Quadrant,
+                    leftPoint,
+                    ent)
+
+                    End If
+
+
+                    '----------------------------------------------
+                    ' 12 o'clock
+                    '----------------------------------------------
+
+                    Dim topPoint As New PointF(
+            cadcircle.Center.X,
+            cadcircle.Center.Y + cadcircle.Radius)
+
+                    Dim distanceTop As Single =
+            CalculateDistance(
+                worldPoint,
+                topPoint)
+
+                    If distanceTop <= toleranceWorld AndAlso
+           distanceTop < bestDistance Then
+
+                        bestDistance = distanceTop
+
+                        _currentHotSpot =
+                New HotSpot(
+                    HotSpotType.Quadrant,
+                    topPoint,
+                    ent)
+
+                    End If
+
+
+                    '----------------------------------------------
+                    ' 6 o'clock
+                    '----------------------------------------------
+
+                    Dim bottomPoint As New PointF(
+            cadcircle.Center.X,
+            cadcircle.Center.Y - cadcircle.Radius)
+
+                    Dim distanceBottom As Single =
+            CalculateDistance(
+                worldPoint,
+                bottomPoint)
+
+                    If distanceBottom <= toleranceWorld AndAlso
+           distanceBottom < bestDistance Then
+
+                        bestDistance = distanceBottom
+
+                        _currentHotSpot =
+                New HotSpot(
+                    HotSpotType.Quadrant,
+                    bottomPoint,
+                    ent)
 
                     End If
 
