@@ -336,7 +336,9 @@
     <Compile Include="Classes\HotSpot.vb" />
     <Compile Include="Classes\HotSpotManager.vb" />
     <Compile Include="Classes\ISelectable.vb" />
+    <Compile Include="Classes\Job.vb" />
     <Compile Include="Classes\JobContext.vb" />
+    <Compile Include="Classes\JobSheet.vb" />
     <Compile Include="Classes\JsonLoader.vb" />
     <Compile Include="Classes\LayerDefinition.vb" />
     <Compile Include="Classes\MachineDefinition.vb" />
@@ -352,9 +354,12 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Classes\MaterialSheet.vb" />
+    <Compile Include="Classes\Part.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
+    <Compile Include="Classes\Profile.vb" />
     <Compile Include="Classes\PuncfResult.vb" />
     <Compile Include="Classes\QuadTree.vb" />
+    <Compile Include="Classes\TooledProfile.vb" />
     <Compile Include="Classes\ToolPathGenerator.vb" />
     <Compile Include="Classes\ToolSelection.vb" />
     <Compile Include="Classes\ToolShapes.vb" />
@@ -407,6 +412,12 @@
       <DependentUpon>frmSelectLayer.vb</DependentUpon>
     </Compile>
     <Compile Include="Forms\frmSelectLayer.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmSelectTools.designer.vb">
+      <DependentUpon>frmSelectTools.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmSelectTools.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\MaterialPickerPopUp.Designer.vb">
@@ -548,6 +559,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmSelectLayer.resx">
       <DependentUpon>frmSelectLayer.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmSelectTools.resx">
+      <DependentUpon>frmSelectTools.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="My Project\licenses.licx" />
     <EmbeddedResource Include="My Project\Resources.resx">
