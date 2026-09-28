@@ -333,6 +333,7 @@
     <Compile Include="Classes\DynamicPropertyBag.vb" />
     <Compile Include="Classes\DynamicToolAttributes.vb" />
     <Compile Include="Classes\HelperFunctions.vb" />
+    <Compile Include="Classes\HolePatternParameters.vb" />
     <Compile Include="Classes\HotSpot.vb" />
     <Compile Include="Classes\HotSpotManager.vb" />
     <Compile Include="Classes\ISelectable.vb" />
@@ -341,10 +342,14 @@
     <Compile Include="Classes\JobSheet.vb" />
     <Compile Include="Classes\JsonLoader.vb" />
     <Compile Include="Classes\LayerDefinition.vb" />
+    <Compile Include="Classes\LeadGeometry.vb" />
+    <Compile Include="Classes\LeadIn.vb" />
+    <Compile Include="Classes\LeadOut.vb" />
     <Compile Include="Classes\MachineDefinition.vb" />
     <Compile Include="Classes\MachineEnvelope.vb" />
     <Compile Include="Classes\MachineLoader.vb" />
     <Compile Include="Classes\MachineMapAttribute.vb" />
+    <Compile Include="Classes\MachiningFeature.vb" />
     <Compile Include="Classes\Material.vb" />
     <Compile Include="Classes\MaterialParameterDescriptor.vb" />
     <Compile Include="Classes\MaterialPicker.vb">
@@ -357,6 +362,7 @@
     <Compile Include="Classes\Part.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
     <Compile Include="Classes\Profile.vb" />
+    <Compile Include="Classes\ProfileFeature,vb.vb" />
     <Compile Include="Classes\PuncfResult.vb" />
     <Compile Include="Classes\QuadTree.vb" />
     <Compile Include="Classes\TooledProfile.vb" />

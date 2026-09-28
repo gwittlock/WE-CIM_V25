@@ -7,6 +7,7 @@ Public Class Part
     '------------------------------------------------------------
     Public Property ID As Integer
     Public Property Description As String
+    Public Property Features As New List(Of MachiningFeature)
 
     '------------------------------------------------------------
     ' Part placement on the JobSheet
