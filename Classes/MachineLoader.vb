@@ -80,11 +80,6 @@ Module MachineLoader
         Return def
     End Function
 
-
-
-
-
-
     Public Sub RestoreAndDrawJob()
         ' SAFETY
         If CurrentJob Is Nothing Then Exit Sub

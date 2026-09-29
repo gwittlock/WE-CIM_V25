@@ -42,7 +42,9 @@ Public Module modFile
     Public _selectedMachine As Machine
     Public _selectedMaterial As MaterialSheet
     Private m_FileName As String
+
     Public CurrentJob As JobContext
+    Public CurrentProductionJob As Job
     Public _importedEntities As List(Of ImportedEntity)
     Public _drawables As List(Of DxfDrawable)
     ' Store all loaded CAD entities
@@ -51,8 +53,6 @@ Public Module modFile
     Public _layerResolver As LayerColorResolver
     Public _DoPrepareUI As Boolean = False
     Public _DoDrawUI As Boolean = False
-
-
 
     Public Sub PrePareUI(sFilename As String)
         Dim numericWidth As Double
@@ -140,9 +140,35 @@ Public Module modFile
         CurrentJob = New JobContext()
         CurrentJob.MachineDefinition = machineDef
 
+        '------------------------------------------------------------
+        ' Create production Job
+        '------------------------------------------------------------
+        CurrentProductionJob = New Job With {
+                                                .MachineID = SelectedMachineID,
+                                                .ToolSetupID = SelectedToolSetupID,
+                                                .LayerSetupID = SelectedLayerSetupID,
+                                                .MaterialTypeID = _selectedMaterial.TypeID
+                                            }
+
+        '------------------------------------------------------------
+        ' Create the JobSheet for the selected MaterialSheet
+        '------------------------------------------------------------
+        Dim productionSheet As New JobSheet With {
+                                                .MaterialSheetID = _SelectedMaterialID,
+                                                .Length = matLength,
+                                                .Width = matWidth
+                                            }
+
+        CurrentProductionJob.JobSheets.Add(productionSheet)
+
         RestoreAndDrawJob()
 
-        '' Create / update job context
+        '------------------------------------------------------------
+        ' Connect the runtime WorkZones to the production JobSheet
+        '------------------------------------------------------------
+        productionSheet.WorkZones = CurrentJob.WorkZones
+
+        ' Create / update job context
         CurrentJob.ToolSetupID = SelectedToolSetupID
         CurrentJob.MaterialID = SelectedMaterialID
         CurrentJob.LayerSetupID = SelectedLayerSetupID
@@ -167,6 +193,31 @@ Public Module modFile
 
         NormalizeCadToSheet(_cadEntities, matLength, matWidth)
 
+        '------------------------------------------------------------
+        ' Create the Part from the normalized CAD geometry
+        '------------------------------------------------------------
+        Dim importedPart As New Part With {
+                                                            .ID = 0,
+                                                            .Description = Path.GetFileNameWithoutExtension(_selectedDxfPath)
+                                                        }
+
+        importedPart.CADGeometry.AddRange(_cadEntities)
+
+        '------------------------------------------------------------
+        ' Create the initial Pattern for the imported Part
+        '------------------------------------------------------------
+        Dim importedPattern As New Pattern With {
+                                                                    .Part = importedPart,
+                                                                    .X = 0,
+                                                                    .Y = 0,
+                                                                    .Angle = 0
+                                                                }
+
+        ' The normalized Part starts at the origin,
+        ' so its first occurrence belongs in WorkZone 1.
+        If productionSheet.WorkZones.Count > 0 Then
+            productionSheet.WorkZones(0).Patterns.Add(importedPattern)
+        End If
 
         _DoPrepareUI = False
     End Sub

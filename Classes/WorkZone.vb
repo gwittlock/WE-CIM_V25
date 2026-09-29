@@ -1,4 +1,6 @@
-﻿Public Class WorkZone
+﻿Imports System.Collections.Generic
+
+Public Class WorkZone
     Public Property Index As Integer
 
     ' Sheet-relative envelope
@@ -12,6 +14,7 @@
 
     ' Children
     Public Property Clamps As New List(Of Clamp)
+    Public Property Patterns As New List(Of Pattern)
 
     ' State
     Public Property IsActive As Boolean

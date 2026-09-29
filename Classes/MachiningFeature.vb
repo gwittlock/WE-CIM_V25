@@ -6,7 +6,9 @@ Public Enum MachiningFeatureType
     BoltHoleCircle
     GridOfHoles
     LineOfHoles
-    LineOfHolesAtAngle
+    LineOfHolesAtAngleNormal
+    LineOfHolesAtAngleParallel
+    BarrierHole
     PierceHole
     LeadIn
     LeadOut

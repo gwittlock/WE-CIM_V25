@@ -7,14 +7,15 @@ Public Class Part
     '------------------------------------------------------------
     Public Property ID As Integer
     Public Property Description As String
-    Public Property Features As New List(Of MachiningFeature)
 
     '------------------------------------------------------------
-    ' Part placement on the JobSheet
-    ' Sheet-relative coordinates
+    ' CAD geometry belonging to this Part
     '------------------------------------------------------------
-    Public Property X As Double
-    Public Property Y As Double
-    Public Property Angle As Double
+    Public Property CADGeometry As New List(Of CadEntity)
+
+    '------------------------------------------------------------
+    ' Machining features belonging to this Part
+    '------------------------------------------------------------
+    Public Property Features As New List(Of MachiningFeature)
 
 End Class

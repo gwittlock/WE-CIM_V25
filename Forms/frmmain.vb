@@ -3812,6 +3812,44 @@ Public Class frmMain
     Private Sub pnlPicmodeler_Enter(sender As Object, e As EventArgs) Handles pnlPicmodeler.Enter
 
     End Sub
+    Private Sub pnlPicmodeler_Resize(sender As Object, e As EventArgs) Handles pnlPicmodeler.Resize
+
+        ' Keep the legacy panel dimensions synchronized
+        ' with the actual current panel size.
+        panelWidth = pnlPicmodeler.ClientSize.Width
+        panelHeight = pnlPicmodeler.ClientSize.Height
+
+        If Not _sceneReady Then Exit Sub
+
+        If matLength <= 0 OrElse matWidth <= 0 Then Exit Sub
+
+        Dim margin As Integer = 20
+
+        Dim scaleX As Double =
+        (panelWidth - 2 * margin) / matLength
+
+        Dim scaleY As Double =
+        (panelHeight - 2 * margin) / matWidth
+
+        Dim scale As Double = Math.Min(scaleX, scaleY)
+
+        If scale <= 0 Then Exit Sub
+
+        Dim offsetX As Double =
+        (panelWidth - matLength * scale) / 2
+
+        Dim offsetY As Double =
+        panelHeight -
+        (matWidth * scale) -
+        margin
+
+        myTransform.Scale = scale
+        myTransform.OffsetX = offsetX
+        myTransform.OffsetY = offsetY
+
+        pnlPicmodeler.Invalidate()
+
+    End Sub
 End Class
 
 
