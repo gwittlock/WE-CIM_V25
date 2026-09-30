@@ -1734,14 +1734,7 @@ Public Class frmMain
         ' --------------------------
         Dim modelPt As PointF = ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height)
         statusLocation.Caption = $"Location: X={modelPt.X:0.###}, Y={modelPt.Y:0.###}"
-        Debug.WriteLine(
-                    $"MOUSE WORLD DEBUG: " &
-                    $"Screen={e.Location}, " &
-                    $"PanelHeight={pnlPicmodeler.ClientSize.Height}, " &
-                    $"Scale={myTransform.Scale:0.000000}, " &
-                    $"OffsetX={myTransform.OffsetX:0.000000}, " &
-                    $"OffsetY={myTransform.OffsetY:0.000000}")
-        ' --------------------------
+
         ' 3) ViewWindow rubber-band
         ' --------------------------
         If _windowSelecting Then
@@ -1767,18 +1760,6 @@ Public Class frmMain
         Else
             Dim snapTolPx As Single = 12
             _activeSnap = GetActiveSnap(e.Location, snapTolPx)
-        End If
-
-        If _activeSnap.HasValue Then
-            Debug.WriteLine(
-        "HOTSPOT: " &
-        _activeSnap.Value.Type.ToString() &
-        "  X=" &
-        _activeSnap.Value.WorldPoint.X.ToString("0.000") &
-        "  Y=" &
-        _activeSnap.Value.WorldPoint.Y.ToString("0.000"))
-        Else
-            Debug.WriteLine("HOTSPOT: NONE")
         End If
 
         If _activeSnap.HasValue Then
@@ -2260,40 +2241,12 @@ Public Class frmMain
         Dim tolWorld As Single = HitTolerancePx / scale
         tolWorld = Math.Max(tolWorld, 0.1F)
 
-        Debug.Print("========================================")
-        Debug.Print("MOUSE CLICK SELECTION")
-        Debug.Print("ScreenPt = " & e.Location.ToString())
-        Debug.Print("WorldPt = " & worldPt.ToString())
-        Debug.Print("Scale = " & scale.ToString("0.000000"))
-        Debug.Print("HitTolerancePx = " & HitTolerancePx.ToString("0.000000"))
-        Debug.Print("TolWorld = " & tolWorld.ToString("0.000000"))
-        Debug.Print("Calling SelectAtPoint...")
-
-        Debug.WriteLine(
-    "PointSelect: Mode=" &
-    If(_selectionMode.HasValue,
-       _selectionMode.Value.ToString(),
-       "Nothing") &
-    " Filter=" &
-    _selectionFilter.ToString())
-
-
         Dim hit As isSelectable =
     _selectionManager.SelectAtPoint(
         worldPt,
         tolWorld,
         _selectionMode,
         _selectionFilter)
-
-        If hit IsNot Nothing Then
-            Debug.Print("CLICK RESULT: HIT")
-            Debug.Print("Hit Type = " & hit.GetType().Name)
-            Debug.Print("IsSelected = " & hit.IsSelected.ToString())
-        Else
-            Debug.Print("CLICK RESULT: NO HIT")
-        End If
-
-        Debug.Print("========================================")
 
         pnlPicmodeler.Invalidate()
 
@@ -2490,12 +2443,6 @@ Public Class frmMain
     Public Sub ViewPart()
         If _cadEntities Is Nothing OrElse _cadEntities.Count = 0 Then Exit Sub
 
-
-        Debug.WriteLine(
-    $"VIEWPART SET: Scale={myTransform.Scale:0.000000}, " &
-    $"OffsetX={myTransform.OffsetX:0.000000}, " &
-    $"OffsetY={myTransform.OffsetY:0.000000}")
-
         SaveViewIfChanged()
 
         Dim bounds As RectangleF = HelperFunctions.GetCadBounds(_cadEntities)
@@ -2513,12 +2460,6 @@ Public Class frmMain
         myTransform.Scale = scale
         myTransform.OffsetX = offsetX
         myTransform.OffsetY = offsetY
-
-        Debug.WriteLine(
-    $"VIEWPART AFTER: Scale={myTransform.Scale:0.000000}, " &
-    $"OffsetX={myTransform.OffsetX:0.000000}, " &
-    $"OffsetY={myTransform.OffsetY:0.000000}")
-
 
         RedrawAll()
     End Sub
@@ -2672,6 +2613,12 @@ Public Class frmMain
 
             For j As Integer = i + 1 To entities.Count - 1
                 Dim e2 = entities(j)
+
+                If Not String.Equals(e1.CAMLayer,
+                     e2.CAMLayer,
+                     StringComparison.OrdinalIgnoreCase) Then
+                    Continue For
+                End If
 
                 '--------------------------------------------------
                 ' Line - Line
@@ -3299,19 +3246,6 @@ Public Class frmMain
     tolScreenPx As Single
 ) As SnapResult?
 
-        Debug.WriteLine(
-    "HOTSPOT STATE: Enabled=" &
-    _hotSpotEnabled.ToString() &
-    " Active=" &
-    _activeSnap.HasValue.ToString())
-        Debug.WriteLine(
-    "HOTSPOT DEBUG: Manager=" &
-    (_hotSpotManager IsNot Nothing).ToString() &
-    " Entities=" &
-    If(_cadEntities Is Nothing, -1, _cadEntities.Count).ToString() &
-    " Scale=" &
-    myTransform.Scale.ToString("0.000000"))
-
         If _hotSpotManager Is Nothing Then
             Return Nothing
         End If
@@ -3683,9 +3617,6 @@ Public Class frmMain
 
                 Dim selectedLayer As String = dlg.SelectedLayerName
 
-                Debug.WriteLine("SELECT BY LAYER RESULT")
-                Debug.WriteLine("Selected Layer = [" & selectedLayer & "]")
-
                 _selectionManager.SelectByLayer(selectedLayer)
 
             End If
@@ -3850,6 +3781,11 @@ Public Class frmMain
         pnlPicmodeler.Invalidate()
 
     End Sub
+
+    Private Sub BarUseWhiteBG_CheckedChanged(sender As Object, e As ItemClickEventArgs) Handles BarUseWhiteBG.CheckedChanged
+
+    End Sub
+
 End Class
 
 

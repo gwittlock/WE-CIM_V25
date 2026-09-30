@@ -258,16 +258,6 @@ Public Module DxfImport
             vt,
             panelHeight)
 
-        Debug.WriteLine(
-        $"DRAW POINT: " &
-        $"World={pt.Position}, " &
-        $"Scale={vt.Scale:0.000000}, " &
-        $"OffsetX={vt.OffsetX:0.000000}, " &
-        $"OffsetY={vt.OffsetY:0.000000}, " &
-        $"PanelHeight={panelHeight}")
-
-        Debug.WriteLine(
-        $"DRAW POINT SCREEN: {screenPt}")
 
         Const pointSize As Single = 6.0F
 

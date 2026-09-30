@@ -1,21 +1,17 @@
 ﻿Imports WE_ENG_V25_0.Core.Models
 
-Public Class GridOfHoles
+Public Class LineOfHolesAtAngleNormalFeature
     Inherits MachiningFeature
 
     Public Property StartX As Double
 
     Public Property StartY As Double
 
-    Public Property XCount As Integer
+    Public Property Count As Integer
 
-    Public Property YCount As Integer
+    Public Property Spacing As Double
 
-    Public Property XSpacing As Double
-
-    Public Property YSpacing As Double
-
-    Public Property PrimaryAxis As HoleRepeatDirection
+    Public Property Angle As Double
 
     Public Property Tool As Tool
 

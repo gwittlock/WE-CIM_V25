@@ -104,6 +104,13 @@ Public Class frmOpenProject
         _machines = AppData.Machines
         _toolSetups = AppData.ToolSetups
         _layerSetups = AppData.LayerSetups
+        SelectedLayerSetupID = nMyLayerSetupID
+
+        _selectedLayerSetup =
+    _layerSetups.FirstOrDefault(
+        Function(ls) ls.ID = SelectedLayerSetupID)
+
+
         _materialTypes = AppData.MaterialTypes
         _materialSheets = AppData.MaterialSheets
 
@@ -134,7 +141,7 @@ Public Class frmOpenProject
         'RestoreComboSelection(cboMachine, nMyMachineID)
         'RestoreComboSelection(cboToolSetup, nMyToolSetupID)
         'RestoreComboSelection(cboMaterial, nMyMaterialID)
-        'RestoreComboSelection(cboLayerSetup, nMyLayerSetupID)
+        ' RestoreComboSelection(cboLayerSetup, nMyLayerSetupID)
 
         _loadingDefaults = False
     End Sub
@@ -192,7 +199,7 @@ Public Class frmOpenProject
             cboLayerSetup.Properties.Items.Add(New myItemData(ls.Description, ls.ID))
         Next
 
-        cboLayerSetup.SelectedIndex = 0
+        'cboLayerSetup.SelectedIndex = 0
     End Sub
 
     Private Sub cboMachine_EditValueChanged(sender As Object, e As EventArgs) Handles cboMachine.EditValueChanged
@@ -257,13 +264,6 @@ Public Class frmOpenProject
             Return
         End If
 
-        '' Optional: refresh preview if a DXF is already loaded
-        'If _importedEntities IsNot Nothing AndAlso _importedEntities.Count > 0 Then
-        '    ' Re-classify imported entities with the new LayerSetup
-        '    _importedEntities = ImportDxfWithLayerSetup(_currentDxfPath, _selectedLayerSetup)
-        '    pnlPicModeler.LoadImportedEntities(_importedEntities)
-        'End If
-
     End Sub
 
 
@@ -294,7 +294,15 @@ Public Class frmOpenProject
                     MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 Exit Sub
             End If
-            ' Dim selectedItem = TryCast(cboLayerSetup.SelectedItem, myItemData)
+
+            ' Lookup the selected LayerSetup object
+            _selectedLayerSetup = LayerSetups.FirstOrDefault(Function(ls) ls.ID = SelectedLayerSetupID)
+
+            If _selectedLayerSetup Is Nothing Then
+                MessageBox.Show("Selected Layer Setup not found.")
+                Return
+            End If
+
 
             ' Save optional fields
             CustomerName = txtCustomer.Text
@@ -369,22 +377,38 @@ Public Class frmOpenProject
 
         cboLayerSetup.Properties.Items.Clear()
 
-        ' Assume _layerSetups is a List(Of LayerSetup) loaded from JSON
-        Dim filteredSetups = _layerSetups.Where(Function(l) l.MachineID = machineID).ToList()
+        Dim filteredSetups = _layerSetups.
+        Where(Function(l) l.MachineID = machineID).
+        ToList()
 
         ' Add default "None" item
-        cboLayerSetup.Properties.Items.Add(New myItemData("None", 0))
+        cboLayerSetup.Properties.Items.Add(
+        New myItemData("None", 0))
+
+        Dim selectedLayerSetup As myItemData = Nothing
 
         For Each ls In filteredSetups
-            cboLayerSetup.Properties.Items.Add(New myItemData(ls.Description, ls.ID))
+
+            Dim item As New myItemData(
+            ls.Description,
+            ls.ID)
+
+            cboLayerSetup.Properties.Items.Add(item)
+
+            If ls.ID = nMyLayerSetupID Then
+                selectedLayerSetup = item
+            End If
+
         Next
 
-        ' Optionally select first item
-        If cboLayerSetup.Properties.Items.Count > 0 Then
+        ' Restore the saved Layer Setup if it belongs to this machine.
+        ' Otherwise leave the selection at None.
+        If selectedLayerSetup IsNot Nothing Then
+            cboLayerSetup.EditValue = selectedLayerSetup
+        Else
             cboLayerSetup.SelectedIndex = 0
         End If
 
-        cboLayerSetup.Text = RegGetString("Global", "LayerSetup", "")
     End Sub
 
     Private Sub cmdOK_DragDrop(sender As Object, e As DragEventArgs) Handles cmdOK.DragDrop

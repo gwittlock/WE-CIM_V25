@@ -103,8 +103,6 @@ Public Class frmSelectLayer
         SelectedLayerName =
         CStr(gViewToolLayer.GetRowCellValue(rowHandle, "ToolName"))
 
-        Debug.WriteLine("SELECTED LAYER: " & SelectedLayerName)
-
         Me.DialogResult = DialogResult.OK
         Me.Close()
 

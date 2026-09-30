@@ -68,7 +68,6 @@ Namespace ToolShapes
             End Get
         End Property
     End Class
-
     Public Class ArcSegment2D
         Implements IPathSegment
 
@@ -76,36 +75,55 @@ Namespace ToolShapes
         Public ReadOnly Property Radius As Double
         Public ReadOnly Property StartAngle As Double
         Public ReadOnly Property EndAngle As Double
+        Public ReadOnly Property IsClockwise As Boolean
 
         Public ReadOnly Property StartPoint As PointF Implements IPathSegment.StartPoint
         Public ReadOnly Property EndPoint As PointF Implements IPathSegment.EndPoint
 
         Public Sub New(
-            center As PointF,
-            radius As Double,
-            startAngle As Double,
-            endAngle As Double
-        )
+        center As PointF,
+        radius As Double,
+        startAngle As Double,
+        endAngle As Double,
+        isClockwise As Boolean
+    )
+
             Me.Center = center
             Me.Radius = radius
             Me.StartAngle = startAngle
             Me.EndAngle = endAngle
+            Me.IsClockwise = isClockwise
 
-            StartPoint = Geometry2D.PointOnCircle(center, radius, startAngle)
-            EndPoint = Geometry2D.PointOnCircle(center, radius, endAngle)
+            StartPoint = Geometry2D.PointOnCircle(
+            center,
+            radius,
+            startAngle)
+
+            EndPoint = Geometry2D.PointOnCircle(
+            center,
+            radius,
+            endAngle)
+
         End Sub
 
-        Public ReadOnly Property SegmentType As PathSegmentType Implements IPathSegment.SegmentType
+        Public ReadOnly Property SegmentType As PathSegmentType _
+        Implements IPathSegment.SegmentType
+
             Get
                 Return PathSegmentType.Arc
             End Get
+
         End Property
 
-        Public ReadOnly Property Length As Double Implements IPathSegment.Length
+        Public ReadOnly Property Length As Double _
+        Implements IPathSegment.Length
+
             Get
                 Return Math.Abs(EndAngle - StartAngle) * Radius
             End Get
+
         End Property
+
     End Class
 
     Public Interface IPath2D
@@ -349,11 +367,336 @@ Namespace ToolShapes
         End Function
 
         Public Shared Function ComputeBoundingBox(
-            segments As IEnumerable(Of IPathSegment)
-        ) As RectangleF
+    segments As IEnumerable(Of IPathSegment)) As RectangleF
 
-            Return RectangleF.Empty
+            If segments Is Nothing Then
+                Return RectangleF.Empty
+            End If
+
+            Dim segmentList As List(Of IPathSegment) =
+        segments.ToList()
+
+            If segmentList.Count = 0 Then
+                Return RectangleF.Empty
+            End If
+
+            Dim minX As Double = Double.MaxValue
+            Dim minY As Double = Double.MaxValue
+            Dim maxX As Double = Double.MinValue
+            Dim maxY As Double = Double.MinValue
+
+            For Each segment As IPathSegment In segmentList
+
+                If segment Is Nothing Then
+                    Continue For
+                End If
+
+                minX = Math.Min(minX, segment.StartPoint.X)
+                minY = Math.Min(minY, segment.StartPoint.Y)
+                maxX = Math.Max(maxX, segment.StartPoint.X)
+                maxY = Math.Max(maxY, segment.StartPoint.Y)
+
+                minX = Math.Min(minX, segment.EndPoint.X)
+                minY = Math.Min(minY, segment.EndPoint.Y)
+                maxX = Math.Max(maxX, segment.EndPoint.X)
+                maxY = Math.Max(maxY, segment.EndPoint.Y)
+
+                ' Arcs can extend beyond their endpoints.
+                Dim arc As ArcSegment2D =
+            TryCast(segment, ArcSegment2D)
+
+                If arc Is Nothing Then
+                    Continue For
+                End If
+
+                ' Check the four cardinal points on the circle.
+                Dim angles() As Double = {
+            0.0,
+            Math.PI / 2.0,
+            Math.PI,
+            3.0 * Math.PI / 2.0
+        }
+
+                For Each angle As Double In angles
+
+                    If IsAngleOnArc(
+                angle,
+                arc.StartAngle,
+                arc.EndAngle,
+                arc.IsClockwise) Then
+
+                        Dim p As PointF =
+                    PointOnCircle(
+                        arc.Center,
+                        arc.Radius,
+                        angle)
+
+                        minX = Math.Min(minX, p.X)
+                        minY = Math.Min(minY, p.Y)
+                        maxX = Math.Max(maxX, p.X)
+                        maxY = Math.Max(maxY, p.Y)
+
+                    End If
+
+                Next
+
+            Next
+
+            If minX = Double.MaxValue Then
+                Return RectangleF.Empty
+            End If
+
+            Return New RectangleF(
+        CSng(minX),
+        CSng(minY),
+        CSng(maxX - minX),
+        CSng(maxY - minY))
+
         End Function
+
+        Public Shared Function IsAngleOnArc(
+    angle As Double,
+    startAngle As Double,
+    endAngle As Double,
+    isClockwise As Boolean) As Boolean
+
+            Const TwoPi As Double = Math.PI * 2.0
+
+            ' Normalize all angles to 0 .. 2π.
+            angle = angle Mod TwoPi
+            If angle < 0 Then angle += TwoPi
+
+            startAngle = startAngle Mod TwoPi
+            If startAngle < 0 Then startAngle += TwoPi
+
+            endAngle = endAngle Mod TwoPi
+            If endAngle < 0 Then endAngle += TwoPi
+
+            If isClockwise Then
+
+                Dim sweep As Double =
+                    startAngle - endAngle
+
+                If sweep < 0 Then
+                    sweep += TwoPi
+                End If
+
+                Dim fromStart As Double =
+                    startAngle - angle
+
+                If fromStart < 0 Then
+                    fromStart += TwoPi
+                End If
+
+                Return fromStart <= sweep
+
+            Else
+
+                Dim sweep As Double =
+                    endAngle - startAngle
+
+                If sweep < 0 Then
+                    sweep += TwoPi
+                End If
+
+                Dim fromStart As Double =
+                    angle - startAngle
+
+                If fromStart < 0 Then
+                    fromStart += TwoPi
+                End If
+
+                Return fromStart <= sweep
+
+            End If
+
+        End Function
+
+        Public Shared Function IsPointInsidePath(
+            path As IPath2D,
+            testPoint As PointF) As Boolean
+
+            If path Is Nothing OrElse
+               Not path.IsClosed Then
+                Return False
+            End If
+
+            Dim intersections As Integer = 0
+
+            For Each segment As IPathSegment In path.Segments
+
+                If segment Is Nothing Then
+                    Continue For
+                End If
+
+                Select Case segment.SegmentType
+
+                    Case PathSegmentType.Line
+
+                        Dim line As LineSegment2D =
+                            TryCast(segment, LineSegment2D)
+
+                        If line Is Nothing Then Continue For
+
+                        If RayIntersectsLine(
+                            testPoint,
+                            line.StartPoint,
+                            line.EndPoint) Then
+
+                            intersections += 1
+
+                        End If
+
+                    Case PathSegmentType.Arc
+
+                        Dim arc As ArcSegment2D =
+                            TryCast(segment, ArcSegment2D)
+
+                        If arc Is Nothing Then Continue For
+
+                        intersections +=
+                            CountRayArcIntersections(
+                                testPoint,
+                                arc)
+
+                End Select
+
+            Next
+
+            Return (intersections Mod 2) = 1
+
+        End Function
+
+        Private Shared Function RayIntersectsLine(
+    testPoint As PointF,
+    p1 As PointF,
+    p2 As PointF) As Boolean
+
+            ' Horizontal ray extending to +X.
+            If p1.Y = p2.Y Then
+                Return False
+            End If
+
+            ' The test point must lie between the segment's Y values.
+            If testPoint.Y < Math.Min(p1.Y, p2.Y) OrElse
+               testPoint.Y >= Math.Max(p1.Y, p2.Y) Then
+                Return False
+            End If
+
+            Dim xIntersection As Double =
+                p1.X +
+                (testPoint.Y - p1.Y) *
+                (p2.X - p1.X) /
+                (p2.Y - p1.Y)
+
+            Return xIntersection > testPoint.X
+
+        End Function
+
+        Private Shared Function CountRayArcIntersections(
+    testPoint As PointF,
+    arc As ArcSegment2D) As Integer
+
+            Dim dy As Double =
+                testPoint.Y - arc.Center.Y
+
+            ' A horizontal ray intersects the circle at these X values.
+            Dim value As Double =
+                arc.Radius * arc.Radius -
+                dy * dy
+
+            If value <= 0 Then
+                Return 0
+            End If
+
+            Dim dx As Double =
+                Math.Sqrt(value)
+
+            Dim x1 As Double =
+                arc.Center.X - dx
+
+            Dim x2 As Double =
+                arc.Center.X + dx
+
+            Dim count As Integer = 0
+
+            ' Check the first circle intersection.
+            If x1 > testPoint.X Then
+
+                Dim angle1 As Double =
+                    Math.Atan2(
+                        testPoint.Y - arc.Center.Y,
+                        x1 - arc.Center.X)
+
+                If IsAngleOnArc(
+                    angle1,
+                    arc.StartAngle,
+                    arc.EndAngle,
+                    arc.IsClockwise) Then
+
+                    count += 1
+
+                End If
+
+            End If
+
+            ' Check the second circle intersection.
+            If x2 > testPoint.X Then
+
+                Dim angle2 As Double =
+                    Math.Atan2(
+                        testPoint.Y - arc.Center.Y,
+                        x2 - arc.Center.X)
+
+                If IsAngleOnArc(
+                    angle2,
+                    arc.StartAngle,
+                    arc.EndAngle,
+                    arc.IsClockwise) Then
+
+                    count += 1
+
+                End If
+
+            End If
+
+            Return count
+
+        End Function
+
+        Public Shared Function IsPathInsidePath(
+            innerPath As IPath2D,
+            outerPath As IPath2D) As Boolean
+
+            If innerPath Is Nothing OrElse
+               outerPath Is Nothing Then
+                Return False
+            End If
+
+            If Not innerPath.IsClosed OrElse
+               Not outerPath.IsClosed Then
+                Return False
+            End If
+
+            Dim firstSegment As IPathSegment =
+                innerPath.Segments.FirstOrDefault()
+
+            If firstSegment Is Nothing Then
+                Return False
+            End If
+
+            Dim testPoint As PointF =
+                firstSegment.StartPoint
+
+            Return IsPointInsidePath(
+                outerPath,
+                testPoint)
+
+        End Function
+
+
+
+
 
     End Class
 

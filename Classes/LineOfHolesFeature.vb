@@ -1,6 +1,6 @@
 ﻿Imports WE_ENG_V25_0.Core.Models
 
-Public Class LineOfHoles
+Public Class LineOfHolesFeature
     Inherits MachiningFeature
 
     Public Property StartX As Double

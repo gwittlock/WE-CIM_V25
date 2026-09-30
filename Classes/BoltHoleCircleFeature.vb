@@ -1,6 +1,6 @@
 ﻿Imports WE_ENG_V25_0.Core.Models
 
-Public Class BoltHoleCircle
+Public Class BoltHoleCircleFeature
     Inherits MachiningFeature
 
     Public Property CenterX As Double

@@ -1,6 +1,4 @@
 ﻿Imports FabV25_WIN8.CadEntity
-Imports FabV25_WIN8.DxfGeometryHelpers.ImportedEntity
-Imports System.Linq
 Public Enum SelectionFilter
     None = 0
     Line = 1 << 0
@@ -85,9 +83,6 @@ Public Class SelectionManager
 
         _spatialIndex = Nothing
 
-        Debug.WriteLine(
-        $"SelectionManager.SetEntities: {_entities.Count} entities")
-
     End Sub
 
     Public Sub BuildSpatialIndex()
@@ -161,16 +156,7 @@ Public Class SelectionManager
         Dim best As HitResult = Nothing
         Dim candidates As List(Of CadEntity)
 
-        Debug.WriteLine("========================================")
-        Debug.WriteLine("SelectionManager.SelectAtPoint")
-        Debug.WriteLine($"_entities Count = {_entities.Count}")
-        Debug.WriteLine($"_spatialIndex Is Nothing = {_spatialIndex Is Nothing}")
-        Debug.WriteLine($"WorldPt = {ptWorld}")
-        Debug.WriteLine($"TolWorld = {tolWorld}")
-
         If _spatialIndex IsNot Nothing Then
-
-            Debug.WriteLine("Querying spatial index...")
 
             candidates = _spatialIndex.Query(
             New RectangleF(
@@ -179,15 +165,9 @@ Public Class SelectionManager
                 tolWorld * 2,
                 tolWorld * 2))
 
-            Debug.WriteLine($"Spatial query result count = {candidates.Count}")
-
         Else
 
-            Debug.WriteLine("SPATIAL INDEX NOT BUILT - USING _entities")
-
             candidates = _entities
-
-            Debug.WriteLine($"Fallback entity count = {candidates.Count}")
 
         End If
 
@@ -198,11 +178,8 @@ Public Class SelectionManager
             End If
 
             If Not IsEntityAllowedBySelectionFilter(ent, selectionFilter) Then
-                    Debug.WriteLine(
-                        $"FILTERED OUT: {ent.GetType().Name} " &
-                        $"GeometryType={ent.GeometryType}")
-                    Continue For
-                End If
+                Continue For
+            End If
 
                 Dim d = EvaluateDistance(ent, ptWorld)
 
@@ -214,32 +191,17 @@ Public Class SelectionManager
             .Priority = GetPriority(ent)
         }
 
-            Debug.WriteLine(
-            $"HIT CANDIDATE: {ent.GetType().Name} " &
-            $"Distance={d:F6} " &
-            $"Priority={candidate.Priority}")
 
             If best Is Nothing OrElse IsBetter(candidate, best) Then
                 best = candidate
 
-                Debug.WriteLine(
-                $"BEST HIT: {ent.GetType().Name} " &
-                $"Distance={d:F6}")
             End If
 
         Next
 
-        If best Is Nothing Then
-            Debug.WriteLine("NO HIT FROM SELECTION MANAGER")
-            Return Nothing
-        End If
-
         Dim result As isSelectable = TryCast(best.Entity, isSelectable)
 
         If result Is Nothing Then
-            Debug.WriteLine(
-            $"BEST ENTITY DOES NOT IMPLEMENT IsSelectable: " &
-            $"{best.Entity.GetType().Name}")
             Return Nothing
         End If
 

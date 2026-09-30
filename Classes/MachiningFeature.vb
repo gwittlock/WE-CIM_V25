@@ -1,24 +1,33 @@
 ﻿Imports System
 
 Public Enum MachiningFeatureType
+
     Profile
+
     Hole
+
     BoltHoleCircle
+
     GridOfHoles
+
     LineOfHoles
+
     LineOfHolesAtAngleNormal
+
     LineOfHolesAtAngleParallel
+
     BarrierHole
+
     PierceHole
-    LeadIn
-    LeadOut
+
     Command
+
     RapidPoint
-    Pocket
-    Slot
-    Engrave
-    Reposition
+
+    AreaClear
+
 End Enum
+
 
 Public Class MachiningFeature
 
@@ -29,7 +38,7 @@ Public Class MachiningFeature
     Public Property Description As String
 
     '------------------------------------------------------------
-    ' CAM feature type
+    ' Feature type
     '------------------------------------------------------------
     Public Property FeatureType As MachiningFeatureType
 

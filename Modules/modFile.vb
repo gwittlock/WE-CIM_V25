@@ -27,6 +27,7 @@ Imports FabV25_WIN8.WorkZone
 Imports FabV25_WIN8.MachineEnvelope
 Imports FabV25_WIN8.WorkZoneFactory
 Imports FabV25_WIN8.modView
+Imports FabV25_WIN8.ToolShapes
 
 
 Public Module modFile
@@ -53,8 +54,12 @@ Public Module modFile
     Public _layerResolver As LayerColorResolver
     Public _DoPrepareUI As Boolean = False
     Public _DoDrawUI As Boolean = False
+    Public PendingCustomerName As String
+    Public PendingOrderPO As String
+    Public PendingDueDate As Object
 
     Public Sub PrePareUI(sFilename As String)
+
         Dim numericWidth As Double
         Dim numericLength As Double
 
@@ -63,60 +68,77 @@ Public Module modFile
         ' The system is unit-agnostic: inches vs metric is metadata only.
         ' No implicit unit conversions are performed anywhere in geometry or rendering.
 
-        'When preparing the UI several things must happen before importing a file.
-        'this sub does eactly wha it says.
-        ''1) It prepares th UI to the corrodinate system
-        '2) sets up transforms to display geometry correctly
-        '3) get Machine Data in order to draw workzones and clamps
-        '4) Get material data in order to draw the material.
-        '5) Determines the Filetype in order to fire off the correct open state
-        '   a)  a MM3 (Our file format, maybe jsut a renamed DXF)
-        '   b) a NST file a dxf file renamed. (again or format for a nested sheet of parts
-        '   c) a PDB file (Parts Database for nesting
-        '   d) a CTG File a dxf file renamed. (Again our format for a "Custom Tool Graphic"
-        '   e) a CLAMP.CTG  a dxf file renamed. The is a Custom Drawn file used to Display Clamps on the screen
-        '   f) a TABLE.CTG a dxf file renamed. (A Custom Drawn file which represent things such as slats or stops on the table)
-        '   g) a DXF file. The original dxf used to create CAM data files
+        ' When preparing the UI several things must happen before importing a file.
+        '
+        ' 1) Prepare the UI to the coordinate system
+        ' 2) Set up transforms to display geometry correctly
+        ' 3) Get Machine Data in order to draw workzones and clamps
+        ' 4) Get material data in order to draw the material
+        ' 5) Determine the FileType in order to fire off the correct open state
+        '
+        '    a) MM3       - Our file format, possibly just a renamed DXF
+        '    b) NST       - A DXF file renamed; format for a nested sheet of parts
+        '    c) PDB       - Parts Database for nesting
+        '    d) CTG       - A DXF file renamed; Custom Tool Graphic
+        '    e) CLAMP.CTG - A custom drawn file used to display clamps
+        '    f) TABLE.CTG - A custom drawn file representing slats, stops, etc.
+        '    g) DXF       - Original DXF used to create CAM data
+        '
+        ' Each CAM file must include:
+        '    Machine Type
+        '    Machine
+        '    Tool Setup
+        '    Material
+        '    Optional Layer Setup
 
 
-        'Each CAM file must include:
-        '    Machinetype
-        '   Machine
-        '   Tool Setup
-        '   Material
-        '   optional Layer Setup
+        '============================================================
+        ' 1. Get Material Information
+        '============================================================
+        '
+        ' MaterialSheet provides the physical sheet information used
+        ' to prepare the drawing area and machine work envelope.
+        '
+        ' Material itself is only a representation of the physical
+        ' sheet and is not selectable.
 
-        'The first thing we prepare is the material. Ideally this comes from the MaterialInvemtory.json file
-        'Give the selected materiaid we can get the width, length, thicknes, and type of material.
-        'This is enough information to draw the material. Material is just a representaion of the
-        'material. It is not selectable. to get these values we do the following
+        matWidth = GetMaterialWidth(
+        MaterialSheets,
+        _SelectedMaterialID)
 
-        ' ===============================
-        ' Snap state
-        ' ===============================
-
-        matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
-        matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+        matLength = GetMaterialLength(
+        MaterialSheets,
+        _SelectedMaterialID)
 
         If matWidth > 0 Then
             numericWidth = Convert.ToDouble(matWidth)
-            ' Perform logic with numericWidth
         End If
 
         If matLength > 0 Then
             numericLength = Convert.ToDouble(matLength)
-            ' Perform logic with numericWidth
         End If
+
+
+        '============================================================
+        ' 2. Prepare the View Transform
+        '============================================================
 
         Dim margin As Integer = 20
 
-        Dim scaleX As Double = (panelWidth - 2 * margin) / matLength
-        Dim scaleY As Double = (panelHeight - 2 * margin) / matWidth
-        Dim scale As Double = Math.Min(scaleX, scaleY)
+        Dim scaleX As Double =
+        (panelWidth - 2 * margin) / matLength
 
+        Dim scaleY As Double =
+        (panelHeight - 2 * margin) / matWidth
 
-        Dim offsetX As Double = (panelWidth - matLength * scale) / 2
-        Dim offsetY As Double = panelHeight - (matWidth * scale) - margin
+        Dim scale As Double =
+        Math.Min(scaleX, scaleY)
+
+        Dim offsetX As Double =
+        (panelWidth - matLength * scale) / 2
+
+        Dim offsetY As Double =
+        panelHeight - (matWidth * scale) - margin
 
         myTransform = New ViewTransform With {
         .Scale = scale,
@@ -124,61 +146,93 @@ Public Module modFile
         .OffsetY = offsetY
     }
 
-        '' ---- Resolve machine from configuration ----
-        Dim machineDef As MachineDefinition = MachineLoader.LoadMachineDefinition(SelectedMachineID)
 
-        _machineDef = machineDef
+        '============================================================
+        ' 3. Create Production Job
+        '============================================================
 
-        If machineDef Is Nothing Then
-            Throw New Exception($"Machine with ID {SelectedMachineID} not found.")
-        End If
-
-        Dim originScreen = WorldToScreen(0, 0, myTransform, panelHeight)
-
-
-        '' ---- Assign to current job ----
-        CurrentJob = New JobContext()
-        CurrentJob.MachineDefinition = machineDef
-
-        '------------------------------------------------------------
-        ' Create production Job
-        '------------------------------------------------------------
         CurrentProductionJob = New Job With {
-                                                .MachineID = SelectedMachineID,
-                                                .ToolSetupID = SelectedToolSetupID,
-                                                .LayerSetupID = SelectedLayerSetupID,
-                                                .MaterialTypeID = _selectedMaterial.TypeID
-                                            }
+        .MachineID = SelectedMachineID,
+        .ToolSetupID = SelectedToolSetupID,
+        .LayerSetupID = SelectedLayerSetupID,
+        .MaterialTypeID = _selectedMaterial.TypeID
+    }
 
-        '------------------------------------------------------------
-        ' Create the JobSheet for the selected MaterialSheet
-        '------------------------------------------------------------
+
+        '============================================================
+        ' 4. Create the JobSheet
+        '============================================================
+
         Dim productionSheet As New JobSheet With {
-                                                .MaterialSheetID = _SelectedMaterialID,
-                                                .Length = matLength,
-                                                .Width = matWidth
-                                            }
+        .MaterialSheetID = _SelectedMaterialID,
+        .Length = matLength,
+        .Width = matWidth
+    }
 
         CurrentProductionJob.JobSheets.Add(productionSheet)
 
-        RestoreAndDrawJob()
+        '============================================================
+        ' 5. Load Machine Definition
+        '============================================================
 
-        '------------------------------------------------------------
-        ' Connect the runtime WorkZones to the production JobSheet
-        '------------------------------------------------------------
-        productionSheet.WorkZones = CurrentJob.WorkZones
+        Dim machineDef As MachineDefinition =
+        MachineLoader.LoadMachineDefinition(
+            CurrentProductionJob.MachineID)
 
-        ' Create / update job context
+        If machineDef Is Nothing Then
+
+            MessageBox.Show(
+            "Selected machine definition could not be loaded.",
+            "Job Creation",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+
+        '============================================================
+        ' 6. Create Runtime JobContext
+        '============================================================
+        '
+        ' CurrentJob is the runtime representation used by the
+        ' existing display/workzone/clamp system.
+        '
+        ' CurrentProductionJob is the production data model.
+        '
+        ' They remain separate.
+
+        CurrentJob = New JobContext()
+
+        CurrentJob.MachineDefinition = machineDef
         CurrentJob.ToolSetupID = SelectedToolSetupID
         CurrentJob.MaterialID = SelectedMaterialID
         CurrentJob.LayerSetupID = SelectedLayerSetupID
 
-        If CurrentJob Is Nothing Then Return
+        '============================================================
+        ' 7. Create Runtime WorkZones and Clamps
+        '============================================================
+        RestoreAndDrawJob()
 
+        '============================================================
+        ' 8. Connect Runtime WorkZones to Production JobSheet
+        '============================================================
+
+        productionSheet.WorkZones = CurrentJob.WorkZones
+
+
+        '============================================================
+        ' 9. Store Selected Setup Information in MachineDefinition
+        '============================================================
 
         machineDef.SelectedToolSetupID = SelectedToolSetupID
         machineDef.SelectedLayerSetupID = SelectedLayerSetupID
         machineDef.SelectedMaterialID = SelectedMaterialID
+
+        '============================================================
+        ' 10. Import DXF
+        '============================================================
 
         _cadEntities = ImportDxf(_selectedDxfPath)
 
@@ -188,70 +242,173 @@ Public Module modFile
 
         _sceneReady = True
 
+        '============================================================
+        ' 11. Get CAD Bounds
+        '============================================================
 
-        Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
+        Dim bounds =
+        HelperFunctions.GetCadBounds(_cadEntities)
 
-        NormalizeCadToSheet(_cadEntities, matLength, matWidth)
+        '============================================================
+        ' 12. Normalize CAD Geometry to Sheet Coordinates
+        '============================================================
 
-        '------------------------------------------------------------
-        ' Create the Part from the normalized CAD geometry
-        '------------------------------------------------------------
-        Dim importedPart As New Part With {
-                                                            .ID = 0,
-                                                            .Description = Path.GetFileNameWithoutExtension(_selectedDxfPath)
-                                                        }
+        NormalizeCadToSheet(
+        _cadEntities,
+        matLength,
+        matWidth)
 
-        importedPart.CADGeometry.AddRange(_cadEntities)
+        '============================================================
+        ' 13. Build CAM Working Entities
+        '============================================================
 
-        '------------------------------------------------------------
-        ' Create the initial Pattern for the imported Part
-        '------------------------------------------------------------
-        Dim importedPattern As New Pattern With {
-                                                                    .Part = importedPart,
-                                                                    .X = 0,
-                                                                    .Y = 0,
-                                                                    .Angle = 0
-                                                                }
+        _importedEntities =
+        ConvertCadEntitiesToImportedEntities(
+            _cadEntities,
+            _selectedLayerSetup)
 
-        ' The normalized Part starts at the origin,
-        ' so its first occurrence belongs in WorkZone 1.
-        If productionSheet.WorkZones.Count > 0 Then
-            productionSheet.WorkZones(0).Patterns.Add(importedPattern)
+        If _selectedLayerSetup Is Nothing Then
+            Exit Sub
         End If
 
-        _DoPrepareUI = False
+        Dim testProfiles As List(Of Profile) =
+    BuildProfilesFromEntities(
+        _importedEntities,
+        _selectedLayerSetup.GapTolerance)
+
+        '============================================================
+        ' 14. Create Part from Normalized CAD Geometry
+        '============================================================
+
+        Dim importedPart As New Part With {
+    .ID = 0,
+    .Description =
+        Path.GetFileNameWithoutExtension(
+            _selectedDxfPath)
+}
+
+        importedPart.CADGeometry.AddRange(
+    _cadEntities)
+
+        productionSheet.Parts.Add(importedPart)
+
+        ' ---------------------------------------
+        ' Create Profile Features from closed profiles
+        ' ---------------------------------------
+        Dim profiles As List(Of Profile) =
+    BuildProfilesFromEntities(
+        _importedEntities,
+        _selectedLayerSetup.GapTolerance)
+
+        For Each profile As Profile In profiles
+
+            If profile Is Nothing Then Continue For
+            If Not profile.IsClosed Then Continue For
+
+            Dim profileFeature As New ProfileFeature With {.SourceProfile = profile}
+
+            profileFeature.TooledProfile = New TooledProfile(profile, ToolPathOffset.None)
+
+            importedPart.Features.Add(profileFeature)
+
+        Next
+
+        '============================================================
+        ' 15. Create Initial Pattern
+        '============================================================
+
+        Dim importedPattern As New Pattern With {
+        .Part = importedPart,
+        .X = 0,
+        .Y = 0,
+        .Angle = 0
+    }
+
+
+        '============================================================
+        ' 16. Add Pattern to First WorkZone
+        '============================================================
+        '
+        ' The normalized Part starts at the sheet origin,
+        ' so its first occurrence belongs in WorkZone 1.
+
+        If productionSheet.WorkZones.Count > 0 Then
+
+            productionSheet.WorkZones(0).Patterns.Add(
+            importedPattern)
+
+        End If
+
+
+        '============================================================
+        ' Preparation Complete
+        '============================================================
+
     End Sub
 
     Public Function FileOpen()
+
         Dim importer As New DxfImporter_IxMilia()
 
-        Using dlg As New DXFFileSelectionDialog()
-            If dlg.ShowDialog() <> DialogResult.OK Then Return Nothing
-            _selectedDxfPath = dlg.SelectedDxfPath
+        frmMain.Cursor = Cursors.WaitCursor
 
-            Using frm As New frmOpenProject(_selectedDxfPath)
-                If frm.ShowDialog() <> DialogResult.OK Then Return Nothing
+        Try
+
+            Using dlg As New DXFFileSelectionDialog()
+
+                If dlg.ShowDialog() <> DialogResult.OK Then
+                    Return Nothing
+                End If
+
+                '-------------------------------------------------
+                ' Preserve Job-level UDP values.
+                ' PrePareUI() runs later during the Paint cycle.
+                '-------------------------------------------------
+
+                _selectedDxfPath = dlg.SelectedDxfPath
+
+                Using frm As New frmOpenProject(_selectedDxfPath)
+
+                    If frm.ShowDialog() <> DialogResult.OK Then
+                        Return Nothing
+                    End If
+
+                    PendingCustomerName = frm.CustomerName
+                    PendingOrderPO = frm.OrderPO
+                    PendingDueDate = frm.DueDate
+
+                    '-------------------------------------------------
+                    ' Store the Job-level UDP values.
+                    '
+                    ' PrePareUI will create CurrentProductionJob.
+                    ' These values will be transferred to it after
+                    ' preparation.
+                    '-------------------------------------------------
+
+                    ' For now, preserve the existing selected values.
+                    ' Customer/PO/Due Date will be connected once
+                    ' CurrentProductionJob has been created.
+
+                    '-------------------------------------------------
+                    ' Tell the UI that a new file needs preparation.
+                    ' The Paint event performs PrePareUI().
+                    '-------------------------------------------------
+                    _DoPrepareUI = True
+                    _DoDrawUI = False
+
+                    frmMain.pnlPicmodeler.Invalidate()
 
 
-                'PrePareUI(_selectedDxfPath)
+                End Using
 
-
-
-                '_cadEntities = ImportDxf(selectedPath)
-
-                'Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
-
-                'NormalizeCadToSheet(_cadEntities)
-
-
-                'matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
-                'matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
-
-
-                'RedrawAll()
-                frmMain.pnlPicmodeler.Invalidate()
             End Using
-        End Using
+
+        Finally
+
+            frmMain.Cursor = Cursors.Default
+
+        End Try
+
     End Function
 
     Public Function ResolveWinding(role As AutoPunchingEngine.ProfileRole, cutDir As AutoPunchingEngine.CutDirection) As AutoPunchingEngine.WindingDirection
@@ -353,15 +510,87 @@ Public Module modFile
     ''' Computes the start point of a DXF Arc based on its center, radius, and start angle.
     ''' </summary>
 
-    Public Function MinDistanceBetweenEntities(e1 As ImportedEntity, e2 As ImportedEntity) As Double
-        Dim p1 = GetEntityStartPoint(e1)
-        Dim p2 = GetEntityStartPoint(e2)
+    Public Function MinDistanceBetweenEntities(e1 As ImportedEntity,
+                                            e2 As ImportedEntity) As Double
 
-        Dim dx = p1.X - p2.X
-        Dim dy = p1.Y - p2.Y
-        Dim dz = p1.Z - p2.Z
+        ' Profiles must not cross CAM layers.
+        If Not String.Equals(e1.CAMLayer,
+                         e2.CAMLayer,
+                         StringComparison.OrdinalIgnoreCase) Then
+            Return Double.MaxValue
+        End If
 
-        Return Math.Sqrt(dx * dx + dy * dy + dz * dz)
+        Dim points1 As New List(Of DxfPoint)
+        Dim points2 As New List(Of DxfPoint)
+
+        ' ---------------------------------------
+        ' Entity 1 connection points
+        ' ---------------------------------------
+        Select Case e1.GeometryType
+
+            Case ImportedEntity.GeometryTypeEnum.Line
+
+                points1.Add(e1.Line.P1)
+                points1.Add(e1.Line.P2)
+
+            Case ImportedEntity.GeometryTypeEnum.Arc
+
+                points1.Add(GetArcStartPoint(e1.Arc))
+                points1.Add(GetArcEndPoint(e1.Arc))
+
+            Case ImportedEntity.GeometryTypeEnum.Circle
+
+                ' A circle is already closed.
+                ' It does not have an open connection endpoint.
+                Return Double.MaxValue
+
+        End Select
+
+        ' ---------------------------------------
+        ' Entity 2 connection points
+        ' ---------------------------------------
+        Select Case e2.GeometryType
+
+            Case ImportedEntity.GeometryTypeEnum.Line
+
+                points2.Add(e2.Line.P1)
+                points2.Add(e2.Line.P2)
+
+            Case ImportedEntity.GeometryTypeEnum.Arc
+
+                points2.Add(GetArcStartPoint(e2.Arc))
+                points2.Add(GetArcEndPoint(e2.Arc))
+
+            Case ImportedEntity.GeometryTypeEnum.Circle
+
+                Return Double.MaxValue
+
+        End Select
+
+        ' ---------------------------------------
+        ' Find minimum endpoint-to-endpoint distance
+        ' ---------------------------------------
+        Dim minDistance As Double = Double.MaxValue
+
+        For Each p1 As DxfPoint In points1
+            For Each p2 As DxfPoint In points2
+
+                Dim dx As Double = p1.X - p2.X
+                Dim dy As Double = p1.Y - p2.Y
+                Dim dz As Double = p1.Z - p2.Z
+
+                Dim distance As Double =
+                Math.Sqrt(dx * dx + dy * dy + dz * dz)
+
+                If distance < minDistance Then
+                    minDistance = distance
+                End If
+
+            Next
+        Next
+
+        Return minDistance
+
     End Function
 
 
@@ -445,25 +674,47 @@ Public Module modFile
 
     ' Compute all pairs of entities closer than gapTolerance
     '-------------------------------------------------
-    Public Function ComputeGapPairs(entities As List(Of ImportedEntity),
-                                gapTolerance As Double) _
-                                As List(Of Tuple(Of ImportedEntity, ImportedEntity))
+    Public Function ComputeGapPairs(
+    entities As List(Of ImportedEntity),
+    gapTolerance As Double) _
+    As List(Of Tuple(Of ImportedEntity, ImportedEntity))
 
         Dim gapPairs As New List(Of Tuple(Of ImportedEntity, ImportedEntity))()
 
         For i As Integer = 0 To entities.Count - 2
+
             For j As Integer = i + 1 To entities.Count - 1
+
                 Dim e1 = entities(i)
                 Dim e2 = entities(j)
 
-                Dim dist = MinDistanceBetweenEntities(e1, e2)
-                If dist <= gapTolerance Then
-                    gapPairs.Add(Tuple.Create(Of ImportedEntity, ImportedEntity)(e1, e2))
+                ' Profiles cannot cross CAD layers.
+                If e1.CadEntity Is Nothing OrElse
+               e2.CadEntity Is Nothing Then
+                    Continue For
                 End If
+
+                If Not String.Equals(
+                e1.CadEntity.LayerName,
+                e2.CadEntity.LayerName,
+                StringComparison.OrdinalIgnoreCase) Then
+                    Continue For
+                End If
+
+                Dim dist = MinDistanceBetweenEntities(e1, e2)
+
+                If dist <= gapTolerance Then
+                    gapPairs.Add(
+                    Tuple.Create(Of ImportedEntity, ImportedEntity)(
+                        e1,
+                        e2))
+                End If
+
             Next
         Next
 
         Return gapPairs
+
     End Function
 
     'Public Function ComputeSignedArea(profile As List(Of CadEntity)) As Double
@@ -512,5 +763,814 @@ Public Module modFile
     Private Function FindLayer(dxf As DxfFile, layerName As String) As DxfLayer
         Return dxf.Layers.FirstOrDefault(Function(l) l.Name = layerName)
     End Function
+
+
+    Public Function ConvertCadEntitiesToImportedEntities(
+    cadEntities As List(Of CadEntity),
+    layerSetup As AppData.layersetup) As List(Of ImportedEntity)
+
+        Dim results As New List(Of ImportedEntity)()
+
+        If cadEntities Is Nothing OrElse cadEntities.Count = 0 Then
+            Return results
+        End If
+
+        If layerSetup Is Nothing OrElse
+           layerSetup.Layers Is Nothing OrElse
+           layerSetup.Layers.Count = 0 Then
+            Return results
+        End If
+
+        ' Find the *DEFAULT* directive once.
+        Dim defaultDirective As AppData.Directive =
+            layerSetup.Layers.FirstOrDefault(
+                Function(d) String.Equals(
+                    d.CADLayer,
+                    "*DEFAULT*",
+                    StringComparison.OrdinalIgnoreCase))
+
+        For Each cad As CadEntity In cadEntities
+
+            If cad Is Nothing Then Continue For
+
+            ' ----------------------------------------
+            ' Find directive for this CAD layer.
+            ' ----------------------------------------
+            Dim directive As AppData.Directive =
+                layerSetup.Layers.FirstOrDefault(
+                    Function(d) String.Equals(
+                        d.CADLayer,
+                        cad.LayerName,
+                        StringComparison.OrdinalIgnoreCase))
+
+            ' No specific layer match -> use *DEFAULT*
+            If directive Is Nothing Then
+                directive = defaultDirective
+            End If
+
+            ' There should always be a default according
+            ' to layersetup.Validate(), but don't fail the
+            ' entire import if one is missing.
+            If directive Is Nothing Then
+                Continue For
+            End If
+
+            Dim imported As New ImportedEntity()
+
+            ' ----------------------------------------
+            ' Preserve the actual CAD layer.
+            ' ----------------------------------------
+            ' ImportedEntity currently does not contain a
+            ' CADLayer property, so the CadEntity remains
+            ' the authoritative source for the CAD layer.
+            imported.CadEntity = cad
+
+            ' ----------------------------------------
+            ' CAM information from the directive.
+            ' ----------------------------------------
+            imported.CAMLayer = directive.CAMLayer
+            imported.DirectiveID = directive.ID
+            imported.DisplayColor = directive.DisplayColor
+
+            ' ----------------------------------------
+            ' Geometry.
+            ' ----------------------------------------
+            If TypeOf cad Is CadEntity.CadLine Then
+
+                Dim line As CadEntity.CadLine = DirectCast(cad, CadEntity.CadLine)
+
+                imported.GeometryType =
+                    DxfGeometryHelpers.GeometryTypeEnum.Line
+
+                imported.Line = New DxfLine(
+                    New DxfPoint(line.StartPoint.X, line.StartPoint.Y, 0),
+                    New DxfPoint(line.EndPoint.X, line.EndPoint.Y, 0))
+
+            ElseIf TypeOf cad Is CadEntity.CadCircle Then
+
+                Dim circle As CadEntity.CadCircle = DirectCast(cad, CadEntity.CadCircle)
+
+                imported.GeometryType =
+                    DxfGeometryHelpers.GeometryTypeEnum.Circle
+
+                imported.Circle = New DxfCircle(
+                    New DxfPoint(circle.Center.X, circle.Center.Y, 0),
+                    circle.Radius)
+
+                imported.Radius = circle.Radius
+
+            ElseIf TypeOf cad Is CadEntity.CadArc Then
+
+                Dim arc As CadEntity.CadArc = DirectCast(cad, CadEntity.CadArc)
+
+                imported.GeometryType =
+                    DxfGeometryHelpers.GeometryTypeEnum.Arc
+
+                imported.Arc = New DxfArc(
+                    New DxfPoint(arc.Center.X, arc.Center.Y, 0),
+                    arc.Radius,
+                    arc.StartAngle,
+                    arc.EndAngle)
+
+                imported.Radius = arc.Radius
+                imported.StartAngle = arc.StartAngle
+                imported.EndAngle = arc.EndAngle
+
+            ElseIf TypeOf cad Is CadPoint Then
+
+                Dim point As CadPoint = DirectCast(cad, CadPoint)
+
+                imported.GeometryType =
+                    DxfGeometryHelpers.GeometryTypeEnum.Point
+
+                imported.Point =
+                    New DxfPoint(point.Position.X, point.Position.Y, 0)
+
+            Else
+
+                ' Unsupported CAD entity type for the
+                ' current profile pipeline.
+                Continue For
+
+            End If
+
+            results.Add(imported)
+
+        Next
+
+        Return results
+
+    End Function
+
+    '-----------------------------------------
+    ' Get the start point of an imported entity
+    '-----------------------------------------
+    Private Function GetImportedEntityStartPoint(
+        entity As ImportedEntity) As PointF
+
+        If entity Is Nothing Then
+            Return PointF.Empty
+        End If
+
+        Select Case entity.GeometryType
+
+            Case DxfGeometryHelpers.GeometryTypeEnum.Line
+
+                If entity.Line Is Nothing Then Return PointF.Empty
+
+                Return New PointF(
+                    CSng(entity.Line.P1.X),
+                    CSng(entity.Line.P1.Y))
+
+            Case DxfGeometryHelpers.GeometryTypeEnum.Arc
+
+                If entity.Arc Is Nothing Then
+                    Return PointF.Empty
+                End If
+
+                Return Geometry2D.PointOnCircle(New PointF(
+                                                                        CSng(entity.Arc.Center.X),
+                                                                        CSng(entity.Arc.Center.Y)),
+                                                                        entity.Arc.Radius,
+                                                                        DegreesToRadians(entity.Arc.StartAngle))
+
+            Case Else
+
+                Return PointF.Empty
+
+        End Select
+
+    End Function
+
+
+    '-----------------------------------------
+    ' Get the end point of an imported entity
+    '-----------------------------------------
+    Private Function GetImportedEntityEndPoint(
+        entity As ImportedEntity) As PointF
+
+        If entity Is Nothing Then
+            Return PointF.Empty
+        End If
+
+        Select Case entity.GeometryType
+
+            Case DxfGeometryHelpers.GeometryTypeEnum.Line
+
+                If entity.Line Is Nothing Then Return PointF.Empty
+
+                Return New PointF(
+                    CSng(entity.Line.P2.X),
+                    CSng(entity.Line.P2.Y))
+
+            Case DxfGeometryHelpers.GeometryTypeEnum.Arc
+
+                If entity.Arc Is Nothing Then
+                    Return PointF.Empty
+                End If
+
+                Return Geometry2D.PointOnCircle(New PointF(
+                                                                        CSng(entity.Arc.Center.X),
+                                                                        CSng(entity.Arc.Center.Y)),
+                                                                        entity.Arc.Radius,
+                                                                        DegreesToRadians(entity.Arc.EndAngle))
+
+            Case Else
+
+                Return PointF.Empty
+
+        End Select
+
+    End Function
+
+
+    '-----------------------------------------
+    ' Convert CAD degrees to path radians
+    '-----------------------------------------
+    Private Function DegreesToRadians(
+        degrees As Double) As Double
+
+        Return degrees * Math.PI / 180.0
+
+    End Function
+
+    '-----------------------------------------
+    ' Order the entities in a connected profile
+    '-----------------------------------------
+    Public Function OrderProfileEntities(
+        profileEntities As List(Of ImportedEntity),
+        tolerance As Double) _
+        As List(Of ImportedEntity)
+
+        Dim ordered As New List(Of ImportedEntity)()
+
+        If profileEntities Is Nothing OrElse
+           profileEntities.Count = 0 Then
+
+            Return ordered
+        End If
+
+        Dim remaining As New List(Of ImportedEntity)(
+            profileEntities)
+
+        ' Start with the first entity.
+        Dim current As ImportedEntity = remaining(0)
+        remaining.RemoveAt(0)
+        ordered.Add(current)
+
+        Dim currentEnd As PointF =
+            GetImportedEntityEndPoint(current)
+
+        While remaining.Count > 0
+
+            Dim foundIndex As Integer = -1
+            Dim reverse As Boolean = False
+
+            For i As Integer = 0 To remaining.Count - 1
+
+                Dim candidate As ImportedEntity =
+                    remaining(i)
+
+                Dim candidateStart As PointF =
+                    GetImportedEntityStartPoint(candidate)
+
+                Dim candidateEnd As PointF =
+                    GetImportedEntityEndPoint(candidate)
+
+                If DistanceBetweenPoints(
+                    currentEnd,
+                    candidateStart) <= tolerance Then
+
+                    foundIndex = i
+                    reverse = False
+                    Exit For
+                End If
+
+                If DistanceBetweenPoints(
+                    currentEnd,
+                    candidateEnd) <= tolerance Then
+
+                    foundIndex = i
+                    reverse = True
+                    Exit For
+                End If
+
+            Next
+
+            If foundIndex < 0 Then
+                Exit While
+            End If
+
+            Dim nextEntity As ImportedEntity =
+                remaining(foundIndex)
+
+            remaining.RemoveAt(foundIndex)
+
+            If reverse Then
+                nextEntity =
+                    ReverseImportedEntity(nextEntity)
+            End If
+
+            ordered.Add(nextEntity)
+
+            currentEnd =
+                GetImportedEntityEndPoint(nextEntity)
+
+        End While
+
+        Return ordered
+
+    End Function
+
+    '-----------------------------------------
+    ' Distance between two world points
+    '-----------------------------------------
+    Private Function DistanceBetweenPoints(
+        p1 As PointF,
+        p2 As PointF) As Double
+
+        Dim dx As Double = p2.X - p1.X
+        Dim dy As Double = p2.Y - p1.Y
+
+        Return Math.Sqrt(
+            dx * dx +
+            dy * dy)
+
+    End Function
+
+    '-----------------------------------------
+    ' Create a reversed copy of an imported
+    ' entity for profile path ordering.
+    '-----------------------------------------
+    Private Function ReverseImportedEntity(
+        source As ImportedEntity) As ImportedEntity
+
+        If source Is Nothing Then
+            Return Nothing
+        End If
+
+        Dim reversed As New ImportedEntity()
+
+        ' Copy common properties.
+        reversed.CAMLayer = source.CAMLayer
+        reversed.ColorMode = source.ColorMode
+        reversed.ExplicitColor = source.ExplicitColor
+        reversed.DisplayColor = source.DisplayColor
+        reversed.DirectiveID = source.DirectiveID
+        reversed.GeometryType = source.GeometryType
+        reversed.Radius = source.Radius
+        reversed.StartAngle = source.StartAngle
+        reversed.EndAngle = source.EndAngle
+        reversed.CadEntity = source.CadEntity
+        reversed.WindingDirection = source.WindingDirection
+
+        Select Case source.GeometryType
+
+            Case DxfGeometryHelpers.GeometryTypeEnum.Line
+
+                If source.Line Is Nothing Then
+                    Return reversed
+                End If
+
+                reversed.Line = New DxfLine(
+                    source.Line.P2,
+                    source.Line.P1)
+
+            Case DxfGeometryHelpers.GeometryTypeEnum.Arc
+
+                If source.CadEntity Is Nothing Then
+                    Return reversed
+                End If
+
+                Dim sourceArc As CadEntity.CadArc =
+                    TryCast(source.CadEntity, CadEntity.CadArc)
+
+                If sourceArc Is Nothing Then
+                    Return reversed
+                End If
+
+                ' Reverse the arc direction.
+                reversed.StartAngle = sourceArc.EndAngle
+                reversed.EndAngle = sourceArc.StartAngle
+                reversed.WindingDirection =
+                If(sourceArc.IsClockwise, "CCW", "CW")
+
+                reversed.Arc = New DxfArc(
+                    New DxfPoint(
+                        sourceArc.Center.X,
+                        sourceArc.Center.Y,
+                        0),
+                    sourceArc.Radius,
+                    reversed.StartAngle,
+                    reversed.EndAngle)
+
+
+        End Select
+
+        Return reversed
+
+    End Function
+
+
+    '-----------------------------------------
+    ' Convert an ordered imported profile into
+    ' the nominal Path2D representation.
+    '-----------------------------------------
+    Public Function BuildProfilePath(
+        orderedEntities As List(Of ImportedEntity)) _
+        As IPath2D
+
+        Dim path As New Path2D()
+
+        If orderedEntities Is Nothing OrElse
+           orderedEntities.Count = 0 Then
+
+            Return path
+        End If
+
+        For Each entity As ImportedEntity In orderedEntities
+
+            If entity Is Nothing Then Continue For
+
+            Select Case entity.GeometryType
+
+                Case DxfGeometryHelpers.GeometryTypeEnum.Line
+
+                    If entity.Line Is Nothing Then Continue For
+
+                    Dim startPoint As New PointF(
+                        CSng(entity.Line.P1.X),
+                        CSng(entity.Line.P1.Y))
+
+                    Dim endPoint As New PointF(
+                        CSng(entity.Line.P2.X),
+                        CSng(entity.Line.P2.Y))
+
+                    path.Add(
+                        New LineSegment2D(
+                            startPoint,
+                            endPoint))
+
+                Case DxfGeometryHelpers.GeometryTypeEnum.Arc
+
+                    If entity.Arc Is Nothing Then
+                        Continue For
+                    End If
+
+                    Dim center As New PointF(
+                        CSng(entity.Arc.Center.X),
+                        CSng(entity.Arc.Center.Y))
+
+                    Dim startAngle As Double =
+                        DegreesToRadians(entity.Arc.StartAngle)
+
+                    Dim endAngle As Double =
+                        DegreesToRadians(entity.Arc.EndAngle)
+
+                    path.Add(
+                        New ArcSegment2D(
+                            center,
+                            entity.Arc.Radius,
+                            startAngle,
+                            endAngle,
+                            GetArcClockwise(entity)))
+
+
+            End Select
+
+        Next
+
+        Return path
+
+    End Function
+
+    Private Function GetImportedArcClockwise(
+    entity As ImportedEntity) As Boolean
+
+        If entity Is Nothing Then
+            Return False
+        End If
+
+        If String.Equals(
+        entity.WindingDirection,
+        "CW",
+        StringComparison.OrdinalIgnoreCase) Then
+
+            Return True
+
+        End If
+
+        If String.Equals(
+        entity.WindingDirection,
+        "CCW",
+        StringComparison.OrdinalIgnoreCase) Then
+
+            Return False
+
+        End If
+
+        If entity.CadEntity Is Nothing Then
+            Return False
+        End If
+
+        Dim arc As CadEntity.CadArc =
+        TryCast(entity.CadEntity, CadEntity.CadArc)
+
+        If arc Is Nothing Then
+            Return False
+        End If
+
+        Return arc.IsClockwise
+
+    End Function
+
+    Private Function GetArcClockwise(
+    entity As ImportedEntity) As Boolean
+
+        If entity Is Nothing OrElse
+       entity.CadEntity Is Nothing Then
+
+            Return False
+        End If
+
+        Dim arc As CadEntity.CadArc =
+        TryCast(entity.CadEntity, CadEntity.CadArc)
+
+        If arc Is Nothing Then
+            Return False
+        End If
+
+        Return arc.IsClockwise
+
+    End Function
+    '-----------------------------------------
+    ' Create a nominal Profile from an ordered
+    ' imported entity group.
+    '-----------------------------------------
+    Public Function CreateProfileFromEntities(
+        profileEntities As List(Of ImportedEntity),
+        tolerance As Double,
+        side As ProfileSide) As Profile
+
+        If profileEntities Is Nothing OrElse
+           profileEntities.Count = 0 Then
+
+            Return Nothing
+        End If
+
+        Dim orderedEntities As List(Of ImportedEntity) =
+            OrderProfileEntities(
+                profileEntities,
+                tolerance)
+
+        If orderedEntities.Count = 0 Then
+            Return Nothing
+        End If
+
+        Dim path As IPath2D =
+            BuildProfilePath(orderedEntities)
+
+        If path Is Nothing OrElse
+           path.Segments Is Nothing Then
+
+            Return Nothing
+        End If
+
+        Return New Profile(
+            path,
+            side)
+
+    End Function
+
+
+    Public Function BuildProfilesFromEntities(
+    entities As List(Of ImportedEntity),
+    gapTolerance As Double) _
+    As List(Of Profile)
+
+        Dim profiles As New List(Of Profile)()
+
+        If entities Is Nothing OrElse
+       entities.Count = 0 Then
+
+            Return profiles
+        End If
+
+        Dim profileGroups As List(Of List(Of ImportedEntity)) =
+        BuildProfiles(
+            entities,
+            gapTolerance)
+
+        Dim profileData As New List(Of Tuple(Of String, IPath2D))()
+
+        ' Build all profile paths and retain the CAD layer
+        ' for containment testing.
+        For Each profileEntities As List(Of ImportedEntity) _
+        In profileGroups
+
+            If profileEntities Is Nothing OrElse
+           profileEntities.Count = 0 Then
+
+                Continue For
+            End If
+
+            Dim orderedEntities As List(Of ImportedEntity) =
+            OrderProfileEntities(
+                profileEntities,
+                gapTolerance)
+
+            If orderedEntities.Count = 0 Then
+                Continue For
+            End If
+
+            Dim path As IPath2D =
+            BuildProfilePath(orderedEntities)
+
+            If path Is Nothing OrElse
+           path.Segments Is Nothing Then
+
+                Continue For
+            End If
+
+            Dim cadLayer As String = Nothing
+
+            For Each entity As ImportedEntity In orderedEntities
+
+                If entity IsNot Nothing AndAlso
+               entity.CadEntity IsNot Nothing Then
+
+                    cadLayer =
+                    entity.CadEntity.LayerName
+
+                    Exit For
+
+                End If
+
+            Next
+
+            profileData.Add(
+            Tuple.Create(
+                cadLayer,
+                path))
+
+        Next
+
+        ' Create the final profiles. Containment is evaluated
+        ' only against profiles on the same CAD layer.
+        For Each item In profileData
+
+            Dim currentLayer As String =
+            item.Item1
+
+            Dim currentPath As IPath2D =
+            item.Item2
+
+            Dim sameLayerPaths As New List(Of IPath2D)()
+
+            For Each candidate In profileData
+
+                If String.Equals(
+                currentLayer,
+                candidate.Item1,
+                StringComparison.OrdinalIgnoreCase) Then
+
+                    sameLayerPaths.Add(
+                    candidate.Item2)
+
+                End If
+
+            Next
+
+            Dim side As ProfileSide =
+            DetermineProfileSide(
+                currentPath,
+                sameLayerPaths)
+
+            profiles.Add(
+            New Profile(
+                currentPath,
+                side))
+
+        Next
+
+        Return profiles
+
+    End Function
+
+    Private Function DetermineProfileSide(
+    profilePath As IPath2D,
+    otherPaths As List(Of IPath2D)) As ProfileSide
+
+        If profilePath Is Nothing OrElse
+       otherPaths Is Nothing Then
+
+            Return ProfileSide.Outside
+        End If
+
+        If Not profilePath.IsClosed Then
+            Return ProfileSide.Outside
+        End If
+
+        Dim containmentDepth As Integer = 0
+
+        For Each otherPath As IPath2D In otherPaths
+
+            If otherPath Is Nothing Then
+                Continue For
+            End If
+
+            If Object.ReferenceEquals(
+            profilePath,
+            otherPath) Then
+
+                Continue For
+            End If
+
+            If Not otherPath.IsClosed Then
+                Continue For
+            End If
+
+            If Geometry2D.IsPathInsidePath(
+            profilePath,
+            otherPath) Then
+
+                containmentDepth += 1
+
+            End If
+
+        Next
+
+        If (containmentDepth Mod 2) = 0 Then
+            Return ProfileSide.Outside
+        Else
+            Return ProfileSide.Inside
+        End If
+
+    End Function
+
+    Public Function BuildProfiles(
+    entities As List(Of ImportedEntity),
+    gapTol As Double) _
+    As List(Of List(Of ImportedEntity))
+
+        Dim profiles As New List(Of List(Of ImportedEntity))()
+        Dim visited As New HashSet(Of ImportedEntity)()
+
+        Dim gapPairs As List(Of Tuple(Of ImportedEntity, ImportedEntity)) =
+            ComputeGapPairs(
+                entities,
+                gapTol)
+
+        For Each entity As ImportedEntity In entities
+
+            If visited.Contains(entity) Then
+                Continue For
+            End If
+
+            Dim profile As New List(Of ImportedEntity)()
+            Dim stack As New Stack(Of ImportedEntity)()
+
+            stack.Push(entity)
+
+            While stack.Count > 0
+
+                Dim current As ImportedEntity =
+                    stack.Pop()
+
+                If visited.Contains(current) Then
+                    Continue While
+                End If
+
+                visited.Add(current)
+                profile.Add(current)
+
+                For Each pair As Tuple(Of ImportedEntity, ImportedEntity) _
+                    In gapPairs
+
+                    If pair.Item1 Is current AndAlso
+                       Not visited.Contains(pair.Item2) Then
+
+                        stack.Push(pair.Item2)
+
+                    ElseIf pair.Item2 Is current AndAlso
+                           Not visited.Contains(pair.Item1) Then
+
+                        stack.Push(pair.Item1)
+
+                    End If
+
+                Next
+
+            End While
+
+            profiles.Add(profile)
+
+        Next
+
+        Return profiles
+
+    End Function
+
+
 
 End Module
