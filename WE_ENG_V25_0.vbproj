@@ -97,7 +97,7 @@
     </DocumentationFile>
     <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
     <DebugType>pdbonly</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x86</PlatformTarget>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <Prefer32Bit>true</Prefer32Bit>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -329,6 +329,7 @@
     <Compile Include="Classes\clsMatList.vb" />
     <Compile Include="Classes\CommandFeature.vb" />
     <Compile Include="Classes\DatabaseConversion.vb" />
+    <Compile Include="Classes\DoubleDToolShape.vb" />
     <Compile Include="Classes\DxfDrawable.vb" />
     <Compile Include="Classes\DxfImport.vb" />
     <Compile Include="Classes\DynamicMachineProperty.vb" />
@@ -347,6 +348,7 @@
     <Compile Include="Classes\JobContext.vb" />
     <Compile Include="Classes\JobSheet.vb" />
     <Compile Include="Classes\JsonLoader.vb" />
+    <Compile Include="Classes\KeyholeToolShape.vb" />
     <Compile Include="Classes\LayerDefinition.vb" />
     <Compile Include="Classes\LeadGeometry.vb" />
     <Compile Include="Classes\LeadIn.vb" />
@@ -377,10 +379,12 @@
     <Compile Include="Classes\PuncfResult.vb" />
     <Compile Include="Classes\QuadTree.vb" />
     <Compile Include="Classes\RapidPointFeature.vb" />
+    <Compile Include="Classes\SingleDToolShape.vb" />
     <Compile Include="Classes\TooledProfile.vb" />
     <Compile Include="Classes\ToolPathGenerator.vb" />
     <Compile Include="Classes\ToolSelection.vb" />
     <Compile Include="Classes\ToolShapes.vb" />
+    <Compile Include="Classes\TrapezoidToolShape,vb.vb" />
     <Compile Include="Classes\ViewHelper.vb" />
     <Compile Include="Classes\WorkZone.vb" />
     <Compile Include="Classes\WorkZoneFactory.vb" />

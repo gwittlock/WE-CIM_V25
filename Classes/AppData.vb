@@ -38,12 +38,25 @@ Public Class AppData
     ' -------------------------------
     ' TOOLS
     ' -------------------------------
-    Public Shared ToolCrib As List(Of ToolCribItem)
+    Public Shared ToolCrib As List(Of Tool)
+
+    Public Shared Function GetRuntimeTool(
+    toolID As Integer) As WE_ENG_V25_0.Core.Models.Tool
+
+        If ToolCrib Is Nothing Then
+            Return Nothing
+        End If
+
+        Return ToolCrib.FirstOrDefault(
+        Function(t) t.ID = toolID)
+
+    End Function
+
     Public Shared ToolTypes As List(Of ToolType)
     Public Shared ToolAttributeTypes As List(Of ToolAttributeType)
     Public Shared ToolTypeAttributes As List(Of ToolTypeAttribute)
     Public Shared ToolTypePropertiesList As List(Of ToolTypeProperties)
-    Public Shared LayerSetups As List(Of LayerSetup)
+    Public Shared LayerSetups As List(Of layersetup)
     Public Shared Directives As List(Of Directive)
 
     Public Shared panelWidth As Double
@@ -86,7 +99,7 @@ Public Class AppData
 
         ' ---- TOOL DATA ----
         ToolSetups = LoadTableWrapped(Of ToolSetup)("ToolSetups.json")
-        ToolCrib = LoadTableWrapped(Of ToolCribItem)("ToolCrib.json")
+        ToolCrib = LoadTableWrapped(Of Tool)("ToolCrib.json")
         ToolTypes = LoadTableWrapped(Of ToolType)("ToolTypes.json")
         ToolAttributeTypes = LoadTableWrapped(Of ToolAttributeType)("ToolAttributeTypes.json")
         ToolTypeAttributes = LoadTableWrapped(Of ToolTypeAttribute)("ToolTypeAttributes.json")
@@ -340,6 +353,8 @@ Public Class AppData
 
         Return sheets
     End Function
+
+
     Public Class Station
         Public Property ID As Integer
         Public Property MachineID As Integer

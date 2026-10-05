@@ -170,6 +170,8 @@ Public Class frmMain
     Public PicModelerScale As Single = 1.0F
     Public OffsetX As Single = 0
     Public OffsetY As Single = 0
+    Private _profileSelectionEnabled As Boolean = False
+
     Private Declare Function LockWindowUpdate Lib "user32.dll" (ByVal hWndLock As IntPtr) As Boolean
 
     Public Sub New()
@@ -372,8 +374,8 @@ Public Class frmMain
                 End Using
             End Using
 
-            ' Prepare ToolCribItems
-            Dim toolCribList As New List(Of ToolCribItem)()
+            ' Prepare Tools
+            Dim toolCribList As New List(Of Tool)()
 
             For Each row As DataRow In dt.Rows
                 Dim attributes As New Dictionary(Of String, Object)()
@@ -392,8 +394,8 @@ Public Class frmMain
                     End If
                 Next
 
-                ' Create ToolCribItem
-                Dim tool As New ToolCribItem With {
+                ' Create Tool
+                Dim tool As New Tool With {
                     .ID = CInt(row("ID")),
                     .Description = row("Description").ToString(),
                     .TypeID = CInt(row("Type ID")),
@@ -2248,6 +2250,9 @@ Public Class frmMain
         _selectionMode,
         _selectionFilter)
 
+        Debug.Print("Profile Selection Enabled = " &
+            _profileSelectionEnabled.ToString())
+
         pnlPicmodeler.Invalidate()
 
     End Sub
@@ -3644,6 +3649,12 @@ Public Class frmMain
 
     Private Sub tbSelect_Profiles_Click(sender As Object, e As EventArgs) Handles tbSelect_Profiles.Click
 
+        _profileSelectionEnabled = Not _profileSelectionEnabled
+
+        UpdateSelectionIcons()
+
+        pnlPicmodeler.Invalidate()
+
     End Sub
     Private Sub tbSelect_RemoveAllByFilter_Click(sender As Object, e As EventArgs) Handles tbSelect_RemoveAllByFilter.Click
 
@@ -3720,6 +3731,19 @@ Public Class frmMain
         Else
             tbSelect_Points.Image = FabV25_WIN8.My.Resources.Orange_Select_By_Point
         End If
+
+        Dim ProfileActive As Boolean =
+     (CInt(_selectionFilter) And CInt(SelectionFilter.Polyline)) <> 0
+
+        If ProfileActive Then
+            tbSelect_Profiles.Image =
+            FabV25_WIN8.My.Resources.Blue_Select_By_Profile
+        Else
+            tbSelect_Profiles.Image =
+            FabV25_WIN8.My.Resources.Orange_Select_By_Profile
+        End If
+
+
     End Sub
 
     Private Sub tbSelect_Circle_Click(sender As Object, e As EventArgs) Handles tbSelect_Circle.Click
@@ -3786,6 +3810,10 @@ Public Class frmMain
 
     End Sub
 
+
+    Private Sub tbSelect_Profiles_CheckStateChanged(sender As Object, e As EventArgs) Handles tbSelect_Profiles.CheckStateChanged
+        MessageBox.Show("Which click am i <" & tbSelect_Profiles.CheckState & ">")
+    End Sub
 End Class
 
 

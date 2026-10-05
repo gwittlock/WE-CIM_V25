@@ -198,8 +198,12 @@ Public Class SelectionManager
             End If
 
         Next
+        If best Is Nothing Then
+            Return Nothing
+        End If
 
-        Dim result As isSelectable = TryCast(best.Entity, isSelectable)
+        Dim result As isSelectable =
+            TryCast(best.Entity, isSelectable)
 
         If result Is Nothing Then
             Return Nothing
@@ -208,7 +212,6 @@ Public Class SelectionManager
         ApplySelection(result)
 
         Return result
-
     End Function
 
 #End Region
@@ -218,13 +221,6 @@ Public Class SelectionManager
 
     Private Function HitTestAtPoint(ptWorld As PointF,
                                 tolWorld As Single) As isSelectable
-
-        Debug.WriteLine("========================================")
-        Debug.WriteLine("SelectionManager.HitTestAtPoint")
-        Debug.WriteLine($"_entities Count = {_entities.Count}")
-        Debug.WriteLine($"_spatialIndex Is Nothing = {_spatialIndex Is Nothing}")
-        Debug.WriteLine($"WorldPt = {ptWorld}")
-        Debug.WriteLine($"TolWorld = {tolWorld}")
 
         Dim candidates As List(Of CadEntity)
 
@@ -238,37 +234,15 @@ Public Class SelectionManager
                 tolWorld * 2))
 
 
-            Debug.WriteLine(
-                        $"HOVER QUERY: " &
-                        $"WorldPt={ptWorld}, " &
-                        $"Tol={tolWorld:0.000000}, " &
-                        $"QueryRect=" &
-                        $"{New RectangleF(
-                            ptWorld.X - tolWorld,
-                            ptWorld.Y - tolWorld,
-                            tolWorld * 2,
-                            tolWorld * 2)}")
-
-            Debug.WriteLine(
-            $"Spatial query result count = {candidates.Count}")
-
             If candidates.Count = 0 Then
 
-                Debug.WriteLine("QUADTREE RETURNED ZERO - FALLING BACK TO DIRECT ENTITY SCAN")
-
                 candidates = _entities
-
-                Debug.WriteLine(
-                $"DIRECT ENTITY SCAN COUNT = {candidates.Count}")
 
             End If
 
         Else
 
             candidates = _entities
-
-            Debug.WriteLine(
-            $"Spatial index not built - fallback count = {candidates.Count}")
 
         End If
 
@@ -286,10 +260,6 @@ Public Class SelectionManager
             .Priority = GetPriority(ent)
         }
 
-            Debug.WriteLine(
-            $"HIT CANDIDATE: {ent.GetType().Name} " &
-            $"Distance={d:F6} Priority={candidate.Priority}")
-
             If best Is Nothing OrElse IsBetter(candidate, best) Then
                 best = candidate
             End If
@@ -297,13 +267,10 @@ Public Class SelectionManager
         Next
 
         If best Is Nothing Then
-            Debug.WriteLine("NO HIT FROM SELECTION MANAGER")
+
             Return Nothing
         End If
 
-        Debug.WriteLine(
-        $"BEST HIT: {best.Entity.GetType().Name} " &
-        $"Distance={best.Distance:F6}")
 
         Return TryCast(best.Entity, isSelectable)
 
@@ -333,43 +300,24 @@ Public Class SelectionManager
 #Region "Selection Core"
     Private Sub ApplySelection(ent As isSelectable)
 
-        Debug.WriteLine("========================================")
-        Debug.WriteLine("SelectionManager.ApplySelection")
 
         If ent Is Nothing Then
-            Debug.WriteLine("ApplySelection: ent = Nothing")
             Return
         End If
-
-        Debug.WriteLine("Entity Type = " & ent.GetType().Name)
-        Debug.WriteLine("Before IsSelected = " & ent.IsSelected.ToString())
-        Debug.WriteLine("Currently In Selected Set = " & _selected.Contains(ent).ToString())
 
         If _selected.Contains(ent) Then
 
             _selected.Remove(ent)
             ent.IsSelected = False
 
-            Debug.WriteLine("ACTION = REMOVE")
-            Debug.WriteLine("After IsSelected = " & ent.IsSelected.ToString())
-
         Else
 
             _selected.Add(ent)
             ent.IsSelected = True
 
-            Debug.WriteLine("ACTION = ADD")
-            Debug.WriteLine("After IsSelected = " & ent.IsSelected.ToString())
-
         End If
 
-        Debug.WriteLine("Selected Count = " & _selected.Count.ToString())
-        Debug.WriteLine("Raising SelectionChanged...")
-
         RaiseEvent SelectionChanged(_selected)
-
-        Debug.WriteLine("SelectionChanged raised")
-        Debug.WriteLine("========================================")
 
     End Sub
 
@@ -770,25 +718,12 @@ Public Class SelectionManager
                 Dim p = DirectCast(ent, CadPoint)
                 Dim dist As Single = Distance(pt, p.Position)
 
-                Debug.WriteLine(
-                    $"EVAL POINT: " &
-                    $"Pt={pt}, " &
-                    $"Position={p.Position}, " &
-                    $"Dist={dist:0.000000}")
-
                 Return dist
 
             Case GeometryTypeEnum.Line
 
                 Dim l = DirectCast(ent, CadLine)
                 Dim dist As Single = DistancePointToSegment(pt, l.StartPoint, l.EndPoint)
-
-                Debug.WriteLine(
-                $"EVAL LINE: " &
-                $"Pt={pt}, " &
-                $"Start={l.StartPoint}, " &
-                $"End={l.EndPoint}, " &
-                $"Dist={dist:0.000000}")
 
                 Return dist
 
@@ -799,16 +734,8 @@ Public Class SelectionManager
                 Dim radialDist As Single = Distance(pt, c.Center)
                 Dim dist As Single = Math.Abs(radialDist - c.Radius)
 
-                Debug.WriteLine(
-                $"EVAL CIRCLE: " &
-                $"Pt={pt}, " &
-                $"Center={c.Center}, " &
-                $"Radius={c.Radius:0.000000}, " &
-                $"RadialDist={radialDist:0.000000}, " &
-                $"Dist={dist:0.000000}")
 
                 Return dist
-
 
             Case GeometryTypeEnum.Arc
 
@@ -835,23 +762,8 @@ Public Class SelectionManager
                     a.EndAngle,
                     a.IsClockwise)
 
-                Debug.WriteLine(
-                $"EVAL ARC: " &
-                $"Pt={pt}, " &
-                $"Center={a.Center}, " &
-                $"Radius={a.Radius:0.000000}, " &
-                $"Start={a.StartAngle:0.000000}, " &
-                $"End={a.EndAngle:0.000000}, " &
-                $"CW={a.IsClockwise}, " &
-                $"RawAng={rawAng:0.000000}, " &
-                $"Ang={ang:0.000000}, " &
-                $"RadialDist={radialDist:0.000000}, " &
-                $"Dist={dist:0.000000}, " &
-                $"AngleOnArc={angleOnArc}")
 
                 If Not angleOnArc Then
-                    Debug.WriteLine(
-                    "EVAL ARC REJECTED: point is outside arc angular range.")
                     Return Single.MaxValue
                 End If
 

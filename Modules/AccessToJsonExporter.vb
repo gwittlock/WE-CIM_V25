@@ -1058,7 +1058,7 @@ Public Module AccessToJsonExporter
 
         Dim connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbPath};Persist Security Info=False;"
 
-        Dim toolCribItems As New List(Of ToolCribItem)
+        Dim Tools As New List(Of Tool)
 
         Using conn As New OleDbConnection(connectionString)
             conn.Open()
@@ -1066,7 +1066,7 @@ Public Module AccessToJsonExporter
             Dim cmd As New OleDbCommand("SELECT * FROM [Tool Crib]", conn)
             Using reader = cmd.ExecuteReader()
                 While reader.Read()
-                    Dim item As New ToolCribItem With {
+                    Dim item As New Tool With {
                         .ID = Convert.ToInt32(reader("ID")),
                         .TypeID = Convert.ToInt32(reader("Type ID")), ' Always has a value
                         .Description = reader("Description").ToString(),
@@ -1095,7 +1095,7 @@ Public Module AccessToJsonExporter
                             {"DIE_CLEARANCE", If(reader("Die_Clearance") Is DBNull.Value, Nothing, reader("Die_Clearance").ToString())}
                         }
                     }
-                    toolCribItems.Add(item)
+                    Tools.Add(item)
                 End While
             End Using
         End Using
@@ -1103,7 +1103,7 @@ Public Module AccessToJsonExporter
         ' Build JSON structure
         Dim jsonObject As New Dictionary(Of String, Object) From {
             {"TableName", "Tool Crib"},
-            {"Rows", toolCribItems}
+            {"Rows", Tools}
         }
 
         ' Serialize to JSON
@@ -2221,9 +2221,6 @@ Public Module AccessToJsonExporter
                                 writer.WriteLine("")
                                 writer.WriteLine("")
 
-
-                                ' MessageBox.Show($"Failed to export table {tableName} Using ExportTableType. {sExportType}: {ex.Message}")
-                                Debug.WriteLine($"Failed to export table {tableName}: {ex.Message}")
                             End Try
                         End If
                     End If
@@ -2775,8 +2772,6 @@ Public Module AccessToJsonExporter
                 schema = schema.DefaultView.ToTable()
 
                 If IsValueTableByName(tableName) Then
-                    Debug.WriteLine("We are exporting table <" & tableName & "> as Value table")
-
 
                 End If
                 If IsValueTableByName(tableName) Then

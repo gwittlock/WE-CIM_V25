@@ -24,7 +24,7 @@ Public Class PierceHoleFeature
     ' Tool selected for the pierce operation.
     ' This must be a round tool.
     '------------------------------------------------------------
-    Public Property Tool As Tool
+    Public Property Tool As WE_ENG_V25_0.Core.Models.Tool
 
     '------------------------------------------------------------
     ' Pierce type from the existing WE-CIM configuration.

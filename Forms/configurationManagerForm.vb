@@ -20,18 +20,6 @@ Public Class ConfigurationManagerForm
     Public dataFolder As String = Path.Combine(Application.StartupPath, "data")
 
 
-    ' Wrapper to hold tool properties for the PropertyGrid
-    Public Class ToolPropertyWrapper
-        Public Property Description As String
-        Public Property ToolTypeID As Integer
-        Public Property Length As Double
-        Public Property Diameter As Double
-        Public Property Material As String
-        ' Add other properties as needed
-    End Class
-
-
-
     ' --- Class-level variables to store JSON data ---
     Private machineTypesTable As JsonTable(Of MachineType)
     Private machinesTable As JsonTable(Of Machine)
@@ -48,7 +36,7 @@ Public Class ConfigurationManagerForm
     Private currentSelectedToolID As Integer
 
     Private toolSetupMembersTable As JsonTable(Of JObject)
-    'Public Shared toolcribtable As List(Of ToolCribItem)
+    'Public Shared toolcribtable As List(Of Tool)
     Private toolcribtable As JsonTable(Of JObject)
 
     Private machineToolTypesTable As JsonTable(Of JObject)
@@ -77,7 +65,7 @@ Public Class ConfigurationManagerForm
 
     Public CurrentSelectedNode As TreeNode
 
-    Private newToolBeingAdded As ToolCribItem = Nothing
+    Private newToolBeingAdded As Tool = Nothing
 
 
 
@@ -100,71 +88,71 @@ Public Class ConfigurationManagerForm
 
         ' Commit edits on ToolSetup grid immediately
         AddHandler dgvToolSetup.CurrentCellDirtyStateChanged, Sub(s, args)
-                                                                      If dgvToolSetup.IsCurrentCellDirty Then
-                                                                          dgvToolSetup.CommitEdit(DataGridViewDataErrorContexts.Commit)
-                                                                      End If
-                                                                  End Sub
+                                                                  If dgvToolSetup.IsCurrentCellDirty Then
+                                                                      dgvToolSetup.CommitEdit(DataGridViewDataErrorContexts.Commit)
+                                                                  End If
+                                                              End Sub
 
-            Dim materialTypesPath = Path.Combine(dataFolder, "materialtypes.json")
-            Dim materialInventoryPath = Path.Combine(dataFolder, "materialinventory.json")
+        Dim materialTypesPath = Path.Combine(dataFolder, "materialtypes.json")
+        Dim materialInventoryPath = Path.Combine(dataFolder, "materialinventory.json")
 
-            ' ----------------------------
-            ' Load Material Types
-            ' ----------------------------
-            If File.Exists(materialTypesPath) Then
-                Dim json = File.ReadAllText(materialTypesPath)
-                materialTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MaterialType))(json)
-            Else
-                materialTypesTable = New JsonTable(Of MaterialType)()
-            End If
+        ' ----------------------------
+        ' Load Material Types
+        ' ----------------------------
+        If File.Exists(materialTypesPath) Then
+            Dim json = File.ReadAllText(materialTypesPath)
+            materialTypesTable = JsonConvert.DeserializeObject(Of JsonTable(Of MaterialType))(json)
+        Else
+            materialTypesTable = New JsonTable(Of MaterialType)()
+        End If
 
-            ' ----------------------------
-            ' Load Material Sheets / Inventory
-            ' ----------------------------
-            If File.Exists(materialInventoryPath) Then
-                Dim materialInventoryJson = File.ReadAllText(materialInventoryPath)
+        ' ----------------------------
+        ' Load Material Sheets / Inventory
+        ' ----------------------------
+        If File.Exists(materialInventoryPath) Then
+            Dim materialInventoryJson = File.ReadAllText(materialInventoryPath)
 
-                ' Deserialize as JsonTable(Of JObject) first
-                Dim tmpTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(materialInventoryJson)
+            ' Deserialize as JsonTable(Of JObject) first
+            Dim tmpTable = JsonConvert.DeserializeObject(Of JsonTable(Of JObject))(materialInventoryJson)
 
-                Dim sheets As New List(Of MaterialSheet)
-                For Each row In tmpTable.Rows
-                    Dim sheet As New MaterialSheet With {
+            Dim sheets As New List(Of MaterialSheet)
+            For Each row In tmpTable.Rows
+                Dim sheet As New MaterialSheet With {
                     .ID = row("ID")?.ToObject(Of Integer)(),
                     .TypeID = row("TypeID")?.ToObject(Of Integer)()
                 }
 
-                    ' Populate Values array
-                    Dim vals = row("Values")?.ToObject(Of List(Of MaterialParameter))()
-                    If vals IsNot Nothing Then sheet.Values = vals
+                ' Populate Values array
+                Dim vals = row("Values")?.ToObject(Of List(Of MaterialParameter))()
+                If vals IsNot Nothing Then sheet.Values = vals
 
-                    ' Optional: populate convenience properties from Values for PropertyGrid
-                    sheet.Description = GetMaterialValue(sheet.Values, "Description")
-                    sheet.Length = CDbl(GetMaterialValue(sheet.Values, "Length", 0))
-                    sheet.Width = CDbl(GetMaterialValue(sheet.Values, "Width", 0))
-                    sheet.Thickness = CDbl(GetMaterialValue(sheet.Values, "Thickness", 0))
+                ' Optional: populate convenience properties from Values for PropertyGrid
+                sheet.Description = GetMaterialValue(sheet.Values, "Description")
+                sheet.Length = CDbl(GetMaterialValue(sheet.Values, "Length", 0))
+                sheet.Width = CDbl(GetMaterialValue(sheet.Values, "Width", 0))
+                sheet.Thickness = CDbl(GetMaterialValue(sheet.Values, "Thickness", 0))
 
-                    sheets.Add(sheet)
-                Next
+                sheets.Add(sheet)
+            Next
 
-                materialInventoryTable = New JsonTable(Of MaterialSheet) With {
+            materialInventoryTable = New JsonTable(Of MaterialSheet) With {
                 .TableName = tmpTable.TableName,
                 .Columns = tmpTable.Columns,
                 .Rows = sheets
             }
 
-            Else
-                materialInventoryTable = New JsonTable(Of MaterialSheet)()
-            End If
+        Else
+            materialInventoryTable = New JsonTable(Of MaterialSheet)()
+        End If
 
-            ' Bind the first MaterialSheet to the property grid for testing
-            If AppData.MaterialSheets.Any() Then
-                propgridMaterial.SelectedObject = AppData.MaterialSheets(0)
-            End If
+        ' Bind the first MaterialSheet to the property grid for testing
+        If AppData.MaterialSheets.Any() Then
+            propgridMaterial.SelectedObject = AppData.MaterialSheets(0)
+        End If
 
-            LoadToolTypes()
-            PopulateTreeView()
-            HookTreeViewEvents()
+        LoadToolTypes()
+        PopulateTreeView()
+        HookTreeViewEvents()
 
 
     End Sub
@@ -180,7 +168,7 @@ Public Class ConfigurationManagerForm
 
         cboToolType.DataSource = AppData.ToolTypes
         cboToolType.DisplayMember = "Description" ' what user sees
-        cboToolType.ValueMember = "ID"            ' must match ToolCribItem.ToolTypeID
+        cboToolType.ValueMember = "ID"            '  ToolType.ID
         cboToolType.SelectedIndex = -1            ' optional: no selection initially
     End Sub
 
@@ -202,8 +190,8 @@ Public Class ConfigurationManagerForm
         TreeViewMachines.Nodes.Clear()
 
         ' Map directives to each LayerSetup
-        For Each ls In layerSetups
-            ls.Layers = directives.Where(Function(d) d.LayerSetupID = ls.ID).ToList()
+        For Each ls In LayerSetups
+            ls.Layers = Directives.Where(Function(d) d.LayerSetupID = ls.ID).ToList()
         Next
 
 
@@ -240,7 +228,7 @@ Public Class ConfigurationManagerForm
                             tsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 13) ' Store ToolSetupID
 
                             ' Layer Setups under Tool Setup
-                            Dim lsForMachine = layerSetups.Where(Function(ls) ls.MachineID = machine.ID).ToList()
+                            Dim lsForMachine = LayerSetups.Where(Function(ls) ls.MachineID = machine.ID).ToList()
                             Dim layerSetupsNode As New TreeNode("Layer Setups")
                             layerSetupsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 14)
 
@@ -484,8 +472,8 @@ Public Class ConfigurationManagerForm
         If AppData.ToolCrib Is Nothing Then
             Dim toolCribFile = Path.Combine(dataFolder, "ToolCrib.json")
             AppData.ToolCrib = If(File.Exists(toolCribFile),
-                              JObject.Parse(File.ReadAllText(toolCribFile))("Rows").ToObject(Of List(Of ToolCribItem))(),
-                              New List(Of ToolCribItem)())
+                              JObject.Parse(File.ReadAllText(toolCribFile))("Rows").ToObject(Of List(Of Tool))(),
+                              New List(Of Tool)())
         End If
 
         ' --- Load all ToolSetupMembers ---
@@ -1492,8 +1480,8 @@ Public Class ConfigurationManagerForm
         If AppData.ToolCrib Is Nothing Then
             Dim sfile = Path.Combine(dataFolder, "ToolCrib.json")
             AppData.ToolCrib = If(File.Exists(sfile),
-            JObject.Parse(File.ReadAllText(sfile))("Rows").ToObject(Of List(Of ToolCribItem))(),
-            New List(Of ToolCribItem)())
+            JObject.Parse(File.ReadAllText(sfile))("Rows").ToObject(Of List(Of Tool))(),
+            New List(Of Tool)())
         End If
 
         Dim tools = AppData.ToolCrib _
@@ -1517,7 +1505,7 @@ Public Class ConfigurationManagerForm
         Dim stationID As Integer = CInt(selectedRow.Cells("StationID").Value)
 
         ' --- Ensure a tool is selected ---
-        Dim tool = TryCast(lstTools.SelectedItem, ToolCribItem)
+        Dim tool = TryCast(lstTools.SelectedItem, Tool)
         If tool Is Nothing Then Return
 
         ' --- Update the grid's ToolDescription cell ---
@@ -1667,7 +1655,7 @@ Public Class ConfigurationManagerForm
         Dim currentToolTypeID As Integer =
     CInt(cboToolType.SelectedItem.GetType().GetProperty("ID").GetValue(cboToolType.SelectedItem))
 
-        Dim newTool As New ToolCribItem With {
+        Dim newTool As New Tool With {
     .ID = GetNextToolCribID(),
     .TypeID = currentToolTypeID,
     .Description = lblCurrentDescription.Text,
@@ -1683,7 +1671,7 @@ Public Class ConfigurationManagerForm
         Try
             Dim savePath = Path.Combine(dataFolder, "ToolCrib.json")
 
-            ' Ensure each ToolCribItem has its Description in the Attributes dictionary
+            ' Ensure each Tool has its Description in the Attributes dictionary
             For Each tool In AppData.ToolCrib
                 If tool.Attributes Is Nothing Then
                     tool.Attributes = New Dictionary(Of String, Object)()
@@ -1705,7 +1693,7 @@ Public Class ConfigurationManagerForm
 
     Private Sub HighlightToolInList(toolID As Integer)
         For i = 0 To lstTools.Items.Count - 1
-            Dim tool = TryCast(lstTools.Items(i), ToolCribItem)
+            Dim tool = TryCast(lstTools.Items(i), Tool)
             If tool IsNot Nothing AndAlso tool.ID = toolID Then
                 lstTools.SelectedIndex = i
                 Exit For
@@ -1743,7 +1731,7 @@ Public Class ConfigurationManagerForm
         propgrdToolProps.SelectedObject = New DynamicToolAttributes(defaultProps)
 
 
-        newToolBeingAdded = New ToolCribItem With {
+        newToolBeingAdded = New Tool With {
         .ID = GetNextToolCribID(),
         .TypeID = currentToolTypeID,
         .Description = newToolDescription,
@@ -1825,8 +1813,8 @@ Public Class ConfigurationManagerForm
             Return
         End If
 
-        ' Get selected ToolCribItem
-        Dim selectedTool = TryCast(lstTools.SelectedItem, ToolCribItem)
+        ' Get selected Tool
+        Dim selectedTool = TryCast(lstTools.SelectedItem, Tool)
         If selectedTool Is Nothing Then
             MessageBox.Show("Unable to determine the selected tool.")
             Return
@@ -3108,7 +3096,7 @@ Public Class ConfigurationManagerForm
         Try
             Dim filePath As String = Path.Combine(dataFolder, "ToolSetups.json")
             JsonSaver.SaveObjectToJsonFile(ToolSetups, filePath)
-            Debug.WriteLine("Tool setups saved to JSON successfully.")
+
         Catch ex As Exception
             MessageBox.Show($"Error saving tool setups: {ex.Message}", "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
@@ -3215,7 +3203,7 @@ Public Class ConfigurationManagerForm
     Private Sub btnEidtTool_Click(sender As Object, e As EventArgs) Handles btnEidtTool.Click
 
         ' Ensure a tool is selected
-        Dim selectedTool = TryCast(lstTools.SelectedItem, ToolCribItem)
+        Dim selectedTool = TryCast(lstTools.SelectedItem, Tool)
         If selectedTool Is Nothing Then
             MessageBox.Show("Please select a tool to edit.")
             Return
@@ -3237,15 +3225,6 @@ Public Class ConfigurationManagerForm
 
 
     End Sub
-
-    Public Class Tool
-        Public Property ID As Integer
-        Public Property Name As String
-        Public Property ToolTypeID As Integer
-        ' You can add more fields if needed
-    End Class
-
-    Public Tools As List(Of Tool) ' JSON-backed collection of all tools
 
     Private Sub propgrdLayer_Click(sender As Object, e As EventArgs) Handles propgrdLayer.Click
 

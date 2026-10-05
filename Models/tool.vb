@@ -2,24 +2,10 @@
 
 Namespace WE_ENG_V25_0.Core.Models
     Public Class Tool
-
-        Public Property ID As Integer
-        Public Property Description As String
-        Public Property ToolTypeID As Integer
-        Public Property Diameter As Double
-
-        Public Class ToolMatch
-            Public Property ToolID As Integer
-        End Class
-
-    End Class
-
-    ' Tool Crib
-    Public Class ToolCribItem
         Public Property ID As Integer
         Public Property TypeID As Integer
         Public Property Description As String
-        Public Property Attributes As Dictionary(Of String, Object) ' <-- dynamic attributes
+        Public Property Attributes As Dictionary(Of String, Object)
     End Class
 
     ' Tool Types

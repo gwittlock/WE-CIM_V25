@@ -9,24 +9,17 @@ Namespace ToolShapes
     End Enum
 
     Public Class Profile
-
-        ''' <summary>
-        ''' The ordered nominal geometry making up this profile.
-        ''' </summary>
         Public ReadOnly Property Path As IPath2D
-
-        ''' <summary>
-        ''' Indicates whether this is an inside or outside profile.
-        ''' </summary>
         Public ReadOnly Property Side As ProfileSide
+        Public ReadOnly Property SourceEntities As IReadOnlyList(Of ImportedEntity)
 
         ''' <summary>
         ''' Creates a nominal profile from an ordered path.
         ''' </summary>
         Public Sub New(
-            path As IPath2D,
-            side As ProfileSide
-        )
+        path As IPath2D,
+        side As ProfileSide,
+        sourceEntities As IEnumerable(Of ImportedEntity))
 
             If path Is Nothing Then
                 Throw New ArgumentNullException(NameOf(path))
@@ -34,6 +27,14 @@ Namespace ToolShapes
 
             Me.Path = path
             Me.Side = side
+
+            If sourceEntities Is Nothing Then
+                Me.SourceEntities =
+                New List(Of ImportedEntity)()
+            Else
+                Me.SourceEntities =
+                sourceEntities.ToList()
+            End If
 
         End Sub
 

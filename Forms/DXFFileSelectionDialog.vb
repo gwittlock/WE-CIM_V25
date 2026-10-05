@@ -14,6 +14,8 @@ Public Class DXFFileSelectionDialog
     Private _previewDxf As DxfFile = Nothing
     Private _previewEntities As List(Of ImportedEntity)
     Private _suppressEvents As Boolean = False
+    Private nMyMaterialID As Integer
+    Private sMyMaterial As String
 
     ' Folder icons
     Private _folderImages As ImageList
@@ -42,6 +44,8 @@ Public Class DXFFileSelectionDialog
     Private Sub DXFFileSelectionDialog_Load(sender As Object, e As EventArgs) Handles Me.Load
         InitializeFolderIcons()
         LoadRootFolders()
+        nMyMaterialID = RegGetInt("Global", "MaterialID", 5)
+        sMyMaterial = RegGetString("Global", "Material", "ALUM .250 X 96 X 48")
 
         txtFilename.AutoCompleteMode = AutoCompleteMode.SuggestAppend
         txtFilename.AutoCompleteSource = AutoCompleteSource.CustomSource

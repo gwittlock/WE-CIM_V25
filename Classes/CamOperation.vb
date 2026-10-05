@@ -16,7 +16,7 @@
     Public Property Speed As Double = 0
     Public Property IsReposition As Boolean = False
     Public Property ClampPositions As List(Of PointF)
-    Public Property Tool As Tool
+    Public Property Tool As WE_ENG_V25_0.Core.Models.Tool
     Public Property Position As (X As Double, Y As Double)
     Public Property Angle As Double
 

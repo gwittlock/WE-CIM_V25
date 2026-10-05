@@ -422,16 +422,6 @@ Public Module DxfImport
 
         Dim rgb As Integer = dxfColor.ToRGB()
 
-        Debug.WriteLine(
-    "LAYER COLOR: Layer=[" &
-    layer.Name &
-    "] Index=[" &
-    dxfColor.Index &
-    "] RGB=[" &
-    rgb.ToString() &
-    "]"
-)
-
         Return System.Drawing.Color.FromArgb(rgb)
 
         ' We will convert the ACI color here.

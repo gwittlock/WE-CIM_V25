@@ -136,11 +136,12 @@ Public Class frmOpenProject
             AppData.MaterialSheets
         )
 
+        InitMaterialCombo()
 
         ' Restore selections safely by ID
         'RestoreComboSelection(cboMachine, nMyMachineID)
         'RestoreComboSelection(cboToolSetup, nMyToolSetupID)
-        'RestoreComboSelection(cboMaterial, nMyMaterialID)
+        ' RestoreComboSelection(cboMaterial, nMyMaterialID)
         ' RestoreComboSelection(cboLayerSetup, nMyLayerSetupID)
 
         _loadingDefaults = False
@@ -185,7 +186,30 @@ Public Class frmOpenProject
 
     End Sub
 
+    ' ----------------------------
+    ' Initialize Machine ComboBox
+    ' ----------------------------
+    Private Sub InitMaterialCombo()
+        Dim ni As Integer
+        Dim selectedMaterial As myItemData = Nothing
 
+        'cboMachine.Properties.Items.Clear()
+
+        ' Add None
+        'cboMachine.Properties.Items.Add(New myItemData("None", 0))
+
+        For Each m In _materialSheets
+            Dim item As New myItemData(m.Description, m.ID)
+            ' cbmaterial.Properties.Items.Add(item)
+
+            If m.ID = nMyMaterialID Then
+                selectedMaterial = item   ' ← remember the exact instance we just added
+            End If
+        Next
+
+        cboMaterial.EditValue = selectedMaterial
+
+    End Sub
     ' ----------------------------
     ' Initialize LayerSetup ComboBox
     ' ----------------------------

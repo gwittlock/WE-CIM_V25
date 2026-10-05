@@ -25,7 +25,7 @@ Public Class AreaClearFeature
 
     Public Property ProfileEntity As CadEntity
 
-    Public Property Tool As Tool
+    Public Property Tool As WE_ENG_V25_0.Core.Models.Tool
 
     Public Property IndexAngle As Double
 

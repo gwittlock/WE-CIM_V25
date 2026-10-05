@@ -341,39 +341,6 @@ Public Module appMain
         Public Property DataType As Integer
     End Class
 
-    ' Wrapper to hold tool properties for the PropertyGrid
-    Public Class ToolPropertyWrapper
-        Public Property Description As String
-        Public Property ToolTypeID As Integer
-        Public Property Length As Double
-        Public Property Diameter As Double
-        Public Property Material As String
-        ' Add other properties as needed
-    End Class
-
-    ' Tool object that is persisted to JSON
-    Public Class Tool
-        Public Enum ToolShape
-            Circle
-            Rectangle
-            Square
-            Custom
-        End Enum
-
-        Public Property Shape As ToolShape
-        Public Property Size As Double ' For circle
-        Public Property Width As Double ' For rectangle
-        Public Property Height As Double
-        Public Property Name As String
-        Public Property ID As Integer
-        Public Property Description As String
-        Public Property ToolTypeID As Integer
-        Public Property Length As Double
-        Public Property Diameter As Double
-        Public Property Material As String
-        ' Add other properties as needed
-    End Class
-
     ' --- JSON Classes ---
     Public Class MachineType
         Public Property ID As Integer

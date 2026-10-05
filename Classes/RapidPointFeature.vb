@@ -9,6 +9,6 @@ Public Class RapidPointFeature
 
     Public Property Feed As Double
 
-    Public Property Tool As Tool
+    Public Property Tool As WE_ENG_V25_0.Core.Models.Tool
 
 End Class

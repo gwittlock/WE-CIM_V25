@@ -17,7 +17,7 @@ Public Class BoltHoleCircleFeature
 
     Public Property AutoIndex As Boolean
 
-    Public Property Tool As Tool
+    Public Property Tool As WE_ENG_V25_0.Core.Models.Tool
 
     Public Property Parameters As New HolePatternParameters
 

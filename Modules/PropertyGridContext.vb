@@ -20,7 +20,7 @@ Public Module PropertyGridContext
             Distinct().
             ToList()
 
-        ' Get the corresponding ToolCribItems
+        ' Get the corresponding Tools
         Dim toolsInSetup = AppData.ToolCrib.
             Where(Function(t) toolIDsInSetup.Contains(t.ID)).
             OrderBy(Function(t) t.Description).

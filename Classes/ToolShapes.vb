@@ -27,8 +27,15 @@ Namespace ToolShapes
         Round
         Square
         Rectangle
+        Obround
+        Diamond
         CornerRadius
-        CustomProfile
+        Single_D
+        Double_D
+        Trapezoid
+        Keyhole
+        Hexagon
+        Custom
     End Enum
 
 #End Region
@@ -225,6 +232,14 @@ Namespace ToolShapes
     Public MustInherit Class ToolShape
 
         Public ReadOnly Property ShapeType As ToolShapeType
+
+        ''' <summary>
+        ''' Authoritative closed 2D geometry of the physical tool.
+        ''' The profile is defined in the tool's local coordinate system,
+        ''' with (0,0) as the tool reference center.
+        ''' </summary>
+        Public ReadOnly Property CuttingProfile As IPath2D
+
         Public Overridable ReadOnly Property DisplayName As String
 
         Public MustOverride ReadOnly Property EffectiveDiameter As Double
@@ -232,7 +247,9 @@ Namespace ToolShapes
 
         Public Overridable Function IsCompatibleWithFeature(
         feature As IGeometricFeature) As Boolean
+
             Return True
+
         End Function
 
         Public Overridable ReadOnly Property MinInternalCornerRadius As Double
@@ -241,16 +258,34 @@ Namespace ToolShapes
             End Get
         End Property
 
-        Public MustOverride Function CanCutInternalCorner(radius As Double) As Boolean
-        Public MustOverride Function CanSlot(width As Double) As Boolean
+        Public MustOverride Function CanCutInternalCorner(
+        radius As Double) As Boolean
+
+        Public MustOverride Function CanSlot(
+        width As Double) As Boolean
+
         Public MustOverride Function GetProfileOffset() As Double
 
         Public MustOverride Function DecomposePath(
-            inputPath As IPath2D
-        ) As IEnumerable(Of IToolMotion)
+        inputPath As IPath2D) As IEnumerable(Of IToolMotion)
 
-        Protected Sub New(shapeType As ToolShapeType)
+        Protected Sub New(
+        shapeType As ToolShapeType,
+        cuttingProfile As IPath2D)
+
+            If cuttingProfile Is Nothing Then
+                Throw New ArgumentNullException(NameOf(cuttingProfile))
+            End If
+
+            If Not cuttingProfile.IsClosed Then
+                Throw New ArgumentException(
+                "ToolShape CuttingProfile must be closed.",
+                NameOf(cuttingProfile))
+            End If
+
             Me.ShapeType = shapeType
+            Me.CuttingProfile = cuttingProfile
+
         End Sub
 
     End Class
@@ -260,92 +295,906 @@ Namespace ToolShapes
     Public MustInherit Class RoundToolShape
         Inherits ToolShape
 
-        Public ReadOnly Property Diameter As Double
-
         Public Sub New(diameter As Double)
-            MyBase.New(ToolShapeType.Round)
-            Me.Diameter = diameter
+
+            MyBase.New(
+            ToolShapeType.Round,
+            CreateCircularProfile(diameter / 2.0))
+
         End Sub
 
-        Public Overrides Function IsCompatibleWithFeature(
-        feature As IGeometricFeature
-    ) As Boolean
-            ' Cannot cut internal corners smaller than tool radius
-            If feature.MinCornerRadius < Me.EffectiveRadius Then Return False
+        Private Shared Function CreateCircularProfile(
+        radius As Double) As IPath2D
 
-            ' Cannot slot narrower than tool diameter
-            If feature.MinSlotWidth < Me.EffectiveDiameter Then Return False
+            If radius <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(radius))
+            End If
+
+            Dim path As New Path2D()
+
+            ' A complete circle is represented as one 360-degree arc.
+            path.Add(
+            New ArcSegment2D(
+                New PointF(0.0F, 0.0F),
+                radius,
+                0.0,
+                Math.PI * 2.0,
+                False))
+
+            Return path
+
+        End Function
+
+        Public ReadOnly Property Diameter As Double
+            Get
+                Return CSng(CuttingProfile.BoundingBox.Width)
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveDiameter As Double
+            Get
+                Return Diameter
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveRadius As Double
+            Get
+                Return Diameter / 2.0
+            End Get
+        End Property
+
+        Public Overrides Function IsCompatibleWithFeature(
+        feature As IGeometricFeature) As Boolean
+
+            If feature Is Nothing Then
+                Return False
+            End If
+
+            ' Cannot cut internal corners smaller than tool radius.
+            If feature.MinCornerRadius < EffectiveRadius Then
+                Return False
+            End If
+
+            ' Cannot slot narrower than tool diameter.
+            If feature.MinSlotWidth < EffectiveDiameter Then
+                Return False
+            End If
 
             Return True
+
         End Function
+
+        Public Overrides Function CanCutInternalCorner(
+        radius As Double) As Boolean
+
+            Return radius >= EffectiveRadius
+
+        End Function
+
+        Public Overrides Function CanSlot(
+        width As Double) As Boolean
+
+            Return width >= EffectiveDiameter
+
+        End Function
+
+        Public Overrides Function GetProfileOffset() As Double
+
+            Return EffectiveRadius
+
+        End Function
+
+        Public Overrides Function DecomposePath(
+        inputPath As IPath2D) As IEnumerable(Of IToolMotion)
+
+            Return ToolpathGenerator.OffsetPath(
+            inputPath,
+            GetProfileOffset())
+
+        End Function
+
     End Class
 
     Public MustInherit Class SquareToolShape
         Inherits ToolShape
 
-        Public ReadOnly Property Size As Double
-
         Public Sub New(size As Double)
-            MyBase.New(ToolShapeType.Square)
-            Me.Size = size
+
+            MyBase.New(
+            ToolShapeType.Square,
+            CreateSquareProfile(size))
+
         End Sub
 
-        Public Overrides Function IsCompatibleWithFeature(
-        feature As IGeometricFeature
-    ) As Boolean
-            ' Can cut any internal corner (sharp corners allowed)
-            ' But cannot slot narrower than square size
-            If feature.MinSlotWidth < Size Then Return False
-            Return True
+        Private Shared Function CreateSquareProfile(
+        size As Double) As IPath2D
+
+            If size <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(size))
+            End If
+
+            Dim half As Double = size / 2.0
+
+            Dim path As New Path2D()
+
+            ' Bottom
+            path.Add(
+            New LineSegment2D(
+                New PointF(CSng(-half), CSng(-half)),
+                New PointF(CSng(half), CSng(-half))))
+
+            ' Right
+            path.Add(
+            New LineSegment2D(
+                New PointF(CSng(half), CSng(-half)),
+                New PointF(CSng(half), CSng(half))))
+
+            ' Top
+            path.Add(
+            New LineSegment2D(
+                New PointF(CSng(half), CSng(half)),
+                New PointF(CSng(-half), CSng(half))))
+
+            ' Left
+            path.Add(
+            New LineSegment2D(
+                New PointF(CSng(-half), CSng(half)),
+                New PointF(CSng(-half), CSng(-half))))
+
+            Return path
+
         End Function
+
+        Public ReadOnly Property Size As Double
+            Get
+                Return CSng(CuttingProfile.BoundingBox.Width)
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveDiameter As Double
+            Get
+                ' For a non-round tool this represents the minimum
+                ' effective cutting width used by the selector.
+                Return Size
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveRadius As Double
+            Get
+                Return Size / 2.0
+            End Get
+        End Property
+
+        Public Overrides Function IsCompatibleWithFeature(
+        feature As IGeometricFeature) As Boolean
+
+            If feature Is Nothing Then
+                Return False
+            End If
+
+            ' Square tools cannot enter a slot narrower than the square.
+            If feature.MinSlotWidth < Size Then
+                Return False
+            End If
+
+            Return True
+
+        End Function
+
+        Public Overrides Function CanCutInternalCorner(
+        radius As Double) As Boolean
+
+            ' A square tool can reach a sharp internal corner.
+            Return True
+
+        End Function
+
+        Public Overrides Function CanSlot(
+        width As Double) As Boolean
+
+            Return width >= Size
+
+        End Function
+
+        Public Overrides Function GetProfileOffset() As Double
+
+            Return Size / 2.0
+
+        End Function
+
+        Public Overrides Function DecomposePath(
+        inputPath As IPath2D) As IEnumerable(Of IToolMotion)
+
+            Return ToolpathGenerator.OffsetPath(
+            inputPath,
+            GetProfileOffset())
+
+        End Function
+
     End Class
 
     Public MustInherit Class RectangularToolShape
         Inherits ToolShape
 
-        Public ReadOnly Property Width As Double
-        Public ReadOnly Property Height As Double
+        Public Sub New(
+        width As Double,
+        height As Double)
 
-        Public Sub New(width As Double, height As Double)
-            MyBase.New(ToolShapeType.Rectangle)
-            Me.Width = width
-            Me.Height = height
+            MyBase.New(
+            ToolShapeType.Rectangle,
+            CreateRectangleProfile(width, height))
+
         End Sub
 
-        Public Overrides Function IsCompatibleWithFeature(
-        feature As IGeometricFeature
-    ) As Boolean
-            ' Can cut any internal corner
-            If feature.MinSlotWidth < Width Then Return False
-            Return True
-        End Function
-    End Class
+        Private Shared Function CreateRectangleProfile(
+        width As Double,
+        height As Double) As IPath2D
 
+            If width <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(width))
+            End If
+
+            If height <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(height))
+            End If
+
+            Dim halfWidth As Double = width / 2.0
+            Dim halfHeight As Double = height / 2.0
+
+            Dim path As New Path2D()
+
+            ' Bottom
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(-halfWidth),
+                    CSng(-halfHeight)),
+                New PointF(
+                    CSng(halfWidth),
+                    CSng(-halfHeight))))
+
+            ' Right
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(halfWidth),
+                    CSng(-halfHeight)),
+                New PointF(
+                    CSng(halfWidth),
+                    CSng(halfHeight))))
+
+            ' Top
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(halfWidth),
+                    CSng(halfHeight)),
+                New PointF(
+                    CSng(-halfWidth),
+                    CSng(halfHeight))))
+
+            ' Left
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(-halfWidth),
+                    CSng(halfHeight)),
+                New PointF(
+                    CSng(-halfWidth),
+                    CSng(-halfHeight))))
+
+            Return path
+
+        End Function
+
+        Public ReadOnly Property Width As Double
+            Get
+                Return CuttingProfile.BoundingBox.Width
+            End Get
+        End Property
+
+        Public ReadOnly Property Height As Double
+            Get
+                Return CuttingProfile.BoundingBox.Height
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveDiameter As Double
+            Get
+                ' For a rectangular tool, use the smaller cutting dimension
+                ' as the effective width for tool-selection purposes.
+                Return Math.Min(Width, Height)
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveRadius As Double
+            Get
+                Return EffectiveDiameter / 2.0
+            End Get
+        End Property
+
+        Public Overrides Function IsCompatibleWithFeature(
+        feature As IGeometricFeature) As Boolean
+
+            If feature Is Nothing Then
+                Return False
+            End If
+
+            If feature.MinSlotWidth < EffectiveDiameter Then
+                Return False
+            End If
+
+            Return True
+
+        End Function
+
+        Public Overrides Function CanCutInternalCorner(
+        radius As Double) As Boolean
+
+            ' Rectangular tool has square corners.
+            Return True
+
+        End Function
+
+        Public Overrides Function CanSlot(
+        width As Double) As Boolean
+
+            Return width >= EffectiveDiameter
+
+        End Function
+
+        Public Overrides Function GetProfileOffset() As Double
+
+            Return EffectiveDiameter / 2.0
+
+        End Function
+
+        Public Overrides Function DecomposePath(
+        inputPath As IPath2D) As IEnumerable(Of IToolMotion)
+
+            Return ToolpathGenerator.OffsetPath(
+            inputPath,
+            GetProfileOffset())
+
+        End Function
+
+    End Class
     Public MustInherit Class CornerRadiusToolShape
         Inherits ToolShape
 
-        Public ReadOnly Property Diameter As Double
-        Public ReadOnly Property CornerRadius As Double
+        Public Sub New(
+        diameter As Double,
+        cornerRadius As Double)
 
-        Public Sub New(diameter As Double, cornerRadius As Double)
-            MyBase.New(ToolShapeType.CornerRadius)
-            Me.Diameter = diameter
-            Me.CornerRadius = cornerRadius
+            MyBase.New(
+            ToolShapeType.CornerRadius,
+            CreateCornerRadiusProfile(
+                diameter,
+                cornerRadius))
+
         End Sub
 
-        Public Overrides Function IsCompatibleWithFeature(
-        feature As IGeometricFeature
-    ) As Boolean
-            ' Must respect corner radius
-            If feature.MinCornerRadius < CornerRadius Then Return False
+        Private Shared Function CreateCornerRadiusProfile(
+        diameter As Double,
+        cornerRadius As Double) As IPath2D
 
-            ' Cannot slot narrower than diameter
-            If feature.MinSlotWidth < Diameter Then Return False
+            If diameter <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(diameter))
+            End If
+
+            If cornerRadius < 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(cornerRadius))
+            End If
+
+            ' Temporary compatibility constructor.
+            '
+            ' This creates a square tool profile with the supplied
+            ' corner radius applied equally to all four corners.
+            '
+            ' The profile itself remains authoritative. The next
+            ' refinement will allow the four corner radii to differ.
+
+            Dim half As Double = diameter / 2.0
+
+            If cornerRadius > half Then
+                Throw New ArgumentException(
+                "Corner radius cannot exceed half the tool diameter.",
+                NameOf(cornerRadius))
+            End If
+
+            Dim path As New Path2D()
+
+            If cornerRadius = 0 Then
+
+                path.Add(
+                New LineSegment2D(
+                    New PointF(CSng(-half), CSng(-half)),
+                    New PointF(CSng(half), CSng(-half))))
+
+                path.Add(
+                New LineSegment2D(
+                    New PointF(CSng(half), CSng(-half)),
+                    New PointF(CSng(half), CSng(half))))
+
+                path.Add(
+                New LineSegment2D(
+                    New PointF(CSng(half), CSng(half)),
+                    New PointF(CSng(-half), CSng(half))))
+
+                path.Add(
+                New LineSegment2D(
+                    New PointF(CSng(-half), CSng(half)),
+                    New PointF(CSng(-half), CSng(-half))))
+
+                Return path
+
+            End If
+
+            ' Bottom edge
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(-half + cornerRadius),
+                    CSng(-half)),
+                New PointF(
+                    CSng(half - cornerRadius),
+                    CSng(-half))))
+
+            ' Bottom-right corner
+            path.Add(
+            New ArcSegment2D(
+                New PointF(
+                    CSng(half - cornerRadius),
+                    CSng(-half + cornerRadius)),
+                cornerRadius,
+                -Math.PI / 2.0,
+                0.0,
+                False))
+
+            ' Right edge
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(half),
+                    CSng(-half + cornerRadius)),
+                New PointF(
+                    CSng(half),
+                    CSng(half - cornerRadius))))
+
+            ' Top-right corner
+            path.Add(
+            New ArcSegment2D(
+                New PointF(
+                    CSng(half - cornerRadius),
+                    CSng(half - cornerRadius)),
+                cornerRadius,
+                0.0,
+                Math.PI / 2.0,
+                False))
+
+            ' Top edge
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(half - cornerRadius),
+                    CSng(half)),
+                New PointF(
+                    CSng(-half + cornerRadius),
+                    CSng(half))))
+
+            ' Top-left corner
+            path.Add(
+            New ArcSegment2D(
+                New PointF(
+                    CSng(-half + cornerRadius),
+                    CSng(half - cornerRadius)),
+                cornerRadius,
+                Math.PI / 2.0,
+                Math.PI,
+                False))
+
+            ' Left edge
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(-half),
+                    CSng(half - cornerRadius)),
+                New PointF(
+                    CSng(-half),
+                    CSng(-half + cornerRadius))))
+
+            ' Bottom-left corner
+            path.Add(
+            New ArcSegment2D(
+                New PointF(
+                    CSng(-half + cornerRadius),
+                    CSng(-half + cornerRadius)),
+                cornerRadius,
+                Math.PI,
+                3.0 * Math.PI / 2.0,
+                False))
+
+            Return path
+
+        End Function
+
+        Public ReadOnly Property Diameter As Double
+            Get
+                Return Math.Min(
+                CuttingProfile.BoundingBox.Width,
+                CuttingProfile.BoundingBox.Height)
+            End Get
+        End Property
+
+        Public ReadOnly Property CornerRadius As Double
+            Get
+                ' Temporary convenience value.
+                '
+                ' The actual corner radii are represented by the
+                ' ArcSegment2D objects in CuttingProfile.
+                For Each segment As IPathSegment In CuttingProfile.Segments
+
+                    Dim arc As ArcSegment2D =
+                    TryCast(segment, ArcSegment2D)
+
+                    If arc IsNot Nothing Then
+                        Return arc.Radius
+                    End If
+
+                Next
+
+                Return 0.0
+
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveDiameter As Double
+            Get
+                Return Diameter
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveRadius As Double
+            Get
+                Return Diameter / 2.0
+            End Get
+        End Property
+
+        Public Overrides Function IsCompatibleWithFeature(
+        feature As IGeometricFeature) As Boolean
+
+            If feature Is Nothing Then
+                Return False
+            End If
+
+            If feature.MinCornerRadius < CornerRadius Then
+                Return False
+            End If
+
+            If feature.MinSlotWidth < EffectiveDiameter Then
+                Return False
+            End If
 
             Return True
+
         End Function
+
+        Public Overrides Function CanCutInternalCorner(
+        radius As Double) As Boolean
+
+            Return radius >= CornerRadius
+
+        End Function
+
+        Public Overrides Function CanSlot(
+        width As Double) As Boolean
+
+            Return width >= EffectiveDiameter
+
+        End Function
+
+        Public Overrides Function GetProfileOffset() As Double
+
+            Return EffectiveRadius
+
+        End Function
+
+        Public Overrides Function DecomposePath(
+        inputPath As IPath2D) As IEnumerable(Of IToolMotion)
+
+            Return ToolpathGenerator.OffsetPath(
+            inputPath,
+            GetProfileOffset())
+
+        End Function
+
     End Class
 #End Region
+
+    Public MustInherit Class ObroundToolShape
+        Inherits ToolShape
+
+        Public Sub New(
+        width As Double,
+        length As Double)
+
+            MyBase.New(
+            ToolShapeType.Obround,
+            CreateObroundProfile(width, length))
+
+        End Sub
+
+        Private Shared Function CreateObroundProfile(
+        width As Double,
+        length As Double) As IPath2D
+
+            If width <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(width))
+            End If
+
+            If length <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(length))
+            End If
+
+            If length < width Then
+                Throw New ArgumentException(
+                "Obround length cannot be less than its width.",
+                NameOf(length))
+            End If
+
+            Dim radius As Double = width / 2.0
+            Dim halfLength As Double = length / 2.0
+
+            ' Distance from the center to each semicircle center.
+            Dim halfStraight As Double =
+            halfLength - radius
+
+            Dim path As New Path2D()
+
+            ' Top straight segment.
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(-halfStraight),
+                    CSng(radius)),
+                New PointF(
+                    CSng(halfStraight),
+                    CSng(radius))))
+
+            ' Right semicircle.
+            path.Add(
+            New ArcSegment2D(
+                New PointF(
+                    CSng(halfStraight),
+                    0.0F),
+                radius,
+                Math.PI / 2.0,
+                -Math.PI / 2.0,
+                False))
+
+            ' Bottom straight segment.
+            path.Add(
+            New LineSegment2D(
+                New PointF(
+                    CSng(halfStraight),
+                    CSng(-radius)),
+                New PointF(
+                    CSng(-halfStraight),
+                    CSng(-radius))))
+
+            ' Left semicircle.
+            path.Add(
+            New ArcSegment2D(
+                New PointF(
+                    CSng(-halfStraight),
+                    0.0F),
+                radius,
+                -Math.PI / 2.0,
+                Math.PI / 2.0,
+                False))
+
+            Return path
+
+        End Function
+
+        Public ReadOnly Property Width As Double
+            Get
+                Return CuttingProfile.BoundingBox.Width
+            End Get
+        End Property
+
+        Public ReadOnly Property Length As Double
+            Get
+                Return CuttingProfile.BoundingBox.Height
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveDiameter As Double
+            Get
+                Return Width
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveRadius As Double
+            Get
+                Return Width / 2.0
+            End Get
+        End Property
+
+        Public Overrides Function IsCompatibleWithFeature(
+        feature As IGeometricFeature) As Boolean
+
+            If feature Is Nothing Then
+                Return False
+            End If
+
+            If feature.MinSlotWidth < Width Then
+                Return False
+            End If
+
+            Return True
+
+        End Function
+
+        Public Overrides Function CanCutInternalCorner(
+        radius As Double) As Boolean
+
+            Return radius >= EffectiveRadius
+
+        End Function
+
+        Public Overrides Function CanSlot(
+        width As Double) As Boolean
+
+            Return width >= EffectiveDiameter
+
+        End Function
+
+        Public Overrides Function GetProfileOffset() As Double
+
+            Return EffectiveRadius
+
+        End Function
+
+        Public Overrides Function DecomposePath(
+        inputPath As IPath2D) As IEnumerable(Of IToolMotion)
+
+            Return ToolpathGenerator.OffsetPath(
+            inputPath,
+            GetProfileOffset())
+
+        End Function
+
+    End Class
+
+    Public MustInherit Class DiamondToolShape
+        Inherits ToolShape
+
+        Public Sub New(
+        width As Double,
+        height As Double)
+
+            MyBase.New(
+            ToolShapeType.Diamond,
+            CreateDiamondProfile(width, height))
+
+        End Sub
+
+        Private Shared Function CreateDiamondProfile(
+        width As Double,
+        height As Double) As IPath2D
+
+            If width <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(width))
+            End If
+
+            If height <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(height))
+            End If
+
+            Dim halfWidth As Double = width / 2.0
+            Dim halfHeight As Double = height / 2.0
+
+            Dim path As New Path2D()
+
+            ' Top
+            path.Add(
+            New LineSegment2D(
+                New PointF(0.0F, CSng(halfHeight)),
+                New PointF(CSng(halfWidth), 0.0F)))
+
+            ' Right
+            path.Add(
+            New LineSegment2D(
+                New PointF(CSng(halfWidth), 0.0F),
+                New PointF(0.0F, CSng(-halfHeight))))
+
+            ' Bottom
+            path.Add(
+            New LineSegment2D(
+                New PointF(0.0F, CSng(-halfHeight)),
+                New PointF(CSng(-halfWidth), 0.0F)))
+
+            ' Left
+            path.Add(
+            New LineSegment2D(
+                New PointF(CSng(-halfWidth), 0.0F),
+                New PointF(0.0F, CSng(halfHeight))))
+
+            Return path
+
+        End Function
+
+        Public ReadOnly Property Width As Double
+            Get
+                Return CuttingProfile.BoundingBox.Width
+            End Get
+        End Property
+
+        Public ReadOnly Property Height As Double
+            Get
+                Return CuttingProfile.BoundingBox.Height
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveDiameter As Double
+            Get
+                Return Math.Min(Width, Height)
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property EffectiveRadius As Double
+            Get
+                Return EffectiveDiameter / 2.0
+            End Get
+        End Property
+
+        Public Overrides Function IsCompatibleWithFeature(
+        feature As IGeometricFeature) As Boolean
+
+            If feature Is Nothing Then
+                Return False
+            End If
+
+            If feature.MinSlotWidth < EffectiveDiameter Then
+                Return False
+            End If
+
+            Return True
+
+        End Function
+
+        Public Overrides Function CanCutInternalCorner(
+        radius As Double) As Boolean
+
+            ' The diamond has four straight-sided corners.
+            Return True
+
+        End Function
+
+        Public Overrides Function CanSlot(
+        width As Double) As Boolean
+
+            Return width >= EffectiveDiameter
+
+        End Function
+
+        Public Overrides Function GetProfileOffset() As Double
+
+            Return EffectiveRadius
+
+        End Function
+
+        Public Overrides Function DecomposePath(
+        inputPath As IPath2D) As IEnumerable(Of IToolMotion)
+
+            Return ToolpathGenerator.OffsetPath(
+            inputPath,
+            GetProfileOffset())
+
+        End Function
+
+    End Class
 
 #Region "Geometry2D (Stub)"
 
