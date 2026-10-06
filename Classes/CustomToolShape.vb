@@ -255,18 +255,18 @@ Namespace ToolShapes
                             "CTG arc has zero radius.")
                     End If
 
-                    Dim endRadius As Double =
-                        Distance(endPoint, center)
+                        'Dim endRadius As Double =
+                        '    Distance(endPoint, center)
 
-                    Dim tolerance As Double =
-                        Math.Max(0.000001, radius * 0.000001)
+                        'Dim tolerance As Double =
+                        '    Math.Max(0.000001, radius * 0.000001)
 
-                    If Math.Abs(endRadius - radius) > tolerance Then
-                        Throw New InvalidDataException(
-                            "CTG arc start and endpoint are not on the same circle.")
-                    End If
+                        'If Math.Abs(endRadius - radius) > tolerance Then
+                        '    Throw New InvalidDataException(
+                        '        "CTG arc start and endpoint are not on the same circle.")
+                        'End If
 
-                    Dim startAngle As Double =
+                        Dim startAngle As Double =
                         Math.Atan2(
                             startPoint.Y - center.Y,
                             startPoint.X - center.X)

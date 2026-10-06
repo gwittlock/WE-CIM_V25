@@ -339,22 +339,15 @@ Namespace ToolShapes
         inputPath As IPath2D) As IEnumerable(Of IToolMotion)
 
         Protected Sub New(
-        shapeType As ToolShapeType,
-        cuttingProfile As IPath2D)
+    shapeType As ToolShapeType,
+    cuttingProfile As IPath2D)
 
             If cuttingProfile Is Nothing Then
                 Throw New ArgumentNullException(NameOf(cuttingProfile))
             End If
 
-            If Not cuttingProfile.IsClosed Then
-                Throw New ArgumentException(
-                "ToolShape CuttingProfile must be closed.",
-                NameOf(cuttingProfile))
-            End If
-
             Me.ShapeType = shapeType
             Me.CuttingProfile = cuttingProfile
-
         End Sub
 
     End Class
