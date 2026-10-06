@@ -303,9 +303,10 @@ Namespace ToolShapes
         Public ReadOnly Property ShapeType As ToolShapeType
 
         ''' <summary>
-        ''' Authoritative closed 2D geometry of the physical tool.
-        ''' The profile is defined in the tool's local coordinate system,
+        ''' Authoritative 2D geometry of the physical tool.
+        ''' The geometry is defined in the tool's local coordinate system,
         ''' with (0,0) as the tool reference center.
+        ''' The geometry may contain one or more open or closed contours.
         ''' </summary>
         Public ReadOnly Property CuttingProfile As IPath2D
 

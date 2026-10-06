@@ -1,4 +1,6 @@
-﻿
+﻿Imports System.Linq
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
+
 Imports FabV25_WIN8.ToolShapes
 
 Public Class ToolShapeTest
@@ -294,7 +296,14 @@ Public Class ToolShapeTest
 
         Try
 
-            _testToolShape = CreateTestToolShape()
+
+
+            '_testToolShape = CreateTestToolShape()
+
+            _testToolShape = CreateToolShapeFromToolCrib()
+
+            pnlToolShape.Invalidate()
+
 
             MessageBox.Show(
             "ToolShape created successfully." &
@@ -499,8 +508,18 @@ Public Class ToolShapeTest
         End Using
 
     End Sub
+    Private Function CreateToolShapeFromToolCrib() As ToolShape
 
-    Private Sub btnTestShape_MouseWheel(sender As Object, e As MouseEventArgs) Handles btnTestShape.MouseWheel
+        Dim tool As Tool =
+        AppData.ToolCrib.FirstOrDefault(
+            Function(t) t.TypeID = 29)
 
-    End Sub
+        If tool Is Nothing Then
+            Throw New InvalidOperationException(
+            "No Type 29 Custom tool was found in ToolCrib.json.")
+        End If
+
+        Return ToolShapeFactory.Create(tool)
+
+    End Function
 End Class

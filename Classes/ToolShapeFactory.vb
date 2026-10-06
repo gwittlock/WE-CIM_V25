@@ -94,8 +94,6 @@ Namespace ToolShapes
             End Select
 
         End Function
-
-
         Private Shared Function GetString(
     tool As Tool,
     fieldName As String) As String
@@ -111,9 +109,18 @@ Namespace ToolShapes
 
             Dim value As Object = Nothing
 
-            If Not tool.Attributes.TryGetValue(fieldName, value) Then
+            Dim actualKey As String =
+        tool.Attributes.Keys.FirstOrDefault(
+            Function(k) String.Equals(
+                k,
+                fieldName,
+                StringComparison.OrdinalIgnoreCase))
+
+            If actualKey Is Nothing Then
                 Return String.Empty
             End If
+
+            value = tool.Attributes(actualKey)
 
             If value Is Nothing Then
                 Return String.Empty
@@ -121,31 +128,47 @@ Namespace ToolShapes
 
             Return Convert.ToString(
         value,
-        Globalization.CultureInfo.InvariantCulture)
+        CultureInfo.InvariantCulture)
+
         End Function
 
-
         Private Shared Function GetDouble(
-            tool As Tool,
-            fieldName As String) As Double
+    tool As Tool,
+    fieldName As String) As Double
 
-            If Not tool.Attributes.ContainsKey(fieldName) Then
+            If tool Is Nothing Then
+                Throw New ArgumentNullException(NameOf(tool))
+            End If
+
+            If tool.Attributes Is Nothing Then
+                Throw New InvalidOperationException(
+            "Tool.Attributes is Nothing.")
+            End If
+
+            Dim actualKey As String =
+        tool.Attributes.Keys.FirstOrDefault(
+            Function(k) String.Equals(
+                k,
+                fieldName,
+                StringComparison.OrdinalIgnoreCase))
+
+            If actualKey Is Nothing Then
                 Throw New ArgumentException(
-                    "Tool attribute '" &
-                    fieldName &
-                    "' was not found.",
-                    NameOf(tool))
+            "Tool attribute '" &
+            fieldName &
+            "' was not found.",
+            NameOf(tool))
             End If
 
             Dim value As Object =
-                tool.Attributes(fieldName)
+        tool.Attributes(actualKey)
 
             If value Is Nothing Then
                 Throw New ArgumentException(
-                    "Tool attribute '" &
-                    fieldName &
-                    "' is Nothing.",
-                    NameOf(tool))
+            "Tool attribute '" &
+            fieldName &
+            "' is Nothing.",
+            NameOf(tool))
             End If
 
             If TypeOf value Is Double Then
@@ -173,10 +196,10 @@ Namespace ToolShapes
                 Dim result As Double
 
                 If Double.TryParse(
-                    DirectCast(value, String),
-                    NumberStyles.Float Or NumberStyles.AllowThousands,
-                    CultureInfo.InvariantCulture,
-                    result) Then
+            DirectCast(value, String),
+            NumberStyles.Float Or NumberStyles.AllowThousands,
+            CultureInfo.InvariantCulture,
+            result) Then
 
                     Return result
 
@@ -185,10 +208,10 @@ Namespace ToolShapes
             End If
 
             Throw New ArgumentException(
-                "Tool attribute '" &
-                fieldName &
-                "' could not be converted to Double.",
-                NameOf(tool))
+        "Tool attribute '" &
+        fieldName &
+        "' could not be converted to Double.",
+        NameOf(tool))
 
         End Function
 
