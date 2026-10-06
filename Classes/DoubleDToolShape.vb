@@ -4,7 +4,7 @@ Imports FabV25_WIN8.ToolShapes
 
 Namespace ToolShapes
 
-    Public MustInherit Class DoubleDToolShape
+    Public Class DoubleDToolShape
         Inherits ToolShape
 
         Public Sub New(

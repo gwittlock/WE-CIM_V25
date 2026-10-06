@@ -156,10 +156,62 @@ Namespace ToolShapes
         End Property
 
         Public ReadOnly Property IsClosed As Boolean _
-            Implements IPath2D.IsClosed
+    Implements IPath2D.IsClosed
+
             Get
-                If _segments.Count = 0 Then Return False
-                Return _segments.First.StartPoint = _segments.Last.EndPoint
+                If _segments.Count = 0 Then
+                    Return False
+                End If
+
+                Const tolerance As Double = 0.000001
+
+                ' Start of the current contour.
+                Dim contourStart As PointF =
+            _segments(0).StartPoint
+
+                ' End of the previous segment.
+                Dim previousEnd As PointF =
+            _segments(0).EndPoint
+
+                For index As Integer = 1 To _segments.Count - 1
+
+                    Dim current As IPathSegment =
+                _segments(index)
+
+                    If PointsEqual(
+                previousEnd,
+                current.StartPoint,
+                tolerance) Then
+
+                        ' Continue the current contour.
+                        previousEnd = current.EndPoint
+
+                    Else
+
+                        ' A new contour is starting.
+                        ' The previous contour must already be closed.
+                        If Not PointsEqual(
+                    previousEnd,
+                    contourStart,
+                    tolerance) Then
+
+                            Return False
+                        End If
+
+                        ' Start the new contour.
+                        contourStart = current.StartPoint
+                        previousEnd = current.EndPoint
+
+                    End If
+
+                Next
+
+                ' The final contour must also be closed.
+                Return PointsEqual(
+            previousEnd,
+            contourStart,
+            tolerance)
+
             End Get
         End Property
 
@@ -169,6 +221,23 @@ Namespace ToolShapes
                 Return Geometry2D.ComputeBoundingBox(_segments)
             End Get
         End Property
+
+        Private Shared Function PointsEqual(
+    p1 As PointF,
+    p2 As PointF,
+    tolerance As Double) As Boolean
+
+            Dim dx As Double =
+                CDbl(p1.X) - CDbl(p2.X)
+
+            Dim dy As Double =
+                CDbl(p1.Y) - CDbl(p2.Y)
+
+            Return Math.Sqrt(
+                dx * dx +
+                dy * dy) <= tolerance
+
+        End Function
     End Class
 
 #End Region
@@ -292,7 +361,7 @@ Namespace ToolShapes
 #End Region
 #Region "ToolShape Compatibility Overrides"
 
-    Public MustInherit Class RoundToolShape
+    Public Class RoundToolShape
         Inherits ToolShape
 
         Public Sub New(diameter As Double)
@@ -395,51 +464,137 @@ Namespace ToolShapes
 
     End Class
 
-    Public MustInherit Class SquareToolShape
+    Public Class SquareToolShape
         Inherits ToolShape
 
-        Public Sub New(size As Double)
+        Public Sub New(
+    size As Double,
+    cornerRadius As Double)
 
             MyBase.New(
-            ToolShapeType.Square,
-            CreateSquareProfile(size))
+        ToolShapeType.Square,
+        CreateSquareProfile(size, cornerRadius))
 
         End Sub
-
         Private Shared Function CreateSquareProfile(
-        size As Double) As IPath2D
+    size As Double,
+    cornerRadius As Double) As IPath2D
 
             If size <= 0 Then
                 Throw New ArgumentOutOfRangeException(NameOf(size))
             End If
 
-            Dim half As Double = size / 2.0
+            If cornerRadius < 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(cornerRadius))
+            End If
 
+            If cornerRadius > size / 2.0 Then
+                Throw New ArgumentOutOfRangeException(
+            NameOf(cornerRadius),
+            "Corner radius cannot exceed half the square size.")
+            End If
+
+            Dim half As Double = size / 2.0
             Dim path As New Path2D()
 
-            ' Bottom
-            path.Add(
+            ' ---------------------------------------------------------
+            ' Sharp-corner square
+            ' ---------------------------------------------------------
+            If cornerRadius = 0 Then
+
+                ' Bottom
+                path.Add(
             New LineSegment2D(
                 New PointF(CSng(-half), CSng(-half)),
                 New PointF(CSng(half), CSng(-half))))
 
-            ' Right
-            path.Add(
+                ' Right
+                path.Add(
             New LineSegment2D(
                 New PointF(CSng(half), CSng(-half)),
                 New PointF(CSng(half), CSng(half))))
 
-            ' Top
-            path.Add(
+                ' Top
+                path.Add(
             New LineSegment2D(
                 New PointF(CSng(half), CSng(half)),
                 New PointF(CSng(-half), CSng(half))))
 
-            ' Left
-            path.Add(
+                ' Left
+                path.Add(
             New LineSegment2D(
                 New PointF(CSng(-half), CSng(half)),
                 New PointF(CSng(-half), CSng(-half))))
+
+                Return path
+
+            End If
+
+            ' ---------------------------------------------------------
+            ' Rounded-corner square
+            ' ---------------------------------------------------------
+
+            Dim r As Double = cornerRadius
+
+            ' Bottom
+            path.Add(
+        New LineSegment2D(
+            New PointF(CSng(-half + r), CSng(-half)),
+            New PointF(CSng(half - r), CSng(-half))))
+
+            ' Bottom-right corner
+            path.Add(
+        New ArcSegment2D(
+            New PointF(CSng(half - r), CSng(-half + r)),
+            r,
+            -Math.PI / 2.0,
+            0.0,
+            False))
+
+            ' Right
+            path.Add(
+        New LineSegment2D(
+            New PointF(CSng(half), CSng(-half + r)),
+            New PointF(CSng(half), CSng(half - r))))
+
+            ' Top-right corner
+            path.Add(
+        New ArcSegment2D(
+            New PointF(CSng(half - r), CSng(half - r)),
+            r,
+            0.0,
+            Math.PI / 2.0,
+            False))
+
+            ' Top
+            path.Add(
+        New LineSegment2D(
+            New PointF(CSng(half - r), CSng(half)),
+            New PointF(CSng(-half + r), CSng(half))))
+
+            ' Top-left corner
+            path.Add(
+        New ArcSegment2D(
+            New PointF(CSng(-half + r), CSng(half - r)),
+            r,
+            Math.PI / 2.0,
+            Math.PI,
+            False))
+
+            ' Left
+            path.Add(
+        New LineSegment2D(
+            New PointF(CSng(-half), CSng(half - r)),
+            New PointF(CSng(-half), CSng(-half + r))))
+
+            ' Bottom-left corner
+            path.Add(
+        New ArcSegment2D(
+            New PointF(CSng(-half + r), CSng(-half + r)),
+            r,
+            Math.PI,
+            3.0 * Math.PI / 2.0,
+            False))
 
             Return path
 
@@ -513,22 +668,27 @@ Namespace ToolShapes
 
     End Class
 
-    Public MustInherit Class RectangularToolShape
+    Public Class RectangularToolShape
         Inherits ToolShape
 
         Public Sub New(
-        width As Double,
-        height As Double)
+    width As Double,
+    height As Double,
+    cornerRadius As Double)
 
             MyBase.New(
-            ToolShapeType.Rectangle,
-            CreateRectangleProfile(width, height))
+        ToolShapeType.Rectangle,
+        CreateRectangleProfile(
+            width,
+            height,
+            cornerRadius))
 
         End Sub
 
         Private Shared Function CreateRectangleProfile(
-        width As Double,
-        height As Double) As IPath2D
+    width As Double,
+    height As Double,
+    cornerRadius As Double) As IPath2D
 
             If width <= 0 Then
                 Throw New ArgumentOutOfRangeException(NameOf(width))
@@ -538,50 +698,119 @@ Namespace ToolShapes
                 Throw New ArgumentOutOfRangeException(NameOf(height))
             End If
 
+            If cornerRadius < 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(cornerRadius))
+            End If
+
+            If cornerRadius > Math.Min(width, height) / 2.0 Then
+                Throw New ArgumentOutOfRangeException(
+            NameOf(cornerRadius),
+            "Corner radius cannot exceed half the smaller rectangle dimension.")
+            End If
+
             Dim halfWidth As Double = width / 2.0
             Dim halfHeight As Double = height / 2.0
 
             Dim path As New Path2D()
 
+            ' ---------------------------------------------------------
+            ' Sharp-corner rectangle
+            ' ---------------------------------------------------------
+            If cornerRadius = 0 Then
+
+                ' Bottom
+                path.Add(
+            New LineSegment2D(
+                New PointF(CSng(-halfWidth), CSng(-halfHeight)),
+                New PointF(CSng(halfWidth), CSng(-halfHeight))))
+
+                ' Right
+                path.Add(
+            New LineSegment2D(
+                New PointF(CSng(halfWidth), CSng(-halfHeight)),
+                New PointF(CSng(halfWidth), CSng(halfHeight))))
+
+                ' Top
+                path.Add(
+            New LineSegment2D(
+                New PointF(CSng(halfWidth), CSng(halfHeight)),
+                New PointF(CSng(-halfWidth), CSng(halfHeight))))
+
+                ' Left
+                path.Add(
+            New LineSegment2D(
+                New PointF(CSng(-halfWidth), CSng(halfHeight)),
+                New PointF(CSng(-halfWidth), CSng(-halfHeight))))
+
+                Return path
+
+            End If
+
+            ' ---------------------------------------------------------
+            ' Rounded-corner rectangle
+            ' ---------------------------------------------------------
+
+            Dim r As Double = cornerRadius
+
             ' Bottom
             path.Add(
-            New LineSegment2D(
-                New PointF(
-                    CSng(-halfWidth),
-                    CSng(-halfHeight)),
-                New PointF(
-                    CSng(halfWidth),
-                    CSng(-halfHeight))))
+        New LineSegment2D(
+            New PointF(CSng(-halfWidth + r), CSng(-halfHeight)),
+            New PointF(CSng(halfWidth - r), CSng(-halfHeight))))
+
+            ' Bottom-right
+            path.Add(
+        New ArcSegment2D(
+            New PointF(CSng(halfWidth - r), CSng(-halfHeight + r)),
+            r,
+            -Math.PI / 2.0,
+            0.0,
+            False))
 
             ' Right
             path.Add(
-            New LineSegment2D(
-                New PointF(
-                    CSng(halfWidth),
-                    CSng(-halfHeight)),
-                New PointF(
-                    CSng(halfWidth),
-                    CSng(halfHeight))))
+        New LineSegment2D(
+            New PointF(CSng(halfWidth), CSng(-halfHeight + r)),
+            New PointF(CSng(halfWidth), CSng(halfHeight - r))))
+
+            ' Top-right
+            path.Add(
+        New ArcSegment2D(
+            New PointF(CSng(halfWidth - r), CSng(halfHeight - r)),
+            r,
+            0.0,
+            Math.PI / 2.0,
+            False))
 
             ' Top
             path.Add(
-            New LineSegment2D(
-                New PointF(
-                    CSng(halfWidth),
-                    CSng(halfHeight)),
-                New PointF(
-                    CSng(-halfWidth),
-                    CSng(halfHeight))))
+        New LineSegment2D(
+            New PointF(CSng(halfWidth - r), CSng(halfHeight)),
+            New PointF(CSng(-halfWidth + r), CSng(halfHeight))))
+
+            ' Top-left
+            path.Add(
+        New ArcSegment2D(
+            New PointF(CSng(-halfWidth + r), CSng(halfHeight - r)),
+            r,
+            Math.PI / 2.0,
+            Math.PI,
+            False))
 
             ' Left
             path.Add(
-            New LineSegment2D(
-                New PointF(
-                    CSng(-halfWidth),
-                    CSng(halfHeight)),
-                New PointF(
-                    CSng(-halfWidth),
-                    CSng(-halfHeight))))
+        New LineSegment2D(
+            New PointF(CSng(-halfWidth), CSng(halfHeight - r)),
+            New PointF(CSng(-halfWidth), CSng(-halfHeight + r))))
+
+            ' Bottom-left
+            path.Add(
+        New ArcSegment2D(
+            New PointF(CSng(-halfWidth + r), CSng(-halfHeight + r)),
+            r,
+            Math.PI,
+            3.0 * Math.PI / 2.0,
+            False))
 
             Return path
 
@@ -659,259 +888,258 @@ Namespace ToolShapes
         End Function
 
     End Class
-    Public MustInherit Class CornerRadiusToolShape
-        Inherits ToolShape
+    'Public Class CornerRadiusToolShape
+    '    Inherits ToolShape
 
-        Public Sub New(
-        diameter As Double,
-        cornerRadius As Double)
+    '    Public Sub New(
+    '    diameter As Double,
+    '    cornerRadius As Double)
+    '        MyBase.New(
+    '        ToolShapeType.CornerRadius,
+    '        CreateCornerRadiusProfile(
+    '            diameter,
+    '            cornerRadius))
 
-            MyBase.New(
-            ToolShapeType.CornerRadius,
-            CreateCornerRadiusProfile(
-                diameter,
-                cornerRadius))
+    '    End Sub
 
-        End Sub
+    '    Private Shared Function CreateCornerRadiusProfile(
+    '    diameter As Double,
+    '    cornerRadius As Double) As IPath2D
 
-        Private Shared Function CreateCornerRadiusProfile(
-        diameter As Double,
-        cornerRadius As Double) As IPath2D
+    '        If diameter <= 0 Then
+    '            Throw New ArgumentOutOfRangeException(NameOf(diameter))
+    '        End If
 
-            If diameter <= 0 Then
-                Throw New ArgumentOutOfRangeException(NameOf(diameter))
-            End If
+    '        If cornerRadius < 0 Then
+    '            Throw New ArgumentOutOfRangeException(NameOf(cornerRadius))
+    '        End If
 
-            If cornerRadius < 0 Then
-                Throw New ArgumentOutOfRangeException(NameOf(cornerRadius))
-            End If
+    '        ' Temporary compatibility constructor.
+    '        '
+    '        ' This creates a square tool profile with the supplied
+    '        ' corner radius applied equally to all four corners.
+    '        '
+    '        ' The profile itself remains authoritative. The next
+    '        ' refinement will allow the four corner radii to differ.
 
-            ' Temporary compatibility constructor.
-            '
-            ' This creates a square tool profile with the supplied
-            ' corner radius applied equally to all four corners.
-            '
-            ' The profile itself remains authoritative. The next
-            ' refinement will allow the four corner radii to differ.
+    '        Dim half As Double = diameter / 2.0
 
-            Dim half As Double = diameter / 2.0
+    '        If cornerRadius > half Then
+    '            Throw New ArgumentException(
+    '            "Corner radius cannot exceed half the tool diameter.",
+    '            NameOf(cornerRadius))
+    '        End If
 
-            If cornerRadius > half Then
-                Throw New ArgumentException(
-                "Corner radius cannot exceed half the tool diameter.",
-                NameOf(cornerRadius))
-            End If
+    '        Dim path As New Path2D()
 
-            Dim path As New Path2D()
+    '        If cornerRadius = 0 Then
 
-            If cornerRadius = 0 Then
+    '            path.Add(
+    '            New LineSegment2D(
+    '                New PointF(CSng(-half), CSng(-half)),
+    '                New PointF(CSng(half), CSng(-half))))
 
-                path.Add(
-                New LineSegment2D(
-                    New PointF(CSng(-half), CSng(-half)),
-                    New PointF(CSng(half), CSng(-half))))
+    '            path.Add(
+    '            New LineSegment2D(
+    '                New PointF(CSng(half), CSng(-half)),
+    '                New PointF(CSng(half), CSng(half))))
 
-                path.Add(
-                New LineSegment2D(
-                    New PointF(CSng(half), CSng(-half)),
-                    New PointF(CSng(half), CSng(half))))
+    '            path.Add(
+    '            New LineSegment2D(
+    '                New PointF(CSng(half), CSng(half)),
+    '                New PointF(CSng(-half), CSng(half))))
 
-                path.Add(
-                New LineSegment2D(
-                    New PointF(CSng(half), CSng(half)),
-                    New PointF(CSng(-half), CSng(half))))
+    '            path.Add(
+    '            New LineSegment2D(
+    '                New PointF(CSng(-half), CSng(half)),
+    '                New PointF(CSng(-half), CSng(-half))))
 
-                path.Add(
-                New LineSegment2D(
-                    New PointF(CSng(-half), CSng(half)),
-                    New PointF(CSng(-half), CSng(-half))))
+    '            Return path
 
-                Return path
+    '        End If
 
-            End If
+    '        ' Bottom edge
+    '        path.Add(
+    '        New LineSegment2D(
+    '            New PointF(
+    '                CSng(-half + cornerRadius),
+    '                CSng(-half)),
+    '            New PointF(
+    '                CSng(half - cornerRadius),
+    '                CSng(-half))))
 
-            ' Bottom edge
-            path.Add(
-            New LineSegment2D(
-                New PointF(
-                    CSng(-half + cornerRadius),
-                    CSng(-half)),
-                New PointF(
-                    CSng(half - cornerRadius),
-                    CSng(-half))))
+    '        ' Bottom-right corner
+    '        path.Add(
+    '        New ArcSegment2D(
+    '            New PointF(
+    '                CSng(half - cornerRadius),
+    '                CSng(-half + cornerRadius)),
+    '            cornerRadius,
+    '            -Math.PI / 2.0,
+    '            0.0,
+    '            False))
 
-            ' Bottom-right corner
-            path.Add(
-            New ArcSegment2D(
-                New PointF(
-                    CSng(half - cornerRadius),
-                    CSng(-half + cornerRadius)),
-                cornerRadius,
-                -Math.PI / 2.0,
-                0.0,
-                False))
+    '        ' Right edge
+    '        path.Add(
+    '        New LineSegment2D(
+    '            New PointF(
+    '                CSng(half),
+    '                CSng(-half + cornerRadius)),
+    '            New PointF(
+    '                CSng(half),
+    '                CSng(half - cornerRadius))))
 
-            ' Right edge
-            path.Add(
-            New LineSegment2D(
-                New PointF(
-                    CSng(half),
-                    CSng(-half + cornerRadius)),
-                New PointF(
-                    CSng(half),
-                    CSng(half - cornerRadius))))
+    '        ' Top-right corner
+    '        path.Add(
+    '        New ArcSegment2D(
+    '            New PointF(
+    '                CSng(half - cornerRadius),
+    '                CSng(half - cornerRadius)),
+    '            cornerRadius,
+    '            0.0,
+    '            Math.PI / 2.0,
+    '            False))
 
-            ' Top-right corner
-            path.Add(
-            New ArcSegment2D(
-                New PointF(
-                    CSng(half - cornerRadius),
-                    CSng(half - cornerRadius)),
-                cornerRadius,
-                0.0,
-                Math.PI / 2.0,
-                False))
+    '        ' Top edge
+    '        path.Add(
+    '        New LineSegment2D(
+    '            New PointF(
+    '                CSng(half - cornerRadius),
+    '                CSng(half)),
+    '            New PointF(
+    '                CSng(-half + cornerRadius),
+    '                CSng(half))))
 
-            ' Top edge
-            path.Add(
-            New LineSegment2D(
-                New PointF(
-                    CSng(half - cornerRadius),
-                    CSng(half)),
-                New PointF(
-                    CSng(-half + cornerRadius),
-                    CSng(half))))
+    '        ' Top-left corner
+    '        path.Add(
+    '        New ArcSegment2D(
+    '            New PointF(
+    '                CSng(-half + cornerRadius),
+    '                CSng(half - cornerRadius)),
+    '            cornerRadius,
+    '            Math.PI / 2.0,
+    '            Math.PI,
+    '            False))
 
-            ' Top-left corner
-            path.Add(
-            New ArcSegment2D(
-                New PointF(
-                    CSng(-half + cornerRadius),
-                    CSng(half - cornerRadius)),
-                cornerRadius,
-                Math.PI / 2.0,
-                Math.PI,
-                False))
+    '        ' Left edge
+    '        path.Add(
+    '        New LineSegment2D(
+    '            New PointF(
+    '                CSng(-half),
+    '                CSng(half - cornerRadius)),
+    '            New PointF(
+    '                CSng(-half),
+    '                CSng(-half + cornerRadius))))
 
-            ' Left edge
-            path.Add(
-            New LineSegment2D(
-                New PointF(
-                    CSng(-half),
-                    CSng(half - cornerRadius)),
-                New PointF(
-                    CSng(-half),
-                    CSng(-half + cornerRadius))))
+    '        ' Bottom-left corner
+    '        path.Add(
+    '        New ArcSegment2D(
+    '            New PointF(
+    '                CSng(-half + cornerRadius),
+    '                CSng(-half + cornerRadius)),
+    '            cornerRadius,
+    '            Math.PI,
+    '            3.0 * Math.PI / 2.0,
+    '            False))
 
-            ' Bottom-left corner
-            path.Add(
-            New ArcSegment2D(
-                New PointF(
-                    CSng(-half + cornerRadius),
-                    CSng(-half + cornerRadius)),
-                cornerRadius,
-                Math.PI,
-                3.0 * Math.PI / 2.0,
-                False))
+    '        Return path
 
-            Return path
+    '    End Function
 
-        End Function
+    '    Public ReadOnly Property Diameter As Double
+    '        Get
+    '            Return Math.Min(
+    '            CuttingProfile.BoundingBox.Width,
+    '            CuttingProfile.BoundingBox.Height)
+    '        End Get
+    '    End Property
 
-        Public ReadOnly Property Diameter As Double
-            Get
-                Return Math.Min(
-                CuttingProfile.BoundingBox.Width,
-                CuttingProfile.BoundingBox.Height)
-            End Get
-        End Property
+    '    Public ReadOnly Property CornerRadius As Double
+    '        Get
+    '            ' Temporary convenience value.
+    '            '
+    '            ' The actual corner radii are represented by the
+    '            ' ArcSegment2D objects in CuttingProfile.
+    '            For Each segment As IPathSegment In CuttingProfile.Segments
 
-        Public ReadOnly Property CornerRadius As Double
-            Get
-                ' Temporary convenience value.
-                '
-                ' The actual corner radii are represented by the
-                ' ArcSegment2D objects in CuttingProfile.
-                For Each segment As IPathSegment In CuttingProfile.Segments
+    '                Dim arc As ArcSegment2D =
+    '                TryCast(segment, ArcSegment2D)
 
-                    Dim arc As ArcSegment2D =
-                    TryCast(segment, ArcSegment2D)
+    '                If arc IsNot Nothing Then
+    '                    Return arc.Radius
+    '                End If
 
-                    If arc IsNot Nothing Then
-                        Return arc.Radius
-                    End If
+    '            Next
 
-                Next
+    '            Return 0.0
 
-                Return 0.0
+    '        End Get
+    '    End Property
 
-            End Get
-        End Property
+    '    Public Overrides ReadOnly Property EffectiveDiameter As Double
+    '        Get
+    '            Return Diameter
+    '        End Get
+    '    End Property
 
-        Public Overrides ReadOnly Property EffectiveDiameter As Double
-            Get
-                Return Diameter
-            End Get
-        End Property
+    '    Public Overrides ReadOnly Property EffectiveRadius As Double
+    '        Get
+    '            Return Diameter / 2.0
+    '        End Get
+    '    End Property
 
-        Public Overrides ReadOnly Property EffectiveRadius As Double
-            Get
-                Return Diameter / 2.0
-            End Get
-        End Property
+    '    Public Overrides Function IsCompatibleWithFeature(
+    '    feature As IGeometricFeature) As Boolean
 
-        Public Overrides Function IsCompatibleWithFeature(
-        feature As IGeometricFeature) As Boolean
+    '        If feature Is Nothing Then
+    '            Return False
+    '        End If
 
-            If feature Is Nothing Then
-                Return False
-            End If
+    '        If feature.MinCornerRadius < CornerRadius Then
+    '            Return False
+    '        End If
 
-            If feature.MinCornerRadius < CornerRadius Then
-                Return False
-            End If
+    '        If feature.MinSlotWidth < EffectiveDiameter Then
+    '            Return False
+    '        End If
 
-            If feature.MinSlotWidth < EffectiveDiameter Then
-                Return False
-            End If
+    '        Return True
 
-            Return True
+    '    End Function
 
-        End Function
+    '    Public Overrides Function CanCutInternalCorner(
+    '    radius As Double) As Boolean
 
-        Public Overrides Function CanCutInternalCorner(
-        radius As Double) As Boolean
+    '        Return radius >= CornerRadius
 
-            Return radius >= CornerRadius
+    '    End Function
 
-        End Function
+    '    Public Overrides Function CanSlot(
+    '    width As Double) As Boolean
 
-        Public Overrides Function CanSlot(
-        width As Double) As Boolean
+    '        Return width >= EffectiveDiameter
 
-            Return width >= EffectiveDiameter
+    '    End Function
 
-        End Function
+    '    Public Overrides Function GetProfileOffset() As Double
 
-        Public Overrides Function GetProfileOffset() As Double
+    '        Return EffectiveRadius
 
-            Return EffectiveRadius
+    '    End Function
 
-        End Function
+    '    Public Overrides Function DecomposePath(
+    '    inputPath As IPath2D) As IEnumerable(Of IToolMotion)
 
-        Public Overrides Function DecomposePath(
-        inputPath As IPath2D) As IEnumerable(Of IToolMotion)
+    '        Return ToolpathGenerator.OffsetPath(
+    '        inputPath,
+    '        GetProfileOffset())
 
-            Return ToolpathGenerator.OffsetPath(
-            inputPath,
-            GetProfileOffset())
+    '    End Function
 
-        End Function
-
-    End Class
+    'End Class
 #End Region
 
-    Public MustInherit Class ObroundToolShape
+    Public Class ObroundToolShape
         Inherits ToolShape
 
         Public Sub New(
@@ -984,15 +1212,14 @@ Namespace ToolShapes
 
             ' Left semicircle.
             path.Add(
-            New ArcSegment2D(
-                New PointF(
-                    CSng(-halfStraight),
-                    0.0F),
-                radius,
-                -Math.PI / 2.0,
-                Math.PI / 2.0,
-                False))
-
+    New ArcSegment2D(
+        New PointF(
+            CSng(-halfStraight),
+            0.0F),
+        radius,
+        -Math.PI / 2.0,
+        -3.0 * Math.PI / 2.0,
+        False))
             Return path
 
         End Function
@@ -1067,22 +1294,27 @@ Namespace ToolShapes
 
     End Class
 
-    Public MustInherit Class DiamondToolShape
+    Public Class DiamondToolShape
         Inherits ToolShape
 
         Public Sub New(
-        width As Double,
-        height As Double)
+    width As Double,
+    height As Double,
+    cornerRadius As Double)
 
             MyBase.New(
-            ToolShapeType.Diamond,
-            CreateDiamondProfile(width, height))
+        ToolShapeType.Diamond,
+        CreateDiamondProfile(
+            width,
+            height,
+            cornerRadius))
 
         End Sub
 
         Private Shared Function CreateDiamondProfile(
-        width As Double,
-        height As Double) As IPath2D
+    width As Double,
+    height As Double,
+    cornerRadius As Double) As IPath2D
 
             If width <= 0 Then
                 Throw New ArgumentOutOfRangeException(NameOf(width))
@@ -1092,34 +1324,212 @@ Namespace ToolShapes
                 Throw New ArgumentOutOfRangeException(NameOf(height))
             End If
 
+            If cornerRadius < 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(cornerRadius))
+            End If
+
             Dim halfWidth As Double = width / 2.0
             Dim halfHeight As Double = height / 2.0
 
             Dim path As New Path2D()
 
-            ' Top
-            path.Add(
+            ' ---------------------------------------------------------
+            ' Sharp-corner diamond
+            ' ---------------------------------------------------------
+            If cornerRadius = 0 Then
+
+                path.Add(
             New LineSegment2D(
                 New PointF(0.0F, CSng(halfHeight)),
                 New PointF(CSng(halfWidth), 0.0F)))
 
-            ' Right
-            path.Add(
+                path.Add(
             New LineSegment2D(
                 New PointF(CSng(halfWidth), 0.0F),
                 New PointF(0.0F, CSng(-halfHeight))))
 
-            ' Bottom
-            path.Add(
+                path.Add(
             New LineSegment2D(
                 New PointF(0.0F, CSng(-halfHeight)),
                 New PointF(CSng(-halfWidth), 0.0F)))
 
-            ' Left
-            path.Add(
+                path.Add(
             New LineSegment2D(
                 New PointF(CSng(-halfWidth), 0.0F),
                 New PointF(0.0F, CSng(halfHeight))))
+
+                Return path
+
+            End If
+
+            ' ---------------------------------------------------------
+            ' Diamond vertices
+            ' ---------------------------------------------------------
+
+            Dim vertices(3) As PointF
+
+            vertices(0) = New PointF(
+    0.0F,
+    CSng(halfHeight))
+
+            vertices(1) = New PointF(
+    CSng(halfWidth),
+    0.0F)
+
+            vertices(2) = New PointF(
+    0.0F,
+    CSng(-halfHeight))
+
+            vertices(3) = New PointF(
+    CSng(-halfWidth),
+    0.0F)
+
+            Dim tangentBefore(3) As PointF
+            Dim tangentAfter(3) As PointF
+            Dim arcCenters(3) As PointF
+
+            ' ---------------------------------------------------------
+            ' Calculate tangent points and arc centers
+            ' ---------------------------------------------------------
+
+            For i As Integer = 0 To 3
+
+                Dim prevIndex As Integer = i - 1
+
+                If prevIndex < 0 Then
+                    prevIndex = 3
+                End If
+
+                Dim nextIndex As Integer = i + 1
+
+                If nextIndex > 3 Then
+                    nextIndex = 0
+                End If
+
+                Dim vx As Double = vertices(i).X
+                Dim vy As Double = vertices(i).Y
+
+                Dim v1x As Double =
+            vertices(prevIndex).X - vx
+
+                Dim v1y As Double =
+            vertices(prevIndex).Y - vy
+
+                Dim v2x As Double =
+            vertices(nextIndex).X - vx
+
+                Dim v2y As Double =
+            vertices(nextIndex).Y - vy
+
+                Dim len1 As Double =
+            Math.Sqrt(v1x * v1x + v1y * v1y)
+
+                Dim len2 As Double =
+            Math.Sqrt(v2x * v2x + v2y * v2y)
+
+                v1x /= len1
+                v1y /= len1
+
+                v2x /= len2
+                v2y /= len2
+
+                Dim dot As Double =
+            v1x * v2x + v1y * v2y
+
+                dot = Math.Max(-1.0, Math.Min(1.0, dot))
+
+                Dim cornerAngle As Double =
+            Math.Acos(dot)
+
+                Dim tangentDistance As Double =
+            cornerRadius /
+            Math.Tan(cornerAngle / 2.0)
+
+                If tangentDistance * 2.0 >= Math.Min(len1, len2) Then
+                    Throw New ArgumentOutOfRangeException(
+                NameOf(cornerRadius),
+                "Corner radius is too large for the diamond dimensions.")
+                End If
+
+                tangentBefore(i) =
+            New PointF(
+                CSng(vx + v1x * tangentDistance),
+                CSng(vy + v1y * tangentDistance))
+
+                tangentAfter(i) =
+            New PointF(
+                CSng(vx + v2x * tangentDistance),
+                CSng(vy + v2y * tangentDistance))
+
+                Dim bx As Double = v1x + v2x
+                Dim by As Double = v1y + v2y
+
+                Dim bisectorLength As Double =
+            Math.Sqrt(bx * bx + by * by)
+
+                bx /= bisectorLength
+                by /= bisectorLength
+
+                Dim centerDistance As Double =
+            cornerRadius /
+            Math.Sin(cornerAngle / 2.0)
+
+                arcCenters(i) =
+            New PointF(
+                CSng(vx + bx * centerDistance),
+                CSng(vy + by * centerDistance))
+
+            Next
+
+            ' ---------------------------------------------------------
+            ' Build the rounded diamond
+            ' ---------------------------------------------------------
+
+            For i As Integer = 0 To 3
+
+                Dim previousCorner As Integer = i - 1
+
+                If previousCorner < 0 Then
+                    previousCorner = 3
+                End If
+
+                path.Add(
+            New LineSegment2D(
+                tangentAfter(previousCorner),
+                tangentBefore(i)))
+
+                Dim center As PointF = arcCenters(i)
+
+                Dim startAngle As Double =
+    Math.Atan2(
+        tangentBefore(i).Y - center.Y,
+        tangentBefore(i).X - center.X)
+
+                Dim endAngle As Double =
+    Math.Atan2(
+        tangentAfter(i).Y - center.Y,
+        tangentAfter(i).X - center.X)
+
+                Dim delta As Double = endAngle - startAngle
+
+                While delta > Math.PI
+                    delta -= 2.0 * Math.PI
+                End While
+
+                While delta < -Math.PI
+                    delta += 2.0 * Math.PI
+                End While
+
+                endAngle = startAngle + delta
+
+                path.Add(
+    New ArcSegment2D(
+        center,
+        cornerRadius,
+        startAngle,
+        endAngle,
+        True))
+            Next
 
             Return path
 

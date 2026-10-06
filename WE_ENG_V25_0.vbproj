@@ -328,6 +328,8 @@
     <Compile Include="Classes\clamp.vb" />
     <Compile Include="Classes\clsMatList.vb" />
     <Compile Include="Classes\CommandFeature.vb" />
+    <Compile Include="Classes\CornerRadiusToolShape.vb" />
+    <Compile Include="Classes\CustomToolShape.vb" />
     <Compile Include="Classes\DatabaseConversion.vb" />
     <Compile Include="Classes\DoubleDToolShape.vb" />
     <Compile Include="Classes\DxfDrawable.vb" />
@@ -339,6 +341,7 @@
     <Compile Include="Classes\DynamicToolAttributes.vb" />
     <Compile Include="Classes\GridOfHolesFeature.vb" />
     <Compile Include="Classes\HelperFunctions.vb" />
+    <Compile Include="Classes\HexagonToolShape.vb" />
     <Compile Include="Classes\HoleFeature.vb" />
     <Compile Include="Classes\HolePatternParameters.vb" />
     <Compile Include="Classes\HotSpot.vb" />
@@ -383,6 +386,7 @@
     <Compile Include="Classes\TooledProfile.vb" />
     <Compile Include="Classes\ToolPathGenerator.vb" />
     <Compile Include="Classes\ToolSelection.vb" />
+    <Compile Include="Classes\ToolShapeFactory.vb" />
     <Compile Include="Classes\ToolShapes.vb" />
     <Compile Include="Classes\TrapezoidToolShape,vb.vb" />
     <Compile Include="Classes\ViewHelper.vb" />
@@ -446,6 +450,12 @@
       <DependentUpon>MaterialPickerPopUp.vb</DependentUpon>
     </Compile>
     <Compile Include="Forms\MaterialPickerPopUp.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\ToolShapeTest.Designer.vb">
+      <DependentUpon>ToolShapeTest.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ToolShapeTest.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Helpers\ConversionHelpers.vb" />
@@ -584,6 +594,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmSelectTools.resx">
       <DependentUpon>frmSelectTools.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\ToolShapeTest.resx">
+      <DependentUpon>ToolShapeTest.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="My Project\licenses.licx" />
     <EmbeddedResource Include="My Project\Resources.resx">

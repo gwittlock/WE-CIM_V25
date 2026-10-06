@@ -1091,9 +1091,8 @@ Public Module AccessToJsonExporter
                             {"LIFE", Convert.ToDouble(reader("Life"))},
                             {"FILENAME", If(reader("Filename") Is DBNull.Value, Nothing, reader("Filename").ToString())},
                             {"REQD STATION SIZE", Convert.ToDouble(reader("Reqd Station Size"))},
-                            {"REQD AUTO INDEX", Convert.ToBoolean(reader("Reqd Auto Index"))},
-                            {"DIE_CLEARANCE", If(reader("Die_Clearance") Is DBNull.Value, Nothing, reader("Die_Clearance").ToString())}
-                        }
+                            {"REQD AUTO INDEX", Convert.ToBoolean(reader("Reqd Auto Index"))}
+                                                    }
                     }
                     Tools.Add(item)
                 End While
@@ -2190,7 +2189,7 @@ Public Module AccessToJsonExporter
 
     Public Sub ExportAllTables(mdbPath As String, outputFolder As String)
 
-        Dim filePath As String = "C:\Program Files (x86)\WE-CIM\24.0\Data\ExportTable_errors.txt"
+        Dim filePath As String = "C:\Program Files (x86)\WE-CIM\25.0\Data\ExportTable_errors.txt"
 
         ' Using statement ensures the StreamWriter is disposed of properly
         Using writer As New StreamWriter(filePath, True) ' Setting the second parameter to True appends text

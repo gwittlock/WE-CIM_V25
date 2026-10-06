@@ -2,8 +2,13 @@
 Imports System.Drawing
 Imports System.Linq
 
+
 Namespace ToolShapes
-    Public MustInherit Class SingleDToolShape
+
+
+
+
+    Public Class SingleDToolShape
         Inherits ToolShape
 
         Public Sub New(

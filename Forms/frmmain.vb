@@ -3814,6 +3814,13 @@ Public Class frmMain
     Private Sub tbSelect_Profiles_CheckStateChanged(sender As Object, e As EventArgs) Handles tbSelect_Profiles.CheckStateChanged
         MessageBox.Show("Which click am i <" & tbSelect_Profiles.CheckState & ">")
     End Sub
+
+    Private Sub BarButtonItem19_ItemClick(sender As Object, e As ItemClickEventArgs) Handles BarButtonItem19.ItemClick
+        ToolShapeTest.ShowDialog(Me)
+    End Sub
+
+
+
 End Class
 
 
