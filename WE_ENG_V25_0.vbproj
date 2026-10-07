@@ -328,6 +328,11 @@
     <Compile Include="Classes\clamp.vb" />
     <Compile Include="Classes\clsMatList.vb" />
     <Compile Include="Classes\CommandFeature.vb" />
+    <Compile Include="Classes\ConvexHullArc.vb" />
+    <Compile Include="Classes\ConvexHullGeometry.vb" />
+    <Compile Include="Classes\ConvexHullOffsetter.vb" />
+    <Compile Include="Classes\ConvexPartProfile.vb" />
+    <Compile Include="Classes\ConvexToolProfile.vb" />
     <Compile Include="Classes\CornerRadiusToolShape.vb" />
     <Compile Include="Classes\CustomToolShape.vb" />
     <Compile Include="Classes\DatabaseConversion.vb" />
@@ -382,12 +387,15 @@
     <Compile Include="Classes\PuncfResult.vb" />
     <Compile Include="Classes\QuadTree.vb" />
     <Compile Include="Classes\RapidPointFeature.vb" />
+    <Compile Include="Classes\RawOffsetChain.vb" />
     <Compile Include="Classes\SingleDToolShape.vb" />
     <Compile Include="Classes\TooledProfile.vb" />
     <Compile Include="Classes\ToolPathGenerator.vb" />
+    <Compile Include="Classes\ToolpathOffsetter,vb.vb" />
     <Compile Include="Classes\ToolSelection.vb" />
     <Compile Include="Classes\ToolShapeFactory.vb" />
     <Compile Include="Classes\ToolShapes.vb" />
+    <Compile Include="Classes\ToolShapes\ConvexHullArcIterator.vb" />
     <Compile Include="Classes\TrapezoidToolShape,vb.vb" />
     <Compile Include="Classes\ViewHelper.vb" />
     <Compile Include="Classes\WorkZone.vb" />

@@ -305,18 +305,39 @@ Public Class ToolShapeTest
             pnlToolShape.Invalidate()
 
 
+            Dim customShape As CustomToolShape =
+    TryCast(_testToolShape, CustomToolShape)
+
+            Dim filename As String = ""
+            Dim length As String = ""
+            Dim width As String = ""
+
+            If customShape IsNot Nothing Then
+                filename = If(customShape.Filename, "")
+                length = customShape.Length.ToString()
+                width = customShape.Width.ToString()
+            End If
+
             MessageBox.Show(
-            "ToolShape created successfully." &
-            Environment.NewLine &
-            Environment.NewLine &
-            "Shape: " & _testToolShape.ShapeType.ToString() &
-            Environment.NewLine &
-            "Closed: " & _testToolShape.CuttingProfile.IsClosed.ToString() &
-            Environment.NewLine &
-            "Segments: " & _testToolShape.CuttingProfile.Segments.Count().ToString(),
-            "ToolShape Test",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information)
+    "ToolShape created successfully." &
+    Environment.NewLine &
+    Environment.NewLine &
+    "Shape: " & _testToolShape.ShapeType.ToString() &
+    Environment.NewLine &
+    "Closed: " & _testToolShape.CuttingProfile.IsClosed.ToString() &
+    Environment.NewLine &
+    "Segments: " &
+        _testToolShape.CuttingProfile.Segments.Count().ToString() &
+    Environment.NewLine &
+    Environment.NewLine &
+    "Filename: " & filename &
+    Environment.NewLine &
+    "Length: " & length &
+    Environment.NewLine &
+    "Width: " & width,
+    "ToolShape Test",
+    MessageBoxButtons.OK,
+    MessageBoxIcon.Information)
 
         Catch ex As Exception
 
