@@ -398,6 +398,14 @@
     <Compile Include="Classes\ToolShapes\ConvexHullArcIterator.vb" />
     <Compile Include="Classes\TrapezoidToolShape,vb.vb" />
     <Compile Include="Classes\ViewHelper.vb" />
+    <Compile Include="Classes\WmChain.vb" />
+    <Compile Include="Classes\WmChainAssigner.vb" />
+    <Compile Include="Classes\WmChainDegouger.vb" />
+    <Compile Include="Classes\WmChainResolver.vb" />
+    <Compile Include="Classes\WmChainSplitter.vb" />
+    <Compile Include="Classes\WmElem.vb" />
+    <Compile Include="Classes\WmNode.vb" />
+    <Compile Include="Classes\WmSubchn.vb" />
     <Compile Include="Classes\WorkZone.vb" />
     <Compile Include="Classes\WorkZoneFactory.vb" />
     <Compile Include="Forms\ConfigurationManagerForm.Designer.vb">

@@ -543,4 +543,553 @@ Public Class ToolShapeTest
         Return ToolShapeFactory.Create(tool)
 
     End Function
+    Private Sub btnTestLineIntersections_Click(
+    sender As Object,
+    e As EventArgs) Handles btnTestLineIntersections.Click
+
+        Try
+
+            Dim segments As New List(Of IPathSegment)
+
+            ' Diagonal A: (0,0) -> (10,10)
+            segments.Add(
+    New LineSegment2D(
+        New PointF(0.0F, 0.0F),
+        New PointF(10.0F, 10.0F)))
+
+            ' Diagonal B: (0,10) -> (10,0)
+            segments.Add(
+    New LineSegment2D(
+        New PointF(0.0F, 10.0F),
+        New PointF(10.0F, 0.0F)))
+
+            Dim intersections As List(Of WmIntersectionRecord) = Nothing
+            Dim curveRecords As List(Of WmCurveRecord) = Nothing
+
+            Dim doesIntersect As Boolean =
+            ConvexHullGeometry.BuildLineIntersectionRecords(
+                segments,
+                0.000001,
+                intersections,
+                curveRecords)
+
+            Dim message As String =
+            "Adjacent Shared Endpoint Test" &
+            Environment.NewLine &
+            Environment.NewLine &
+            "Does Intersect: " &
+            doesIntersect.ToString() &
+            Environment.NewLine &
+            "Intersection Records: " &
+            intersections.Count.ToString() &
+            Environment.NewLine &
+            "Curve Records: " &
+            curveRecords.Count.ToString() &
+            Environment.NewLine &
+            Environment.NewLine
+
+            For i As Integer = 0 To curveRecords.Count - 1
+
+                Dim record As WmCurveRecord =
+                curveRecords(i)
+
+                message &= "Curve " &
+                       i.ToString() &
+                       " Records: " &
+                       record.Count.ToString() &
+                       Environment.NewLine
+
+                For j As Integer = 0 To record.Count - 1
+
+                    Dim ext As WmCurveRecordExtData =
+                    record.ExtData(j)
+
+                    message &= "    U=" &
+                           ext.UParam.ToString("0.000000") &
+                           "  Point=(" &
+                           ext.Point.X.ToString("0.000000") &
+                           ", " &
+                           ext.Point.Y.ToString("0.000000") &
+                           ")" &
+                           Environment.NewLine
+
+                Next
+
+            Next
+
+            MessageBox.Show(
+            message,
+            "Line Intersection Test",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+
+        Catch ex As Exception
+
+            MessageBox.Show(
+            ex.ToString(),
+            "Line Intersection Test Error",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+
+        End Try
+
+    End Sub
+    Private Sub btnTestLineArcIntersection_Click(
+    sender As Object,
+    e As EventArgs) Handles btnTestLineArcIntersection.Click
+
+        Dim arc As New ArcSegment2D(
+        New PointF(5.0F, 5.0F),
+        5.0,
+        0.0,
+        Math.PI,
+        False)
+
+        Dim line As New LineSegment2D(
+        New PointF(0.0F, 5.0F),
+        New PointF(10.0F, 5.0F))
+
+        Dim points As List(Of PointF)
+        Dim uArc As List(Of Double)
+        Dim uLine As List(Of Double)
+
+        Dim result As Boolean =
+        ConvexHullGeometry.TestIntersectArcLine(
+            arc,
+            line,
+            0.000001,
+            points,
+            uArc,
+            uLine)
+
+        Debug.WriteLine("")
+        Debug.WriteLine("========== LINE / ARC TEST ==========")
+        Debug.WriteLine("Does Intersect: " & result)
+        Debug.WriteLine("Intersection Count: " & points.Count)
+
+        For index As Integer = 0 To points.Count - 1
+
+            Debug.WriteLine(
+            "Point " & index &
+            " = (" &
+            points(index).X.ToString("F6") &
+            ", " &
+            points(index).Y.ToString("F6") &
+            ")" &
+            "  Arc U = " &
+            uArc(index).ToString("F6") &
+            "  Line U = " &
+            uLine(index).ToString("F6"))
+
+        Next
+
+    End Sub
+
+    Private Sub btnTestLineArcRecords_Click(
+    sender As Object,
+    e As EventArgs) Handles btnTestLineArcRecords.Click
+
+        Dim segments As New List(Of IPathSegment)
+
+        ' Line through the center of the arc.
+        segments.Add(
+    New LineSegment2D(
+        New PointF(-1.0F, 5.0F),
+        New PointF(11.0F, 5.0F)))
+
+        ' Upper semicircle.
+        segments.Add(
+        New ArcSegment2D(
+            New PointF(5.0F, 5.0F),
+            5.0,
+            0.0,
+            Math.PI,
+            False))
+
+        Dim intersections As List(Of WmIntersectionRecord)
+        Dim curveRecords As List(Of WmCurveRecord)
+
+        Dim doesIntersect As Boolean =
+        ConvexHullGeometry.BuildLineArcIntersectionRecords(
+            segments,
+            0.000001,
+            intersections,
+            curveRecords)
+
+        Debug.WriteLine("")
+        Debug.WriteLine("========== LINE / ARC RECORD TEST ==========")
+        Debug.WriteLine(
+        "Does Intersect: " &
+        doesIntersect.ToString())
+
+        Debug.WriteLine(
+        "Intersection Records: " &
+        intersections.Count.ToString())
+
+        For i As Integer = 0 To intersections.Count - 1
+
+            Dim record As WmIntersectionRecord =
+            intersections(i)
+
+            Debug.WriteLine(
+            "Intersection " &
+            i.ToString() &
+            " = (" &
+            record.Point.X.ToString("F6") &
+            ", " &
+            record.Point.Y.ToString("F6") &
+            ")" &
+            "  References = " &
+            record.Count.ToString())
+
+        Next
+
+        Debug.WriteLine(
+        "Curve Records: " &
+        curveRecords.Count.ToString())
+
+        For i As Integer = 0 To curveRecords.Count - 1
+
+            Dim curveRecord As WmCurveRecord =
+            curveRecords(i)
+
+            Debug.WriteLine("")
+            Debug.WriteLine(
+            "Curve " &
+            i.ToString() &
+            "  SegmentIndex = " &
+            curveRecord.SegmentIndex.ToString() &
+            "  Count = " &
+            curveRecord.Count.ToString())
+
+            For j As Integer = 0 To curveRecord.Count - 1
+
+                Dim extData As WmCurveRecordExtData =
+                curveRecord.ExtData(j)
+
+                Debug.WriteLine(
+                "    U = " &
+                extData.UParam.ToString("F6") &
+                "  Point = (" &
+                extData.Point.X.ToString("F6") &
+                ", " &
+                extData.Point.Y.ToString("F6") &
+                ")" &
+                "  Intersection = " &
+                (extData.Intersection IsNot Nothing).ToString())
+
+            Next
+
+        Next
+
+        Debug.WriteLine(
+        "============================================")
+
+    End Sub
+    Private Sub btnTestArcArcIntersection_Click(
+    sender As Object,
+    e As EventArgs) Handles btnTestArcArcIntersection.Click
+
+        Dim arcA As New ArcSegment2D(
+        New PointF(0.0F, 0.0F),
+        5.0,
+        0.0,
+        2.0 * Math.PI,
+        False)
+
+        Dim arcB As New ArcSegment2D(
+        New PointF(6.0F, 0.0F),
+        5.0,
+        0.0,
+        2.0 * Math.PI,
+        False)
+
+        Dim points As List(Of PointF)
+        Dim uA As List(Of Double)
+        Dim uB As List(Of Double)
+
+        Dim result As Boolean =
+        ConvexHullGeometry.TestIntersectArcArc(
+            arcA,
+            arcB,
+            0.000001,
+            points,
+            uA,
+            uB)
+
+        Debug.WriteLine("")
+        Debug.WriteLine("========== ARC / ARC TEST ==========")
+        Debug.WriteLine(
+        "Does Intersect: " &
+        result.ToString())
+
+        Debug.WriteLine(
+        "Intersection Count: " &
+        points.Count.ToString())
+
+        For index As Integer = 0 To points.Count - 1
+
+            Debug.WriteLine(
+            "Point " &
+            index.ToString() &
+            " = (" &
+            points(index).X.ToString("F6") &
+            ", " &
+            points(index).Y.ToString("F6") &
+            ")" &
+            "  Arc A U = " &
+            uA(index).ToString("F6") &
+            "  Arc B U = " &
+            uB(index).ToString("F6"))
+
+        Next
+
+        Debug.WriteLine(
+        "====================================")
+
+    End Sub
+    Private Sub btnTestArcArcRecords_Click(
+    sender As Object,
+    e As EventArgs) Handles btnTestArcArcRecords.Click
+
+        Dim segments As New List(Of IPathSegment)
+
+        segments.Add(
+        New ArcSegment2D(
+            New PointF(0.0F, 0.0F),
+            5.0,
+            0.0,
+            2.0 * Math.PI,
+            False))
+
+        segments.Add(
+        New ArcSegment2D(
+            New PointF(6.0F, 0.0F),
+            5.0,
+            0.0,
+            2.0 * Math.PI,
+            False))
+
+        Dim intersections As List(Of WmIntersectionRecord)
+        Dim curveRecords As List(Of WmCurveRecord)
+
+        Dim doesIntersect As Boolean =
+        ConvexHullGeometry.BuildArcArcIntersectionRecords(
+            segments,
+            0.000001,
+            intersections,
+            curveRecords)
+
+        Debug.WriteLine("")
+        Debug.WriteLine("========== ARC / ARC RECORD TEST ==========")
+        Debug.WriteLine(
+        "Does Intersect: " &
+        doesIntersect.ToString())
+
+        Debug.WriteLine(
+        "Intersection Records: " &
+        intersections.Count.ToString())
+
+        For i As Integer = 0 To intersections.Count - 1
+
+            Dim record As WmIntersectionRecord =
+            intersections(i)
+
+            Debug.WriteLine(
+            "Intersection " &
+            i.ToString() &
+            " = (" &
+            record.Point.X.ToString("F6") &
+            ", " &
+            record.Point.Y.ToString("F6") &
+            ")" &
+            "  References = " &
+            record.Count.ToString())
+
+        Next
+
+        Debug.WriteLine(
+        "Curve Records: " &
+        curveRecords.Count.ToString())
+
+        For i As Integer = 0 To curveRecords.Count - 1
+
+            Dim curveRecord As WmCurveRecord =
+            curveRecords(i)
+
+            Debug.WriteLine("")
+            Debug.WriteLine(
+            "Curve " &
+            i.ToString() &
+            "  SegmentIndex = " &
+            curveRecord.SegmentIndex.ToString() &
+            "  Count = " &
+            curveRecord.Count.ToString())
+
+            For j As Integer = 0 To curveRecord.Count - 1
+
+                Dim extData As WmCurveRecordExtData =
+                curveRecord.ExtData(j)
+
+                Debug.WriteLine(
+                "    U = " &
+                extData.UParam.ToString("F6") &
+                "  Point = (" &
+                extData.Point.X.ToString("F6") &
+                ", " &
+                extData.Point.Y.ToString("F6") &
+                ")" &
+                "  Intersection = " &
+                (extData.Intersection IsNot Nothing).ToString())
+
+            Next
+
+        Next
+
+        Debug.WriteLine(
+        "============================================")
+
+    End Sub
+    Private Sub btnTestAllIntersections_Click(
+    sender As Object,
+    e As EventArgs) Handles btnTestAllIntersections.Click
+
+        Dim segments As New List(Of IPathSegment)
+
+        ' ------------------------------------------------------------
+        ' 0 - Line / Line
+        ' ------------------------------------------------------------
+
+        segments.Add(
+        New LineSegment2D(
+            New PointF(0.0F, 0.0F),
+            New PointF(10.0F, 10.0F)))
+
+        segments.Add(
+        New LineSegment2D(
+            New PointF(0.0F, 10.0F),
+            New PointF(10.0F, 0.0F)))
+
+        ' ------------------------------------------------------------
+        ' 2 - Line / Arc
+        ' ------------------------------------------------------------
+
+        segments.Add(
+        New LineSegment2D(
+            New PointF(-1.0F, 20.0F),
+            New PointF(11.0F, 20.0F)))
+
+        segments.Add(
+        New ArcSegment2D(
+            New PointF(5.0F, 20.0F),
+            5.0,
+            0.0,
+            Math.PI,
+            False))
+
+        ' ------------------------------------------------------------
+        ' 4 - Arc / Arc
+        ' ------------------------------------------------------------
+
+        segments.Add(
+        New ArcSegment2D(
+            New PointF(0.0F, 40.0F),
+            5.0,
+            0.0,
+            2.0 * Math.PI,
+            False))
+
+        segments.Add(
+        New ArcSegment2D(
+            New PointF(6.0F, 40.0F),
+            5.0,
+            0.0,
+            2.0 * Math.PI,
+            False))
+
+        Dim intersections As List(Of WmIntersectionRecord)
+        Dim curveRecords As List(Of WmCurveRecord)
+
+        Dim doesIntersect As Boolean =
+        ConvexHullGeometry.BuildIntersectionRecords(
+            segments,
+            0.000001,
+            intersections,
+            curveRecords)
+
+        Debug.WriteLine("")
+        Debug.WriteLine("========== ALL INTERSECTION TEST ==========")
+
+        Debug.WriteLine(
+        "Does Intersect: " &
+        doesIntersect.ToString())
+
+        Debug.WriteLine(
+        "Segment Count: " &
+        segments.Count.ToString())
+
+        Debug.WriteLine(
+        "Intersection Records: " &
+        intersections.Count.ToString())
+
+        For i As Integer = 0 To intersections.Count - 1
+
+            Dim record As WmIntersectionRecord =
+            intersections(i)
+
+            Debug.WriteLine(
+            "Intersection " &
+            i.ToString() &
+            " = (" &
+            record.Point.X.ToString("F6") &
+            ", " &
+            record.Point.Y.ToString("F6") &
+            ")" &
+            "  References = " &
+            record.Count.ToString())
+
+        Next
+
+        Debug.WriteLine(
+        "Curve Records: " &
+        curveRecords.Count.ToString())
+
+        For i As Integer = 0 To curveRecords.Count - 1
+
+            Dim curveRecord As WmCurveRecord =
+            curveRecords(i)
+
+            Debug.WriteLine("")
+            Debug.WriteLine(
+            "Curve " &
+            i.ToString() &
+            "  SegmentIndex = " &
+            curveRecord.SegmentIndex.ToString() &
+            "  Count = " &
+            curveRecord.Count.ToString())
+
+            For j As Integer = 0 To curveRecord.Count - 1
+
+                Dim extData As WmCurveRecordExtData =
+                curveRecord.ExtData(j)
+
+                Debug.WriteLine(
+                "    U = " &
+                extData.UParam.ToString("F6") &
+                "  Point = (" &
+                extData.Point.X.ToString("F6") &
+                ", " &
+                extData.Point.Y.ToString("F6") &
+                ")" &
+                "  Intersection = " &
+                (extData.Intersection IsNot Nothing).ToString())
+
+            Next
+
+        Next
+
+        Debug.WriteLine(
+        "===========================================")
+
+    End Sub
 End Class

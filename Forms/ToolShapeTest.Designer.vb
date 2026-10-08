@@ -51,6 +51,12 @@ Partial Class ToolShapeTest
         Me.txtRadius = New System.Windows.Forms.TextBox()
         Me.txtFilename = New System.Windows.Forms.TextBox()
         Me.lblFilename = New System.Windows.Forms.Label()
+        Me.btnTestLineIntersections = New System.Windows.Forms.Button()
+        Me.btnTestLineArcIntersection = New System.Windows.Forms.Button()
+        Me.btnTestLineArcRecords = New System.Windows.Forms.Button()
+        Me.btnTestArcArcIntersection = New System.Windows.Forms.Button()
+        Me.btnTestArcArcRecords = New System.Windows.Forms.Button()
+        Me.btnTestAllIntersections = New System.Windows.Forms.Button()
         Me.SuspendLayout()
         '
         'cboToolShape
@@ -287,11 +293,71 @@ Partial Class ToolShapeTest
         Me.lblFilename.TabIndex = 28
         Me.lblFilename.Text = "Filename"
         '
+        'btnTestLineIntersections
+        '
+        Me.btnTestLineIntersections.Location = New System.Drawing.Point(0, 0)
+        Me.btnTestLineIntersections.Name = "btnTestLineIntersections"
+        Me.btnTestLineIntersections.Size = New System.Drawing.Size(197, 23)
+        Me.btnTestLineIntersections.TabIndex = 29
+        Me.btnTestLineIntersections.Text = "Test Line Intersections"
+        Me.btnTestLineIntersections.UseVisualStyleBackColor = True
+        '
+        'btnTestLineArcIntersection
+        '
+        Me.btnTestLineArcIntersection.Location = New System.Drawing.Point(203, 0)
+        Me.btnTestLineArcIntersection.Name = "btnTestLineArcIntersection"
+        Me.btnTestLineArcIntersection.Size = New System.Drawing.Size(90, 23)
+        Me.btnTestLineArcIntersection.TabIndex = 30
+        Me.btnTestLineArcIntersection.Text = "Test Line Arc"
+        Me.btnTestLineArcIntersection.UseVisualStyleBackColor = True
+        '
+        'btnTestLineArcRecords
+        '
+        Me.btnTestLineArcRecords.Location = New System.Drawing.Point(299, 0)
+        Me.btnTestLineArcRecords.Name = "btnTestLineArcRecords"
+        Me.btnTestLineArcRecords.Size = New System.Drawing.Size(130, 23)
+        Me.btnTestLineArcRecords.TabIndex = 31
+        Me.btnTestLineArcRecords.Text = "btnTestLineArcRecords"
+        Me.btnTestLineArcRecords.UseVisualStyleBackColor = True
+        '
+        'btnTestArcArcIntersection
+        '
+        Me.btnTestArcArcIntersection.Location = New System.Drawing.Point(430, 0)
+        Me.btnTestArcArcIntersection.Name = "btnTestArcArcIntersection"
+        Me.btnTestArcArcIntersection.Size = New System.Drawing.Size(142, 23)
+        Me.btnTestArcArcIntersection.TabIndex = 32
+        Me.btnTestArcArcIntersection.Text = "btnTestArcArcIntersection"
+        Me.btnTestArcArcIntersection.UseVisualStyleBackColor = True
+        '
+        'btnTestArcArcRecords
+        '
+        Me.btnTestArcArcRecords.Location = New System.Drawing.Point(578, 0)
+        Me.btnTestArcArcRecords.Name = "btnTestArcArcRecords"
+        Me.btnTestArcArcRecords.Size = New System.Drawing.Size(131, 23)
+        Me.btnTestArcArcRecords.TabIndex = 33
+        Me.btnTestArcArcRecords.Text = "btnTestArcArcRecords"
+        Me.btnTestArcArcRecords.UseVisualStyleBackColor = True
+        '
+        'btnTestAllIntersections
+        '
+        Me.btnTestAllIntersections.Location = New System.Drawing.Point(12, 29)
+        Me.btnTestAllIntersections.Name = "btnTestAllIntersections"
+        Me.btnTestAllIntersections.Size = New System.Drawing.Size(217, 23)
+        Me.btnTestAllIntersections.TabIndex = 34
+        Me.btnTestAllIntersections.Text = "btnTestAllIntersections"
+        Me.btnTestAllIntersections.UseVisualStyleBackColor = True
+        '
         'ToolShapeTest
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(800, 450)
+        Me.Controls.Add(Me.btnTestAllIntersections)
+        Me.Controls.Add(Me.btnTestArcArcRecords)
+        Me.Controls.Add(Me.btnTestArcArcIntersection)
+        Me.Controls.Add(Me.btnTestLineArcRecords)
+        Me.Controls.Add(Me.btnTestLineArcIntersection)
+        Me.Controls.Add(Me.btnTestLineIntersections)
         Me.Controls.Add(Me.lblFilename)
         Me.Controls.Add(Me.txtFilename)
         Me.Controls.Add(Me.lblRadius)
@@ -357,4 +423,10 @@ Partial Class ToolShapeTest
     Friend WithEvents txtRadius As TextBox
     Friend WithEvents txtFilename As TextBox
     Friend WithEvents lblFilename As Label
+    Friend WithEvents btnTestLineIntersections As Button
+    Friend WithEvents btnTestLineArcIntersection As Button
+    Friend WithEvents btnTestLineArcRecords As Button
+    Friend WithEvents btnTestArcArcIntersection As Button
+    Friend WithEvents btnTestArcArcRecords As Button
+    Friend WithEvents btnTestAllIntersections As Button
 End Class

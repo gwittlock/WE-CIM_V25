@@ -6,9 +6,9 @@ Namespace ToolShapes
         Inherits ToolpathOffsetter
 
         Public Overrides Function Offset(
-    inputPath As IPath2D,
-    toolShape As ToolShape,
-    offsetDirection As ProfileSide) As IPath2D
+            inputPath As IPath2D,
+            toolShape As ToolShape,
+            offsetDirection As ProfileSide) As IPath2D
 
             If inputPath Is Nothing Then
                 Throw New ArgumentNullException(NameOf(inputPath))
@@ -19,16 +19,27 @@ Namespace ToolShapes
             End If
 
             Dim toolProfile As New ConvexToolProfile(
-        toolShape.CuttingProfile)
+                toolShape.CuttingProfile)
 
-            ' Tool profile is now validated and available
-            ' for the convex-hull offset algorithm.
+            Dim partArcs As New List(Of ConvexHullArc)
+
+            For Each segment As IPathSegment In inputPath.Segments
+                partArcs.Add(
+                    ConvexHullGeometry.ConvertSegment(segment))
+            Next
+
+            Dim offsetDirectionValue As Integer = 1
+
+            Dim rawOffset As IReadOnlyList(Of ConvexHullArc) =
+                OffsetConvexHull(
+                    partArcs,
+                    toolProfile.Arcs,
+                    offsetDirectionValue)
 
             Throw New NotImplementedException(
-        "Convex hull toolpath offset has not been implemented.")
+                "Raw convex hull offset generated successfully. Finalize is not implemented yet.")
 
         End Function
-
     End Class
 
 End Namespace

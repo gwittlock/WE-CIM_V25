@@ -148,6 +148,15 @@ Namespace ToolShapes
             _segments.Add(segment)
         End Sub
 
+        Public Sub RemoveLast()
+            If _segments.Count > 0 Then
+                _segments.RemoveAt(_segments.Count - 1)
+            End If
+        End Sub
+        Public Sub Clear()
+            _segments.Clear()
+        End Sub
+
         Public ReadOnly Property Segments As IEnumerable(Of IPathSegment) _
             Implements IPath2D.Segments
             Get

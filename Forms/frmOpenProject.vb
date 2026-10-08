@@ -136,7 +136,7 @@ Public Class frmOpenProject
             AppData.MaterialSheets
         )
 
-        InitMaterialCombo()
+
 
         ' Restore selections safely by ID
         'RestoreComboSelection(cboMachine, nMyMachineID)
@@ -437,6 +437,10 @@ Public Class frmOpenProject
 
     Private Sub cmdOK_DragDrop(sender As Object, e As DragEventArgs) Handles cmdOK.DragDrop
 
+    End Sub
+
+    Private Sub frmOpenProject_Shown(sender As Object, e As EventArgs) Handles Me.Shown
+        InitMaterialCombo()
     End Sub
 End Class
 
