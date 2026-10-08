@@ -1,0 +1,31 @@
+﻿cl : command line warning D9035: option 'Gm' has been deprecated and will be removed in a future release
+  StdAfx.cpp
+  MacroDump.cpp
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(53,18): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(36,15): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(94,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(94,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 2 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(130,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(130,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 2 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(173,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(209,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(246,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(283,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(311,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(318,20): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(318,20): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 2 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(346,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(354,20): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(354,20): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 2 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(369,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\MacroDump.cpp(377,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+  FileProcess.cpp
+C:\_Dev\FabV24.0\_source\FileProcess\FileProcess.cpp(514,19): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\FileProcess.cpp(484,13): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  extascii.cpp
+C:\_Dev\FabV24.0\_source\FileProcess\extascii.cpp(207,16): warning C4477: 'fprintf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'CString'
+C:\_Dev\FabV24.0\_source\FileProcess\extascii.cpp(194,12): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  dxf_read.cpp
+  dxf.cpp
+  Generating Code...
+LINK : fatal error LNK1104: cannot open file 'C:\_Dev\FabV24.0\_fab\Debug\mm2FileMgr.lib'
