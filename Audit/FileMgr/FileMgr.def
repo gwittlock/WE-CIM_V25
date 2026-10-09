@@ -1,0 +1,7 @@
+; FileMgr.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2FileMgr"
+DESCRIPTION  "Component Innovations FileMgr Windows Dynamic Link Library"
+
+EXPORTS
+    ; Explicit exports can go here
