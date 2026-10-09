@@ -1,0 +1,7 @@
+; CodeGen.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2CodeGen"
+DESCRIPTION  "Wittlock Engineering CodeGen Windows Dynamic Link Library"
+
+EXPORTS
+    ; Explicit exports can go here

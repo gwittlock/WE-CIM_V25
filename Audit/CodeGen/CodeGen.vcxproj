@@ -1,0 +1,266 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MyRelease|Win32">
+      <Configuration>MyRelease</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="ReleaseVB|Win32">
+      <Configuration>ReleaseVB</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Template|Win32">
+      <Configuration>Template</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <SccProjectName />
+    <SccLocalPath />
+    <Keyword>MFCProj</Keyword>
+    <ProjectGuid>{16B24C52-4422-4E43-9E15-3A541A4AE751}</ProjectGuid>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <UseOfMfc>Dynamic</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <UseOfMfc>Dynamic</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='MyRelease|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'">
+    <OutDir>.\../../_fab/ReleaseVB\</OutDir>
+    <IntDir>.\ReleaseVB\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>mm2$(ProjectName)</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>.\../../_fab/Debug\</OutDir>
+    <IntDir>.\Debug\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>mm2$(ProjectName)</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <StringPooling>true</StringPooling>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <Optimization>MaxSpeed</Optimization>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <WarningLevel>Level3</WarningLevel>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AdditionalIncludeDirectories>C:\_Dev\jdk1.7.0_51\include;C:\_Dev\jdk1.7.0_51\include\win32;../common;../db;../geo;../Math;../CmdPkg;../Model;../ViewPkg;../ToolPath;../Gouge;../cmdpkg;../Policy;../portal;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NO_WARN_MBCS_MFC_DEPRECATION;NDEBUG;WIN32;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AssemblerListingLocation>.\ReleaseVB\</AssemblerListingLocation>
+      <PrecompiledHeaderOutputFile>.\ReleaseVB\CodeGen.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeader />
+      <ObjectFileName>.\ReleaseVB\</ObjectFileName>
+      <ProgramDataBaseFileName>.\ReleaseVB\</ProgramDataBaseFileName>
+      <BrowseInformation>true</BrowseInformation>
+    </ClCompile>
+    <Midl>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TypeLibraryName>.\../../_fab/ReleaseVB\CodeGen.tlb</TypeLibraryName>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>.\../../_fab/ReleaseVB\CodeGen.bsc</OutputFile>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <LinkDLL>true</LinkDLL>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>../../_fab/ReleaseVB/mm2CodeGen.dll</OutputFile>
+      <ImportLibrary>.\../../_fab/ReleaseVB\mm2CodeGen.lib</ImportLibrary>
+      <Version>12.1</Version>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <Optimization>Disabled</Optimization>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <WarningLevel>Level3</WarningLevel>
+      <MinimalRebuild>true</MinimalRebuild>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AdditionalIncludeDirectories>C:\_Dev\jdk1.7.0_51\include;C:\_Dev\jdk1.7.0_51\include\win32;../common;../db;../geo;../Math;../CmdPkg;../Model;../ViewPkg;../ToolPath;../Gouge;../cmdpkg;../Policy;../portal;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_USRDLL;NO_WARN_MBCS_MFC_DEPRECATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AssemblerListingLocation>.\Debug\</AssemblerListingLocation>
+      <PrecompiledHeaderOutputFile>.\Debug\CodeGen.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeader />
+      <ObjectFileName>.\Debug\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Debug\</ProgramDataBaseFileName>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+    </ClCompile>
+    <Midl>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TypeLibraryName>.\../../_fab/Debug\CodeGen.tlb</TypeLibraryName>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>.\../../_fab/Debug\CodeGen.bsc</OutputFile>
+    </Bscmake>
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <LinkDLL>true</LinkDLL>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>../../_fab/Debug/mm2CodeGen.dll</OutputFile>
+      <ImportLibrary>.\../../_fab/Debug\mm2CodeGen.lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="CiClfile.cpp" />
+    <ClCompile Include="Ci_CodeGen_Clfile.cpp" />
+    <ClCompile Include="clfile.cpp" />
+    <ClCompile Include="ClfileRec.cpp" />
+    <ClCompile Include="ClfileState.cpp" />
+    <ClCompile Include="CodeGenOH.cpp" />
+    <ClCompile Include="CodeGeoRec.cpp" />
+    <ClCompile Include="CodeGeoXref.cpp" />
+    <ClCompile Include="CodeUtil.cpp" />
+    <ClCompile Include="conthier.cpp" />
+    <ClCompile Include="ContHierNode.cpp" />
+    <ClCompile Include="LabelDbGenerator.cpp" />
+    <ClCompile Include="ModelClfile.cpp" />
+    <ClCompile Include="ModelClfile2.cpp" />
+    <ClCompile Include="Optimizer.cpp" />
+    <ClCompile Include="Optimizer2.cpp" />
+    <ClCompile Include="PathState.cpp" />
+    <ClCompile Include="PrimsTSP2.cpp" />
+    <ClCompile Include="SeqRules.cpp" />
+    <ClCompile Include="ShortestPath.cpp" />
+    <ClCompile Include="SpeedCalc.cpp" />
+    <ClCompile Include="StdAfx.cpp" />
+    <ClCompile Include="ToolSequencer.cpp" />
+    <ClCompile Include="TSP.cpp" />
+    <ClCompile Include="Weng_CodeGen_Clfile.cpp" />
+    <ClCompile Include="WorkPkg.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="CodeGen.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CiClfile.h" />
+    <ClInclude Include="City.h" />
+    <ClInclude Include="Ci_CodeGen_Clfile.h" />
+    <ClInclude Include="Clfile.h" />
+    <ClInclude Include="ClfileConsts.h" />
+    <ClInclude Include="ClfileRec.h" />
+    <ClInclude Include="ClfileState.h" />
+    <ClInclude Include="CodeGen.h" />
+    <ClInclude Include="CodeGenOH.h" />
+    <ClInclude Include="CodeGeoRec.h" />
+    <ClInclude Include="CodeGeoXref.h" />
+    <ClInclude Include="CodeUtil.h" />
+    <ClInclude Include="ContHier.h" />
+    <ClInclude Include="ContHierNode.h" />
+    <ClInclude Include="LabelDbGenerator.h" />
+    <ClInclude Include="ModelClfile.h" />
+    <ClInclude Include="Optimizer.h" />
+    <ClInclude Include="PathState.h" />
+    <ClInclude Include="PrimsTSP2.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="SeqRules.h" />
+    <ClInclude Include="ShortestPath.h" />
+    <ClInclude Include="SpeedCalc.h" />
+    <ClInclude Include="ToolSequencer.h" />
+    <ClInclude Include="TSP.h" />
+    <ClInclude Include="Weng_CodeGen_Clfile.h" />
+    <ClInclude Include="WorkPkg.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CmdPkg\CmdPkg.vcxproj">
+      <Project>{30ca33f8-d937-4b90-8f09-261aaa4d2105}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Common\Common.vcxproj">
+      <Project>{3a811341-7235-4f42-90f4-4cf5073777ca}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\DB\DB.vcxproj">
+      <Project>{017fc9e9-e2bf-469e-9704-4af0edcf108f}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Geo\Geo.vcxproj">
+      <Project>{edc88a95-9a41-4483-942d-110a13a695ba}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Math\Math.vcxproj">
+      <Project>{cb140dbc-9f5a-4038-b055-b6fe880042eb}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Model\Model.vcxproj">
+      <Project>{4692d330-4da7-47a8-b73a-f6911b3ff684}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Policy\Policy.vcxproj">
+      <Project>{feae9d6f-83b2-462e-8001-0758cef8837a}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Portal\Portal.vcxproj">
+      <Project>{e6c7cb6a-ad4f-4fef-af14-fb710470f48f}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\ViewPkg\ViewPkg.vcxproj">
+      <Project>{e1f5d4f6-068f-4a54-8333-578fe2542e48}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
