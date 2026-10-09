@@ -1,0 +1,6 @@
+; CreateProcess.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2CreateProcess"
+
+EXPORTS
+	RegisterProcess
