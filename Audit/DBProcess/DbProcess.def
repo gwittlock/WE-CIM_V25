@@ -1,0 +1,6 @@
+; DbProcess.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2DbProcess"
+
+EXPORTS
+	RegisterProcess
