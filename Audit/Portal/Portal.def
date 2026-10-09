@@ -1,0 +1,8 @@
+; PortalDLL.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2Portal"
+DESCRIPTION  "Wittlock Engineering Portal Windows Dynamic Link Library"
+
+EXPORTS
+    ; Explicit exports can go here
+

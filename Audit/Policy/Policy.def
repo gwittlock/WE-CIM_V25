@@ -1,0 +1,7 @@
+; Policy.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2Policy"
+DESCRIPTION  "Wittlock Engineering Policy Windows Dynamic Link Library"
+
+EXPORTS
+    ; Explicit exports can go here

@@ -1,0 +1,27 @@
+; PortalDLL.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2PortalDLL"
+
+EXPORTS
+	vbInit
+	ciHookup
+	vbTerminate
+	vbRegister
+	vbExecute
+	vbVerify
+	vbParse
+
+	vbGetInt
+	vbGetReal
+	vbGetString
+	vbGetString2
+	vbModelSwap
+
+	vbScreenToWorld
+	vbWorldToScreen
+
+	vbRefToWorld
+	vbWorldToRef
+
+	vbViewToScreen
+	vbSnap
