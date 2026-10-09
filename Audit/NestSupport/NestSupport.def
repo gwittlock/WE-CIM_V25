@@ -1,0 +1,7 @@
+; NestSupport.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2NestSupport"
+DESCRIPTION  "Wittlock Engineering NestSupport Windows Dynamic Link Library"
+
+EXPORTS
+    ; Explicit exports can go here

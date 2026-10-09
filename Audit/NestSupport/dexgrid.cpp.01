@@ -1,0 +1,1504 @@
+// ==================================================================
+//		DexGrid
+//
+// ==================================================================
+
+#include <stdafx.h>
+#include "common.h"
+
+#include "DexGrid.h"
+
+// ==================================================================
+
+CDexGrid::CDexGrid( 
+	const CGrid& grid )
+	: m_iterator( -1, -1 ),
+	  m_itdex(NULL),
+	  m_itrow(NULL)
+{
+	// Construct a pair of dex-grids from the regular grid
+	//
+	m_width = grid.Width();
+	m_height = grid.Height();
+
+	m_origin = grid.Origin();
+	m_center = grid.Center();
+
+//	m_angle = grid.Angle();
+
+	m_res = grid.Resolution();
+
+	scan_horz( grid, &m_dex_list );
+
+//Validate();
+
+}
+
+CDexGrid::~CDexGrid( void )
+{
+	int num = m_dex_list.Count();
+	for (int idx=0; idx<num; idx++)
+	{
+		CDex* dex = m_dex_list[idx];
+		while (dex)
+		{
+			CDex* next = dex->Next();
+			delete dex;
+			dex = next;
+		}
+	}
+	m_dex_list.BenignFlush();
+}
+
+
+// ==================================================================
+void
+CDexGrid::scan_horz(
+	const CGrid&	grid,
+	CDexList*		dest )
+{
+	for (int vidx=0; vidx<m_height; vidx++)
+	{
+		BYTE* row = grid.RowAddress( vidx );
+
+		// Start the row with the first grid point
+		CDex* dex = new CDex();
+
+		dex->Type( *(row++) );
+		dest->Append( dex );
+
+		for (int hidx=1; hidx<m_width; hidx++)
+		{
+			if (*row != dex->Type())
+			{
+				// In a new span type...
+				dex->Last( hidx-1 );
+				dex->Append( new CDex() );
+
+				dex = dex->Next();
+				dex->Type( *row );
+				dex->First( hidx );
+			}
+			row++;
+		}
+		dex->Last( m_width-1 );
+	}
+
+//CString note;
+//note.Format( "Horizontal:  Grid( %d ), DexGrid( %d )",
+//				sizeof( CGrid ) + m_width * m_height,
+//				sizeof( CDexGrid ) + counter * sizeof( CDex ) );
+//MessageBox( NULL, note, NULL, MB_OK );
+}
+
+
+// =======================================================================
+//		Cell
+//
+//	Return the dex contents at the named point.
+//	Uses m_iterator, m_itdex, and m_itrow for efficiency in scanning.
+//
+BYTE	
+CDexGrid::Cell( 
+	C2dCoord& pos )
+{
+	int y = (int)pos.Y();
+	int x = (int)pos.X();
+
+	if ( !InRangeX( x ) || !InRangeY( y ) )
+		return MARK_BORDER;
+
+	try
+	{
+		if (!EQUAL(pos.Y(), m_iterator.Y()) || !m_itdex)
+		{
+			m_itrow = m_dex_list[(int)pos.Y()];
+			m_itdex = m_itrow;
+		}
+		else if (pos.X() < m_itdex->First())
+			m_itdex = m_itrow;
+
+		while (pos.X() > m_itdex->Last())
+		{
+			m_itdex = m_itdex->Next();
+			if (!m_itdex)
+				return MARK_BORDER;
+		}
+
+		m_iterator = pos;
+		return m_itdex->Type();
+	}
+	catch (...)
+	{
+		return MARK_BORDER;
+	}
+}
+
+
+// =======================================================================
+//		Draw
+//
+//	Bit-Blit this grid to the DC
+//
+void
+CDexGrid::Draw( 
+	CViewMgr&	in_view,
+	int			in_x,		// Origin (tl) X, Y
+	int			in_y,
+	BOOL		invert,
+	BOOL		erase ) const
+{
+	CWnd*		wnd;
+	CDC*		dest;
+	COLORREF	mark;
+	COLORREF	color;
+
+	wnd = in_view.getCWnd();
+	if (wnd == NULL)
+		return;
+
+	dest = wnd->GetDC();
+
+	int at_y = in_y;
+	for (int cnt_y=0; cnt_y<m_height; cnt_y++)
+	{
+		CDex* dex = m_dex_list[cnt_y];
+		int at_x = in_x;
+		
+		while (dex)
+		{
+			BYTE type = dex->Type();
+
+			if ( type & MARK_DEAD)
+				mark = 0x808080;
+			else
+			if ( type & MARK_CLAMP)
+				mark = 0x00ffff;
+			else
+			if ( type & MARK_BORDER)
+				mark = 0x0000ff;
+			else
+			if ( type & MARK_TOOL)
+				mark = 0xffff00;
+			else
+			if ( type & MARK_BODY)
+				mark = 0x00ff00;
+			else
+			if ( type & MARK_HOLE)
+				mark = 0xff0000;
+			else
+				mark = 0x000000;
+
+			for (int cnt_x=dex->First(); cnt_x<=dex->Last(); cnt_x++)
+			{
+				if (mark || erase)
+				{
+					if (invert)
+						color = mark ^ dest->GetPixel( at_x, at_y );
+					else
+						color = mark;
+
+					dest->SetPixelV( at_x, at_y, color );
+				}
+				at_x++;
+			}
+
+			dex = dex->Next();
+		}
+
+		at_y++;
+	}
+}
+
+
+// =======================================================================
+//		TestOverlap
+//
+//	See if the two grids overlap -- taking into account only Part/Part and
+//	Tool/Part hits.  Tool/Tool overlap is okay.
+//
+//	This is assumed to be the "sheet" or fixed grid;  the target is the 
+//	grid that is being tested for overlap (the part).
+//
+ePartFit	
+CDexGrid::TestOverlap( 
+	const CNestConfig& config,
+	const CDexGrid& target, 
+	const C2dCoord&	origin,
+	const C2dBox&	workzone,
+	BOOL			ignore_clamp )
+{
+	// The y-ordinate of the placement point is really the
+	// integer index into the span list... starting at the
+	// bottom (low-valued Y).
+	//
+
+	BYTE test;
+	if (ignore_clamp)
+		test = TEST_OCCUPIED_NOCLAMP;
+	else
+		test = TEST_OCCUPIED_CLAMP;
+
+	int target_max_x = target.Width();
+	int target_max_y = target.Height();
+	
+	// ---------------------------------------
+	// Check part against sheet size, bad placemenet,
+	// early error.
+	//
+	if ( (target_max_y >= m_height)
+		|| (target_max_x >= m_width)
+		|| (origin.X() < 0)
+		|| (origin.Y() < 0) )
+	{
+		return PART_FIT_ERROR;
+	}
+
+	// ---------------------------------------
+	// Force the extremes to fit in sheet, plus mark
+	//	the status as an off-sheet fit
+	//
+	ePartFit fit = PART_FIT;
+
+	int extreme = (int)origin.X() + target_max_x;
+	int grid_max_x = m_width;
+	grid_max_x = min( grid_max_x, (int)workzone.Xmax() );
+	if ( extreme > grid_max_x )
+	{
+		fit = PART_FIT_OFF_SHEET;
+		target_max_x -= (extreme - grid_max_x);
+	}
+
+	extreme = (int)origin.Y() + target_max_y;
+	int grid_max_y = m_height;
+	grid_max_y = min( grid_max_y, (int)workzone.Ymax() );
+	if ( extreme > grid_max_y )
+	{
+		fit = PART_FIT_OFF_SHEET;
+		target_max_y -= (extreme - grid_max_y);
+	}
+
+	if (origin.X() < workzone.Xmin() )
+		fit = PART_FIT_OFF_SHEET;
+	if (origin.Y() < workzone.Ymin() )
+		fit = PART_FIT_OFF_SHEET;
+
+	// ---------------------------------------
+	// Scan for rejection
+	//
+	int sheet_y = (int)origin.Y();
+	for (int target_y=0; target_y<target_max_y; target_y++)
+	{
+		const CDex* target_dex = &(target.Dex( target_y ));
+		CDex* this_dex = m_dex_list[ sheet_y ];
+
+
+		BYTE target_cell = target_dex->Type();
+		BYTE this_cell = this_dex->Type();
+
+		int sheet_x = (int)origin.X();
+		for (int target_x=0; target_x<target_max_x; target_x++)
+		{
+			while (target_x > target_dex->Last() )
+			{
+				target_dex = target_dex->Next();
+				target_cell = target_dex->Type();
+			}
+
+			while (sheet_x > this_dex->Last())
+			{
+				this_dex = this_dex->Next();
+				this_cell = this_dex->Type();
+			}
+
+			if ( (target_cell & test)
+				&& (this_cell & test) )
+			{
+				// Part-part conflict
+				return PART_FIT_ERROR;
+			}
+			else
+			if ( ( (target_cell & test)
+					&& (this_cell & MARK_TOOL))
+				||
+				 ( (this_cell & test)
+					&& (target_cell & MARK_TOOL))
+				)
+			{
+				fit = PART_FIT_WARNING;
+			}
+
+			sheet_x++;
+		}
+
+		sheet_y++;
+	}
+	return fit;
+}
+
+
+// =======================================================================
+//		TestCore
+//
+//	Like TestOverlap, but just checking a few pixels in the center.
+//
+ePartFit	
+CDexGrid::TestCore( 
+	const CNestConfig& config,
+	const CDexGrid& target, 
+	const C2dCoord&	origin,
+	const C2dBox&	workzone,
+	BOOL			hole,
+	BOOL			ignore_clamp )
+{
+	// The y-ordinate of the placement point is really the
+	// integer index into the span list... starting at the
+	// bottom (low-valued Y).
+	//
+	BYTE test;
+	if (ignore_clamp)
+		test = TEST_OCCUPIED_NOCLAMP;
+	else
+		test = TEST_OCCUPIED_CLAMP;
+	if (!hole)
+	{ test |= MARK_HOLE; }
+
+	int target_max_x = target.Width();
+	int target_max_y = target.Height();
+
+	// ---------------------------------------
+	// Force the extremes to fit in sheet, plus mark
+	//	the status as an off-sheet fit
+	//
+	ePartFit fit = PART_FIT;
+
+	// Move responsability for zone fits to the caller
+
+	int extreme = (int)origin.X() + target_max_x;
+	int grid_max_x = m_width;
+	grid_max_x = min( grid_max_x, (int)workzone.Xmax() );
+	if ( extreme > grid_max_x )
+	{
+		target_max_x -= (extreme - grid_max_x);
+	}
+
+	extreme = (int)origin.Y() + target_max_y;
+	int grid_max_y = m_height;
+	grid_max_y = min( grid_max_y, (int)workzone.Ymax() );
+	if ( extreme > grid_max_y )
+	{
+		target_max_y -= (extreme - grid_max_y);
+	}
+	int in_x = 0;
+	int in_y = 0;
+	if (origin.X() < workzone.Xmin() )
+	{
+		in_x = -(int)origin.X();
+	}
+	if (origin.Y() < workzone.Ymin() )
+	{
+		in_y = -(int)origin.Y();
+	}
+
+	if ( (in_x < 0)
+		|| (in_y < 0) )
+	{ return PART_FIT_OFF_SHEET; }
+
+	// ---------------------------------------
+	// Scan for rejection
+	//
+	int sheet_y = (int)origin.Y() + in_y;
+	for (int target_y=in_y; target_y<target_max_y; target_y++)
+	{
+		const CDex* target_dex = &(target.Dex( target_y ));
+		CDex* this_dex = m_dex_list[ sheet_y ];
+
+
+		BYTE target_cell = target_dex->Type();
+		BYTE this_cell = this_dex->Type();
+
+		int sheet_x = (int)origin.X() + in_x;
+		for (int target_x=in_x; target_x<target_max_x; target_x++)
+		{
+			while (target_x > target_dex->Last() )
+			{
+				target_dex = target_dex->Next();
+				target_cell = target_dex->Type();
+			}
+
+			while (sheet_x > this_dex->Last())
+			{
+				this_dex = this_dex->Next();
+				this_cell = this_dex->Type();
+			}
+
+			if ( (target_cell & test)
+				&& (this_cell & test) )
+			{
+				// Part-part conflict
+				return PART_FIT_ERROR;
+			}
+			else
+			if ( ( (target_cell & test)
+					&& (this_cell & MARK_TOOL))
+				||
+				 ( (this_cell & test)
+					&& (target_cell & MARK_TOOL))
+				)
+			{
+				fit = PART_FIT_WARNING;
+			}
+
+			sheet_x++;
+		}
+
+		sheet_y++;
+	}
+	return fit;
+}
+
+// =======================================================================
+//		Punch
+//
+//	Transfer the target grid into this one.  **Assumes it fits**
+//
+//	Imp. note:  used to be "Scan()" from sheet.cpp -- new sequence is:
+//		First, crude-nest using TestOverlap() and Score*()
+//		Bump() in sheet.cpp adjusts the geometry with the resolution grid (micro-fit)
+//		Then, the geometry (at the new origin) is re-scanned (OR -- will old grid work with new micro-origin?)
+//		Finally, adjusted grid is punched in... tight.
+//
+void		
+CDexGrid::Punch( 
+	const CNestConfig&	config,
+	const CDexGrid&		target, 
+	const C2dCoord&		origin )
+
+{
+	// 
+	// Similar in structure to TestOverlap, but we transfer data insteaed
+	// of just looking at it
+	//
+	int target_max_x = target.Width();
+	int target_max_y = target.Height();
+
+	BOOL hit_hole = FALSE;
+	int sheet_y = (int)(origin.Y() + 0.5);
+	for (int target_y=0; target_y<target_max_y; target_y++)
+	{
+		const CDex* target_dex = &(target.Dex( target_y ));
+
+		CDex* prev_dex = NULL;
+
+		if (sheet_y < 0)
+		{
+			sheet_y++;
+			continue;
+		}
+		else
+		if (sheet_y >= m_dex_list.Count())
+		{ break; }
+		//
+		//
+		CDex* this_dex = m_dex_list[ sheet_y ];
+
+		BYTE target_cell = target_dex->Type();
+		BYTE this_cell = this_dex->Type();
+
+		// Scan out part into sheet
+		// TODO:  copy by dex, not pixel...
+		int sheet_x = (int)(origin.X() + 0.5);
+		for (int target_x=0; target_x<target_max_x; target_x++)
+		{
+			while ( target_dex
+					&& (target_x > target_dex->Last()) )
+			{
+				target_dex = target_dex->Next();
+				if (target_dex)
+				{ target_cell = target_dex->Type(); }
+			}
+			if (!target_dex)
+			{ break; }
+
+			while ( this_dex
+					&& (sheet_x > this_dex->Last()) )
+			{
+				prev_dex = this_dex;
+				this_dex = this_dex->Next();
+				if (this_dex)
+				{ this_cell = this_dex->Type(); }
+			}
+			if (!this_dex)
+			{ break; }
+
+			if (target_cell & (MARK_BODY | MARK_HOLE | MARK_TOOL))
+			{
+				if (this_cell & MARK_HOLE)
+					hit_hole = TRUE;
+
+				this_cell &= MARK_HOLE;
+				this_cell |= target_cell;
+
+				if (sheet_x == this_dex->First()
+					&& prev_dex)
+				{
+					prev_dex->Insert( this_cell, sheet_x );
+					this_dex = prev_dex->Next();
+//Validate();
+				}
+				else
+				{
+					prev_dex = this_dex;
+					this_dex->Insert( this_cell, sheet_x );
+//Validate();
+				}
+
+			}
+
+			sheet_x++;
+		}
+		sheet_y++;
+	}
+}
+
+
+// =======================================================================
+//		Filter
+//
+//		Filter out small spans...
+//
+//		... oh, yeah.. border spans are kept if they are near
+//		a non-dead non-border span.  Argh!
+//
+//	Only filters horizontally -- vertical filtering would be very slow in 
+//	a DexGrid
+//
+void
+CDexGrid::Filter( 
+	const CNestConfig&	config,
+	const C2dCoord&		origin,		// Point at origin corner; grid units
+	const C2dCoord&		extent,		// Point at far corner; grid units;
+	double				in_scrap,	// scrap length cutoff; real units
+	CViewMgr&			view )
+{
+	CWnd*	wnd;
+	CDC*	dest;
+
+	wnd = view.getCWnd();
+
+	dest = ((config.DisplayDebug() && (wnd != NULL)) ? wnd->GetDC() : NULL);
+
+	int scrap_len = (int)ceil(in_scrap / config.Resolution());
+	int scrap_extra = (int)(scrap_len * 1.5);
+
+	// Filter horizontal short stuff
+	int start_x = (int)origin.X() - scrap_extra;
+	if (start_x < 0)
+		start_x = 0;
+	int end_x = (int)extent.X() + scrap_extra;
+	if (end_x >= m_width)
+		end_x = m_width-1;
+
+	int start_y = max(0, (int)origin.Y());
+	int end_y = min(m_dex_list.Count()-1, (int)extent.Y());
+	for (int sheet_y=start_y; sheet_y<=end_y; sheet_y++)
+	{
+		CDex* start_dex = m_dex_list[sheet_y];
+		while (start_dex->Last() < start_x)
+			start_dex = start_dex->Next();
+
+		CDex* at_dex = start_dex->Next();
+		while ( at_dex && (at_dex->First() < end_x) )
+		{
+			if ( ((at_dex->Last() - at_dex->First()) < scrap_len)
+				&& at_dex->Next() )
+
+			{
+				at_dex->Type( at_dex->Type() | MARK_DEAD );
+
+				if ( config.DisplayDebug() && (dest != NULL) )
+				{
+					for (int cnt_x=at_dex->First(); cnt_x<=at_dex->Last(); cnt_x++)
+						dest->SetPixelV( cnt_x, sheet_y, 0x808080);
+				}
+			}
+			at_dex = at_dex->Next();
+		}
+
+		at_dex = start_dex;
+		while ( at_dex && (at_dex->First() < end_x))
+		{
+			CDex* next_dex = at_dex->Next();
+
+			if ( next_dex && (at_dex->Type() == next_dex->Type()) )
+			{
+				at_dex->MergeNext();
+//Validate();
+			}
+			else
+				at_dex = next_dex;
+		}
+	}
+
+	// -----------------------------------------------------
+	// Filter vertical short stuff (the slow way)
+	//
+	start_x = max(0, (int)origin.X());
+	end_x = min((int)extent.X(), m_width-1);
+
+	start_y = max(0, (int)origin.Y()-scrap_extra);
+	end_y = min(m_dex_list.Count()-1, (int)extent.Y()+scrap_extra);
+
+	int ynum = (end_y - start_y)+1;
+	CDex** vlist = new CDex*[ynum];
+	for (sheet_y=0; sheet_y<ynum; sheet_y++)
+	{
+		vlist[sheet_y] = m_dex_list[sheet_y+start_y];
+	}
+
+	int sheet_x;
+	int span;
+	bool hit_sheet;
+
+	CDex* at_dex=NULL;
+	CDex** at_row=NULL;
+	for (sheet_x=start_x; sheet_x<=end_x; sheet_x++)
+	{
+		at_row = vlist;
+		for (sheet_y=0; sheet_y<ynum; sheet_y++)
+		{
+			at_dex = *at_row;
+			while ( at_dex && (at_dex->Last() < sheet_x) )
+			{
+				*at_row = at_dex->Next();
+				at_dex = *at_row;
+			}
+
+			at_row++;
+		}
+
+		at_row = vlist;
+		span = 0;
+		hit_sheet = false;
+		for (sheet_y=0; sheet_y<ynum; sheet_y++)
+		{
+			at_dex = *at_row;
+			at_row++;
+
+			if ( at_dex && (at_dex->Type()&MARK_BODY) )
+			{
+				if ( span && ((span < scrap_len) || !hit_sheet) )
+				{
+					for (int kill_y=sheet_y-span; kill_y<sheet_y; kill_y++)
+					{
+						at_dex = vlist[kill_y];
+						at_dex->Insert(MARK_DEAD, sheet_x);
+
+						if ( config.DisplayDebug() && (dest != NULL) )
+						{
+							dest->SetPixelV( sheet_x, kill_y+start_y, 0x808080);
+						}
+
+					}
+					span = 0;
+					hit_sheet = false;
+				}
+			}
+			else // Not in Body (e.g. Tool or Sheet)
+			{
+				if (!(at_dex->Type() & MARK_TOOL))
+				{
+					hit_sheet = true;
+				}
+				span++;
+			}
+		}
+	}
+}
+
+
+// --------------------------------------------------------
+// Score 0 bad fit, 1 perfect fit	
+//
+double 
+CDexGrid::ScoreLeft(
+	const CNestConfig&	config,
+	CDexGrid&			target,
+	int					target_area,
+	const C2dCoord&		seed,
+	BOOL				ignore_clamp,
+	ePartFit			part_fit,
+	int*				out_shift )
+{
+	int target_bottom = target.Height();
+	int target_right = target.Width();
+
+	BYTE test;
+	if (ignore_clamp)
+		test = TEST_OCCUPIED_NOCLAMP;
+	else
+		test = TEST_OCCUPIED_CLAMP;
+	BYTE test_tool = test | MARK_TOOL;
+
+	// Adjust for off-sheet parts
+	int extreme = (int)seed.X() + target_right;
+	int grid_max_x = m_width - config.BorderGrid(BORDER_RIGHT);
+	if ( extreme > grid_max_x )
+		target_right -= (extreme - grid_max_x);
+
+	extreme = (int)seed.Y() + target_bottom;
+	int grid_max_y = m_height - config.BorderGrid(BORDER_BOTTOM);
+	if ( extreme > grid_max_y )
+		target_bottom -= (extreme - grid_max_y);
+
+	int sheet_trapped = 0;
+
+	int trap_low = INT_MAX;
+	int trap_high = INT_MIN;
+
+	int low_shift = -1;
+
+	C2dCoord sheet_pt;
+	sheet_pt.Y(seed.Y());
+	C2dCoord target_pt;
+	for (target_pt.Y(0); target_pt.Y()<target_bottom; target_pt.Y(target_pt.Y()+1))
+	{
+		// For each row of the part...
+		//
+		// Count up sheet stats up to the edge of the part using a FAST scan
+		//
+		int sheet_tool = 0;
+		int sheet_space = 0;
+
+		CDex* sheet_dex = m_dex_list[ (int)sheet_pt.Y() ];
+		BYTE sheet_cell = sheet_dex->Type();
+		while (sheet_dex->Last() < seed.X())
+		{
+			int sheet_width = sheet_dex->Last() - sheet_dex->First() + 1;
+
+			if (sheet_cell & MARK_TOOL)
+			{
+				sheet_tool += sheet_width;
+				sheet_space = 0;
+			}
+			else
+			if (sheet_cell & test)
+			{
+				sheet_tool = 0;
+				sheet_space = 0;
+			}
+			else
+				sheet_space += sheet_width;
+
+			sheet_dex = sheet_dex->Next();
+			sheet_cell = sheet_dex->Type();
+		}
+		int sheet_width = (int)seed.X() - sheet_dex->First();
+
+		if (sheet_cell & MARK_TOOL)
+		{
+			sheet_tool += sheet_width;
+			sheet_space = 0;		
+		}
+		else
+		if (sheet_cell & test)
+		{
+			sheet_tool = 0;
+			sheet_space = 0;
+		}
+		else
+			sheet_space += sheet_width;
+
+		//
+		// Count up the sheet and part stats until we reach body using a SLOW scan
+		// TODO:  Work out the complex logic to make this a FAST scan; ouch.
+		//
+		int target_tool = 0;
+		int target_space = 0;
+
+		BOOL hit_tool = FALSE;
+		BOOL hit_body = FALSE;
+
+		sheet_pt.X( seed.X() );
+		for (target_pt.X(0); target_pt.X() < target_right; target_pt.X(target_pt.X()+1))
+		{
+			sheet_cell = Cell( sheet_pt );
+			BYTE target_cell = target.Cell( target_pt );
+
+			// If sheet cell is empty, we count part stats
+			// If target cell is empty, we count sheet stats
+			// If they are both empty, only the target space is counted.
+			if (!(sheet_cell&test_tool))
+			{
+				// Sheet is empty; count up the target
+				if (target_cell & MARK_TOOL)
+				{
+					// Only count tool space to the left of the body
+					target_tool++;
+					hit_tool = TRUE;
+				}
+				else
+				if (target_cell & MARK_BODY)
+				{
+					hit_body = TRUE;
+					break;
+				}
+				else
+				if (!hit_tool)
+				{
+					// Only count part space to the left of the body
+					target_space++;
+				}
+			}
+			else // Sheet is occupied
+			if (!(target_cell&test_tool))
+			{
+				// Target cell is empty; count up the sheet here
+				if (sheet_cell & MARK_TOOL)
+				{
+					sheet_tool++;
+					sheet_space = 0;
+				}
+				else
+				if (sheet_cell & test)
+				{
+					sheet_tool = 0;
+					sheet_space = 0;
+				}
+			}
+			
+			sheet_pt.X( sheet_pt.X()+1 );
+		}
+
+		int shift = sheet_space + target_space + min( sheet_tool, target_tool );
+		if ( (shift < low_shift)
+			|| (low_shift < 0))
+		{
+			low_shift = shift;
+			if ( !low_shift
+				&& (part_fit != PART_FIT) )
+				return 0.0;
+		}
+
+		if (hit_body)
+		{
+			sheet_trapped += sheet_space + target_space;
+
+			trap_low = min( trap_low, sheet_space + target_space );
+			trap_high = max( trap_high, sheet_space + target_space );
+		}
+
+		sheet_pt.Y( sheet_pt.Y()+1 );
+	}
+
+	int trap_avg = sheet_trapped / target_bottom;
+	trap_avg = (trap_low + trap_high + 2*trap_avg) / 4;
+//	double score = 1.0 / (trap_avg + 1.0);
+
+	trap_avg *= trap_avg;	// Score squared... make it sensitive
+
+	double score;
+	if (target_area > trap_avg)
+		score = (1.0 - ((double)trap_avg / (double)target_area)) / 2.0 + 0.5;
+	else
+		score = ((double)target_area / (double)trap_avg) / 2.0;
+
+	if (low_shift > 0)
+		*out_shift = -low_shift;
+	else
+		*out_shift = 0;
+
+	return score;
+}
+
+// --------------------------------------------------------
+// This uses the old CGrid logic -- it should be horribly slow
+//	on the new CDexGrid structure.  Oh well, the Horz scoring should
+//	be faster; maybe it will all balance out.  18 July 01 eww
+double
+CDexGrid::ScoreTop(
+	const CNestConfig&	config,
+	CDexGrid&			target,
+	int					target_area,
+	const C2dCoord&		seed,
+	BOOL				ignore_clamp,
+	ePartFit			part_fit,
+	int*				out_shift )
+{
+	int target_bottom = target.Height();
+	int target_right = target.Width();
+
+	BYTE test;
+	if (ignore_clamp)
+		test = TEST_OCCUPIED_NOCLAMP;
+	else
+		test = TEST_OCCUPIED_CLAMP;
+	BYTE test_tool = test | MARK_TOOL;
+
+	// Adjust for off-sheet parts
+	int extreme = (int)seed.X() + target_right;
+	int grid_max_x = m_width - config.BorderGrid(BORDER_RIGHT);
+	if ( extreme > grid_max_x )
+		target_right -= (extreme - grid_max_x);
+
+	extreme = (int)seed.Y() + target_bottom;
+	int grid_max_y = m_height - config.BorderGrid(BORDER_BOTTOM);
+	if ( extreme > grid_max_y )
+		target_bottom -= (extreme - grid_max_y);
+
+	int sheet_trapped = 0;
+
+	int trap_low = INT_MAX;
+	int trap_high = INT_MIN;
+
+	int low_shift = -1;
+
+	C2dCoord sheet_pt;
+	sheet_pt.X( seed.X() );
+	C2dCoord target_pt;
+	for (target_pt.X(0); target_pt.X() < target_right; target_pt.X(target_pt.X()+1))
+	{
+		// For each column of the part...
+		//
+		// Count up the sheet from part edge to first sheet body using SLOW scan
+		int sheet_tool = 0;
+		int sheet_space = 0;
+
+		sheet_pt.Y( seed.Y()-1 );
+		while (sheet_pt.Y() >= 0)
+		{
+			BYTE sheet_cell = Cell( sheet_pt );
+
+			// Sheet is empty; count up the target
+			if (sheet_cell & MARK_TOOL)
+			{
+				sheet_tool++;
+			}
+			else
+			if (sheet_cell & test)
+			{
+				break;
+			}
+			else
+				sheet_space++;
+
+			sheet_pt.Y( sheet_pt.Y()-1 );
+		}
+
+		//
+		// Count up the sheet and part stats until we reach body using a SLOW scan
+		//
+		int target_tool = 0;
+		int target_space = 0;
+
+		BOOL hit_body = FALSE;
+		BOOL hit_tool = FALSE;
+
+		sheet_pt.Y( seed.Y() );
+		for (target_pt.Y(0); target_pt.Y()<target_bottom; target_pt.Y(target_pt.Y()+1))
+		{
+			BYTE sheet_cell = Cell( sheet_pt );
+			BYTE target_cell = target.Cell( target_pt );
+
+			// If sheet cell is empty, we count part stats
+			// If target cell is empty, we count sheet stats
+			// If they are both empty, only the target space is counted.
+			if (!(sheet_cell&test_tool))
+			{
+				// Sheet is empty; count up the target
+				if (target_cell & MARK_TOOL)
+				{
+//					if (!hit)
+					target_tool++;
+					hit_tool = TRUE;
+				}
+				else
+				if (target_cell & MARK_BODY)
+				{
+					hit_body = TRUE;
+					break;
+				}
+				else
+				if (!hit_tool)
+				{
+					// Only count part space to the left of the body
+					target_space++;
+				}
+			}
+			else // Sheet is occupied
+			if (!(target_cell&test_tool))
+			{
+				// Target cell is empty; count up the sheet here
+				if (sheet_cell & MARK_TOOL)
+				{
+					sheet_tool++;
+					sheet_space = 0;
+				}
+				else
+				if (sheet_cell & test)
+				{
+					// Reset our spaces; we hit body on the sheet
+					sheet_tool = 0;
+					sheet_space = 0;
+				}
+			}
+//			else // hit sheet, hit target... turn off spacing!
+//				hit = TRUE;
+			
+			sheet_pt.Y( sheet_pt.Y()+1 );
+		}
+
+		int shift = sheet_space + target_space + min( sheet_tool, target_tool );
+		if ( (shift < low_shift)
+			|| (low_shift < 0))
+		{
+			low_shift = shift;
+			if ( !low_shift
+				&& (part_fit != PART_FIT) )
+				return 0.0;
+		}
+
+		if (hit_body)
+		{
+			sheet_trapped += sheet_space + target_space;
+
+			trap_low = min( trap_low, sheet_space + target_space );
+			trap_high = max( trap_high, sheet_space + target_space );
+		}
+
+		sheet_pt.X( sheet_pt.X()+1 );
+	}
+
+	int trap_avg = sheet_trapped / target_bottom;
+	trap_avg = (trap_low + trap_high + 2*trap_avg) / 4;
+//	double score = 1.0 / (trap_avg + 1.0);
+
+	trap_avg *= trap_avg;	// Score squared... make it sensitive
+
+	double score;
+	if (target_area > trap_avg)
+		score = (1.0 - ((double)trap_avg / (double)target_area)) / 2.0 + 0.5;
+	else
+		score = ((double)target_area / (double)trap_avg) / 2.0;
+
+	if (low_shift > 0)
+		*out_shift = -low_shift + 1;
+	else
+		*out_shift = 0;
+
+	return score;
+}
+
+// =======================================================================
+//		MarkBox
+//
+//	Scan in a box of pixels to the grid; inclusive of fenceposts of box
+//
+void	
+CDexGrid::MarkBox( 
+	const C2dBox&	box, 
+	BYTE			pattern,	// Bit-pattern
+	BOOL			draw )		// TRUE draw, FALSE erase
+{
+	for (int at_y=(int)floor(box.Ymin()); at_y<=(int)ceil(box.Ymax()); at_y++)
+	{
+		if ( !InRangeY( at_y ) )
+			continue;
+
+		CDex* at_dex = m_dex_list[at_y];
+		BYTE at_cell = at_dex->Type();
+		for (int at_x=(int)floor(box.Xmin()); at_x<(int)ceil(box.Xmax()); at_x++)
+		{
+			if ( !InRangeX( at_x ) )
+				continue;
+
+			while (at_x > at_dex->Last())
+			{
+				at_dex = at_dex->Next();
+				at_cell = at_dex->Type();
+			}
+
+			BYTE new_cell = at_cell;
+			if (draw)
+				new_cell |= pattern;
+			else
+				new_cell &= ~pattern;
+			if (new_cell != at_cell)
+			{
+				at_dex->Insert( new_cell, at_x );
+//Validate();
+			}
+		}
+	}
+}
+
+// =======================================================================
+//		MarkDisk
+//
+void	
+CDexGrid::MarkDisk( 
+	const C2dCoord& ctr, 
+	int				dia, 
+	BYTE			pattern, 
+	BOOL			draw )
+{
+	int radius = dia / 2;
+	double radius2 = radius*radius;
+
+	int from_y = ((int)ctr.Y() - radius);
+	int to_y = ((int)ctr.Y() + radius);
+
+	for (int at_y=from_y; at_y<=to_y; at_y++)
+	{
+		if ( !InRangeY( at_y ) )
+			continue;
+
+		CDex* at_dex = m_dex_list[at_y];
+		BYTE at_cell = at_dex->Type();
+
+		double rise = at_y - ctr.Y();
+		double run = sqrt( radius2 - rise*rise );
+
+		int from_x = (int)(ctr.X() - run + 0.5);
+		int to_x = (int)(ctr.X() + run + 0.5);
+
+		for (int at_x=from_x; at_x<=to_x; at_x++)
+		{
+			if ( !InRangeX( at_x ) )
+				continue;
+
+			while (at_x > at_dex->Last())
+			{
+				at_dex = at_dex->Next();
+				at_cell = at_dex->Type();
+			}
+
+			BYTE new_cell = at_cell;
+			if (draw)
+				new_cell |= pattern;
+			else
+				new_cell &= ~pattern;
+
+			if (new_cell != at_cell)
+			{
+				at_dex->Insert( new_cell, at_x );
+//Validate();
+			}
+		}
+	}
+}
+
+
+
+// =======================================================================
+void	
+CDexGrid::Debug( 
+	const CString& in_file ) const
+{
+	HANDLE	file;
+
+	file = CreateFile(	in_file,				// name
+						GENERIC_WRITE,			// access mode
+						FILE_SHARE_READ,		// share mode
+						NULL,					// security descriptor
+						CREATE_ALWAYS,			// how to create
+						FILE_ATTRIBUTE_NORMAL,	// file attributes
+						NULL );					// handle of file to match
+	if (file == INVALID_HANDLE_VALUE)
+		return;
+
+	Debug( file );
+
+	CloseHandle( file );
+}
+
+void
+CDexGrid::Debug(
+	HANDLE	file ) const
+{
+	DWORD	did_write;
+
+	CString buf = "-------------- Horizontal -------------- \n\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+
+	for (int at_y=0; at_y<m_height; at_y++)
+	{
+		CDex* dex = m_dex_list[at_y];
+
+		dex->Debug( file );
+	}
+}
+
+// =======================================================================
+//		Create some test patterns and do Debug dumps of them...
+//
+void
+CDexGrid::DebugInsert( 
+	const CString& in_file ) const
+{
+	HANDLE	file;
+	DWORD	did_write;
+
+	file = CreateFile(	in_file,				// name
+						GENERIC_WRITE,			// access mode
+						FILE_SHARE_READ,		// share mode
+						NULL,					// security descriptor
+						CREATE_ALWAYS,			// how to create
+						FILE_ATTRIBUTE_NORMAL,	// file attributes
+						NULL );					// handle of file to match
+	if (file == INVALID_HANDLE_VALUE)
+		return;
+
+	//
+	// Test sequences are two linked dexels, one TOOL and one BODY, each 3 wide.
+	// A third dexel type is then inserted at each possible position -- the type
+	//	of this third dexel varies as well as the position.
+	// The resulting pattern is then printed.
+	//
+	CString buf = "-------------- DexGrid INSERT Testing -------------- \n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+
+	//
+	// ---------------------
+	//
+	buf = "\nA-BBB + C(0)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	CDex* dex_a = new CDex( MARK_TOOL, 0, 0 );
+	CDex* dex_b = new CDex( MARK_BODY, 1, 3 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_a->Insert( MARK_HOLE, 0 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+	//
+	// ---------------------
+	//
+	buf = "\nA-BBB + B(0)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 0 );
+	dex_b = new CDex( MARK_BODY, 1, 3 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_a->Insert( MARK_BODY, 0 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+
+	//
+	// ---------------------
+	//
+	buf = "\nAAA-BBB + C(0)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 2 );
+	dex_b = new CDex( MARK_BODY, 3, 5 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_a->Insert( MARK_HOLE, 0 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+
+	//
+	// ---------------------
+	//
+	buf = "\nAAA-BBB + C(1)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 2 );
+	dex_b = new CDex( MARK_BODY, 3, 5 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_a->Insert( MARK_HOLE, 1 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+	//
+	// ---------------------
+	//
+	buf = "\nAAA-BBB + C(2)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 2 );
+	dex_b = new CDex( MARK_BODY, 3, 5 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_a->Insert( MARK_HOLE, 2 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+	//
+	// ---------------------
+	//
+	buf = "\nAAA-BBB + C(3)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 2 );
+	dex_b = new CDex( MARK_BODY, 3, 5 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_b->Insert( MARK_HOLE, 3 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+	//
+	// ---------------------
+	//
+	buf = "\nAAA-BBB + C(6)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 2 );
+	dex_b = new CDex( MARK_BODY, 3, 5 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_b->Insert( MARK_HOLE, 6 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+	//
+	// ---------------------
+	//
+	buf = "\nAAA-BBB + A(1)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 2 );
+	dex_b = new CDex( MARK_BODY, 3, 5 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_a->Insert( MARK_TOOL, 1 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+	//
+	// ---------------------
+	//
+	buf = "\nAAA-BBB + B(2)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 2 );
+	dex_b = new CDex( MARK_BODY, 3, 5 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_a->Insert( MARK_BODY, 2 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+	//
+	// ---------------------
+	//
+	buf = "\nAAA-BBB + A(3)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 2 );
+	dex_b = new CDex( MARK_BODY, 3, 5 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_a->Insert( MARK_TOOL, 3 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+	//
+	// ---------------------
+	//
+	buf = "\nAAA-BBB + B(6)\n";
+	WriteFile( file, (LPCVOID)buf, buf.GetLength(), &did_write, NULL );
+	dex_a = new CDex( MARK_TOOL, 0, 2 );
+	dex_b = new CDex( MARK_BODY, 3, 5 );
+	dex_a->Append( dex_b );
+	dex_a->Debug( file, TRUE );
+	dex_b->Insert( MARK_BODY, 6 );
+	dex_a->Debug( file, TRUE );
+	while (dex_a)
+	{
+		CDex* next = dex_a->Next();
+		delete dex_a;
+		dex_a = next;
+	}
+
+	//
+	// ---------------------
+	//
+	CloseHandle( file );
+}
+
+
+BOOL
+CDexGrid::Validate( void )
+{
+	for (int cnt_y=0; cnt_y<m_height; cnt_y++)
+	{
+		CDex* dex = m_dex_list[cnt_y];
+		
+		int at_x = 0;
+		while (dex)
+		{
+			if ( (dex->First() > dex->Last())
+				|| (dex->First() != at_x) )
+				return FALSE;
+			at_x = dex->Last() + 1;
+			dex = dex->Next();
+		}
+	}
+	return TRUE;
+}
+
+boolean
+CDexGrid::InRangeX( int x )
+{
+	if (x < 0)
+		return false;
+
+	return (x < m_width);
+}
+
+boolean
+CDexGrid::InRangeY( int y )
+{
+	if (y < 0)
+		return false;
+
+	return (y < m_height);
+}

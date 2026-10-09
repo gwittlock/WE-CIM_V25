@@ -1,0 +1,3456 @@
+// ==================================================================
+//		NestPart
+//
+// ==================================================================
+
+#include "stdafx.h"
+#include <math.h>
+#include <float.h>
+
+#include "MathConst.h"
+#include "CommonFlags.h"
+#include "StringConst.h"
+#include "cmn_resource.h"
+#include "Register.h"
+#include "lead.h"
+
+#include "DbIterator.h"
+#include "DbSequence.h"
+#include "DbEntity.h"
+#include "DbFeature.h"
+#include "DbTool.h"
+#include "DbArc.h"
+#include "DbLine.h"
+#include "ImportUtil.h"
+
+#include "DbPoint.h"
+#include "Solution.h"
+
+#include "Nibbler.h"
+#include "Profile.h"
+#include "Worm.h"
+#include "ModelUtil.h"
+#include "ModelText.h"
+
+#include "MM2.h"
+
+#if (_CI || _NST)
+#include "Portal.h"
+#include "CiLine.h"
+#include "CiArc.h"
+#include "CiModel.h"
+#endif
+
+#include "hull.h"
+#include "NestingPart.h"
+
+#if (!_CI && !_NST)
+#include "ToolShapeExtruder.h"
+#endif
+
+// Thank the Lord for people who share their hard work!
+#include "ProgressWnd.h"
+
+// ==================================================================
+
+static CSelectorStack		dummy_stack;
+static CTreeViewSupport		dummy_tree;
+
+// ==================================================================
+
+CNestingPart::CNestingPart()
+{
+	m_id = -1;
+	m_idx = -1;
+
+	m_flag = 0;
+
+	m_quantity = 0;
+	m_totquant = 0;
+	m_pass = 0;
+	m_used = 0;
+
+	m_cost = 0.0;
+	m_rotation = 1;
+	m_startang = 0.0;
+
+	m_mirror = false;
+	m_startmirror = false;
+
+	m_error = FALSE;
+
+	m_toolhits = NULL;
+
+	m_exclusions = 0;
+
+	// (0) do not close gaps / (1) V16.5 / (2) experimental.
+	m_use_gap_tool = CRegister::IntGet(
+		CRegister::RootPathV("\\Nesting"), "use_gap_tool", 2 );
+
+	// (0) V16.5 / (1) experimental.
+	// As I remember (rightly or wrongly) punch-only parts
+	// nest better for Rittal when use_tool_extruder is true.
+	m_use_tool_extruder = CRegister::IntGet(
+		CRegister::RootPathV("\\Nesting"), "use_tool_extruder", 1 );
+
+	m_filled_gaps = false;
+	m_gap_tool = NULL;
+
+	m_kerf_adjust = 0.;
+
+	m_representation = 0;
+}
+
+CNestingPart::~CNestingPart()
+{
+	m_modelarray.DestructiveFlush();
+	m_toolhitarray.DestructiveFlush();
+
+	if (m_toolhits)
+		delete m_toolhits;
+}
+
+// ==================================================================
+//		Simplify
+//
+//	Master driver for all simplification... operates on the base
+//	model at index 0
+//
+CReturn		
+CNestingPart::Simplify( 
+	double in_thick, 
+	CNestConfig& config, 
+	CViewMgr& in_view )
+{
+	CReturn status;
+	CModel* model;
+
+	if (CReturn::Debug()>=1)
+	{
+		CString note;
+		note.Format( "Simplify:" );
+		status.Diagnostic( note );
+	}
+
+	model = m_modelarray[0];
+	model->UndoBufferSuppress();
+
+	status = do_pattern_explode(model);
+
+	// Note that StripTools is tested internally.
+	// simplify_tooling ALSO updates the tab gap info
+	if (status.IsOk())
+		status = do_simplify_tooling( config, model, in_view );
+
+	if ( status.IsOk() && config.StripLayers() )
+		status = do_strip_layers( model );
+
+	if ( status.IsOk() )
+		status = do_transform( model );
+
+	if (status.IsOk())
+		status = do_simplify_geometry( model );
+
+	if (status.IsOk())
+		status = do_simplify_workplane( model );
+
+	if (status.IsOk())
+		status = do_simplify_rotation( model );
+
+	return status;
+}
+
+// ==================================================================
+
+CReturn
+CNestingPart::do_pattern_explode(
+	CModel* model )
+{
+	CReturn ret;
+
+	CDbIterator	iter;
+	iter.Init( model->Db(), DBPATTERN );
+	while (1)
+	{
+		CDbPattern* dbPattern = dynamic_cast<CDbPattern*>( iter() );
+		if (dbPattern == NULL)
+			break;
+		iter.Next();
+
+		ret += CModelUtil::PatternExplode( (*dbPattern) );
+		dbPattern->Delete();
+	}
+
+	return ret;
+}
+	
+// ==================================================================
+//		do_simplify_tooling
+//
+//	Take the master part and remove *all* tool entities that are
+//	not referenced by geometry.
+//
+char* gLeadContextName[8] =
+{
+	"Lead In, Interior Line",
+	"Lead In, Interior Arc",
+	"Lead In, Exterior Line",
+	"Lead In, Exterior Arc",
+	"Lead Out, Interior Line",
+	"Lead Out, Interior Arc",
+	"Lead Out, Exterior Line",
+	"Lead Out, Exterior Arc"
+};
+
+CReturn
+CNestingPart::do_simplify_tooling( 
+	CNestConfig& config,
+	CModel* model,
+	CViewMgr& view )
+{
+	CReturn	ret;
+	CDbEntityList reserved_tool;
+	CDbIterator iter;
+	CDbWorkplane* dbWork;
+	CEntityDb*	db;
+	double dia;
+	int num;
+
+	double min_dia = DBL_MAX;
+
+	if (CReturn::Debug()>=1)
+	{
+		CString note;
+		note.Format( "   Simplify Tooling" );
+		ret.Diagnostic( note );
+	}
+
+	// 
+	// Using the lead system, generate a list of all possible reserved
+	//	pierce tools.  <sigh>
+	//
+	// Assumes we only pierce in TOP plane
+	//
+	model->EntityFind( STR_TOP, (CDbEntity**)&dbWork, DBWORKPLANE, DBWORKPLANE );
+
+	if (config.LeadSetup() > 0)
+	{
+		CLead lead(*model);
+
+		for (int context=0; context<LEAD_CONTEXT_NUM; context++)
+		{
+			double dia;
+			CDbTool* tool = lead.PierceTool( config.ConfigDb(), config.LeadSetup(), context, dbWork, &dia );
+
+			if (tool)
+			{
+				reserved_tool.Append( tool );
+			}
+			else if (!ZERO(dia))
+			{
+				// Cheat because I don't feel like making an IDS for this.
+
+				eSeverity level = CReturn::ErrorLevel();
+				CReturn::ErrorLevel((eSeverity)3);
+				CString note;
+				note.Format( "Part '%s' %s: Pierce tool diameter %f not found", Name(), gLeadContextName[context], dia );
+				ret.Diagnostic( note );
+				CReturn::ErrorLevel(level);
+			}
+		}
+	}
+
+	// Now, check all tools against (a) use and (b) reserved
+
+	num = reserved_tool.Count();
+	db = (CEntityDb*)&model->Db();
+	iter.Init( (*db), DBTOOL );
+	while ( TRUE )
+	{
+		CDbTool* db_tool = dynamic_cast<CDbTool*>( iter() );
+		if (!db_tool)
+			break;
+		iter.Next();
+
+		if (db_tool->IsRefd())
+		{
+			dia = db_tool->EffectiveDiameter();
+			if ( (dia < min_dia) && !ZERO(dia) )
+				min_dia = dia;
+
+			// 2005.01.25 (PE) -- Nestings "Pierce Hole / Exclude Kerf" option
+			// failed to yield good nest.  In short, we now offset the pierce
+			// hole to its outside so that HIT_KERF_OUTSIDE is better adjusted.
+			if ( config.HardPierce() )
+			{
+				// We want the pierce hole placed outside the kerf.
+#if BEFORE_2005_03_04
+				// When the machine is doing kerf compensation, we
+				// must adjust by the beam diameter.  Otherwise, we
+				// must adjust by the bream radius.
+				if (model->Header().getInt( "PartProf", 0 ) == 0)
+					dia /= 2.;
+
+				if (db_tool->IsCuttingTool() && (dia > m_kerf_adjust))
+					m_kerf_adjust = dia;
+#else
+				// The previous solution was (in theory) okay but
+				// Sunflower reported that the pierce hole (being so
+				// close to the adjacent part) diminished web integrity.
+				if ( db_tool->IsCuttingTool() )
+					m_kerf_adjust = config.Spacing();
+#endif
+			}
+
+			continue;
+		}
+
+		BOOL reserved = FALSE;
+		for (int idx=0; idx<num; idx++)
+		{
+			if (db_tool == reserved_tool[idx])
+			{
+				reserved = TRUE;
+				// Don't really care to get sizes of reserved tools; these
+				// will be lead punches of minor importance.
+				break;
+			}
+		}
+
+		if ( reserved || !config.StripTools() )
+			continue;
+
+		db->Delete( (CDbEntity**)&db_tool );
+	}
+
+	// Now, upgrade our gap tolerance to minimum tool radius.  This will still
+	// prevent jumping across kerf, but also allows jumping across major
+	// imperfections.
+	if (min_dia < (DBL_MAX-SMALL))
+	{
+		if ( ZERO(config.MinTool())	|| (min_dia < config.MinTool()) )
+		{
+			config.MinTool(min_dia);
+		}
+	}
+
+	// Optionally report on tools in the part
+	if (CReturn::Debug()>=1)
+	{
+		CString note;
+		note.Format( "====================================================================" );
+		ret.Diagnostic( note );
+		note.Format( "  Tooling used for Part '%s' (min diameter %f)", m_filepath, min_dia );
+		ret.Diagnostic( note );
+
+		iter.Init( (*db), DBTOOL );
+		while ( TRUE )
+		{
+			CDbTool* db_tool = dynamic_cast<CDbTool*>( iter() );
+			if (!db_tool)
+				break;
+			iter.Next();
+
+			const CVarList& attrib = db_tool->Attrib();
+			note.Format( "    %d : %s", attrib.getInt( STR_DESCRIPTION, -1 ),
+										attrib.getString( STR_NC_CODE_NUMBER, "<error>" ) );
+		}
+	}
+
+	return ret;
+}
+
+// ==================================================================
+//		do_strip_layers
+//
+//	Remove all layers from the master part.
+//
+CReturn
+CNestingPart::do_strip_layers( CModel* model )
+{
+	CReturn	ret;
+
+	if (CReturn::Debug() >= 1)
+	{
+		CString note;
+		note.Format( "   Strip Layers" );
+		ret.Diagnostic( note );
+	}
+
+	ret = CImportUtil::LayersStrip( model );
+
+	return ret;
+}
+
+CReturn
+CNestingPart::do_transform( CModel* model )
+{
+	CReturn	ret;
+	C3dBox	box;
+
+	if (CReturn::Debug() >= 1)
+	{
+		CString note;
+		note.Format( "   Setting local origin" );
+		ret.Diagnostic( note );
+	}
+
+#if BEFORE_SUNFLOWER_BUG  // maybe just do this for 4th quad?
+// This was causing caching problems!!!!
+//	box = model->Box(~0);
+	box = model->Box(0);
+#else
+	box = model->Box(~0);
+#endif
+	if (fabs(box.Xmin()) > SMALL || fabs(box.Ymin()) > SMALL)
+	{
+		CDbIterator	iter;
+		C3x4Matrix	xform;
+
+		CDbEntity::NewAction();
+
+		xform.Shift( C3dVec( -box.Xmin(), -box.Ymin(), 0. ) );
+
+		iter.Init( model->Db(), DBPOINT );
+		while (1)
+		{
+			CDbEntity* dbEntity = iter();
+			if (dbEntity == NULL)
+				break;
+
+			if ((dbEntity->Type() == DBPOINT) ||
+				(dbEntity->Type() == DBHOLE))
+			{
+				dbEntity->Transform( xform );
+			}
+			else
+			{
+				dbEntity->BoxInvalidate();
+			}
+
+			iter.Next();
+		}
+	}
+
+	if (0)
+	{
+			CModelText text;
+			text.Enable( true );
+			ret = text.Dump( CString("_foo"), (*model) );
+	}
+
+	return ret;
+}
+
+// ==================================================================
+//		do_simplify_geometry
+//
+//	1. Force circles into profiles
+//	(x). USED TO explode sequences, but that is no longer necessary
+//	2. Fills in gaps in profiles
+//
+CReturn
+CNestingPart::do_simplify_geometry( CModel* model )
+{
+	CReturn		ret;
+	CDbIterator	iter;
+	C3dCoord	a_pt;
+	C3dCoord	b_pt;
+	CDbProfile*	db_profile;
+	CDbLine*	db_line;
+	CDbArc*		db_arc;
+	CDbCurve*	a_curve;
+	CDbCurve*	b_curve;
+
+	if (CReturn::Debug()>=1)
+	{
+		CString note;
+		note.Format( "   Simplify Geometry" );
+		ret.Diagnostic( note );
+	}
+
+	if (m_use_gap_tool > 1)
+	{
+		// Create a bogus tool to fill the gaps.
+
+		model->EntityCreate( DBTOOL, (CDbEntity**) &m_gap_tool );
+
+		m_gap_tool->pAttrib()->setInt( STR_TYPE_ID, TTYPE_BURNER );
+		m_gap_tool->pAttrib()->setReal( "kerf", 0.1 );
+
+		// Mark this tool so that we can delete it later.
+		m_gap_tool->pAttrib()->setInt( "gap_tool", 1 );
+	}
+
+	// NOTE: CDbSequence objects are not in model because the 
+	//       mm2 is read using the MM2_SKIP_SEQ_OBJS flag.
+
+	//
+	// HORRIBLE FUCKING HACK ALERT
+	//	Convert any full circles that are not currently in profiles to profiles
+	//
+	// TODO:  Pull out into a separate method, maybe even in Policy
+	//
+
+	// NOTE: Failing to place lone-arcs into profiles causes the message
+	// "Selection reduces to empty space -- no closed, tooled profiles to apply leads on"
+	// 
+	iter.Init( model->Db(), DBARC );
+	while ( TRUE )
+	{
+		db_arc = dynamic_cast<CDbArc*>( iter() );
+		if (!db_arc)
+			break;
+
+		iter.Next();
+
+		if ( !db_arc->StartPt().WithinTol( db_arc->EndPt(), SMALL ) )
+			continue;
+
+		db_profile = dynamic_cast<CDbProfile*>( db_arc->Owner() );
+		if (!db_profile)
+		{
+			model->EntityCreate( DBPROFILE, (CDbEntity**)&db_profile);
+
+			CDbContainer* owner = dynamic_cast<CDbContainer*>(db_arc->Owner());
+			if (owner)
+			{
+				owner->InsertBefore(db_arc, db_profile);
+			}
+			db_profile->Append( db_arc );
+		}
+	}
+
+	// Spackle over any and all gaps in profiles
+	if (m_use_gap_tool > 0)
+	{
+		iter.Init( model->Db(), DBPROFILE );
+		while ( TRUE )
+		{
+			db_profile = dynamic_cast<CDbProfile*>( iter() );
+			if (!db_profile)
+				break;
+
+			iter.Next();
+
+			int num = db_profile->Count()-1;
+			if (num < 0)
+				continue;
+
+			b_curve = (CDbCurve*)(*db_profile)[num];
+
+			for (int idx=num; idx>=1; idx--)
+			{
+				a_curve = (CDbCurve*)(*db_profile)[idx-1];
+
+				a_pt = a_curve->EndPt();
+				b_pt = b_curve->StartPt();
+				if (!a_pt.WithinTolXY(b_pt, SMALL))
+				{
+					// Fill the gap
+
+					model->EntityCreate(DBLINE, (CDbEntity**)&db_line);
+					
+					// Mark this entity for deletion by GapEntitiesRemove().
+					db_line->pAttrib()->setInt( "is_gap_elem", TRUE );
+
+					if (m_use_gap_tool == 1)
+					{
+						// V16.5 and earlier.
+						db_line->Init(a_curve->Tool(), a_curve->Workplane(), a_pt, b_pt);
+						db_profile->InsertBefore(b_curve, db_line);
+					}
+					else
+					{
+						// Experimental.
+						db_line->Init(m_gap_tool, a_curve->Workplane(), a_pt, b_pt);
+						db_profile->InsertBefore(b_curve, db_line);
+					}
+
+					m_filled_gaps = true;
+				}
+
+				b_curve = a_curve;
+			}
+
+			if ( !db_profile->IsClosed() )
+			{
+				num = db_profile->Count()-1;
+
+				a_curve = (CDbCurve*)(*db_profile)[num];
+				b_curve = (CDbCurve*)(*db_profile)[0];
+
+				a_pt = a_curve->EndPt();
+				b_pt = b_curve->StartPt();
+				if (!a_pt.WithinTolXY(b_pt, SMALL))
+				{
+					// Fill the gap
+
+					model->EntityCreate(DBLINE, (CDbEntity**)&db_line);
+					
+					// Mark this entity for deletion by GapEntitiesRemove().
+					db_line->pAttrib()->setInt( "is_gap_elem", TRUE );
+
+					if (m_use_gap_tool == 1)
+					{
+						// V16.5 and earlier.
+						db_line->Init(a_curve->Tool(), a_curve->Workplane(), a_pt, b_pt);
+						db_profile->InsertBefore(b_curve, db_line);
+					}
+					else
+					{
+						// Experimental.
+						db_line->Init(m_gap_tool, a_curve->Workplane(), a_pt, b_pt);
+						db_profile->InsertBefore(b_curve, db_line);
+					}
+
+					m_filled_gaps = true;
+				}
+			}
+		}
+	}
+	/*
+	//
+	// Delete any "interior" geometry if we are in solid parts mode
+	//
+	if (!config.PartInPart())
+	{
+		iter.Init( model->Db(), DBPROFILE );
+		while ( TRUE )
+		{
+			CDbProfile* db_prof = dynamic_cast<CDbProfile*>( iter() );
+			if (!db_prof)
+				break;
+			iter.Next();
+
+			if (db_prof->Attrib().getInt(STR_PROFILE_DEPTH, 0) & 0x01)
+			{ db_prof->Delete(); }
+		}
+	}
+	*/
+
+
+	return ret;
+}
+
+// ==================================================================
+//		do_simplify_rotation
+//
+//	HACK!  Scan the tooling in the part, and if necessary, reduce
+//	the rotation (and start-angle) values for this part to satisfy
+//	the most restrictive tool in the lexicon.
+//
+//	TODO:  Fix transform to reset the tooling on rotation
+//
+CReturn
+CNestingPart::do_simplify_rotation( CModel* model )
+{
+	CReturn	ret;
+	CDbIterator iter;
+	CEntityDb*	db;
+	double		start_ang;
+
+	db = (CEntityDb*)&model->Db();
+
+	if (CReturn::Debug()>=1)
+	{
+		CString note;
+		note.Format( "   Simplify Rotation" );
+		ret.Diagnostic( note );
+	}
+
+	eToolSymmetry symmetry = TSYM_1;
+
+	iter.Init( (*db), DBTOOL );
+	while ( TRUE )
+	{
+		CDbTool* db_tool = dynamic_cast<CDbTool*>( iter() );
+		if (!db_tool)
+			break;
+		iter.Next();
+
+		if (db_tool->IsRefd())
+		{ symmetry = min( symmetry, db_tool->Symmetry() ); }
+	}
+
+	start_ang = fabs( m_startang );
+
+	// Be sure to avoid inappropriate rotation promotion!
+	switch (symmetry)
+	{
+		case TSYM_NONE:
+			m_rotation = 0;
+			m_startang = 0.0;
+			m_mirror = false;
+			m_startmirror = false;
+			break;
+
+		case TSYM_180:
+			if (m_rotation & 0x01)
+				m_rotation = 0;		// Odd rotations are forbidden
+			else
+				m_rotation = min(m_rotation, 2);		// Even rotations go to 180'
+
+			if (!EQUAL( start_ang, 180 ))
+				m_startang = 0;
+			break;
+
+		case TSYM_90:
+			if (m_rotation & 0x03)
+			{
+				if (m_rotation & 0x01)
+					m_rotation = 0;		// Odd rotations are forbidden
+				else
+					m_rotation = min(m_rotation, 2);		// Even rotations go to 180'
+			}
+			else
+				m_rotation = min(m_rotation, 4);
+
+			if (!EQUAL( start_ang, ((int)(start_ang/90.0)*90.0 )) )
+				m_startang = 0.0;	// Not a multiple of 90', zero it
+			break;
+
+		case TSYM_1:
+			// Life is grand
+			break;
+	}
+
+	return ret;
+}
+
+// ==================================================================
+//		do_simplify_workplane
+//
+//	Dammit, we don't want a mish-mash of Top vs. World geometry.  It 
+//	mucks up the Pattern/Instance stuff.
+//
+//	Force all the stuff in World over to Top.
+//
+CReturn
+CNestingPart::do_simplify_workplane( CModel* model )
+{
+	CReturn ret;
+	CDbIterator iter;
+
+	if (CReturn::Debug()>=1)
+	{
+		CString note;
+		note.Format( "   Simplify Workplane" );
+		ret.Diagnostic( note );
+	}
+
+	CDbWorkplane* top = NULL;
+	model->EntityFind( STR_TOP, (CDbEntity**)&top, DBWORKPLANE, DBWORKPLANE );
+
+	CDbWorkplane* world = NULL;
+	model->EntityFind( STR_WORLD, (CDbEntity**)&world, DBWORKPLANE, DBWORKPLANE );
+
+	if ( !top || !world )
+		return ret;
+
+	const C3x4Matrix& to_top = top->Inverse();
+
+	CDbEntity::NewAction();
+
+	iter.Init( model->Db(), DBPOINT );
+	while ( TRUE )
+	{
+		CDbEntity* db_ent = iter();
+		if (!db_ent)
+			break;
+
+		if (db_ent->Type() > DBHOLE)
+			break;
+
+		iter.Next();
+
+		if (db_ent->Workplane() == world)
+		{ 
+			db_ent->Transform( to_top );
+			db_ent->Workplane( top );
+		}
+	}
+
+	return ret;
+}
+
+// ==================================================================
+//		calcArea
+//
+//	Calculate the total area of the part (outline)... with or without
+//	holes accounted for.
+//
+// 2004.02.19 (PE) -- Cad Nester was dropping the inside kerf profiles,
+// thereby preventing part-in-part nesting where such was possible.
+CReturn
+CNestingPart::calcArea( 
+	CNestConfig& config )
+{
+	CReturn	status;
+	CToolHit* toolhit;
+	double	inside_area;
+	double	min_area;
+
+	// Set up our context of information
+	toolhit = m_toolhitarray[0];
+	if (!toolhit)
+		return status.Fatal( IDS_NEST_PART_EMPTY );
+
+	// Get Part area
+	m_max_area = do_calc_area( (*toolhit)[HIT_PART_OUTSIDE], AREA_SUM );
+
+	m_outer_kerf_area = do_calc_area( (*toolhit)[HIT_KERF_OUTSIDE], AREA_SUM );
+
+	// Get the outside area.
+#if (_NST)
+	m_area = m_outer_kerf_area;
+#else
+	if (config.AreaOffset())
+		m_area = m_outer_kerf_area;
+	else
+		m_area = m_max_area;
+#endif
+
+	// Now get Hole area... min and total, as needed
+#if (_NST)
+	inside_area = do_calc_area( (*toolhit)[HIT_KERF_INSIDE], AREA_SUM );
+	m_area -= inside_area;
+
+	min_area = inside_area;
+#else
+	m_min_area = do_calc_area( (*toolhit)[HIT_PART_INSIDE], AREA_MIN );
+
+	if (config.AreaLessHoles() )
+	{
+		if ( config.AreaOffset() )
+			inside_area = do_calc_area( (*toolhit)[HIT_KERF_INSIDE], AREA_SUM );
+		else
+			inside_area = do_calc_area( (*toolhit)[HIT_PART_INSIDE], AREA_SUM );
+
+		m_area -= inside_area;
+	}
+
+	min_area = m_extent.Area();
+#endif
+
+	config.LargePartArea( max( config.LargePartArea(), m_outer_kerf_area ) );
+	config.SmallPartArea( min( config.SmallPartArea(), m_outer_kerf_area ) );
+
+	config.LargeHoleArea( max( config.LargeHoleArea(), do_calc_area( (*toolhit)[HIT_PART_INSIDE], AREA_MAX)) );
+	config.SmallHoleArea( min( config.SmallHoleArea(), m_min_area ) );
+
+	return status;
+}
+
+// ----------------------------------------
+double
+CNestingPart::do_calc_area( CGeoPolyArray* geopoly_array, eAreaCalc calc )
+{
+	if ( !geopoly_array || !geopoly_array->Count() )
+		return 0.;
+
+	double totarea = 0.0;
+	for (int idx=0; idx<geopoly_array->Count(); idx++)
+	{
+		double area = fabs((*geopoly_array)[idx]->Area());
+		switch (calc)
+		{
+			case AREA_SUM:
+				totarea += area;
+				break;
+			case AREA_MIN:
+			if ( ZERO( totarea ) || ( area < totarea ) )
+				{
+					totarea = area;
+				}
+				break;
+			case AREA_MAX:
+				totarea = max( totarea, area );
+				break;
+		}
+	}
+
+	return totarea;
+}
+
+//=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+// We strive to assign part priorities (ie. pass number) such that:
+//
+//   pass 0 is reserved for large parts.
+//   pass 1 is reserved for "special" parts (whatever that means) :-(
+//   pass 2..(2+N_non_filler_parts) is for non filler parts.
+//   pass (2+N_non_filler_parts+1..?) is for filler parts.
+//
+// We also strive to ensure the part priority values are both
+// unique and consecutive (consecutive, assuming the priorites
+// were sorted).
+//
+// TODO: Perhaps this method should be moved into CPartBin
+// and the prototype changed to accept a sorting method?
+//
+// PREREQUISITE: Must have called CPartBin::PartsSort()
+//
+// NOTE: The name ReOrder() is misleading.  This method simply
+// assigns as pass number to each part in the partbin.
+void
+CNestingPart::ReOrder( const CNestConfig& config )
+{
+	int	pass;
+
+	if ( Special() )
+	{
+		// Dunno what this means ... or its effect.
+		pass = SPECIAL_PASS;
+	}
+	else
+	{
+		pass = COMMON_PASS + config.Counter();
+	}
+
+	Pass( pass );
+}
+
+// =======================================================================
+//		do_rotate
+//
+//	Rotate a model (in-place) by the given radians.
+//
+CReturn
+CNestingPart::do_rotate(
+	CModel*	model,
+	double	rotang,
+	BOOL	mirror )
+{
+	CReturn ret;
+
+	ASSERT( model );
+
+	if ( ZERO(rotang) && !mirror )
+		return ret;
+
+	// Select everything
+	CSelectorStack& selectorStack = model->SelectorStack();
+	selectorStack.Init( *model );
+
+	CSelector& model_select = selectorStack();
+	model_select.All( 1 );
+	model_select.SystemFlag( FALSE );
+	model_select.SelectAll(TRUE);
+
+	C3x4Matrix	xform;
+	if (mirror)
+	{
+		xform.Scale( 1.0, -1.0, 1.0 );
+
+		// 2005.11.10 (PE) -- Sunflower reported that mirrored
+		// parts in a nest had the wrong winding direction.
+		//
+		// Previously, XFORM_REV_PROFS was not used.
+		// See also CModelUtil::Transform().
+		ret += CModelUtil::Transform( model, xform, 0, XFORM_REV_PROFS );
+
+		// Reset for next transform.
+		xform.setUnit();
+	}
+
+	if ( !ZERO(rotang) )
+	{
+		xform.setXYAngle( rotang );
+		ret += CModelUtil::Transform( model, xform, 0, 0 );
+	}
+
+	model_select.Clear();
+
+	return ret;
+}
+
+CReturn
+CNestingPart::Generate( CViewMgr& view, CNestConfig& config, int hit )
+{
+	CReturn	status;
+
+	if ( CNestConfig::IsBitmapNest() )
+		status = bitmap_generate( view, config, hit );
+	else
+		status = exact_generate( view, config, hit );
+
+	return status;
+}
+
+// ==================================================================
+//		Generate
+//
+//	Create the various critical outlines necessary for nesting
+//	Does this in the starting rotation only
+//
+//	Assumes you have run Simplify() first to minimize m_model
+//
+//	Creates m_toolhits geometry, EXCEPT for leads and pierces.
+//	Call Accessorize() to add in lead junk.
+//
+// ==================================================================
+CReturn
+CNestingPart::exact_generate( CViewMgr& view, CNestConfig& config, int hit )
+{
+	CReturn		status;
+	CDbIterator	iter;
+	CDbEntity*	dbEntity;
+	CDbProfile*	dbProfile;
+	CDbTool*	dbTool;
+
+	if (m_toolhits)
+		delete m_toolhits;
+
+	m_toolhits = new CGeoPoly();
+
+	CModel* model = m_modelarray[hit];
+
+	// Do two passes.  First pass, we try to find any PART_OUTLINE geometry.
+	// If we don't find any, do the second pass with tooling
+	iter.Init( model->Db(), DBLINE );
+	while ( TRUE )
+	{
+		dbEntity = iter();
+		if (dbEntity == NULL)
+			break;
+
+		iter.Next();
+
+		// Only converts tooled geometry, which MAY NOT LIVE in tooled features anymore.
+		//	Note that we are guaranteeded NOTHING -- no profiles, no winding, nothing
+		//	Test part as PunchDemo3 illustrates the horror.
+#if BEFORE_V17_0_156_1
+		if ( !dbEntity->IsToolpath() )
+		{
+			dbProfile = dynamic_cast<CDbProfile*>(dbEntity);
+
+			if (dbProfile)
+			{
+				dbTool = dbProfile->Tool();
+
+				// Rescue bad profiles here... Yeah, it's the wrong place,
+				// but here is where I care first.
+				if ( !dbTool && dbProfile->Count() )
+				{
+					dbProfile->Tool( (*dbProfile)[0]->Tool() );
+					dbTool = dbProfile->Tool();
+				}
+
+				if ( dbTool && dbTool->Name().CompareNoCase(STR_PART_OUTLINE) == 0)
+				{
+					do_outline(dbProfile, hit);
+					PartOutline(true);
+				}
+			}
+		}
+#else
+		// ASSUMPTION/RULE: The "part outline" is a single closed dbProfile.
+		// NOTE: This change makes a dramatic performance improvement for some
+		// parts.  Discovered when dealing with sample parts from Dynatorch.
+		if ( !dbEntity->IsToolpath() )
+		{
+			dbTool = dbEntity->Tool();
+			if ( dbTool && dbTool->Name().CompareNoCase(STR_PART_OUTLINE) == 0)
+			{
+				dbProfile = dynamic_cast<CDbProfile*>( dbEntity->Owner() );
+				if (dbProfile)
+				{
+					do_outline(dbProfile, hit);
+					PartOutline(true);
+					break;
+				}
+			}
+		}
+#endif
+	}
+
+	int busy = 0;
+	iter.Init( model->Db(), DBLINE );
+	while ( !PartOutline() )
+	{
+		// Catch any user abort.
+		status += CProgressWnd::ProgressWndUpdate();
+		if ( !status.IsOk() )
+			break;
+
+		dbEntity = iter();
+		if (!dbEntity)
+			break;
+
+		iter.Next();
+
+		// Only converts tooled geometry, which MAY NOT LIVE in tooled features anymore.
+		//	Note that we are guaranteeded NOTHING -- no profiles, no winding, nothing
+		//	Test part as PunchDemo3 illustrates the horror.
+		CDbProfile* profile = dynamic_cast<CDbProfile*>(dbEntity);
+		CDbCurve* curve = dynamic_cast<CDbCurve*>(dbEntity);
+		CDbHole* hole = dynamic_cast<CDbHole*>(dbEntity);
+		CDbProfile* owner_profile = dynamic_cast<CDbProfile*>(dbEntity->Owner());
+		CDbFeature* owner_feature = dynamic_cast<CDbFeature*>(dbEntity->Owner());
+
+#if (_CI)
+		int sncs = dbEntity->Attrib().getInt("_sncs", 0);
+		if (sncs == 0)
+		{
+			if (curve && curve->Owner())
+			{
+				sncs = curve->Owner()->Attrib().getInt("_sncs", 0);
+			}
+		}
+#endif
+
+		if ( dbEntity->IsToolpath() )
+		{
+			// Skip Leads and Pierces
+			bool skip = false;
+			if (owner_feature)
+			{
+				CString type = owner_feature->Attrib().getString( STR_TYPE, "<error>" );
+				if ( !type.CompareNoCase( "_lead_in" ) ||
+					 !type.CompareNoCase( "_lead_out" ) )
+						skip = true;
+			}
+
+			if (hole)
+			{
+				CString type = hole->Attrib().getString( STR_TYPE, "<error>" );
+				if ( !type.CompareNoCase( "_pierce" ) )
+					skip = true;
+			}
+
+#if (_CI)
+			if ((sncs > 50000) && (sncs < 60000)) // CI SNCS code category for leads
+				skip = true;  // lead-in or lead-out
+			else if ((sncs == 20104) || (sncs == 30104))
+				skip = true;  // spiral pocketing (improves processing time, may bite use too)
+#endif
+
+			// Ignore other tooling if we are using part_outline
+			if (PartOutline())
+				skip = true;
+
+			// Cut it
+			if (!skip)
+			{
+				busy++;
+
+				if ( profile )
+					do_toolhit(profile, false);
+				else if ( ( curve || hole) && !owner_profile )
+					do_toolhit(dbEntity, false);
+			}
+		}
+	}
+
+	return status;
+}
+
+CReturn
+CNestingPart::bitmap_generate( CViewMgr& view, CNestConfig& config, int hit )
+{
+	CReturn		status;
+	CDbIterator	iter;
+	CGeoPolyArray	geoPolyArray;
+	CGeoPoly	tmp;
+	CGeoPoly*	geoPoly;
+	CModel*		model;
+	CToolHit*	toolhit;
+	CDbFeature*	dbFeature;
+	CDbProfile*	dbProfile;
+	CDbCurve*	dbCurve;
+	double		max_area, area;
+	int			count, indx, max_indx;
+
+	// Set up our context of information
+	model = m_modelarray[hit];
+	toolhit = m_toolhitarray[hit];
+	if ((model == NULL) || (toolhit == NULL))
+		return status.Fatal( IDS_NEST_PART_EMPTY );
+
+	max_area = -UNDEFINED;
+	max_indx = 0;
+
+	// Do two passes.  First pass, we try to find any PART_OUTLINE geometry.
+	// If we don't find any, do the second pass with tooling
+	iter.Init( model->Db(), DBLINE );
+	while ( TRUE )
+	{
+		dbCurve = dynamic_cast<CDbCurve*>( iter() );
+		if (dbCurve == NULL)
+			break;
+
+		// ASSUMPTION/RULE: The "part outline" is a single closed dbProfile.
+		// NOTE: This change makes a dramatic performance improvement for some
+		// parts.  Discovered when dealing with sample parts from Dynatorch.
+		if ( IsPartOutline( (*dbCurve) ) )
+		{
+			dbProfile = dynamic_cast<CDbProfile*>( dbCurve->Owner() );
+			if (dbProfile != NULL)
+			{
+				ContainerToGeopoly( (*dbProfile), &tmp );
+				PartOutline(true);
+				break;
+			}
+		}
+
+		iter.Next();
+	}
+
+	if ( PartOutline() )
+	{
+		area = tmp.Area();
+		if (area > 0.)
+			tmp.Reverse();  // force CW winding direction
+
+		geoPoly = new CGeoPoly;
+		PolyTransfer( &tmp, geoPoly );
+		geoPolyArray.Append( geoPoly );
+	}
+	else
+	{
+		iter.Init( model->Db(), DBLINE );
+		while ( TRUE )
+		{
+			dbCurve = dynamic_cast<CDbCurve*>( iter() );
+			if (dbCurve == NULL)
+				break;
+
+			if ( IsToolPath( (*dbCurve) ) )
+			{
+				dbProfile = dynamic_cast<CDbProfile*>( dbCurve->Owner() );
+				if (dbProfile == NULL)
+				{
+					dbFeature = dynamic_cast<CDbFeature*>( dbCurve->Owner() );
+					if (dbFeature != NULL)
+					{
+						// We have a lead in/out?
+
+						// Short-circuit next reference to this profile.
+						dbFeature->pAttrib()->setInt( "tp", 1 );
+
+						// Move the curves directly to geoPoly.
+						geoPoly = new CGeoPoly;
+						ContainerToGeopoly( (*dbFeature), geoPoly );
+						geoPolyArray.Append( geoPoly );
+					}
+				}
+				else
+				{
+					// Short-circuit next reference to this profile.
+					dbProfile->pAttrib()->setInt( "tp", 1 );
+
+					ContainerToGeopoly( (*dbProfile), &tmp );
+
+					area = tmp.Area();
+					if (area > 0.)
+						tmp.Reverse();  // force CW winding direction
+
+					// Move the curves from tmp to geoPoly.
+					geoPoly = new CGeoPoly;
+					PolyTransfer( &tmp, geoPoly );
+					geoPolyArray.Append( geoPoly );
+
+					area = fabs( area );
+					if (area > max_area)
+					{
+						// ASSUMPTION: The profile having the largest
+						// area is the external profile.
+						max_area = area;
+						max_indx = geoPolyArray.Count() - 1;
+					}
+				}
+			}
+
+			iter.Next();
+		}
+	}
+
+	// Tabulate and segregate ....
+	count = geoPolyArray.Count();
+	for (indx = 0; indx < count; ++indx)
+	{
+		geoPoly = geoPolyArray.GetAt( indx );
+
+		// ASSUMPTION: We have a single closed outer polyline.
+		// As such, the other polylines are either interior
+		// polylines or lead in/outs.  In the latter case, it
+		// may not matter that we designate them as HIT_KERF_INSIDE.
+		//
+		// NOTE: toolhit takes ownership of geoPoly.
+		if (indx == max_indx)
+			(*toolhit)[HIT_KERF_OUTSIDE]->Append( geoPoly );
+		else
+			(*toolhit)[HIT_KERF_INSIDE]->Append( geoPoly );
+	}
+
+	geoPolyArray.BenignFlush();
+
+	return status;
+}
+
+// ==================================================================
+//		GenerateBox
+//
+// ==================================================================
+CReturn
+CNestingPart::GenerateBox( CNestConfig& config, int hit )
+{
+	CReturn		ret;
+	CDbIterator	iter;
+
+	if (m_toolhits)
+	{ delete m_toolhits; }
+	m_toolhits = new CGeoPoly();
+
+	CModel* model = m_modelarray[hit];
+	C3dBox extent = model->BoxUser(0);
+
+	PartOutline(true);
+
+	CToolHit* toolhit = m_toolhitarray[hit];
+	//
+	// Prep the profile for offset
+	//
+	CProfile profile;
+	profile.Append( new CGeoLine(extent.Xmin(), extent.Ymin(), extent.Xmax(), extent.Ymin()) );
+	profile.Append( new CGeoLine(extent.Xmax(), extent.Ymin(), extent.Xmax(), extent.Ymax()) );
+	profile.Append( new CGeoLine(extent.Xmax(), extent.Ymax(), extent.Xmin(), extent.Ymax()) );
+	profile.Append( new CGeoLine(extent.Xmin(), extent.Ymax(), extent.Xmin(), extent.Ymin()) );
+
+	int profdir = SGN(profile.Area());
+	if (profdir > 0)
+		profile.Reverse();
+
+	CGeoPoly* nibblepoly = new CGeoPoly;
+	for (int idx=0; idx<profile.Count(); idx++)
+	{
+		CGeoCurve* curve = profile[idx];
+		nibblepoly->Append( *curve );
+	}
+
+	profile.Reverse();
+	for (idx=0; idx<profile.Count(); idx++)
+	{
+		CGeoCurve* curve = profile[idx];
+		nibblepoly->Append( *curve );
+	}
+
+	m_toolhits->OR( *nibblepoly );
+	profile.DestructiveFlush();
+
+	return ret;
+}
+
+
+// ==================================================================
+//		Accessorize
+//
+//	Add the lead and pierce geometry in as Kerf, NOT doing a boolean
+//	on it, but just dumping it into the appropriate array.
+//
+//	Avoids booleans on the delicate tangency cases.
+//
+// ==================================================================
+CReturn
+CNestingPart::Accessorize( CNestConfig& config, int hit )
+{
+	CReturn		ret;
+	CDbIterator	iter;
+
+	if ( PartOutline()
+//		|| config.GridChain()
+		)
+	{ return ret; }
+
+	if (m_toolhits)
+		delete m_toolhits;
+
+	m_toolhits = new CGeoPoly();
+
+	CModel* model = m_modelarray[hit];
+
+	iter.Init( model->Db(), DBLINE );
+	while ( TRUE )
+	{
+		CDbEntity* db_ent = iter();
+		if (!db_ent)
+			break;
+
+		iter.Next();
+		//
+		// Only converts tooled geometry, which MAY NOT LIVE in tooled features anymore.
+		//	Note that we are guaranteeded NOTHING -- no profiles, no winding, nothing
+		//	Test part as PunchDemo3 illustrates the horror.
+		//
+		CDbProfile* profile = dynamic_cast<CDbProfile*>(db_ent);
+		CDbCurve* curve = dynamic_cast<CDbCurve*>(db_ent);
+		CDbHole* hole = dynamic_cast<CDbHole*>(db_ent);
+		CDbProfile* owner_profile = dynamic_cast<CDbProfile*>(db_ent->Owner());
+		CDbFeature* owner_feature = dynamic_cast<CDbFeature*>(db_ent->Owner());
+		int sncs = (db_ent->Attrib().getInt("_sncs", 0) / 10000);
+
+		if ( db_ent->IsToolpath() )
+		{
+			bool skip = false;
+			if (owner_feature)
+			{
+				CString type = owner_feature->Attrib().getString( STR_TYPE, "<error>" );
+				if ( !type.CompareNoCase( "_lead_in" ) ||
+					 !type.CompareNoCase( "_lead_out" ) )
+				{
+					skip = true;
+				}
+			}
+
+			if (hole)
+			{
+				CString type = hole->Attrib().getString( STR_TYPE, "<error>" );
+				if ( !type.CompareNoCase( "_pierce" ) )
+				{
+					skip = true;
+				}
+			}
+
+			if (sncs == 5) // CI SNCS code category for leads
+				skip = true;
+
+			if (skip)
+			{
+				if ( profile )
+				{
+					do_toolhit(profile, true);
+				}
+
+#if 1
+				// Edwin's original test.
+				if ( (curve || hole) && !owner_profile )
+				{
+					do_toolhit( db_ent, true );
+				}
+#else
+				// BugID: 779 -- overlapping parts.
+				// 2004.04.18 (PE) -- Introduced whilst floundering around
+				// trying to prevent nesting from overlapping parts.  Lead
+				// in/out geometry was being added to m_toolhits.  During
+				// subsequent processing, seed point were being calculated
+				// using this geometry but, according to a phone conversion,
+				// probably should not be.  As such, this geometry is now
+				// filtered out.
+				if (owner_feature != NULL)
+				{
+					//if (owner_feature->Attrib().getInt("_lead_setup",0) == 0)
+					{
+						if ( (curve || hole) && !owner_profile )
+						{
+							do_toolhit(db_ent, true);
+						}
+					}
+				}
+				else if ( (curve || hole) && !owner_profile )
+				{
+					do_toolhit(db_ent, true);
+				}
+#endif
+			}
+		}
+	}
+	//
+	// Now, pseudo-assemble
+	//
+	CGeoPolyArray prof_array;
+	//
+	// First, extract the profiles
+	//
+	double tab_gap = config.GapTolerance();
+
+	CGeoPolyArray raw_prof;
+	while (true)
+	{
+		CGeoPoly* profile = m_toolhits->ExtractProfile( +1, tab_gap, false ); // +1 left, -1 right
+
+		if (!profile)
+			break;
+
+		profile->TrimLoops( 3, 0.001 );	// Magic numbers.  Sorry.
+		// Follow-up to IT685.  We need to handle the accessories as KERF, otherwise we shift
+		// them over the edge of the sheet.  Note that there IS the option "Pierce Hole" that
+		// can be set to overlap or exclude kerf, it should be okay.
+//		profile->Reverse(); // Added for IT685, so going right direction for PART
+		raw_prof.Append( profile );
+	}
+	//
+	// Check all mutual containments and insert profiles into relevant
+	// lists.  Not combined with above for clarity.
+	//
+	CToolHit* toolhit = m_toolhitarray[hit];
+
+	int rawnum = raw_prof.Count();
+	for (int rawidx=0; rawidx<rawnum; rawidx++)
+	{
+		CGeoPoly* profile = raw_prof[rawidx];
+
+		// 2005.01.25 (PE) -- See also other comments with same timestamp.
+#if BEFORE_2005_01_25
+		int depth;
+		if (config.HardPierce())
+			depth=HIT_PART_OUTSIDE;  // Was HIT_KERF_OUTSIDE, changed for IT685
+		else
+			depth=HIT_KERF_OUTSIDE;
+#else
+		int depth = HIT_KERF_OUTSIDE;
+#endif
+
+		CGeoPolyArray* polyarray = (*toolhit)[HIT_PART_OUTSIDE];
+
+		int polynum = polyarray->Count();
+		for (int polyidx=polynum-1; polyidx>=0; polyidx--)
+		{
+			CGeoPoly* poly = (*polyarray)[polyidx];
+			if (poly->Encloses( *profile ))
+			{
+				depth = (config.HardPierce() ? HIT_PART_INSIDE : HIT_KERF_INSIDE);
+				break;
+			}
+		}
+
+		polyarray = (*toolhit)[depth];
+		polyarray->Append( profile );
+
+	} // next rawidx
+
+	return ret;
+}
+
+
+void
+CNestingPart::do_toolhit( CDbProfile* db_prof, bool accessory )
+{
+	if ((m_use_gap_tool > 1) || m_use_tool_extruder)
+	{
+		// Experimental.
+
+		if (do_burn_test(db_prof))
+		{
+			do_toolhit_burn(db_prof, accessory);
+		}
+		else
+		{
+			CDbEntity*	dbEntity;
+			int			count, indx;
+
+			count = db_prof->Count();
+			for (indx = 0; indx < count; ++indx)
+			{
+				dbEntity = (*db_prof)[indx];
+				if (do_burn_test( dbEntity ))
+					do_toolhit_burn( dbEntity, accessory );
+				else
+					do_toolhit_nibble( dbEntity, accessory );
+			}
+		}
+	}
+	else
+	{
+		// V16.5 and earlier.
+
+		if (do_burn_test(db_prof))
+			do_toolhit_burn(db_prof, accessory);
+		else
+			do_toolhit_nibble(db_prof, accessory);
+	}
+}
+
+void
+CNestingPart::do_toolhit( CDbEntity* db_ent, bool accessory )
+{
+	if (do_burn_test( db_ent ))
+		do_toolhit_burn( db_ent, accessory );
+	else
+		do_toolhit_nibble( db_ent, accessory );
+}
+
+BOOL
+CNestingPart::do_burn_test( CDbEntity* db_ent )
+{
+	CDbTool* tool;
+
+	if (db_ent->Type() == DBHOLE)
+		return FALSE;
+
+	tool = db_ent->Tool();
+
+	if (tool == NULL)
+		return FALSE;
+
+	if (CNibbler::canNibble( *db_ent ))
+	{
+		// We *can* nibble this, but do we want to?
+		
+		if ( tool->IsRoundTool() )
+			return TRUE;
+	}
+
+	return ( !tool->IsPunchTool() );
+}
+
+// --------------------------------------
+
+// NOTE: When m_use_tool_extruder is true, we still use CNibbler for
+// those cases that CToolShapeExtruder does not handle.  That way,
+// we can incrementally extend the implement of CToolShapeExtruder.
+void
+CNestingPart::do_toolhit_nibble( CDbEntity* db_ent, bool accessory )
+{
+	CGeoPoly	nibblepoly;
+	bool		use_nibbler;
+
+	use_nibbler = true;
+
+#if (!_CI && !_NST)  // CI should never get here anyways!
+	CDbCurve* dbCurve = dynamic_cast<CDbCurve*>( db_ent );
+	if (m_use_tool_extruder && (dbCurve != NULL))
+	{
+		CToolShapeExtruder extruder;
+
+		CGeoCurve* geoCurve = dbCurve->Curve();
+
+		extruder.Extrude( (*geoCurve), dbCurve->Tool()->Attrib(), &nibblepoly );
+
+		delete geoCurve;
+
+		if (nibblepoly.Count() > 0)
+		{
+			nibblepoly.UserData( (void*) (accessory ? 1 : NULL) );
+
+			// m_toolhits->Append( nibblepoly );  // <--- use this to see the raw geometry
+			m_toolhits->OR( nibblepoly );
+
+			use_nibbler = false;
+		}
+	}
+#endif
+
+	if (use_nibbler)
+	{
+		CNibbler nibbler;
+		CGeoPoly hitpoly;
+		C3x4Matrix xform;
+		C3dCoordList hitlist;
+		C3dCoord* hitpt;
+		CDbTool* tool;
+		double	tangent;
+		int		num, idx;
+		bool	pierce;
+
+		pierce = false;
+
+		tool = db_ent->Tool();
+
+		if ((db_ent->Type() == DBHOLE) && tool->IsRoundTool())
+		{
+			CString attrib = db_ent->Attrib().getString( "Type", "" );
+			pierce = (attrib.CompareNoCase("_pierce") == 0);
+		}
+
+		nibbler.Nibble( *db_ent, &hitlist );
+		num = hitlist.Count();
+		for (idx=0; idx < num; ++idx)
+		{
+			if (pierce)
+			{
+				CGeoArc arc;
+				C3dCoord pc;
+				double	radius;
+
+				pc.XYZ( 0., 0., 0. );
+				radius = (0.5 * tool->EffectiveDiameter()) + m_kerf_adjust;
+				arc.Init( pc, radius, CCW );
+
+				hitpoly.Append( arc );
+			}
+			else
+			{
+				tool->Convert( &hitpoly );
+			}
+
+			if (hitpoly.Winding() > 0)
+				hitpoly.Reverse();
+
+			hitpt = hitlist[idx];
+
+			tangent = (tool->IsIndexable() ? hitpt->Z() : 0.);
+			hitpt->Z( 0.0 );
+
+			xform.setXYAngle( tangent );
+			xform.setT( *hitpt );
+
+			hitpoly.Transform( xform );
+
+			nibblepoly.OR( hitpoly );
+			nibblepoly.Reduce();
+
+			hitpoly.Flush();
+		}
+
+		nibblepoly.UserData( (void*) (accessory ? 1 : NULL) );
+
+		// m_toolhits->Append( nibblepoly );  // <--- use this to see the raw geometry
+		m_toolhits->OR( nibblepoly );
+
+		hitlist.DestructiveFlush();
+	}
+}
+
+// --------------------------------------
+
+void CNestingPart::do_toolhit_burn( CDbContainer* db_container, bool accessory )
+{
+	CProfile	profile;
+	CDbEntity*	db_ent;
+	CDbCurve*	db_curve;
+	CGeoCurve*	curve;
+	int			count, indx;
+	int			sncs;
+
+	// ASSUMES tool center toolpath.
+	CDbTool* tool = db_container->Tool();
+
+	// Prep the profile for offset
+	count = db_container->Count();
+	for (indx = 0; indx < count; ++indx)
+	{
+		db_ent = (*db_container)[indx];
+
+		sncs = (db_ent->Attrib().getInt("_sncs", 0) / 10000);
+		if ( (sncs == 5) && (!accessory) )
+			continue;
+
+		db_curve = dynamic_cast<CDbCurve*>(db_ent);
+
+		curve = db_curve->Curve();
+
+		profile.Append( curve );
+	}
+	//
+	// Force coincidence of the start/end of profiles (eliminates both gaps,
+	// and more importantly, overlaps).
+	//
+	if ((profile.Count() > 0) &&
+		!profile.IsClosed(SMALL) &&
+		!accessory &&
+		!tool->IsPunchTool() )	// Punched ones may be OPEN... so don't fuck with 'em
+	{
+		int num = profile.Count()-1;
+		CGeoCurve* first = profile[0];
+		CGeoCurve* last = profile[num];
+		//
+		// This is just a hack to get nesting through the day.
+		// Any minor deviations because there is a gap in the CORNER
+		// of the part should be absorbed by the web thickness.
+		//
+		if (last->Type() == GEOLINE)
+		{
+			last->EndPt(first->StartPt());
+		}
+		else
+		if (first->Type() == GEOLINE)
+		{
+			first->StartPt(last->EndPt());
+		}
+		else // Both DBARC
+		{
+			CGeoArc* st_arc = (CGeoArc*)first;
+			CGeoArc* en_arc = (CGeoArc*)last;
+
+			C3dCoord hit[2];
+			int num = CSolution::Intersect( *st_arc, *en_arc, true, hit );
+			if (num)
+			{ last->StartPt(hit[0]); }
+		}
+	}
+
+	do_toolhit_burn( &profile, tool, accessory );
+
+	// Is curve a leak here?
+}
+
+void CNestingPart::do_toolhit_burn( CDbEntity* db_ent, bool accessory )
+{
+	// ASSUMES tool center toolpath.
+	CDbTool* tool = db_ent->Tool();
+
+	// Now, what do we have here?
+	CDbCurve* db_curve = dynamic_cast<CDbCurve*>(db_ent);
+	if (db_curve != NULL)
+	{
+		// Prep the profile for offset
+		CProfile profile;
+		CGeoCurve* curve = db_curve->Curve();
+
+		profile.Append( curve );
+
+		do_toolhit_burn( &profile, tool, accessory );
+	}
+}
+
+void CNestingPart::do_toolhit_burn( CProfile* profile, CDbTool* tool, bool accessory )
+{
+	double	sharp_ang;
+	double	tool_rad;
+	int		profdir;
+
+	// 2005.01.27 (PE) -- Through various circumstances, CI could
+	// pass any empty profile to this function, causing a crash.
+	// And though the client could check for an empty profile
+	// before calling this method, we take the more defensive
+	// solution and protect the client from himself.
+	if (profile->Count() < 1)
+		return;
+
+#if (_NST)
+	sharp_ang = 135. * DEG2RAD;
+#else
+	sharp_ang = 180. * DEG2RAD;
+#endif
+
+	tool_rad = tool->EffectiveDiameter() / 2.0;
+
+	profdir = SGN(profile->Area());
+	if (!profdir)
+		profdir = -1;	// Actually, profdir doesn't really matter!  
+
+	// Now create two offsets, left and right
+	// TODO:  Put into array and do offsets in a loop?
+	CGeoPoly nibblepoly;
+	CProfileList left_offset;
+	CWorm::ProfOffset( (*profile), -profdir, tool_rad, sharp_ang, FALSE, &left_offset );
+	if (!left_offset.Count())
+		return;
+
+	CProfile* left_prof = left_offset[0];
+	if (profdir > 0)
+		left_prof->Reverse();
+
+	for (int idx=0; idx<left_prof->Count(); idx++)
+	{
+		CGeoCurve* curve = (*left_prof)[idx];
+
+		nibblepoly.Append( *curve );
+	}
+	// --------------------------------------
+	CProfileList right_offset;
+	CWorm::ProfOffset( (*profile), profdir, tool_rad, sharp_ang, FALSE, &right_offset );
+	if (!right_offset.Count())
+		return;
+
+	CProfile* right_prof = right_offset[0];	// Only use first curve for now
+	if (profdir < 0)
+		right_prof->Reverse();
+
+	for (idx=0; idx<right_prof->Count(); idx++)
+	{
+		CGeoCurve* curve = (*right_prof)[idx];
+		nibblepoly.Append( *curve );
+	}
+
+	if (accessory)
+	{
+		//
+		// Different handling of open vs. closed profiles.
+		// Open profiles need end-caps... closed profiles have complementary
+		// windings.
+		//
+		if (!profile->IsClosed())
+		{
+			CGeoArc		arc;
+			C3dCoord	ps;
+			C3dCoord	pe;
+			C3dCoord	pc;
+			int			count;
+
+			count = left_prof->Count() - 1;
+			ps = (*left_prof)[count]->EndPt();
+			pe = (*right_prof)[0]->StartPt();
+			pc.XYZ( ((ps.X() + pe.X()) / 2), ((ps.Y() + pe.Y()) / 2), ps.Z() );
+			arc.Init( ps, pe, pc, CW );
+			if (!arc.StartPt().WithinTolXY(arc.EndPt(), SMALL))
+			{ nibblepoly.Append( arc ); }
+
+			count = right_prof->Count() - 1;
+			ps = (*right_prof)[count]->EndPt();
+			pe = (*left_prof)[0]->StartPt();
+			pc.XYZ( ((ps.X() + pe.X()) / 2), ((ps.Y() + pe.Y()) / 2), ps.Z() );
+			arc.Init( ps, pe, pc, CW );
+			if (!arc.StartPt().WithinTolXY(arc.EndPt(), SMALL))
+			{ nibblepoly.Append( arc ); }
+		}
+
+		nibblepoly.UserData( (void*)1 );
+	}
+	else
+	{
+		// Actually, while the end caps are more accurately descriptive as arcs, they will ALSO
+		// work as lines, though they may give a somewhat more jaggy outside profile.
+		// As a bonus, lines are more robust.  And faster.
+		//
+		if (!profile->IsClosed())
+		{
+			CGeoLine	line;
+			C3dCoord	ps;
+			C3dCoord	pe;
+			int			count;
+
+			count = left_prof->Count() - 1;
+			ps = (*left_prof)[count]->EndPt();
+			pe = (*right_prof)[0]->StartPt();
+			line.StartPt(ps);
+			line.EndPt(pe);
+			nibblepoly.Append( line );
+
+			count = right_prof->Count() - 1;
+			ps = (*right_prof)[count]->EndPt();
+			pe = (*left_prof)[0]->StartPt();
+			line.StartPt(ps);
+			line.EndPt(pe);
+			nibblepoly.Append( line );
+		}
+		nibblepoly.UserData( (void*)NULL );
+	}
+
+#if (_NST)
+	m_toolhits->Append( nibblepoly );
+#else
+	// m_toolhits->Append( nibblepoly );
+	m_toolhits->OR( nibblepoly );
+#endif
+
+	left_offset.DestructiveFlush();
+	right_offset.DestructiveFlush();
+}
+
+// ==================================================================
+
+void CNestingPart::do_outline( CDbProfile* db_profile, int hit )
+{
+	CToolHit* toolhit = m_toolhitarray[hit];
+	//
+	// Prep the profile for offset
+	//
+	CProfile profile;
+	for (int idx=0; idx<db_profile->Count(); idx++)
+	{
+		CDbEntity* db_ent = (*db_profile)[idx];
+		CDbCurve* db_curve = dynamic_cast<CDbCurve*>(db_ent);
+
+		CGeoCurve* curve = db_curve->Curve();
+		profile.Append( curve );
+	}
+
+	int profdir = SGN(profile.Area());
+	if (profdir > 0)
+		profile.Reverse();
+
+
+	CGeoPoly* nibblepoly = new CGeoPoly;
+	for (idx=0; idx<profile.Count(); idx++)
+	{
+		CGeoCurve* curve = profile[idx];
+		nibblepoly->Append( *curve );
+	}
+
+	profile.Reverse();
+	for (idx=0; idx<profile.Count(); idx++)
+	{
+		CGeoCurve* curve = profile[idx];
+		nibblepoly->Append( *curve );
+	}
+
+	m_toolhits->OR( *nibblepoly );
+	profile.DestructiveFlush();
+}
+
+
+
+// ==================================================================
+//		Rotate
+//
+//	Take the model in the first slot and pre-rotate it.  THEN,
+//	continue to rotate and copy it into the additional model slots.
+//
+//	Assumes the model has been simplified.  ALSO assumes that the
+//	 model array is empty except for slot 0.
+//
+// ==================================================================
+CReturn		
+CNestingPart::Rotate( const CNestConfig& config )
+{
+	CReturn status;
+	CDbIterator iter;
+
+	CModel* model = m_modelarray[0];
+	//
+	double delta_ang = 0.0;
+	if (m_rotation > 1)
+	{
+		delta_ang = (TWOPI / m_rotation);
+	}
+	else
+	if (m_rotation < 0)
+	{
+		m_rotation = 2;
+		delta_ang = m_startang;
+		m_startang = 0.0;
+	}
+	else
+	{ m_rotation = 1; }
+
+	int fnum = ((m_mirror) ? 2 : 1);
+
+	// First, pre-rotate the base model
+	double startangle = DEG2RAD*m_startang;
+
+	status += do_rotate( model, startangle, m_startmirror );
+
+	m_toolhitarray.DestructiveFlush();
+
+	CToolHit* toolhit = new CToolHit();
+	toolhit->Part( this );
+	toolhit->Index( 0 );
+	toolhit->Rotation( startangle );
+	toolhit->Mirror( m_startmirror );
+
+//CMM2	mm2;
+//CString	file;
+//file.Format( "Spin_0.mm2");
+//mm2.Write( file, *model );
+
+	m_toolhitarray.Append( toolhit );
+	//
+	// Now, copy and rotate the model into the remaining slots
+	//
+	double angle = 0.0;
+	for (int idx=0; idx<m_rotation; idx++)
+	{
+		for (int fidx=0; fidx<fnum; fidx++)
+		{
+			if (!idx && !fidx)
+			{ continue; }
+
+			CModel* spin = new CModel();
+			spin->Init( dummy_stack, dummy_tree );
+			spin->UndoBufferSuppress();
+
+			m_modelarray.Append( spin );
+			model->EntityPrepareCopy( spin );
+
+			BOOL mirror = (fidx==1);
+
+			toolhit = new CToolHit();
+			int hitnum = m_toolhitarray.Append( toolhit );
+
+			toolhit->Part( this );
+			toolhit->Index( hitnum-1 );
+			toolhit->Rotation( startangle + angle );
+			toolhit->Mirror( mirror );
+
+
+			// Copy model[0] into spin and add to the model array
+iter.Init( model->Db(), DBTOOL );
+while (TRUE)
+{
+	CDbTool* db_tool = dynamic_cast<CDbTool*>(iter());
+				if (db_tool == NULL)
+					break;
+
+	CDbEntity* new_ent = NULL;
+	model->EntityCopy( *db_tool, &new_ent );
+
+				iter.Next();
+}
+
+			iter.Init( model->Db(), DBWORKPLANE );
+			while (TRUE)
+			{
+				CDbEntity* db_ent = iter();
+				if (db_ent == NULL)
+					break;
+
+				CDbEntity* owner = db_ent;
+				while (owner->Owner())
+				{
+					owner = owner->Owner();
+				}
+
+				CDbEntity* new_ent = NULL;
+				model->EntityCopy( *owner, &new_ent );
+
+				iter.Next();
+			}
+
+			// Now rotate the spun model in place
+			do_rotate( spin, angle, mirror );
+		}
+
+		angle += delta_ang;
+	}
+
+	return status;
+}
+
+CReturn		
+CNestingPart::Translate()
+{
+	CReturn status;
+
+	int num = m_modelarray.Count();
+	for (int idx=0; idx<num; idx++)
+	{
+		CModel* model = m_modelarray[idx];
+		do_transform( model );
+	}
+
+	return status;
+}
+
+// ==================================================================
+//		Lead
+//
+//	Apply leads to all models in the array, according to the
+//	rules specified.
+//
+//	Assumes the model has been simplified and rotated (though it will
+//	still work if not rotated).
+//
+// ==================================================================
+CReturn		
+CNestingPart::Lead( CNestConfig& config )
+{
+	CReturn ret;
+	eNestProgression	progression;
+
+	if (config.LeadSetup() <= 0)
+	{ return ret; }
+
+	int num = m_modelarray.Count();
+	for (int idx=0; idx<num; idx++)
+	{
+		CModel* model = m_modelarray[idx];
+
+		CSelector selector(*model);
+
+		selector.All( 1 );
+		selector.SystemFlag( FALSE );
+		selector.SelectAll(TRUE);
+
+		C3dBox pre_ext = model->BoxUser(0);
+
+		CLead lead(*model);
+		lead.Auto( config.ConfigDb(), config.LeadSetup(), &selector, TRUE, TRUE );
+
+		C3dBox post_ext = model->BoxUser(0);
+
+		selector.Clear();
+
+		double lead_bump = post_ext.Xmax() - pre_ext.Xmax();
+		lead_bump -= config.Spacing();
+		lead_bump = max(0.0, lead_bump);
+		if ( (lead_bump > SMALL) && (lead_bump > config.getLeadBumpX()) )
+			config.LeadBumpX(lead_bump);
+
+#if BEFORE_SUNFLOWER_BUG
+		lead_bump = ( config.NestToOrigin()
+					? (post_ext.Ymin() - pre_ext.Ymin())
+					: (post_ext.Ymax() - pre_ext.Ymax()) );
+#else
+		progression = config.Progression();
+		if ((progression == PROGRESS_PPY_SPX) || (progression == PROGRESS_PPX_SPY))
+			lead_bump = post_ext.Ymax() - pre_ext.Ymax();
+		else
+			lead_bump = post_ext.Ymin() - pre_ext.Ymin();
+#endif
+
+		lead_bump -= config.Spacing();
+		lead_bump = max(0.0, lead_bump);
+
+		if ( (lead_bump > SMALL) && (lead_bump > config.getLeadBumpY()) )
+			config.LeadBumpY(lead_bump);
+	}
+
+	return ret;
+}
+
+// ==================================================================
+//		Assemble
+//
+//	Assemble the toolhits into classified, organized, and sorted
+//	profiles.
+//
+//	Assumes you have run Generate() first to create m_toolhits geometry
+//
+// ==================================================================
+CReturn		
+CNestingPart::Assemble( CViewMgr& view, const CNestConfig& config, int hit )
+{
+	CReturn ret;
+
+	CGeoPolyArray prof_array;
+	//
+	// First, extract the profiles
+	//
+	 double tab_gap = config.GapTolerance();
+
+	CGeoPolyArray raw_prof;
+	while (true)
+	{
+		CGeoPoly* profile = m_toolhits->ExtractProfile( +1, tab_gap, false ); // +1 left, -1 right
+		if (!profile)
+			break;
+
+		profile->TrimLoops( 3, 0.001 );	// Magic numbers.  Sorry.
+		raw_prof.Append( profile );
+	}
+	//
+	// Check all mutual containments and insert profiles into relevant
+	// lists.  Not combined with above for clarity.
+	//
+	CToolHit* toolhit = m_toolhitarray[hit];
+
+	int rawnum = raw_prof.Count();
+	for (int rawidx=0; rawidx<rawnum; rawidx++)
+	{
+		CGeoPoly* profile = raw_prof[rawidx];
+
+		int depth=0;
+		for (int test=(TOOLHIT_DEPTH-2); test>=0; test--)
+		{
+			CGeoPolyArray* polyarray = (*toolhit)[test];
+			CGeoPolyArray* subarray = (*toolhit)[test+1];
+
+			int polynum = polyarray->Count();
+			for (int polyidx=polynum-1; polyidx>=0; polyidx--)
+			{
+				CGeoPoly* poly = (*polyarray)[polyidx];
+				if (poly->Overlaps( *profile ))		// More robust if we KNOW we are nested profiles
+				{
+					depth = test+1;
+					test = -1;
+					break;
+				}
+				else
+				{
+					if (profile->Encloses( *poly ))
+					{
+						depth = test;
+						polyarray->Remove( polyidx );
+						subarray->Append( poly );
+					}
+				}
+
+			} // next polyidx
+
+		} // next test
+
+		if ( (depth >= 0) && (depth < TOOLHIT_DEPTH) )
+		{
+			CGeoPolyArray* polyarray = (*toolhit)[depth];
+			polyarray->Append( profile );
+		}
+
+	} // next rawidx
+
+	return ret;
+}
+
+
+// ==================================================================
+//		AddSpace
+//
+//	Offset the specified profile to the outside by the config ExtraSpacing
+//	amount.
+//
+//	Assumes you have run Assemble() first to organize m_toolhits geometry
+//
+// ==================================================================
+/*
+CReturn		
+CNestingPart::AddSpace( const CNestConfig& config, int hit, int depth )
+{
+	CReturn ret;
+
+	CGeoPolyArray* poly_array = (*m_toolhitarray[hit])[depth];
+
+	if ( !poly_array
+		|| !poly_array->Count() )
+	{ return ret; }
+	//
+	// Sigh, the tedious work of shifting data formats
+	//
+	CProfile profile;
+	for (int pidx=0; pidx<poly_array->Count(); pidx++)
+	{
+		CGeoPoly* poly = (*poly_array)[pidx];
+
+		for (int idx=0; idx<poly->Count(); idx++)
+		{
+			const CGeoCurve& curve = (*poly)[idx];
+			profile.Append( (CGeoCurve*)&curve );		// We retain ownership of the curve
+		}
+	}
+	//
+	// Do the actual offsetting
+	//
+	CProfileList offset_list;
+	CWorm::ProfOffset( profile,
+						+1,
+						config.Spacing(),
+						180.0*DEG2RAD,//PI,
+						FALSE,
+						&offset_list);
+	profile.BenignFlush();
+	if (!offset_list.Count())
+	{ return ret; }
+	//
+	// Now update the poly array with the new data
+	//
+	poly_array->DestructiveFlush();
+
+	CGeoPoly* new_poly = new CGeoPoly();
+	poly_array->Append( new_poly );
+
+	for (pidx=0; pidx<offset_list.Count(); pidx++)
+	{
+		CProfile* profile = offset_list[pidx];
+
+		for (int idx=0; idx<profile->Count(); idx++)
+		{
+			new_poly->Append( *((*profile)[idx]) );
+		}
+	}
+	offset_list.DestructiveFlush();
+	
+	return ret;
+}
+*/
+CReturn		
+CNestingPart::AddSpace( const CNestConfig& config, int hit, int depth )
+{
+	CReturn	ret;
+	double	sharp_ang;
+
+	CGeoPolyArray* poly_array = (*m_toolhitarray[hit])[depth];
+
+	if ( !poly_array || !poly_array->Count() )
+		return ret;
+
+#if (_NST)
+	sharp_ang = 135. * DEG2RAD;
+#else
+	sharp_ang = 180. * DEG2RAD;
+#endif
+
+	// Sigh, the tedious work of shifting data formats
+	CProfile profile;
+	for (int pidx=0; pidx<poly_array->Count(); pidx++)
+	{
+		CGeoPoly* poly = (*poly_array)[pidx];
+
+		for (int idx=0; idx<poly->Count(); idx++)
+		{
+			const CGeoCurve& curve = (*poly)[idx];
+			profile.Append( (CGeoCurve*)&curve );		// We retain ownership of the curve
+		}
+
+		// Do the actual offsetting
+		CProfileList offset_list;
+		CWorm::ProfOffset( profile, +1, config.Spacing(), sharp_ang, FALSE, &offset_list );
+
+		profile.BenignFlush();
+		if (offset_list.Count())
+		{ 
+			poly->Flush();
+
+			for (int oidx=0; oidx<offset_list.Count(); oidx++)
+			{
+				CProfile* profile = offset_list[oidx];
+
+				for (int idx=0; idx<profile->Count(); idx++)
+				{
+					poly->Append( *((*profile)[idx]) );
+				}
+			}
+			offset_list.DestructiveFlush();
+		}
+	}
+	
+	return ret;
+}
+
+
+// ==================================================================
+//		TestResolution
+//
+//	Do a trial slice of the part at this resolution.  If we don't
+//	get any MARK_BODY hits, fail.
+//
+bool
+CNestingPart::TestResolution(
+	CViewMgr& view,
+	CNestConfig& config, 
+	double res)
+{
+	CReturn ret;
+	//
+	// Set up our context of information
+	//
+	CToolHit* toolhit = m_toolhitarray[0];
+	if (!toolhit)
+	{ return true; }	// Not our problem
+
+	CGeoPolyArray* kerf_array = (*toolhit)[HIT_KERF_OUTSIDE];
+	if ( !kerf_array
+		|| !kerf_array->Count())
+	{ return true; }	// Still not our problem
+
+	// ------------------------------------------------------------------------------
+	// Create the grid
+	//
+	C2dBox extent;
+	int num = kerf_array->Count();
+	for (int idx=0; idx<num; idx++)
+	{
+		CGeoPoly* kerf = (*kerf_array)[idx];
+		C2dBox sub_ext = kerf->Extent();
+		if (sub_ext.IsDefined())
+			extent += sub_ext;
+	}
+
+	CGrid* grid = new CGrid;
+	if (!grid)
+		return true; 	// Yeah it sucks, but not what we are testing for
+
+	grid->Create( extent, C2dCoord( extent.Xc(), extent.Yc() ),	res );
+
+	// ------------------------------------------------------------------------------
+	// Slice into this "normal" grid, because that's a much easier form to work with
+	//
+	int depthnum = (config.PartInPart()?TOOLHIT_DEPTH:HIT_PART_INSIDE);
+	for (int depth=0; depth<depthnum; depth++)
+	{
+		CGeoPolyArray* geopoly_array = (*toolhit)[depth];
+		if ( !geopoly_array	|| !geopoly_array->Count() )
+			continue;
+
+		for (int idx=0; idx<geopoly_array->Count(); idx++)
+		{
+			grid->Slice( *(*geopoly_array)[idx] );
+
+			grid->Fill( config );
+		}
+	}
+	if (CReturn::Debug()>=3)
+	{
+		grid->Draw(view, 50, 50, true, true);
+	}
+
+	// ------------------------------------------------------------------------------
+	// Now, did we get any good, juicy MARK_BODY ???
+	//
+const int MIN_PIXEL_VALID = 30;
+
+//	int pixel_min = max( grid->Width(), grid->Height() ) * 2;
+//	pixel_min = max(MIN_PIXEL_VALID, pixel_min);
+
+	bool good = grid->Verify(MARK_BODY, MIN_PIXEL_VALID);
+	if (CReturn::Debug()>=3)
+	{
+		grid->Draw(view, 50, 50, true, true);
+	}
+
+	delete grid;
+
+
+	return good;
+}
+
+// ==================================================================
+//		Slice
+//
+CReturn		
+CNestingPart::Slice( 
+	CNestConfig&	config, 
+	CViewMgr&		view,
+	int				hit )
+{
+	CReturn	status;
+
+	if ( CNestConfig::IsBitmapNest() )
+		status = bitmap_slice( config, view, hit );
+	else
+		status = exact_slice( config, view, hit );
+
+	return status;
+}
+
+CReturn		
+CNestingPart::exact_slice( 
+	CNestConfig&	config, 
+	CViewMgr&		view,
+	int				hit )
+{
+	CReturn ret;
+
+	// Set up our context of information
+	CToolHit* toolhit = m_toolhitarray[hit];
+	if (!toolhit)
+		return ret.Fatal( IDS_NEST_PART_EMPTY );
+
+	CGeoPolyArray* kerf_array = (*toolhit)[HIT_KERF_OUTSIDE];
+	if ( !kerf_array || !kerf_array->Count() )
+		return ret.Fatal( IDS_NEST_PART_EMPTY );
+
+	// ------------------------------------------------------------------------------
+	// Create the starting grid
+	//
+	double max_area = 0.0;
+	int max_idx = -1;
+
+	// This is bullshit; for some reason, in one part, in one case, HIT_PART_OUTSIDE
+	// is giving a larger extent than HIT_KERF_OUTSIDE.  This fix is temporary....
+	// @todo REVERT to single depth test at HIT_KERF_OUTSIDE.
+	C2dBox extent;
+	for (int depth=0; depth<TOOLHIT_DEPTH; depth++)
+	{
+		CGeoPolyArray* kerf_array = (*toolhit)[depth];
+		if (kerf_array != NULL)
+		{
+			int num = kerf_array->Count();
+			for (int idx=0; idx<num; idx++)
+			{
+				CGeoPoly* kerf = (*kerf_array)[idx];
+				C2dBox sub_ext = kerf->Extent();
+				if (sub_ext.IsDefined())
+					extent += sub_ext;
+			}
+		}
+	}
+
+	CGrid* grid = new CGrid;
+	if (!grid)
+		return ret.Fatal( IDS_MEM_ALLOC_FAILURE );
+
+	ret += grid->Create( extent,
+						C2dCoord( extent.Xc(), extent.Yc() ),
+						config.Resolution() );
+
+	// ------------------------------------------------------------------------------
+	// Slice into this "normal" grid, because that's a much easier form to work with
+	//
+	int depthnum = (config.PartInPart()?TOOLHIT_DEPTH:HIT_PART_INSIDE);
+	for (depth=0; depth<depthnum; depth++)
+	{
+		CGeoPolyArray* geopoly_array = (*toolhit)[depth];
+		if ( !geopoly_array || !geopoly_array->Count() )
+			continue;
+
+		for (int idx=0; idx<geopoly_array->Count(); idx++)
+		{
+			ret += grid->Slice( *(*geopoly_array)[idx] );
+			ret += grid->Fill( config );
+		}
+	}
+	grid->Clean();
+
+	// ------------------------------------------------------------------------------
+	// Convert to dexgrid for memory savings
+	//
+	CDexGrid* dexgrid = new CDexGrid( *grid );
+	delete grid;
+
+	toolhit->Grid( dexgrid );
+
+	if ( config.DebugBmp() )
+	{
+		dexgrid->Draw( view, 0, 0, FALSE, TRUE );
+		dexgrid->Draw( view, 0, 0, TRUE, FALSE );
+	}
+
+	return ret;
+}
+
+CReturn		
+CNestingPart::bitmap_slice(		// DYNATORCH
+	CNestConfig&	config, 
+	CViewMgr&		view,
+	int				hit )  // ie. orientation index
+{
+	CReturn		status;
+	CGeoPolyArray*	geoPolyArray;
+	CGeoPoly*	geoPoly;
+	C2dBox		extents;
+	C2dCoord	pc;
+	C2dCoord	interior_pt;
+	CModel*		model;
+	CToolHit*	toolhit;
+	CGeoCurve*	geoCurve;
+	CGrid*		grid;
+	CDexGrid*	dexgrid;
+	double		spacing;
+	int			count, indx;
+	int			jcnt, jndx;
+
+	// Set up our context of information
+	model = m_modelarray[hit];
+	toolhit = m_toolhitarray[hit];
+	if ((model == NULL) || (toolhit == NULL))
+		return status.Fatal( IDS_NEST_PART_EMPTY );
+
+	// As generated by CNestingPart::bitmap_generate().
+	geoPolyArray = (*toolhit)[HIT_KERF_OUTSIDE];
+
+	count = geoPolyArray->Count();
+	if (count > 0)
+	{
+		// Calculate the overall bounding box since this
+		// is used to setup our maximum grid space.
+		for (indx = 0; indx < count; ++indx)
+		{
+			geoPoly = geoPolyArray->GetAt( indx );
+			extents += geoPoly->Extent();
+		}
+
+		spacing = config.Spacing();
+
+		// We add the spacing to the part so that when it
+		// is punched into the sheet, we can tag the spacing
+		// area with MARK_BODY.
+		//
+		// NOTE: Spacing should be some integer multiple of resolution.
+		extents.Xmin( extents.Xmin() - spacing );
+		extents.Ymin( extents.Ymin() - spacing );
+		extents.Xmax( extents.Xmax() + spacing );
+		extents.Ymax( extents.Ymax() + spacing );
+
+		pc.XY( extents.Xc(), extents.Yc() );
+
+		grid = new CGrid;
+		if (grid == NULL)
+		{
+			status.Fatal( IDS_MEM_ALLOC_FAILURE );
+		}
+		else
+		{
+			status += grid->Create( extents, pc, config.Resolution() );
+
+			//=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+			// Slice the outside kerf.  Additionally, we must
+			// find a seed point for flood-filling.
+			for (indx = 0; indx < count; ++indx)
+			{
+				geoPoly = geoPolyArray->GetAt( indx );
+
+				// ASSUMPTION: We have a single closed outer polyline.
+				interior_pt = InteriorPoint( (*geoPoly) );
+
+				jcnt = geoPoly->Count();
+				for (jndx = 0; jndx < jcnt; ++jndx)
+				{
+					// Harmless enough ...
+					geoCurve = (CGeoCurve*) &((*geoPoly)[jndx]);
+
+					// Tabulate the curve and map its points to the grid.
+					status += grid->Slice( geoCurve, spacing );
+				}
+			}
+
+			//=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+			// Similarly for the inside kerf.
+			geoPolyArray = (*toolhit)[HIT_KERF_INSIDE];
+
+			count = geoPolyArray->Count();
+			for (indx = 0; indx < count; ++indx)
+			{
+				geoPoly = geoPolyArray->GetAt( indx );
+
+				jcnt = geoPoly->Count();
+				for (jndx = 0; jndx < jcnt; ++jndx)
+				{
+					// Harmless enough ...
+					geoCurve = (CGeoCurve*) &((*geoPoly)[jndx]);
+
+					// Tabulate the curve and map its points to the grid.
+					status += grid->Slice( geoCurve, spacing );
+				}
+			}
+
+			grid->BodyFill( interior_pt );
+
+			// Convert to dexgrid for memory savings
+			dexgrid = new CDexGrid( *grid );
+			delete grid;
+
+			if (dexgrid == NULL)
+			{
+				status.Fatal( IDS_MEM_ALLOC_FAILURE );
+			}
+			else
+			{
+				toolhit->Grid( dexgrid );
+
+				if ( config.DebugBmp() )
+				{
+					dexgrid->Draw( view, 0, 0, FALSE, TRUE );
+					dexgrid->Draw( view, 0, 0, TRUE, FALSE );
+				}
+			}
+		}
+	}
+
+	return status;
+}
+
+
+// ==================================================================
+//	CopyTo
+//
+//	Copy our model to the destination model... with the given owner
+//
+CReturn
+CNestingPart::CopyTo( 
+	int				hit, 
+	CModel*			dst_model, 
+	CDbContainer*	owner )
+{
+	return CopyTo(hit, dst_model, owner, DBLINE, DBCOMMAND);
+}
+
+CReturn
+CNestingPart::CopyTo( 
+	int				hit, 
+	CModel*			dst_model, 
+	CDbContainer*	owner,
+	EDbEntityType	from_type,
+	EDbEntityType	to_type )
+{
+	CReturn ret;
+	CDbIterator iter;
+
+	CModel* src_model = pModel(hit);
+	src_model->EntityPrepareCopy( dst_model );
+
+	CDbEntity*	new_ent = NULL;
+
+	// Start our copy near the bottom... CopyTo is clever
+	iter.Init( src_model->Db(), from_type );
+	while (TRUE)
+	{
+		CDbEntity* db_ent = iter();
+		if (!db_ent)
+		{ break; }
+		if (db_ent->Type() > to_type)
+		{ break; }
+		iter.Next();
+		//
+		//
+		if ( src_model->Db().WasCopied( *db_ent ) )
+			continue;
+		//
+		// Now, travel up ownership to the TOP DOG...
+		//
+		while (db_ent->Owner())
+			db_ent = db_ent->Owner();
+
+		// Don't carry the panel across
+		if ( db_ent->Tool()
+			&& db_ent->Tool()->IsLayer()
+			&& db_ent->Tool()->Name().CompareNoCase( STR_STOCK ) == 0)
+			continue;
+
+		if (db_ent->IsHidden())
+			continue;
+
+		src_model->EntityCopy( *db_ent, &new_ent );
+
+		if (owner)
+		{ owner->Append( new_ent, FALSE ); }
+	}
+
+	return ret;
+}
+
+
+
+// ==================================================================
+//		DebugToModel
+//
+//	Debug generate... instantiates the geometry in the model
+//	while drawing it... may crash your program, so use wisely.
+//
+CReturn		
+CNestingPart::DebugToModel( CViewMgr* view, CModel* model )
+{
+	CReturn ret;
+
+	for (int idx=0; idx<Count(); idx++)
+	{
+		CToolHit* toolhit = ToolHit(idx);
+		toolhit->DebugToModel( NULL, view, model );
+	}
+
+	return ret;
+}
+
+#if (_CI || _NST)
+
+	CReturn		
+	CNestingPart::DebugToModel2( CViewMgr* view, CModel* model )
+	{
+		CReturn	status;
+		int		count, indx;
+
+		CCiModel* ciModel = CPortal::CiModel();
+
+		ciModel->ActiveLayerSet( "nest_test" );
+		ciModel->ActiveLayerGet()->Color(1);  // red
+
+		count = m_toolhits->Count();
+		for (indx = 0; indx < count; ++indx)
+		{
+			const CGeoCurve& curve = (*m_toolhits)[indx];
+
+			switch (curve.Type())
+			{
+			case GEOLINE:
+
+				if (curve.Length2d() > SMALL)
+				{
+					CCiLine* ciLine = (CCiLine*) ciModel->EntityCreate( CILINE );
+
+					ciLine->Init(
+						curve.StartPt(),
+						curve.EndPt() );
+				}
+				break;
+
+			case GEOARC:
+
+				if ((((const CGeoArc&) curve).Radius() > SMALL)
+					&& (curve.Length2d() > SMALL) )
+				{
+					CGeoArc& geoArc = (CGeoArc&) curve;
+
+					CCiArc* ciArc = (CCiArc*) ciModel->EntityCreate( CIARC );
+
+					ciArc->Init(
+						geoArc.StartPt(),
+						geoArc.EndPt(),
+						geoArc.CenterPt(),
+						geoArc.Dir() );
+				}
+				break;
+			}
+		}
+
+		return status;
+	}
+
+#else
+
+	CReturn		
+	CNestingPart::DebugToModel2( CViewMgr* view, CModel* model )
+	{
+		CReturn ret;
+
+		CDbTool* tool = model->ActiveTool();
+		CDbWorkplane* work= model->ActiveWorkplane();
+
+		int cnum = m_toolhits->Count();
+		for (int cidx=0; cidx<cnum; cidx++)
+		{
+			const CGeoCurve& curve = (*m_toolhits)[cidx];
+
+			CDbEntity* db_ent = NULL;
+
+			((C3dCoord&)curve.StartPt()).Z(0.0);
+			((C3dCoord&)curve.EndPt()).Z(0.0);
+			switch (curve.Type())
+			{
+				case GEOLINE:
+				{
+					if (curve.Length2d() > SMALL)
+					{
+						CDbLine* db_line = NULL;
+						ret = model->EntityCreate( DBLINE, (CDbEntity**)&db_line );
+						if (ret.isOkay())
+						{
+							ret += db_line->Init( tool, work, *((CGeoLine*)&curve) );
+						}
+						
+						if (ret.isOkay())
+							db_ent = db_line;
+					}
+				}
+				break;
+
+				case GEOARC:
+				{
+					((C3dCoord&)((CGeoArc&)curve).CenterPt()).Z(0.0);
+
+					if ( ( ((CGeoArc*)&curve)->Radius() > SMALL)
+						&& (curve.Length2d() > SMALL) )
+					{
+						CDbArc* db_arc = NULL;
+						ret = model->EntityCreate( DBARC, (CDbEntity**)&db_arc );
+						if (ret.isOkay())
+						{
+							ret += db_arc->Init( tool, work, *((CGeoArc*)&curve) );
+						}
+
+						if (ret.isOkay())
+						{
+							db_ent = db_arc;
+						}
+						else // Try again as a line
+						{
+							CDbLine* db_line = NULL;
+							ret = model->EntityCreate( DBLINE, (CDbEntity**)&db_line );
+							if (ret.isOkay())
+							{
+								ret += db_line->Init( tool, work, curve.StartPt(), curve.EndPt() );
+							}
+							
+							if (ret.isOkay())
+								db_ent = db_line;
+						}
+					}
+				}
+				break;
+			}
+
+			if (db_ent)
+			{
+				db_ent->pAttrib()->Reset();
+				db_ent->pAttrib()->setInt( STR_COLOR, 0xffffff );
+
+				if (view)
+				{
+					view->Regenerate( *model, db_ent->Id() );
+					view->Refresh( db_ent->Id(), TRUE );
+				}
+			}
+		}
+
+		return ret;
+	}
+
+#endif
+
+// ==================================================================
+//		Filter
+//
+//	Delete any GeoPoly holes that are smaller than the specified area.
+//
+CReturn		
+CNestingPart::Filter( 
+	CNestConfig&	config, 
+	int				hit,
+	double			area )
+{
+	CReturn ret;
+	//
+	// Set up our context of information
+	//
+	CToolHit* toolhit = m_toolhitarray[hit];
+	if (!toolhit)
+	{ return ret.Fatal( IDS_NEST_PART_EMPTY ); }
+
+	int depthnum = TOOLHIT_DEPTH;
+	for (int depth=HIT_PART_INSIDE; depth<=HIT_KERF_INSIDE; depth++)
+	{
+		CGeoPolyArray* geopoly_array = (*toolhit)[depth];
+		// Note that we might have problems with the kerf... what if we took the kerf
+		// but not the outside hole?  Could we get gouging?  Yes, if the kerf of the contained 
+		// part was BIGGER than the kerf of the hole.  Possible, if unlikely.
+		// TODO:  Only erase PART, leave KERF?
+
+		if ( !geopoly_array || !geopoly_array->Count() )
+			continue;
+
+		int num = geopoly_array->Count()-1;
+		for (int idx=num; idx>=0; idx--)
+		{
+			CGeoPoly* geo_poly = (*geopoly_array)[idx];
+
+			if (fabs(geo_poly->Area()) < area)
+			{ 
+				CGeoPoly* poly = geopoly_array->Remove(idx);
+				delete poly;
+			}
+		}
+	}
+
+	// Now, some fine tuning
+	CGeoPolyArray* geopoly_array = (*toolhit)[HIT_KERF_INSIDE];
+	if ( !geopoly_array || !geopoly_array->Count() )
+	{
+		geopoly_array = (*toolhit)[HIT_PART_INSIDE];
+
+		// 2005.01.12 (PE) -- TODO: I think this is supposed to be "&& geopoly_array->Count()".
+		if ( geopoly_array && !geopoly_array->Count() )
+		{
+			int num = geopoly_array->Count()-1;
+			for (int idx=num; idx>=0; idx--)
+			{
+				geopoly_array->Remove(idx);
+			}
+		}
+	}
+
+	return ret;
+}
+
+
+// ============================================================================
+
+CReturn
+CNestingPart::StripLeads(void)
+{
+	CReturn ret;
+
+	CDbIterator iter;
+	int num = m_modelarray.Count();
+	for (int idx=0; idx<num; idx++)
+	{
+		CModel* model = m_modelarray[idx];
+
+		iter.Init( model->Db(), DBHOLE );
+		while ( TRUE )
+		{
+			CDbEntity* db_ent = iter();
+			if (!db_ent)
+				break;
+
+			iter.Next();
+
+			CDbFeature* feature = dynamic_cast<CDbFeature*>(db_ent);
+			CDbHole* hole = dynamic_cast<CDbHole*>(db_ent);
+
+			if (feature)
+			{
+				CString type = feature->Attrib().getString( STR_TYPE, "<error>" );
+				if ( !type.CompareNoCase( "_lead_in" ) ||
+					 !type.CompareNoCase( "_lead_out" ) )
+				{
+					feature->Delete();
+				}
+			}
+			else if (hole)
+			{
+				CString type = hole->Attrib().getString( STR_TYPE, "<error>" );
+				if ( !type.CompareNoCase( "_pierce" ) )
+				{
+					hole->Delete();
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+
+
+// ==================================================================
+//		GridLink
+//
+//	Generate the link data needed for all types of gridding of this part.
+//
+//	You must call Generate() and Assemble() first, to set up the hits,
+//	and after Slice() which sets up the grid origin info.
+// ==================================================================
+CReturn
+CNestingPart::GridLink(
+	CViewMgr& view, 
+	CNestConfig& config, 
+	int hit)
+{
+	CReturn		ret;
+	CDbIterator	iter;
+	C2dBox		part_mer;
+	C2dBox		merA;
+	C2dBox		merB;
+	C2dVec		delta;
+	CToolHit*	toolhit;
+	CGeoPolyArray*	polyA;
+	CGeoPolyArray*	polyB;
+	int				idx;
+	double		height, width;
+	double		sign_y, sign_x;
+	double		dx, dy;
+
+	sign_y = config.NestToOrigin()?+1.0:-1.0;
+	sign_x = 1.0;
+
+	if ((config.Progression() == PROGRESS_PPX_SPY) ||
+		(config.Progression() == PROGRESS_PPX_SNY))
+		sign_y = 0.;
+	else
+		sign_x = 0.;
+
+	// Basic setup
+	toolhit = m_toolhitarray[hit];
+
+	if ( CNestConfig::IsBitmapNest() )  // DYNATORCH
+	{
+		polyA = (*toolhit)[HIT_KERF_OUTSIDE];
+		for (idx=0; idx<polyA->Count(); idx++)
+		{
+			merA += (*polyA)[idx]->Extent();
+		}
+
+		dx = toolhit->Grid()->Width() * toolhit->Grid()->Resolution();
+		dy = toolhit->Grid()->Height() * toolhit->Grid()->Resolution();
+	}
+	else
+	{
+		polyA = (*toolhit)[HIT_KERF_OUTSIDE];
+		for (idx=0; idx<polyA->Count(); idx++)
+		{
+			merA += (*polyA)[idx]->Extent();
+		}
+
+		polyB = (*toolhit)[HIT_PART_OUTSIDE];
+		for (idx=0; idx<polyB->Count(); idx++)
+		{
+			merB += (*polyB)[idx]->Extent();
+		}
+
+		dx = merA.Dx() - (merA.Xmax() - merB.Xmax());
+		dy = merA.Dy() - (merA.Ymax() - merB.Ymax());
+	}
+
+	height = merA.Dy();
+	width = merA.Dx();
+
+	delta.Init( dx, dy );
+	toolhit->Delta( delta );
+	toolhit->Mer( merA );
+
+	// 0' Grid Link
+	delta.Init( sign_x*dx, sign_y*dy );
+
+	CLink* link = new CLink(hit, 1.0, delta);
+	toolhit->addLink(link);
+
+	// Lead-Adjusted 0' Grid Link
+	if ( config.getLeadBumpX() > SMALL )
+	{
+		C2dVec new_delta( delta.X() + config.getLeadBumpX(), 
+							delta.Y());
+		CLink* link = new CLink(hit, 1.0, new_delta);
+		toolhit->addLink(link);
+	}
+
+	// 180' Grid Link
+	if (!(m_rotation & 0x01))
+	{
+		int rotnum = m_rotation;
+		if (m_mirror)
+		{ rotnum *= 2; }
+
+		int rot_hit = (hit + rotnum/2) % rotnum;
+		CToolHit* rot_toolhit = m_toolhitarray[rot_hit];
+
+		C3dCoord this_origin = toolhit->Grid()->Origin();
+		C3dCoord rot_origin = rot_toolhit->Grid()->Origin();
+
+		C2dVec new_delta( delta.X() + (this_origin.X()-rot_origin.X()),
+							delta.Y() + (this_origin.Y()-rot_origin.Y()) );
+
+		CLink* link = new CLink(rot_hit, 1.0, new_delta);
+		toolhit->addLink(link);
+
+		// Lead-Adjusted 180' Grid Link
+		if ( config.getLeadBumpX() > SMALL )
+		{
+			C2dVec lead_delta(new_delta.X() + config.getLeadBumpX(),
+								new_delta.Y());
+			CLink* link = new CLink(rot_hit, 1.0, lead_delta);
+			toolhit->addLink(link);
+		}
+
+		// Pre-nest offset 180' Grid Link
+		if (config.PreNest())
+		{
+			double factor_y = config.NestToOrigin()?+0.10:-0.10;	// 10% steps
+			double factor_x = 0.10;
+
+			if ((config.Progression() == PROGRESS_PPX_SPY) ||
+				(config.Progression() == PROGRESS_PPX_SNY))
+			{ factor_x = 0.0; }
+			else
+			{ factor_y = 0.0; }
+
+			for (int step=1; step<5; step++)
+			{
+				C2dVec pre_delta(new_delta.X() + width*factor_x*(double)step, 
+								new_delta.Y() + height*factor_y*(double)step);
+
+				CLink* link = new CLink(rot_hit, 1.0, pre_delta);
+				toolhit->addLink(link);
+			}
+		}
+	}
+
+	// Mirrored Grid link
+	if (m_mirror)
+	{
+		int mirror_hit = hit ^ 0x01;
+		CToolHit* mirror_toolhit = m_toolhitarray[mirror_hit];
+		//
+		//
+		C3dCoord this_origin = toolhit->Grid()->Origin();
+		C3dCoord mirror_origin = mirror_toolhit->Grid()->Origin();
+
+		C2dVec new_delta( delta.X() + (this_origin.X()-mirror_origin.X()),
+							delta.Y() + (this_origin.Y()-mirror_origin.Y()) );
+
+		CLink* link = new CLink(mirror_hit, 1.0, new_delta);
+		toolhit->addLink(link);
+	}
+
+	return ret;
+}
+
+void
+CNestingPart::GapEntitiesRemove()
+{
+	if (m_filled_gaps)
+	{
+		CDbIterator	iter;
+		CDbLine*	dbLine;
+		int			count, indx;
+
+		count = m_modelarray.Count();
+		for (indx = 0; indx < count; ++indx)
+		{
+			iter.Init( m_modelarray[indx]->Db(), DBLINE );
+
+			while (1)
+			{
+				dbLine = dynamic_cast<CDbLine*>( iter() );
+				if (dbLine == NULL)
+					break;
+
+				if ( dbLine->Attrib().getInt( "is_gap_elem", FALSE ) )
+					dbLine->Delete();
+
+				iter.Next();
+			}
+		}
+	}
+
+	if (m_gap_tool != NULL)
+	{
+		// Otherwise, the part will fail to nest, issuing the
+		// message that the tooling for the part can not be matched.
+
+		m_gap_tool->Delete();
+	}
+}
+
+void ConditionalAppend( const C3dCoord& ptA, C3dCoordArray* pts )
+{
+	C3dCoord*	ptB;
+	int			count, indx;
+
+	count = pts->Count();
+	for (indx = 0; indx < count; ++indx)
+	{
+		ptB = pts->GetAt( indx );
+		if ( ptB->WithinTolXY( ptA, SMALL ) )
+			break;
+	}
+
+	if (indx >= count)
+		pts->Append( new C3dCoord( ptA ) );
+}
+
+void
+CNestingPart::RepresentationAdjust()
+{
+	CDbEntityArray	entities;
+	CDbIterator		iter;
+	CDbEntity*		dbEntity;
+
+	CModel*		model = m_modelarray[0];
+	CEntityDb&	db = model->Db();
+
+	if (m_representation == 1)
+	{
+		// Bounding Box using Part_Outline layer.
+		model->UndoBufferSuppress();
+
+		iter.Init( db, DBLINE );
+		while (1)
+		{
+			dbEntity = iter();
+			if ((dbEntity == NULL) || (dbEntity->Type() > DBHOLE))
+				break;
+
+			if ( !dbEntity->Tool()->IsLayer() )
+				entities.Append( dbEntity );
+
+			iter.Next();
+		}
+
+		CModelUtil::BBPartOutlineCreate( entities, model );
+	}
+	else if (m_representation == 2)
+	{
+		// Convex Hull using Part_Outline layer.
+		model->UndoBufferSuppress();
+
+		iter.Init( db, DBLINE );
+		while (1)
+		{
+			dbEntity = iter();
+			if ((dbEntity == NULL) || (dbEntity->Type() > DBARC))
+				break;
+
+			if ( !dbEntity->Tool()->IsLayer() )
+				entities.Append( dbEntity );
+
+			iter.Next();
+		}
+
+		CModelUtil::CHPartOutlineCreate( entities, 1.e-3, model );
+	}
+	else
+	{
+		// Do nothing.  Default to "As Given".
+	}
+}
+
+bool
+CNestingPart::IsPartOutline( const CDbEntity& dbEntity )
+{
+	bool is_part_outline = false;
+
+	if ( !dbEntity.IsToolpath() )
+	{
+		CDbTool* dbTool = dbEntity.Tool();
+		is_part_outline = (dbTool->Name().CompareNoCase(STR_PART_OUTLINE) == 0);
+	}
+
+	return is_part_outline;
+}
+
+bool
+CNestingPart::IsToolPath( const CDbEntity& dbEntity )
+{
+	CDbFeature*	dbFeature;
+	CDbProfile*	dbProfile;
+	int			tp_flag;
+
+	bool is_tool_path = false;
+
+	if ( dbEntity.IsToolpath() )
+	{
+		dbProfile = dynamic_cast<CDbProfile*>( dbEntity.Owner() );
+		if (dbProfile == NULL)
+		{
+			dbFeature = dynamic_cast<CDbFeature*>( dbEntity.Owner() );
+			if (dbFeature != NULL)
+			{
+				tp_flag = dbFeature->Attrib().getInt( "tp", 0 );
+				is_tool_path = ((tp_flag == 0) && dbFeature->IsLead());
+			}
+		}
+		else
+		{
+			tp_flag = dbProfile->Attrib().getInt( "tp", 0 );
+			is_tool_path = (tp_flag == 0);
+		}
+	}
+
+	return is_tool_path;
+}
+
+void
+CNestingPart::ContainerToGeopoly( const CDbContainer& dbContainer, CGeoPoly* geoPoly )
+{
+	CDbCurve*	dbCurve;
+	CGeoCurve*	geoCurve;
+	int			count, indx;
+
+	count = dbContainer.Count();
+	for (indx = 0; indx < count; ++indx)
+	{
+		dbCurve = dynamic_cast<CDbCurve*>( dbContainer[indx] );
+		if (dbCurve != NULL)
+		{
+			geoCurve = dbCurve->Curve();
+			geoPoly->AppendOwn( geoCurve );
+		}
+	}
+}
+
+void
+CNestingPart::PolyTransfer( CGeoPoly* tmp, CGeoPoly* geoPoly )
+{
+	CGeoCurve*	geoCurve;
+	int			count, indx;
+
+	count = tmp->Count();
+	for (indx = 0; indx < count; ++indx)
+	{
+		// TODO: DYNATORCH -- horrible hack alert!
+		geoCurve = (CGeoCurve*) &((*tmp)[indx]);
+		geoPoly->AppendOwn( geoCurve );
+	}
+
+	tmp->BenignFlush();
+}
+
+// ASSUMPTION: The poly has a CW winding direction.
+C2dCoord
+CNestingPart::InteriorPoint( const CGeoPoly& geoPoly )
+{
+	C2dCoord	pt;
+	C2dCoord	midpt;
+	CGeoCurve*	geoOffset;
+	int			count, indx;
+
+	geoOffset = NULL;
+
+	// TODO: DYNATORCH -- find a more robust method
+	// of finding a good interior point.
+
+	count = geoPoly.Count();
+	for (indx = 0; indx < count; ++indx)
+	{
+		const CGeoCurve& geoCurve = geoPoly[indx];
+
+		geoCurve.Offset( -1, 0.25, &geoOffset );
+		if (geoOffset != NULL)
+		{
+			midpt = geoOffset->MidPt();
+			delete geoOffset;
+
+			if ((count == 1) && (geoCurve.Type() == GEOARC))
+			{
+				// Assume we have a circle.
+				// Ya just gotta love special cases ....
+				pt = midpt;
+				break;
+			}
+			else if ( geoPoly.PtInPoly( midpt ) )
+			{
+				pt = midpt;
+				break;
+			}
+		}
+	}
+
+	return pt;
+}
