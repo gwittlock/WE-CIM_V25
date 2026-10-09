@@ -1,0 +1,11 @@
+HKCR
+{
+	NoRemove AppID
+	{
+		{73428776-C53E-430C-ACAB-891D3F2F70C0} = s 'CadProcess'
+		'CadProcess.EXE'
+		{
+			val AppID = s {73428776-C53E-430C-ACAB-891D3F2F70C0}
+		}
+	}
+}
