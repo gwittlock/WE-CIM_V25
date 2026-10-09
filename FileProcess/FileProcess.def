@@ -1,6 +1,0 @@
-; FileProcess.def : Declares the module parameters for the DLL.
-
-LIBRARY      "mm2FileProcess"
-
-EXPORTS
-	RegisterProcess
