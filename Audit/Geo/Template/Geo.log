@@ -1,0 +1,70 @@
+﻿Build started 3/14/2021 3:15:52 AM.
+     1>Project "C:\_Dev\WeCIM22-master2\Temp_Last_From_Edwin\WeCIM20-master\_source\Geo\Geo.vcxproj" on node 3 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W1 /WX- /O2 /Oy- /Gm- /EHsc /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Template\\" /Fd"Template\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt 2dBox.cpp 3dBox.cpp aStar.cpp aState.cpp BSplineBasis.cpp Geo.cpp GeoArc.cpp GeoCurve.cpp GeoElem.cpp GeoLine.cpp GeoPoint.cpp GeoPoly.cpp GeoReducer.cpp hull.cpp Int2d.cpp Nurb.cpp PolyEdge.cpp PolySegment.cpp Profile.cpp QuickHull.cxx shape.cpp ShapeDecomposer.cpp ShapeMatcher.cpp Solution.cpp Solution2.cpp Solution3.cpp StdAfx.cpp ToolShape.cpp ToolShapeExtruder.cpp
+         2dBox.cpp
+     1>2dBox.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         3dBox.cpp
+     1>3dBox.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         aStar.cpp
+     1>aStar.cpp(12): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         aState.cpp
+     1>aState.cpp(11): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         BSplineBasis.cpp
+     1>c:\_dev\wecim22-master2\temp_last_from_edwin\wecim20-master\_source\geo\BSplineBasis.h(17): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         Geo.cpp
+     1>Geo.cpp(4): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         GeoArc.cpp
+     1>GeoArc.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         GeoCurve.cpp
+     1>GeoCurve.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         GeoElem.cpp
+     1>GeoElem.cpp(4): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         GeoLine.cpp
+     1>GeoLine.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         GeoPoint.cpp
+     1>GeoPoint.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         GeoPoly.cpp
+     1>GeoPoly.cpp(37): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         GeoReducer.cpp
+     1>GeoReducer.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         hull.cpp
+     1>c:\_dev\wecim22-master2\temp_last_from_edwin\wecim20-master\_source\geo\hull.h(4): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         Int2d.cpp
+     1>Int2d.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         Nurb.cpp
+     1>Nurb.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         PolyEdge.cpp
+     1>PolyEdge.cpp(12): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         PolySegment.cpp
+     1>PolySegment.cpp(11): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         Profile.cpp
+     1>Profile.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         QuickHull.cxx
+     1>QuickHull.cxx(2): fatal error C1083: Cannot open include file: 'StdAfx.h': No such file or directory
+         Generating Code...
+         Compiling...
+         shape.cpp
+     1>shape.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         ShapeDecomposer.cpp
+     1>ShapeDecomposer.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         ShapeMatcher.cpp
+     1>ShapeMatcher.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         Solution.cpp
+     1>Solution.cpp(6): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         Solution2.cpp
+     1>Solution2.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         Solution3.cpp
+     1>Solution3.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         StdAfx.cpp
+     1>StdAfx.cpp(5): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         ToolShape.cpp
+     1>ToolShape.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         ToolShapeExtruder.cpp
+     1>ToolShapeExtruder.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         Generating Code...
+     1>Done Building Project "C:\_Dev\WeCIM22-master2\Temp_Last_From_Edwin\WeCIM20-master\_source\Geo\Geo.vcxproj" (Build target(s)) -- FAILED.
+
+Build FAILED.
+
+Time Elapsed 00:00:01.49
