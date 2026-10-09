@@ -1,0 +1,6 @@
+; AdminProcess.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2AdminProcess"
+
+EXPORTS
+	RegisterProcess

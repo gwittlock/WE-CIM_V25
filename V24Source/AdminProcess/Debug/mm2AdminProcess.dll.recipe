@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2Common.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2CmdPkg.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2Math.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2Geo.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2DB.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FABV22\_fab\Debug\mm2Common.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_source\Debug\mm2Vm.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2Model.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2Gouge.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2Toolpath.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2Policy.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2ProcMgr.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2ViewPkg.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2Portal.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\mm2CodeGen.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\Fab22_5\_fab\Debug\dlls\mm2AdminProcess.dll</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles />
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>
