@@ -1,0 +1,6 @@
+; EntityProcess.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2EntityProcess"
+
+EXPORTS
+	RegisterProcess

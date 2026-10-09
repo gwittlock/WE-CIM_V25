@@ -1,0 +1,18 @@
+﻿Build started 3/14/2021 3:15:55 AM.
+     1>Project "C:\_Dev\WeCIM22-master2\Temp_Last_From_Edwin\WeCIM20-master\_source\EntityProcess\EntityProcess.vcxproj" on node 6 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W1 /WX- /O2 /Oy- /Gm- /EHsc /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Template\\" /Fd"Template\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt EntityProcess.cpp EPContainer.cpp epentity.cpp StdAfx.cpp
+         EntityProcess.cpp
+     1>EntityProcess.cpp(5): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         EPContainer.cpp
+     1>EPContainer.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         epentity.cpp
+     1>epentity.cpp(2): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         StdAfx.cpp
+     1>StdAfx.cpp(5): fatal error C1083: Cannot open include file: 'stdafx.h': No such file or directory
+         Generating Code...
+     1>Done Building Project "C:\_Dev\WeCIM22-master2\Temp_Last_From_Edwin\WeCIM20-master\_source\EntityProcess\EntityProcess.vcxproj" (Build target(s)) -- FAILED.
+
+Build FAILED.
+
+Time Elapsed 00:00:00.28
