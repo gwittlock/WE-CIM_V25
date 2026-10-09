@@ -1,0 +1,7 @@
+; CmdPkg.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2CmdPkg"
+
+EXPORTS
+	CmdLexerTerminate
+	CmdParseTerminate
