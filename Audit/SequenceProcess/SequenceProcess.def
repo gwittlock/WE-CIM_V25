@@ -1,0 +1,6 @@
+; SequenceProcess.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2SequenceProcess"
+
+EXPORTS
+	RegisterProcess

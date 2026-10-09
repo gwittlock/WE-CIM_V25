@@ -1,0 +1,6 @@
+; SelectProcess.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2SelectProcess"
+
+EXPORTS
+	RegisterProcess
