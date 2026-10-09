@@ -1,0 +1,6 @@
+; CodeGenProcess.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2CodeGenProcess"
+
+EXPORTS
+    RegisterProcess
