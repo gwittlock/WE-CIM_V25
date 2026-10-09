@@ -1,0 +1,5 @@
+﻿cl : command line warning D9035: option 'Gm' has been deprecated and will be removed in a future release
+  StdAfx.cpp
+  AdminProcess.cpp
+  Generating Code...
+LINK : fatal error LNK1104: cannot open file 'C:\_Dev\FabV24.0\_fab\Debug\mm2CodeGen.lib'

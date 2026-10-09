@@ -1,0 +1,7 @@
+﻿cl : command line warning D9035: option 'Gm' has been deprecated and will be removed in a future release
+  StdAfx.cpp
+  AttribProcess.cpp
+  AttribList.cpp
+  Generating Code...
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Msbuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(1074,5): error MSB6006: "link.exe" exited with code 1104.
+LINK : fatal error LNK1104: cannot open file 'C:\_Dev\FabV24.0\_fab\Debug\mm2LeadSupport.lib'

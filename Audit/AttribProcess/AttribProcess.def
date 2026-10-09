@@ -1,0 +1,6 @@
+; AttribProcess.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2AttribProcess"
+
+EXPORTS
+	RegisterProcess

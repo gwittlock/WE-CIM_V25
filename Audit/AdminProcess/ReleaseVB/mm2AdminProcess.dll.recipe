@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2Common.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2CmdPkg.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2Math.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2Geo.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2DB.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_source\ReleaseVB\mm2Vm.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2Model.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2Gouge.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2Toolpath.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2Policy.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2ProcMgr.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2ViewPkg.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2Portal.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2CodeGen.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\_Dev\FabV24.0\_fab\ReleaseVB\dlls\mm2AdminProcess.dll</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles />
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>
