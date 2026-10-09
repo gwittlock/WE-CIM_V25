@@ -1,0 +1,332 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "cmn_resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "cmn_resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
+    "#ifdef _WIN32\r\n"
+    "LANGUAGE 9, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#endif //_WIN32\r\n"
+    "#include ""res\\Common.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""         // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 24,0,255,0
+ PRODUCTVERSION 24,0,255,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "Comments", "\0"
+            VALUE "CompanyName", "Wittlock Engineering LLC\0"
+            VALUE "FileDescription", "Common DLL\0"
+            VALUE "FileVersion", "24,0,255,0\0"
+            VALUE "InternalName", "Common\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "Common.DLL\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "Common Dynamic Link Library\0"
+            VALUE "ProductVersion", "24,0,255,0\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+#endif    // !_MAC
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_RETURN_DLG DIALOG DISCARDABLE  0, 0, 486, 95
+STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Errors, Warnings, and Messages"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LISTBOX         IDC_RETURN_LIST,5,5,475,85,LBS_NOINTEGRALHEIGHT | 
+                    LBS_DISABLENOSCROLL | LBS_NOSEL | WS_VSCROLL | 
+                    WS_HSCROLL | WS_TABSTOP
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_RETURN_DLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 479
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 88
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_ERROR               "Error"
+    IDS_WARNING             "Warning"
+    IDS_NOTE                " "
+    IDS_CMD_EMPTY_COMMAND   "No command string specified."
+    IDS_CMD_PARSE_ERROR     "Error parsing UI command '%s'."
+    IDS_CMD_BACKUP_ERROR    "Command: Backup, no previous command."
+    IDS_CMD_ROUTE_ERROR     "Unable to route command '%s'."
+    IDS_CREATE_PARAM_MISSING 
+                            "Unable to create entity:  A required parameter is not specified."
+    IDS_CREATE_EXTRACT_NO_ID "Can not retrieve entity data:  no ID specified."
+    IDS_CREATE_EXTRACT_UNKNOWN_TYPE 
+                            "Attempting to extract information for an Unknown entity type."
+    IDS_VIEW_UNKNOWN_TYPE   "Unknown view type ID:  %d"
+    IDS_VIEW_NO_ACTIVE      "No active view."
+    IDS_SOLVE_PARAM_MISSING "Unable to solve for entity:  one or more required parameters are not specified."
+    IDS_SOLVE_INVALID_TAN_TYPE 
+                            "Attempting to solve against invalid tangent entity, type %d."
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_SOLVE_TOO_FAR       "Can not create solution, entities too far apart."
+    IDS_SOLVE_NO_SOLUTION   "No solution found."
+    IDS_PARSE_SYNTAX        "Parser '%s', token '%s'."
+    IDS_SOLVE_TANGENT_MISSING "Solution's tangent entity ID %d not found."
+    IDS_SOLVE_TANGENT_TYPE  "Tangent entity ID %d not a valid tangent type."
+    IDS_CREATE_DEGENERATE   "Unable to create entity; parameters define illegal curve."
+    IDS_MEM_ALLOC_FAILURE   "Memory allocation failure: %s."
+    IDS_MODIFY_TYPE         "Attempting to modify an entity with information for the wrong type (e.g. modifying an Arc with Line information)."
+    IDS_ARC_OFFSET_FAILED   "Arc offset failed."
+    IDS_CREATE_DUPLICATE    "Cannot create entity:  it already exists in the model."
+    IDS_DIFF_ARC_RADII      "Attempt to create Arc <id=%d> with unequal radii"
+    IDS_VIEW_PARAM_MISSING  "Unable to perform view operation: A required parameter is not specified."
+    IDS_ENTITY_NOT_FOUND    "Possible corrupt database.  Entity <%s> not found."
+    IDS_ZERO_LENGTH_LINE    "Attempt to create zero length line <id=%d>."
+    IDS_FILE_READ_ERR       "Error reading file: %s"
+    IDS_FILE_WRITE_ERR      "Error writing file: %s"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_JVM_EXCEPTION       "Java Virtual Machine exception: %s"
+    IDS_INTERNAL_ERROR      "%s"
+    IDS_FATAL               "FATAL"
+    IDS_PROFILE_FAILED      "Failed to create the profile."
+    IDS_SOLVE_CHAMFER_MISSING "Chamfer entity ID %d not found."
+    IDS_ATTRIB_PARAM_MISSING "Unable to adjust attributes:  A required parameter is not specified."
+    IDS_SOLVE_CHAMFER_TYPE  "Chamfer entity ID %d not a line."
+    IDS_SOLVE_CHAMFER_CONNECT "Chamfer lines %d and %d do not connect."
+    IDS_SOLVE_SPLIT_MISSING "Split entity ID %d not found."
+    IDS_SOLVE_SPLIT_TYPE    "Entity %d can not be split; not a curve entity."
+    IDS_TRANSFORM_PARAM_MISSING 
+                            "Unable to perform transformation:  A required parameter is not specified."
+    IDS_TRANSFORM_EMPTY     "Transformation has no effect, so no action taken."
+    IDS_LICENSE_PARAM_MISSING "License parameter missing '%s'"
+    IDS_EXP_PARSE_ERROR     "Error parsing expression '%s'."
+    IDS_PLANE_MISSING       "Plane ID %d not found."
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_DAO_EOF             "%s cannot fetch next record: at End of File."
+    IDS_DAO_BOF             "%d cannot fetch previous record: at Beginning of File."
+    IDS_ENTITY_NO_EXIST     "Entity %d does not exist."
+    IDS_LEAD_PICK_POINT     "Leads and Ramps require that you select a point or curve on the profile to be led."
+    IDS_LEAD_CURVE          "Leads and Ramps can only be applied to valid profile curves:  e.g.  Lines and Arcs"
+    IDS_LEAD_TOOL           "Leads and Ramps can only be applied to tooled geometry."
+    IDS_FILE_PARAM_MISSING  "Cannot process File command:  Parameter missing."
+    IDS_NEST_PARAM_MISSING  "Cannot process Nest command:  Parameter missing."
+    IDS_DB_RECORD           "Unable to open database '%s', table '%s', record index %d."
+    IDS_NEST_ERR_SIMPLIFY   """(Simplifying part %s)"""
+    IDS_NEST_ERR_SLICE      """(Slicing part %s)"""
+    IDS_NEST_PART_EMPTY     "Part reduces to empty space -- no part outlines available to nest."
+    IDS_NEST_ERR_OFFSET     """(Offsetting part %s)"""
+    IDS_NEST_NO_SHEETS      "Nesting: Unable to continue.  Either the material inventory is depleted or parts are too large to fit specified stock."
+    IDS_AUTOMOD_NO_TOOL     "Unable to find matching tool for layer <name=%s>."
+    IDS_AUTOMOD_NO_HOLES    "Unable to find holes on layer <name=%s>"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_SEQUENCE_ERROR      "Error in sequencing command '%s'"
+    IDS_PM4_BAD_VERSION     "PM4 File Version '%s' -- can not be imported."
+    IDS_BAD_DEPTH_OF_CUT    "Depth of cut must be greater than zero."
+    IDS_INVALID_BOUNDING_BOX "The model has an invalid bounding box."
+    IDS_NO_STOCK_LAYER      "The model does not contain a stock layer.\nTherefore the bounding box will be calculated from the model geometry."
+    IDS_OPTHOLE_REACH       "Optimize unable to reach Hole element %d (at %4.2f, %4.2f, %4.2f depth %4.2f) for drilling.  "
+    IDS_SPIRAL_INVALID_PARAMS 
+                            "Pocket requires non-zero Step Over and Pass Depth values."
+    IDS_NEST_BAD_REMN       "Error reading remnant file '%s'."
+    IDS_XFORM_ASSOCIATED    "Can not transform toolpath that is associated to master geometry."
+    IDS_ACIS_ABORT          "Catastrophic Fatal Acis Rendering Error.  Sorry."
+    IDS_TRIA_PARAM_MISSING  "Error in Tria Command:  Parameter Missing"
+    IDS_FILE_CREATE_ERR     "Error creating file: '%s'"
+    IDS_LEAD_EMPTY          "Selection reduces to empty space -- no closed, tooled profiles to apply leads on."
+    IDS_LEAD_PICK_PROF      "This lead function requires that you select a profile to be led."
+    IDS_TOOL_NOT_FOUND      "Tool with station number <%d> not found in current Tool Setup."
+    IDS_TOOL_NOT_FOUND2     "Tool with Crib ID <%d> not found in current Tool Setup."
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_PANELNEST_BIG10     "Nesting more than 10 unique parts in Panel Nesting may take a few minutes, and there is no feedback until it is completed."
+    IDS_PANELNEST_BIG20     "Nesting 15, 20, or more unique parts in Panel Nesting can take a significant amount of time, and there is no feedback until it is complete."
+    IDS_RCVR_TITLE          "Errors, Warnings and Messages"
+    IDS_COUNTER_NOT_GUIDE   "The selected entity is not a Guide Line."
+    IDS_COUNTER_NOT_SEAM    "The selected entity is not a Seam Line."
+    IDS_NO_EDGETYPE         "No edge type specified (or available by default) for entity '%s'."
+    IDS_NO_OPTOOL           "Your operation specifies a tool (ID #%d, '%s') that does not exist in this part.  Verify this tool is specified in the machine setup.  Edit the project and update the tooling if necessary."
+    IDS_NEST_DIDIT1         "Nesting did not create any sheets."
+    IDS_NEST_DIDIT2         "There are many possible reasons for this condition. "
+    IDS_NEST_DIDIT3A        "Unfortunately, there are no further hints as to the problem."
+    IDS_NEST_DIDIT3B        "Below are one or more hints as to what may have gone wrong:"
+    IDS_NEST_DIDIT_COUNT    "    Count: There were no non-fill parts to nest.  Check your fill flags and part counts."
+    IDS_NEST_DIDIT_SEED     "    Seed: Could not find places on the sheet to nest.  Check your spacing, etc."
+    IDS_NEST_DIDIT_SCORE    "    Score:  No parts were able to place on the sheet.  Check for closed, tooled profiles, or a closed Part_Outline profile.  Also, check the part size against the sheet size."
+    IDS_NEST_DIDIT_TOOL     "    Tool:  The tooling on the part (%s) could not be matched against the tooling of this machine."
+    IDS_NEST_DIDIT_YIELD    "    Yield:  No sheets were able to pass the Yield minimums."
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_LEAD_0TOOL          "The Tool used for the Lead operation (Tool Station %d) has a zero diameter or kerf.  \n    Lead factors cannot be calculated, so the lead is not generated."
+    IDS_LEAD_0LEN           "The line length or arc diameter factor for the Lead operation is zero.  \n    Lead length cannot be calculated, so the lead is not generated."
+    IDS_NEST_FIRST_SHEET    "The first sheet of material could not be created."
+    IDS_OGL_FORMAT          "There has been a problem setting the OpenGL display format.  This may not be a problem, however if you do not see any graphics, you may want to re-boot your computer."
+    IDS_LEAD_PUNCH          "Note:  A profile was skipped during the auto-lead process because it is a punched profile.  Leads are not applied to punch tools."
+    IDS_FILE_OPEN_ERR       "Error opening file: %s"
+    IDS_FILE_SAVE_ERR       "Can not save this model because it has been used to code subroutines or multiple sheets."
+    IDS_PATTERN_MISMATCH    "Can not explode pattern into this command; the command pattern ID does not match."
+    IDS_NEST_OVERSIZE       "    Oversize:  The last part tested was too large for the sheet."
+    IDS_CODING_ERROR1       "You must explode your instances when the Optimize check-box is disabled."
+    IDS_PROG_ZEROSTEP       "For progressive offset to work, you must specify a torch offset and a Machine Travel X."
+    IDS_ZERO_SHEET          "The material must have non-zero values in all dimensions (%f, %f, %f)"
+    IDS_EXCEPTION           "EXCEPTION:"
+    IDS_REPO_OVERLAP        "Overlap value must not be larger than the zone width."
+    IDS_REPO_LINT           "Some curves could not be assigned to a work zone."
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_USER_ABORT          "User cancelled operation."
+    IDS_FAILED_PART_UNSPECD "Not specified."
+    IDS_FAILED_PART_OUTSIDE_PROF 
+                            "This part is problematic because it appears to have more than one outside profile."
+    IDS_FAILED_PART_OVERSIZED 
+                            "This part appears to be too big to place on the sheet."
+    IDS_FAILED_PART_TOOLING "Failed to find some tooling for this part."
+    IDS_FAILED_LEAD         "Failed to apply %s leads to a profile in <%s> using <%s>."
+    IDS_INTERNAL            "internal"
+    IDS_EXTERNAL            "external"
+    IDS_MISMATCHED_CLOCK_POSITIONS 
+                            "Encountered a lead parameters whose clock-positions are not identical."
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE 9, 1
+#pragma code_page(1252)
+#endif //_WIN32
+#include "res\Common.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"         // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

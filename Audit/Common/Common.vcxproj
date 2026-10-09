@@ -1,0 +1,371 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MyRelease|Win32">
+      <Configuration>MyRelease</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="ReleaseVB|Win32">
+      <Configuration>ReleaseVB</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Template|Win32">
+      <Configuration>Template</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <SccProjectName />
+    <SccLocalPath />
+    <Keyword>MFCProj</Keyword>
+    <ProjectGuid>{3A811341-7235-4F42-90F4-4CF5073777CA}</ProjectGuid>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <UseOfMfc>Dynamic</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <UseOfMfc>Dynamic</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='MyRelease|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>../../_fab/Debug/</OutDir>
+    <IntDir>.\Debug\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>mm2$(ProjectName)</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'">
+    <OutDir>.\../../_fab/ReleaseVB\</OutDir>
+    <IntDir>.\ReleaseVB\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>mm2$(ProjectName)</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">
+    <TargetName>mm2$(ProjectName)</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <Optimization>Disabled</Optimization>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <WarningLevel>Level3</WarningLevel>
+      <MinimalRebuild>true</MinimalRebuild>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AdditionalIncludeDirectories>C:\_Dev\jdk1.7.0_51\include;C:\_Dev\jdk1.7.0_51\include\win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_USRDLL;NO_WARN_MBCS_MFC_DEPRECATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AssemblerListingLocation>.\Debug\</AssemblerListingLocation>
+      <PrecompiledHeaderOutputFile>.\Debug\Common.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeader />
+      <ObjectFileName>.\Debug\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Debug\</ProgramDataBaseFileName>
+      <AdditionalOptions> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <DisableSpecificWarnings>4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Midl>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TypeLibraryName>.\../../_fab/Debug\Common.tlb</TypeLibraryName>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>.\../../_fab/Debug\Common.bsc</OutputFile>
+    </Bscmake>
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <LinkDLL>true</LinkDLL>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>../../_fab/Debug/mm2Common.dll</OutputFile>
+      <ImportLibrary>.\../../_fab/Debug\mm2Common.lib</ImportLibrary>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <StringPooling>true</StringPooling>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <Optimization>MaxSpeed</Optimization>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <WarningLevel>Level3</WarningLevel>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AdditionalIncludeDirectories>C:\_Dev\jdk1.7.0_51\include;C:\_Dev\jdk1.7.0_51\include\win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NO_WARN_MBCS_MFC_DEPRECATION;NDEBUG;WIN32;_WINDOWS;_USRDLL;_CCS_FAB=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AssemblerListingLocation>.\ReleaseVB\</AssemblerListingLocation>
+      <PrecompiledHeaderOutputFile>.\ReleaseVB\Common.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeader />
+      <ObjectFileName>.\ReleaseVB\</ObjectFileName>
+      <ProgramDataBaseFileName>.\ReleaseVB\</ProgramDataBaseFileName>
+      <AdditionalOptions> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <BrowseInformation>true</BrowseInformation>
+    </ClCompile>
+    <Midl>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TypeLibraryName>.\../../_fab/ReleaseVB\Common.tlb</TypeLibraryName>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>.\../../_fab/ReleaseVB\Common.bsc</OutputFile>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <LinkDLL>true</LinkDLL>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>../../_fab/ReleaseVB//mm2Common.dll</OutputFile>
+      <ImportLibrary>C:\_Dev\FabV24.0\_fab\ReleaseVB\mm2Common.lib</ImportLibrary>
+      <Version>12.1</Version>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="binary_file.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="BinIter.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="BitstreamFile.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Ci_System_ErrSys.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Ci_System_Msg.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Ci_System_OutSys.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Common.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="DaoAttrib.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="daodb.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="daoquery.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="ErrSys.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="ewmmsg.cpp" />
+    <ClCompile Include="FileSnoop.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="IpcSender.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="JFileMgr.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="mm2Variant.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="msg.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="outsys.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Path.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Profiler.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="ProgressWnd.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="register.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Return.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="StdAfx.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="StringConst.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="text_file.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="token.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Var.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="VarInt.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="varlist.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="VarReal.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="VarString.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Weng_System_ErrSys.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Weng_System_Msg.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="Weng_System_OutSys.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseVB|Win32'"> /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "  /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include" /I "C:\Program Files (x86)\Java\jdk1.8.0_191\include/win32" " "</AdditionalOptions>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Common.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ActionConst.h" />
+    <ClInclude Include="AppConst.h" />
+    <ClInclude Include="binary_file.h" />
+    <ClInclude Include="BinIter.h" />
+    <ClInclude Include="BitstreamFile.h" />
+    <ClInclude Include="Ci_System_ErrSys.h" />
+    <ClInclude Include="Ci_System_Msg.h" />
+    <ClInclude Include="Ci_System_OutSys.h" />
+    <ClInclude Include="cmn_resource.h" />
+    <ClInclude Include="ColorConst.h" />
+    <ClInclude Include="Common.h" />
+    <ClInclude Include="CommonFlags.h" />
+    <ClInclude Include="constant.h" />
+    <ClInclude Include="DaoAttrib.h" />
+    <ClInclude Include="daodb.h" />
+    <ClInclude Include="daoquery.h" />
+    <ClInclude Include="Dnode.h" />
+    <ClInclude Include="DynamicArray.h" />
+    <ClInclude Include="ErrSys.h" />
+    <ClInclude Include="ewmconst.h" />
+    <ClInclude Include="ewmmsg.h" />
+    <ClInclude Include="FileSnoop.h" />
+    <ClInclude Include="IndxList.h" />
+    <ClInclude Include="IpcSender.h" />
+    <ClInclude Include="JFileMgr.h" />
+    <ClInclude Include="MathConst.h" />
+    <ClInclude Include="mm2Variant.h" />
+    <ClInclude Include="msg.h" />
+    <ClInclude Include="OutputHandler.h" />
+    <ClInclude Include="outsys.h" />
+    <ClInclude Include="Path.h" />
+    <ClInclude Include="Profiler.h" />
+    <ClInclude Include="ProgressWnd.h" />
+    <ClInclude Include="Register.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="Return.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StrgList.h" />
+    <ClInclude Include="StringConst.h" />
+    <ClInclude Include="text_file.h" />
+    <ClInclude Include="token.h" />
+    <ClInclude Include="ToolConst.h" />
+    <ClInclude Include="Type.h" />
+    <ClInclude Include="var.h" />
+    <ClInclude Include="VarInt.h" />
+    <ClInclude Include="varlist.h" />
+    <ClInclude Include="VarReal.h" />
+    <ClInclude Include="VarString.h" />
+    <ClInclude Include="Weng_System_ErrSys.h" />
+    <ClInclude Include="Weng_System_Msg.h" />
+    <ClInclude Include="Weng_System_OutSys.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

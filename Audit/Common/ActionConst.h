@@ -1,0 +1,27 @@
+
+#ifndef _ACTIONCONST_H
+#define _ACTIONCONST_H
+
+enum eWeAction
+{
+	WECREATE	= 0,
+	WEUPDATE	= 1,
+	WEQUERY		= 2,
+	WEDELETE	= 3,
+	WEFLUSH		= 4,
+	WESTARTPT	= 5,
+	WEENDPT		= 6,
+	WEAPPEND	= 7,
+	WEPREPEND	= 8,
+	WEGETAT		= 9,
+	WESETAT		= 10,
+	WEREVERSE	= 11,
+	WEEXTRACT	= 12,
+	WEPUSH		= 13,
+	WEPOP		= 14,
+	WEREPLACE	= 15,
+	WEINSERTAT	= 16,
+	WEREMOVE	= 17
+};
+
+#endif
