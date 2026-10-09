@@ -1,0 +1,7 @@
+; DB.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2DB"
+DESCRIPTION  "Wittlock Engineering DB Windows Dynamic Link Library"
+
+EXPORTS
+    ; Explicit exports can go here
