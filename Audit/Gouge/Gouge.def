@@ -1,0 +1,6 @@
+; Gouge.def : Declares the module parameters for the DLL.
+
+LIBRARY      "mm2Gouge"
+
+EXPORTS
+    ; Explicit exports can go here
