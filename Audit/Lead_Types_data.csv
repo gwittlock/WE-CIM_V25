@@ -1,0 +1,7 @@
+Description,Display,ID
+None,None,0
+Line,Line,1
+Arc,Arc,2
+Line-Line,Line-Line,3
+Line-Arc,Line-Arc,4
+Ramp,Ramp,5
