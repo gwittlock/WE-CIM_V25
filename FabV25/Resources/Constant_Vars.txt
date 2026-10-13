@@ -1,0 +1,142 @@
+
+            private _ps_x as decimal
+            private _ps_y as decimal
+            private _ps_z as decimal
+            private _ps_entityID as long
+
+
+            private _pe_x as decimal
+            private _pe_y as decimal
+            private _pe_z as decimal
+            private _pe_entityID as long
+
+
+            private _pc_x as decimal
+            private _pc_y as decimal
+            private _pc_z as decimal
+            private _pc_entityID as long
+
+            private _pi_x as decimal
+            private _pi_y as decimal
+            private _pi_z as decimal
+            private _pi_entityID as long
+
+            private _length as decimal
+            private _radius as decimal
+            private _angle as decimal
+            private _angincr as decimal
+            private _toolang as decimal
+            private _major as decimal
+            private _minor as decimal
+
+            private _dx as decimal
+            private _dy as decimal
+            private _dz as decimal
+            private _dist as decimal 
+            private _factor as decimal
+            private _nx as integer
+            private _ny as integer
+            private _cnt as integer
+
+            private _etan as decimal
+            private _stan as decimal
+
+            private _dir as integer
+                'private _soln:    lReturn = m_accumulator.soln_Set(subindex, CLng(value))
+                '                lReturn = m_accumulator.soln_choice = subindex
+                '
+            private _soln integer 'lReturn = m_accumulator.soln_Set(subIndex, CLng(Value))
+                'lReturn = m_accumulator.soln_choice = subindex
+
+
+            private _qty as integer
+            private _qty_x as integer
+            private _qty_y as integer
+
+            private _rptdir as integer
+            private _rptcnt as integer
+            private _rptdst as decimal
+
+            private _spacing as decimal
+            private _spacing_x as decimal
+            private _spacing_y as decimal
+
+            private _tool as decimal
+
+            private _font as decimal
+            private _text as decimal
+            private _height as decimal
+            private _justification as decimal
+            private _filename as decimal
+            private _file as decimal
+            private _machine as decimal
+            private _toolsetup as decimal
+            private _materialtype
+                lReturn = SetValue(mProplist, mat_len, modMaterial.GetMaterialLength(CLng(Value)))
+                lReturn = SetValue(mProplist, mat_wid, modMaterial.GetMaterialWidth(CLng(Value)))
+                lReturn = SetValue(mProplist, mat_thick, modMaterial.GetMaterialThickness(CLng(Value)))
+                m_accumulator.materialType as decimal
+
+            private _mat_len as decimal
+            private _mat_wid as decimal
+            private _mat_thick as decimal
+            private _datepick as decimal
+            private _customer as string
+            private _num_clamps as integer
+            private _clamp1 as decimal
+            private _clamp2 as decimal
+            private _clamp3 as decimal
+            private _clamp4 as decimal
+            private _folder as decimal
+            private _leadsetup as string
+            private _layersetup as string
+            private _duedate as string
+
+            private _user_int as integer
+
+
+            private _user_str as string
+
+            private _sql_table_name as string
+
+            private _pdb_DB_name as string
+
+            private _CornerRad as decimal
+            private _Orient as decimal
+            private _ProfLen as decimal
+            private _ProfWid as decimal
+            private _CenRad as decimal
+            private _CenPt_x as decimal
+            private _CenPt_y as decimal
+            private _RefPt_x as decimal
+            private _RefPt_y as decimal
+            private _HoleDia as decimal
+            private _MajorDia as decimal
+
+            private _CornerRad2 as decimal
+            private _Orient2 as decimal
+            private _ProfLen2 as decimal
+            private _ProfWid2 as decimal
+            private _CenRad2 as decimal
+            private _CenPt2_x as decimal
+            private _CenPt2_y as decimal
+            private _RefPt2_x as decimal
+            private _RefPt2_y as decimal
+            private _ps1_x as decimal
+            private _ps1_y as decimal
+            private _ps2_x as decimal
+            private _ps2_y as decimal
+            private _ps3_x as decimal
+            private _ps3_y as decimal
+            private _ps4_x as decimal
+            private _ps4_y as decimal
+            private _ps5_x as decimal
+            private _ps5_y as decimal
+            private _ps6_x as decimal
+            private _ps6_y as decimal
+            private _ps7_x as decimal
+            private _ps7_y as decimal
+            private _ps8_x as decimal
+            private _ps8_y as decimal
+		
+		
