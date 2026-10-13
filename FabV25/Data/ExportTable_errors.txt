@@ -1,0 +1,10 @@
+Failed to export table Station Configuration 
+Using ExportTableType. Stations
+ The error is : Failed to export table Station Configuration: Unable to cast object of type 'System.Double' to type 'Newtonsoft.Json.Linq.JToken'.
+
+
+Failed to export table Station Configuration 
+Using ExportTableType. Stations
+ The error is : Failed to export table Station Configuration: Unable to cast object of type 'System.Double' to type 'Newtonsoft.Json.Linq.JToken'.
+
+

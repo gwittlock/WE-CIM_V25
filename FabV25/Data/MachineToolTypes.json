@@ -1,0 +1,492 @@
+{
+  "TableName": "Machine Tool Types",
+  "Columns": [
+    {
+      "Field": "ID",
+      "Header": " Id",
+      "Visible": true
+    },
+    {
+      "Field": "MachineTypeID",
+      "Header": "MachineType Id",
+      "Visible": true
+    },
+    {
+      "Field": "ToolTypeID",
+      "Header": "ToolType Id",
+      "Visible": true
+    }
+  ],
+  "Rows": [
+    {
+      "ID": 1,
+      "MachineTypeID": 7,
+      "ToolTypeID": 1
+    },
+    {
+      "ID": 2,
+      "MachineTypeID": 7,
+      "ToolTypeID": 2
+    },
+    {
+      "ID": 3,
+      "MachineTypeID": 7,
+      "ToolTypeID": 3
+    },
+    {
+      "ID": 4,
+      "MachineTypeID": 7,
+      "ToolTypeID": 4
+    },
+    {
+      "ID": 5,
+      "MachineTypeID": 7,
+      "ToolTypeID": 5
+    },
+    {
+      "ID": 6,
+      "MachineTypeID": 7,
+      "ToolTypeID": 6
+    },
+    {
+      "ID": 7,
+      "MachineTypeID": 7,
+      "ToolTypeID": 7
+    },
+    {
+      "ID": 8,
+      "MachineTypeID": 7,
+      "ToolTypeID": 8
+    },
+    {
+      "ID": 9,
+      "MachineTypeID": 8,
+      "ToolTypeID": 1
+    },
+    {
+      "ID": 10,
+      "MachineTypeID": 8,
+      "ToolTypeID": 2
+    },
+    {
+      "ID": 11,
+      "MachineTypeID": 8,
+      "ToolTypeID": 3
+    },
+    {
+      "ID": 12,
+      "MachineTypeID": 8,
+      "ToolTypeID": 4
+    },
+    {
+      "ID": 13,
+      "MachineTypeID": 8,
+      "ToolTypeID": 5
+    },
+    {
+      "ID": 14,
+      "MachineTypeID": 8,
+      "ToolTypeID": 6
+    },
+    {
+      "ID": 15,
+      "MachineTypeID": 8,
+      "ToolTypeID": 7
+    },
+    {
+      "ID": 16,
+      "MachineTypeID": 8,
+      "ToolTypeID": 8
+    },
+    {
+      "ID": 17,
+      "MachineTypeID": 5,
+      "ToolTypeID": 7
+    },
+    {
+      "ID": 18,
+      "MachineTypeID": 5,
+      "ToolTypeID": 8
+    },
+    {
+      "ID": 19,
+      "MachineTypeID": 5,
+      "ToolTypeID": 9
+    },
+    {
+      "ID": 20,
+      "MachineTypeID": 5,
+      "ToolTypeID": 10
+    },
+    {
+      "ID": 21,
+      "MachineTypeID": 5,
+      "ToolTypeID": 11
+    },
+    {
+      "ID": 22,
+      "MachineTypeID": 5,
+      "ToolTypeID": 12
+    },
+    {
+      "ID": 23,
+      "MachineTypeID": 3,
+      "ToolTypeID": 7
+    },
+    {
+      "ID": 24,
+      "MachineTypeID": 3,
+      "ToolTypeID": 8
+    },
+    {
+      "ID": 25,
+      "MachineTypeID": 3,
+      "ToolTypeID": 10
+    },
+    {
+      "ID": 26,
+      "MachineTypeID": 3,
+      "ToolTypeID": 13
+    },
+    {
+      "ID": 27,
+      "MachineTypeID": 6,
+      "ToolTypeID": 7
+    },
+    {
+      "ID": 28,
+      "MachineTypeID": 6,
+      "ToolTypeID": 8
+    },
+    {
+      "ID": 29,
+      "MachineTypeID": 6,
+      "ToolTypeID": 10
+    },
+    {
+      "ID": 30,
+      "MachineTypeID": 6,
+      "ToolTypeID": 14
+    },
+    {
+      "ID": 31,
+      "MachineTypeID": 1,
+      "ToolTypeID": 7
+    },
+    {
+      "ID": 32,
+      "MachineTypeID": 1,
+      "ToolTypeID": 8
+    },
+    {
+      "ID": 33,
+      "MachineTypeID": 1,
+      "ToolTypeID": 15
+    },
+    {
+      "ID": 34,
+      "MachineTypeID": 1,
+      "ToolTypeID": 16
+    },
+    {
+      "ID": 35,
+      "MachineTypeID": 1,
+      "ToolTypeID": 17
+    },
+    {
+      "ID": 36,
+      "MachineTypeID": 1,
+      "ToolTypeID": 18
+    },
+    {
+      "ID": 37,
+      "MachineTypeID": 1,
+      "ToolTypeID": 19
+    },
+    {
+      "ID": 38,
+      "MachineTypeID": 1,
+      "ToolTypeID": 20
+    },
+    {
+      "ID": 39,
+      "MachineTypeID": 1,
+      "ToolTypeID": 21
+    },
+    {
+      "ID": 40,
+      "MachineTypeID": 1,
+      "ToolTypeID": 22
+    },
+    {
+      "ID": 41,
+      "MachineTypeID": 1,
+      "ToolTypeID": 23
+    },
+    {
+      "ID": 42,
+      "MachineTypeID": 1,
+      "ToolTypeID": 24
+    },
+    {
+      "ID": 43,
+      "MachineTypeID": 1,
+      "ToolTypeID": 25
+    },
+    {
+      "ID": 44,
+      "MachineTypeID": 1,
+      "ToolTypeID": 26
+    },
+    {
+      "ID": 45,
+      "MachineTypeID": 2,
+      "ToolTypeID": 7
+    },
+    {
+      "ID": 46,
+      "MachineTypeID": 2,
+      "ToolTypeID": 8
+    },
+    {
+      "ID": 47,
+      "MachineTypeID": 2,
+      "ToolTypeID": 9
+    },
+    {
+      "ID": 48,
+      "MachineTypeID": 2,
+      "ToolTypeID": 10
+    },
+    {
+      "ID": 49,
+      "MachineTypeID": 2,
+      "ToolTypeID": 11
+    },
+    {
+      "ID": 50,
+      "MachineTypeID": 2,
+      "ToolTypeID": 12
+    },
+    {
+      "ID": 51,
+      "MachineTypeID": 2,
+      "ToolTypeID": 15
+    },
+    {
+      "ID": 52,
+      "MachineTypeID": 2,
+      "ToolTypeID": 16
+    },
+    {
+      "ID": 53,
+      "MachineTypeID": 2,
+      "ToolTypeID": 17
+    },
+    {
+      "ID": 54,
+      "MachineTypeID": 2,
+      "ToolTypeID": 18
+    },
+    {
+      "ID": 55,
+      "MachineTypeID": 2,
+      "ToolTypeID": 19
+    },
+    {
+      "ID": 56,
+      "MachineTypeID": 2,
+      "ToolTypeID": 20
+    },
+    {
+      "ID": 57,
+      "MachineTypeID": 2,
+      "ToolTypeID": 21
+    },
+    {
+      "ID": 58,
+      "MachineTypeID": 2,
+      "ToolTypeID": 22
+    },
+    {
+      "ID": 59,
+      "MachineTypeID": 2,
+      "ToolTypeID": 23
+    },
+    {
+      "ID": 60,
+      "MachineTypeID": 2,
+      "ToolTypeID": 24
+    },
+    {
+      "ID": 61,
+      "MachineTypeID": 2,
+      "ToolTypeID": 25
+    },
+    {
+      "ID": 62,
+      "MachineTypeID": 2,
+      "ToolTypeID": 26
+    },
+    {
+      "ID": 63,
+      "MachineTypeID": 4,
+      "ToolTypeID": 7
+    },
+    {
+      "ID": 64,
+      "MachineTypeID": 4,
+      "ToolTypeID": 8
+    },
+    {
+      "ID": 65,
+      "MachineTypeID": 4,
+      "ToolTypeID": 10
+    },
+    {
+      "ID": 66,
+      "MachineTypeID": 4,
+      "ToolTypeID": 13
+    },
+    {
+      "ID": 67,
+      "MachineTypeID": 4,
+      "ToolTypeID": 15
+    },
+    {
+      "ID": 68,
+      "MachineTypeID": 4,
+      "ToolTypeID": 16
+    },
+    {
+      "ID": 69,
+      "MachineTypeID": 4,
+      "ToolTypeID": 17
+    },
+    {
+      "ID": 70,
+      "MachineTypeID": 4,
+      "ToolTypeID": 18
+    },
+    {
+      "ID": 71,
+      "MachineTypeID": 4,
+      "ToolTypeID": 19
+    },
+    {
+      "ID": 72,
+      "MachineTypeID": 4,
+      "ToolTypeID": 20
+    },
+    {
+      "ID": 73,
+      "MachineTypeID": 4,
+      "ToolTypeID": 21
+    },
+    {
+      "ID": 74,
+      "MachineTypeID": 4,
+      "ToolTypeID": 22
+    },
+    {
+      "ID": 75,
+      "MachineTypeID": 4,
+      "ToolTypeID": 23
+    },
+    {
+      "ID": 76,
+      "MachineTypeID": 4,
+      "ToolTypeID": 24
+    },
+    {
+      "ID": 77,
+      "MachineTypeID": 4,
+      "ToolTypeID": 25
+    },
+    {
+      "ID": 78,
+      "MachineTypeID": 4,
+      "ToolTypeID": 26
+    },
+    {
+      "ID": 79,
+      "MachineTypeID": 1,
+      "ToolTypeID": 27
+    },
+    {
+      "ID": 80,
+      "MachineTypeID": 2,
+      "ToolTypeID": 27
+    },
+    {
+      "ID": 81,
+      "MachineTypeID": 4,
+      "ToolTypeID": 27
+    },
+    {
+      "ID": 82,
+      "MachineTypeID": 9,
+      "ToolTypeID": 28
+    },
+    {
+      "ID": 83,
+      "MachineTypeID": 9,
+      "ToolTypeID": 5
+    },
+    {
+      "ID": 84,
+      "MachineTypeID": 9,
+      "ToolTypeID": 7
+    },
+    {
+      "ID": 85,
+      "MachineTypeID": 9,
+      "ToolTypeID": 8
+    },
+    {
+      "ID": 86,
+      "MachineTypeID": 1,
+      "ToolTypeID": 29
+    },
+    {
+      "ID": 87,
+      "MachineTypeID": 2,
+      "ToolTypeID": 29
+    },
+    {
+      "ID": 88,
+      "MachineTypeID": 3,
+      "ToolTypeID": 29
+    },
+    {
+      "ID": 89,
+      "MachineTypeID": 4,
+      "ToolTypeID": 29
+    },
+    {
+      "ID": 90,
+      "MachineTypeID": 5,
+      "ToolTypeID": 29
+    },
+    {
+      "ID": 91,
+      "MachineTypeID": 6,
+      "ToolTypeID": 29
+    },
+    {
+      "ID": 92,
+      "MachineTypeID": 7,
+      "ToolTypeID": 29
+    },
+    {
+      "ID": 93,
+      "MachineTypeID": 8,
+      "ToolTypeID": 29
+    },
+    {
+      "ID": 94,
+      "MachineTypeID": 9,
+      "ToolTypeID": 29
+    }
+  ]
+}

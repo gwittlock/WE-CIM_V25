@@ -1,0 +1,170 @@
+{
+  "TableName": "Tool Types",
+  "Columns": [
+    {
+      "Field": "ID",
+      "Header": "Id",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Description",
+      "Header": "Description",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Display",
+      "Header": "Display",
+      "Visible": true,
+      "DataType": 0
+    }
+  ],
+  "Rows": [
+    {
+      "ID": 1,
+      "Description": "Router_Bit",
+      "Display": "Router Bit"
+    },
+    {
+      "ID": 2,
+      "Description": "Disc_Saw",
+      "Display": "Disc Saw"
+    },
+    {
+      "ID": 3,
+      "Description": "Brad_Point",
+      "Display": "Brad Point"
+    },
+    {
+      "ID": 4,
+      "Description": "Lance_Bit",
+      "Display": "Lance Bit"
+    },
+    {
+      "ID": 5,
+      "Description": "Counter_Sink",
+      "Display": "Counter Sink"
+    },
+    {
+      "ID": 6,
+      "Description": "Aggregate",
+      "Display": "Aggregate"
+    },
+    {
+      "ID": 7,
+      "Description": "Tap",
+      "Display": "Tap"
+    },
+    {
+      "ID": 8,
+      "Description": "Drill",
+      "Display": "Drill"
+    },
+    {
+      "ID": 9,
+      "Description": "Burner",
+      "Display": "Burner"
+    },
+    {
+      "ID": 10,
+      "Description": "Scribe",
+      "Display": "Scribe"
+    },
+    {
+      "ID": 11,
+      "Description": "Powder_Mark",
+      "Display": "Powder Mark"
+    },
+    {
+      "ID": 12,
+      "Description": "Center_Punch",
+      "Display": "Center Punch"
+    },
+    {
+      "ID": 13,
+      "Description": "Laser",
+      "Display": "Laser"
+    },
+    {
+      "ID": 14,
+      "Description": "Waterjet",
+      "Display": "Waterjet"
+    },
+    {
+      "ID": 15,
+      "Description": "Round",
+      "Display": "Round"
+    },
+    {
+      "ID": 16,
+      "Description": "Square",
+      "Display": "Square"
+    },
+    {
+      "ID": 17,
+      "Description": "Rectangle",
+      "Display": "Rectangle"
+    },
+    {
+      "ID": 18,
+      "Description": "Obround",
+      "Display": "Obround"
+    },
+    {
+      "ID": 19,
+      "Description": "Diamond",
+      "Display": "Diamond"
+    },
+    {
+      "ID": 20,
+      "Description": "Corner_Radius",
+      "Display": "Corner Radius"
+    },
+    {
+      "ID": 21,
+      "Description": "Single_D",
+      "Display": "Single D"
+    },
+    {
+      "ID": 22,
+      "Description": "Double_D",
+      "Display": "Double D"
+    },
+    {
+      "ID": 23,
+      "Description": "Trapezoid",
+      "Display": "Trapezoid"
+    },
+    {
+      "ID": 24,
+      "Description": "Keyhole",
+      "Display": "Keyhole"
+    },
+    {
+      "ID": 25,
+      "Description": "Forming",
+      "Display": "Forming"
+    },
+    {
+      "ID": 26,
+      "Description": "Marking",
+      "Display": "Marking"
+    },
+    {
+      "ID": 27,
+      "Description": "Hexagon",
+      "Display": "Hexagon"
+    },
+    {
+      "ID": 28,
+      "Description": "End_Mill",
+      "Display": "End Mill"
+    },
+    {
+      "ID": 29,
+      "Description": "Custom",
+      "Display": "Custom"
+    }
+  ]
+}

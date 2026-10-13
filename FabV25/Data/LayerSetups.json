@@ -1,0 +1,229 @@
+{
+  "TableName": "Layer Setup",
+  "Rows": [
+    {
+      "ID": 17,
+      "Description": "REI",
+      "MachineID": 6,
+      "ZLevelMode": 0,
+      "GapTolerance": 0.01,
+      "CleanTolerance": 0.01,
+      "FilterTolerance": 0.01,
+      "SharpAngle": 60.0,
+      "ProcessText": false,
+      "RestrictOffset": false,
+      "Layers": [
+        {
+          "ID": 18,
+          "LayerSetupID": 17,
+          "CADLayer": "*default*",
+          "CAMLayer": "Part_layer",
+          "Color": 16776960,
+          "DisplayColor": "Aqua",
+          "Station": "None",
+          "ToolType": 0,
+          "ZLevel": 0.0,
+          "CutSide": 1,
+          "Distance": 0.0,
+          "CutDirection": 2
+        }
+      ]
+    },
+    {
+      "ID": 18,
+      "Description": "Global",
+      "MachineID": 7,
+      "ZLevelMode": 0,
+      "GapTolerance": 0.005,
+      "CleanTolerance": 0.005,
+      "FilterTolerance": 0.005,
+      "SharpAngle": 60.0,
+      "ProcessText": false,
+      "RestrictOffset": false,
+      "Layers": [
+        {
+          "ID": 19,
+          "LayerSetupID": 18,
+          "CADLayer": "*default*",
+          "CAMLayer": "Part Layer",
+          "Color": 16776960,
+          "DisplayColor": "Aqua",
+          "Station": "**Auto**",
+          "ToolType": 0,
+          "ZLevel": 0.0,
+          "CutSide": 1,
+          "Distance": 0.0,
+          "CutDirection": 0
+        }
+      ]
+    },
+    {
+      "ID": 19,
+      "Description": "Global",
+      "MachineID": 8,
+      "ZLevelMode": 0,
+      "GapTolerance": 0.0001,
+      "CleanTolerance": 0.0001,
+      "FilterTolerance": 0.0001,
+      "SharpAngle": 60.0,
+      "ProcessText": false,
+      "RestrictOffset": false,
+      "Layers": [
+        {
+          "ID": 20,
+          "LayerSetupID": 19,
+          "CADLayer": "*default*",
+          "CAMLayer": "CAM Layer",
+          "Color": 16776960,
+          "DisplayColor": "Aqua",
+          "Station": "None",
+          "ToolType": 0,
+          "ZLevel": 0.0,
+          "CutSide": 1,
+          "Distance": 0.0,
+          "CutDirection": 2
+        }
+      ]
+    },
+    {
+      "ID": 20,
+      "Description": "All_Layers",
+      "MachineID": 9,
+      "ZLevelMode": 0,
+      "GapTolerance": 0.0001,
+      "CleanTolerance": 0.0001,
+      "FilterTolerance": 0.0001,
+      "SharpAngle": 60.0,
+      "ProcessText": false,
+      "RestrictOffset": false,
+      "Layers": [
+        {
+          "ID": 21,
+          "LayerSetupID": 20,
+          "CADLayer": "*default*",
+          "CAMLayer": "Part_Layer",
+          "Color": 16776960,
+          "DisplayColor": "Aqua",
+          "Station": "**Auto**",
+          "ToolType": 0,
+          "ZLevel": 0.0,
+          "CutSide": 1,
+          "Distance": 0.0,
+          "CutDirection": 2
+        }
+      ]
+    },
+    {
+      "ID": 21,
+      "Description": "Global",
+      "MachineID": 10,
+      "ZLevelMode": 0,
+      "GapTolerance": 0.005,
+      "CleanTolerance": 0.005,
+      "FilterTolerance": 0.005,
+      "SharpAngle": 60.0,
+      "ProcessText": false,
+      "RestrictOffset": false,
+      "Layers": [
+        {
+          "ID": 22,
+          "LayerSetupID": 21,
+          "CADLayer": "*default*",
+          "CAMLayer": "CAM Layer",
+          "Color": 16776960,
+          "DisplayColor": "Aqua",
+          "Station": "None",
+          "ToolType": null,
+          "ZLevel": 0.0,
+          "CutSide": 1,
+          "Distance": 0.0,
+          "CutDirection": 2
+        }
+      ]
+    },
+    {
+      "ID": 22,
+      "Description": "Global",
+      "MachineID": 11,
+      "ZLevelMode": 0,
+      "GapTolerance": 0.005,
+      "CleanTolerance": 0.005,
+      "FilterTolerance": 0.005,
+      "SharpAngle": 60.0,
+      "ProcessText": false,
+      "RestrictOffset": false,
+      "Layers": [
+        {
+          "ID": 23,
+          "LayerSetupID": 22,
+          "CADLayer": "*default*",
+          "CAMLayer": "CAM Layer",
+          "Color": 16776960,
+          "DisplayColor": "Aqua",
+          "Station": "None",
+          "ToolType": null,
+          "ZLevel": 0.0,
+          "CutSide": 1,
+          "Distance": 0.0,
+          "CutDirection": 2
+        }
+      ]
+    },
+    {
+      "ID": 23,
+      "Description": "Global2",
+      "MachineID": 10,
+      "ZLevelMode": 1,
+      "GapTolerance": 0.0001,
+      "CleanTolerance": 0.0001,
+      "FilterTolerance": 0.0001,
+      "SharpAngle": 60.0,
+      "ProcessText": false,
+      "RestrictOffset": false,
+      "Layers": [
+        {
+          "ID": 24,
+          "LayerSetupID": 23,
+          "CADLayer": "*default*",
+          "CAMLayer": "CAM Layer",
+          "Color": 14381203,
+          "DisplayColor": "MediumPurple",
+          "Station": "None",
+          "ToolType": null,
+          "ZLevel": 0.0,
+          "CutSide": 1,
+          "Distance": 0.0,
+          "CutDirection": 2
+        }
+      ]
+    },
+    {
+      "ID": 24,
+      "Description": "Default",
+      "MachineID": 8,
+      "ZLevelMode": 1,
+      "GapTolerance": 0.0001,
+      "CleanTolerance": 0.0001,
+      "FilterTolerance": 0.0001,
+      "SharpAngle": 60.0,
+      "ProcessText": false,
+      "RestrictOffset": false,
+      "Layers": [
+        {
+          "ID": 25,
+          "LayerSetupID": 24,
+          "CADLayer": "*DEFAULT*",
+          "CAMLayer": "CAM Layer",
+          "Color": 16776960,
+          "DisplayColor": "Aqua",
+          "Station": "1",
+          "ToolType": null,
+          "ZLevel": 0.0,
+          "CutSide": 1,
+          "Distance": 0.0,
+          "CutDirection": 2
+        }
+      ]
+    }
+  ]
+}

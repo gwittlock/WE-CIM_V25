@@ -1,0 +1,26 @@
+ Volume in drive C is Windows
+ Volume Serial Number is 9886-BC67
+
+ Directory of C:\Program Files (x86)\WE-CIM\25.0\Data
+
+12/24/2025  05:49 PM            29,170 Directives.json
+12/16/2025  01:59 AM            44,990 LayerSetups.json
+12/06/2025  05:00 AM            72,600 MachineAttributes.json
+12/05/2025  12:04 PM             7,286 MachineAttributeTypes.json
+12/06/2025  05:00 AM             7,228 Machines.json
+11/25/2025  12:39 AM            73,816 MachineTools.json
+11/25/2025  12:39 AM             8,131 MachineToolTypes.json
+11/25/2025  12:39 AM            19,450 MachineTypeAttributes.json
+11/25/2025  12:39 AM             1,196 MachineTypes.json
+12/07/2025  11:23 PM           492,416 MaterialInventory.json
+12/07/2025  11:13 PM             5,275 MaterialTypes.json
+12/06/2025  05:00 AM           582,201 Stations.json
+11/25/2025  12:39 AM             4,100 ToolAttributeTypes.json
+12/13/2025  08:23 PM           229,990 ToolCrib.json
+12/13/2025  02:23 AM           645,134 ToolSetupMembers.json
+12/06/2025  05:12 AM             4,533 ToolSetups.json
+11/25/2025  12:39 AM            45,963 ToolTypeAttributes.json
+11/25/2025  12:39 AM             3,087 ToolTypes.json
+12/26/2025  01:27 PM               568 WorkplaneTypes.json
+              19 File(s)      2,277,134 bytes
+               0 Dir(s)  56,198,053,888 bytes free

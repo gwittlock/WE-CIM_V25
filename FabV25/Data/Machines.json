@@ -1,0 +1,139 @@
+{
+  "TableName": "Machines",
+  "Columns": [
+    {
+      "Field": "ID",
+      "Header": "ID",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Description",
+      "Header": "Description",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "TypeID",
+      "Header": "TypeID",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "WorkplaneTypeID",
+      "Header": "WorkplaneTypeID",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Units",
+      "Header": "Units",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "CodePartProfile",
+      "Header": "CodePartProfile",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "HoldDown_CTG",
+      "Header": "HoldDown_CTG",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Clamp_CTG",
+      "Header": "Clamp_CTG",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Table_CTG",
+      "Header": "Table_CTG",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "CNC_Folder",
+      "Header": "CNC_Folder",
+      "Visible": true,
+      "DataType": 0
+    }
+  ],
+  "Rows": [
+    {
+      "ID": 6,
+      "Description": "Trumpf_3030",
+      "TypeID": 3,
+      "WorkplaneTypeID": 1,
+      "Units": 0,
+      "CodePartProfile": false,
+      "HoldDown_CTG": null,
+      "Clamp_CTG": null,
+      "Table_CTG": null,
+      "CNC_Folder": null
+    },
+    {
+      "ID": 7,
+      "Description": "Trumpf_2020",
+      "TypeID": 1,
+      "WorkplaneTypeID": 1,
+      "Units": 0,
+      "CodePartProfile": false,
+      "HoldDown_CTG": null,
+      "Clamp_CTG": null,
+      "Table_CTG": null,
+      "CNC_Folder": null
+    },
+    {
+      "ID": 8,
+      "Description": "AmadaLC-3015",
+      "TypeID": 3,
+      "WorkplaneTypeID": 1,
+      "Units": 0,
+      "CodePartProfile": false,
+      "HoldDown_CTG": null,
+      "Clamp_CTG": null,
+      "Table_CTG": null,
+      "CNC_Folder": null
+    },
+    {
+      "ID": 9,
+      "Description": "Wiedemann C3000",
+      "TypeID": 1,
+      "WorkplaneTypeID": 1,
+      "Units": 0,
+      "CodePartProfile": false,
+      "HoldDown_CTG": "",
+      "Clamp_CTG": "C:\\Customers\\CTG\\Clamp3000.ctg",
+      "Table_CTG": "",
+      "CNC_Folder": null
+    },
+    {
+      "ID": 10,
+      "Description": "Trumpf 200",
+      "TypeID": 1,
+      "WorkplaneTypeID": 1,
+      "Units": 0,
+      "CodePartProfile": false,
+      "HoldDown_CTG": "C:\\Customers\\CTG\\HoldDown200.ctg",
+      "Clamp_CTG": null,
+      "Table_CTG": null,
+      "CNC_Folder": null
+    },
+    {
+      "ID": 11,
+      "Description": "Amada EMK",
+      "TypeID": 1,
+      "WorkplaneTypeID": 1,
+      "Units": 0,
+      "CodePartProfile": false,
+      "HoldDown_CTG": null,
+      "Clamp_CTG": "C:\\CTG\\Clamp357.ctg",
+      "Table_CTG": null,
+      "CNC_Folder": null
+    }
+  ]
+}

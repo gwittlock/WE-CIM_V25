@@ -1,0 +1,315 @@
+{
+  "TableName": "Machine Attribute Types",
+  "Columns": [
+    {
+      "Field": "ID",
+      "Header": "ID",
+      "Visible": true
+    },
+    {
+      "Field": "Description",
+      "Header": "Description",
+      "Visible": true
+    },
+    {
+      "Field": "Display",
+      "Header": "Display",
+      "Visible": true
+    },
+    {
+      "Field": "DataType",
+      "Header": "DataType",
+      "Visible": true
+    }
+  ],
+  "Rows": [
+    {
+      "ID": 1,
+      "Description": "Min_Travel_Limit_X",
+      "Display": "Min Travel Limit X",
+      "DataType": 7
+    },
+    {
+      "ID": 2,
+      "Description": "Max_Travel_Limit_X",
+      "Display": "Max Travel Limit X",
+      "DataType": 7
+    },
+    {
+      "ID": 3,
+      "Description": "Min_Travel_Limit_Y",
+      "Display": "Min Travel Limit Y",
+      "DataType": 7
+    },
+    {
+      "ID": 4,
+      "Description": "Max_Travel_Limit_Y",
+      "Display": "Max Travel Limit Y",
+      "DataType": 7
+    },
+    {
+      "ID": 5,
+      "Description": "Min_Travel_Limit_Z",
+      "Display": "Min Travel Limit Z",
+      "DataType": 7
+    },
+    {
+      "ID": 6,
+      "Description": "Max_Travel_Limit_Z",
+      "Display": "Max Travel Limit Z",
+      "DataType": 7
+    },
+    {
+      "ID": 7,
+      "Description": "Max_Material_Length",
+      "Display": "Max Material Length",
+      "DataType": 7
+    },
+    {
+      "ID": 8,
+      "Description": "Max_Material_Width",
+      "Display": "Max Material Width",
+      "DataType": 7
+    },
+    {
+      "ID": 9,
+      "Description": "Max_Material_Thickness",
+      "Display": "Max Material Thickness",
+      "DataType": 7
+    },
+    {
+      "ID": 10,
+      "Description": "Max_Material_Weight",
+      "Display": "Max Material Weight",
+      "DataType": 7
+    },
+    {
+      "ID": 11,
+      "Description": "Number_of_Clamps",
+      "Display": "Number of Clamps",
+      "DataType": 4
+    },
+    {
+      "ID": 12,
+      "Description": "Punch_Clamp_Deadzone_Length",
+      "Display": "Punch Clamp Deadzone Length",
+      "DataType": 7
+    },
+    {
+      "ID": 13,
+      "Description": "Punch_Clamp_Deadzone_Width",
+      "Display": "Punch Clamp Deadzone Width",
+      "DataType": 7
+    },
+    {
+      "ID": 14,
+      "Description": "Punch_Clamp_Deadzone_Center",
+      "Display": "Punch Clamp Deadzone Center",
+      "DataType": 7
+    },
+    {
+      "ID": 15,
+      "Description": "Torch_Clamp_Deadzone_Length",
+      "Display": "Torch Clamp Deadzone Length",
+      "DataType": 7
+    },
+    {
+      "ID": 16,
+      "Description": "Torch_Clamp_Deadzone_Width",
+      "Display": "Torch Clamp Deadzone Width",
+      "DataType": 7
+    },
+    {
+      "ID": 17,
+      "Description": "Torch_Clamp_Deadzone_Center",
+      "Display": "Torch Clamp Deadzone Center",
+      "DataType": 7
+    },
+    {
+      "ID": 20,
+      "Description": "Punch_Dropdoor_Location_X",
+      "Display": "Punch Dropdoor Location X",
+      "DataType": 7
+    },
+    {
+      "ID": 21,
+      "Description": "Punch_Dropdoor_Location_Y",
+      "Display": "Punch Dropdoor Location Y",
+      "DataType": 7
+    },
+    {
+      "ID": 24,
+      "Description": "Torch_Dropdoor_Location_X",
+      "Display": "Torch Dropdoor Location X",
+      "DataType": 7
+    },
+    {
+      "ID": 25,
+      "Description": "Torch_Dropdoor_Location_Y",
+      "Display": "Torch Dropdoor Location Y",
+      "DataType": 7
+    },
+    {
+      "ID": 26,
+      "Description": "Max_Horsepower",
+      "Display": "Max Horsepower",
+      "DataType": 7
+    },
+    {
+      "ID": 27,
+      "Description": "Max_Flow",
+      "Display": "Max Flow",
+      "DataType": 7
+    },
+    {
+      "ID": 28,
+      "Description": "Max_Pressure",
+      "Display": "Max Pressure",
+      "DataType": 7
+    },
+    {
+      "ID": 29,
+      "Description": "Max_Tonnage",
+      "Display": "Max Tonnage",
+      "DataType": 7
+    },
+    {
+      "ID": 31,
+      "Description": "Space_Tolerance",
+      "Display": "Space Tolerance",
+      "DataType": 7
+    },
+    {
+      "ID": 32,
+      "Description": "Holddown_Location_X1",
+      "Display": "First Holddown Location X",
+      "DataType": 7
+    },
+    {
+      "ID": 33,
+      "Description": "Holddown_Location_X2",
+      "Display": "Second Holddown Location X",
+      "DataType": 7
+    },
+    {
+      "ID": 34,
+      "Description": "Holddown_Location_Y",
+      "Display": "Holddown Location Y",
+      "DataType": 7
+    },
+    {
+      "ID": 35,
+      "Description": "Holddown_Diameter",
+      "Display": "Holddown Diameter",
+      "DataType": 7
+    },
+    {
+      "ID": 36,
+      "Description": "Min_Area",
+      "Display": "Minimum Area",
+      "DataType": 7
+    },
+    {
+      "ID": 37,
+      "Description": "Punch_Dropdoor_Min_Length",
+      "Display": "Punch Dropdoor Minimum Length",
+      "DataType": 7
+    },
+    {
+      "ID": 38,
+      "Description": "Punch_Dropdoor_Max_Length",
+      "Display": "Punch Dropdoor Maximum Length",
+      "DataType": 7
+    },
+    {
+      "ID": 39,
+      "Description": "Punch_Dropdoor_Min_Width",
+      "Display": "Punch Dropdoor Minimum Width",
+      "DataType": 7
+    },
+    {
+      "ID": 40,
+      "Description": "Punch_Dropdoor_Max_Width",
+      "Display": "Punch Dropdoor Maximum Width",
+      "DataType": 7
+    },
+    {
+      "ID": 41,
+      "Description": "Torch_Dropdoor_Min_Length",
+      "Display": "Torch Dropdoor Minimum Length",
+      "DataType": 7
+    },
+    {
+      "ID": 42,
+      "Description": "Torch_Dropdoor_Max_Length",
+      "Display": "Torch Dropdoor Maximum Length",
+      "DataType": 7
+    },
+    {
+      "ID": 43,
+      "Description": "Torch_Dropdoor_Min_Width",
+      "Display": "Torch Dropdoor Minimum Width",
+      "DataType": 7
+    },
+    {
+      "ID": 44,
+      "Description": "Torch_Dropdoor_Max_Width",
+      "Display": "Torch Dropdoor Maximum Width",
+      "DataType": 7
+    },
+    {
+      "ID": 45,
+      "Description": "Hole_Minus_Tolerance",
+      "Display": "Hole Minus Tolerance",
+      "DataType": 7
+    },
+    {
+      "ID": 46,
+      "Description": "Hole_Plus_Tolerance",
+      "Display": "Hole Plus Tolerance",
+      "DataType": 7
+    },
+    {
+      "ID": 47,
+      "Description": "Holddown_Type",
+      "Display": "Holddown Type",
+      "DataType": 4
+    },
+    {
+      "ID": 48,
+      "Description": "Clamp_Buffer",
+      "Display": "Clamp Deadzone Buffer",
+      "DataType": 7
+    },
+    {
+      "ID": 49,
+      "Description": "Clamp_Min_Split_Length",
+      "Display": "Clamp Minimum Split Length",
+      "DataType": 7
+    },
+    {
+      "ID": 50,
+      "Description": "Clamp_Min_Split_Width",
+      "Display": "Clamp Minimum Split Width",
+      "DataType": 7
+    },
+    {
+      "ID": 51,
+      "Description": "Ind_Hits",
+      "Display": "Output Indv. Hits for Lines/Arcs",
+      "DataType": 4
+    },
+    {
+      "ID": 52,
+      "Description": "Torch Offset In X",
+      "Display": "Torch Offset In X",
+      "DataType": 7
+    },
+    {
+      "ID": 53,
+      "Description": "Scribe_With_Torch",
+      "Display": "Scribe With Torch",
+      "DataType": 7
+    }
+  ]
+}

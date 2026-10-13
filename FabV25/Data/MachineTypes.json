@@ -1,0 +1,67 @@
+{
+  "TableName": "Machine Types",
+  "Columns": [
+    {
+      "Field": "ID",
+      "Header": "Id",
+      "Visible": true
+    },
+    {
+      "Field": "Description",
+      "Header": "Description",
+      "Visible": true
+    },
+    {
+      "Field": "Display",
+      "Header": "Display",
+      "Visible": true
+    }
+  ],
+  "Rows": [
+    {
+      "ID": 1,
+      "Description": "Punch",
+      "Display": "Punch"
+    },
+    {
+      "ID": 2,
+      "Description": "Punch/Plasma",
+      "Display": "Punch/Plasma"
+    },
+    {
+      "ID": 3,
+      "Description": "Laser",
+      "Display": "Laser"
+    },
+    {
+      "ID": 4,
+      "Description": "Punch/Laser",
+      "Display": "Punch/Laser"
+    },
+    {
+      "ID": 5,
+      "Description": "Burner",
+      "Display": "Burner"
+    },
+    {
+      "ID": 6,
+      "Description": "Waterjet",
+      "Display": "Waterjet"
+    },
+    {
+      "ID": 7,
+      "Description": "Router",
+      "Display": "Router"
+    },
+    {
+      "ID": 8,
+      "Description": "Point-To-Point",
+      "Display": "Point-To-Point"
+    },
+    {
+      "ID": 9,
+      "Description": "Mill",
+      "Display": "Mill"
+    }
+  ]
+}
