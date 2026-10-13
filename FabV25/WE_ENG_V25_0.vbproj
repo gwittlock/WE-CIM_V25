@@ -1,0 +1,856 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="12.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>
+    </ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{55E2A81A-572B-47DC-8A57-A22231D6D5FF}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <StartupObject>FabV25_WIN8.My.MyApplication</StartupObject>
+    <RootNamespace>FabV25_WIN8</RootNamespace>
+    <AssemblyName>WE_Eng_25.0</AssemblyName>
+    <MyType>WindowsForms</MyType>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <UpgradeBackupLocation />
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
+    <PublishUrl>C:\_Gary\Publish\</PublishUrl>
+    <Install>false</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <SupportUrl>http://www.wittlockeng.com</SupportUrl>
+    <ProductName>WE-CIM Fabrication V22.0</ProductName>
+    <SuiteName>WE-CIM</SuiteName>
+    <AutorunEnabled>true</AutorunEnabled>
+    <ApplicationRevision>4</ApplicationRevision>
+    <ApplicationVersion>22.0.28.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <PublishWizardCompleted>true</PublishWizardCompleted>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <BootstrapperComponentsUrl>C:\3RD\.net Framework 4.6</BootstrapperComponentsUrl>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DocumentationFile>
+    </DocumentationFile>
+    <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
+    <Prefer32Bit>false</Prefer32Bit>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>
+    </WarningsAsErrors>
+    <DefineConstants>
+    </DefineConstants>
+    <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DocumentationFile>
+    </DocumentationFile>
+    <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <Prefer32Bit>false</Prefer32Bit>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>
+    </WarningsAsErrors>
+    <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionExplicit>On</OptionExplicit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionCompare>Binary</OptionCompare>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionStrict>Off</OptionStrict>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionInfer>On</OptionInfer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>..\..\Program Files %28x86%29\WE-CIM\25.0\</OutputPath>
+    <DocumentationFile>
+    </DocumentationFile>
+    <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>
+    </WarningsAsErrors>
+    <DefineConstants>CCS_FAB=false,DIAMOND=0, Rittal =0, APIHeatTransfer=0</DefineConstants>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <Optimize>true</Optimize>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <RemoveIntegerChecks>true</RemoveIntegerChecks>
+    <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <DefineTrace>false</DefineTrace>
+    <OutputPath>..\..\Program Files %28x86%29\WE-CIM\25.0\</OutputPath>
+    <DocumentationFile>
+    </DocumentationFile>
+    <Optimize>false</Optimize>
+    <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>false</Prefer32Bit>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <RemoveIntegerChecks>true</RemoveIntegerChecks>
+    <DefineDebug>true</DefineDebug>
+    <WarningsAsErrors>
+    </WarningsAsErrors>
+    <DefineConstants>Win32=True, CCS_FAB=false, DIAMOND=0, Rittal =0,APIHeatTransfer=1</DefineConstants>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <DebugSymbols>true</DebugSymbols>
+    <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationManifest>My Project\app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>SetupV25.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestCertificateThumbprint>061474EFA84686107AB3E79BEA573B30AF687BB3</ManifestCertificateThumbprint>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestKeyFile>FAB_V21_2013_TemporaryKey.pfx</ManifestKeyFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GenerateManifests>true</GenerateManifests>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignManifests>false</SignManifests>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetZone>LocalIntranet</TargetZone>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>false</Prefer32Bit>
+    <WarningsAsErrors>
+    </WarningsAsErrors>
+    <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <Optimize>true</Optimize>
+    <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+    <WarningsAsErrors>
+    </WarningsAsErrors>
+    <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="DevExpress.BonusSkins.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Charts.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Data.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.DataAccess.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Dialogs.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Docs.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Images.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Office.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Pdf.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.PivotGrid.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Printing.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.RichEdit.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Sparkline.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Spreadsheet.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Utils.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Utils.v18.1.UI, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.Xpo.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraBars.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraCharts.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraCharts.v18.1.Wizard, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraDialogs.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraEditors.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraGauges.v18.1.Core, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraNavBar.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraPrinting.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraGrid.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraLayout.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.CodeParser.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraReports.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraReports.v18.1.Extensions, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraSpreadsheet.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraTreeList.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraVerticalGrid.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DevExpress.XtraWizard.v18.1, Version=18.1.18.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Drawing.Design" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Import Include="DevExpress.XtraEditors" />
+    <Import Include="Microsoft.VisualBasic" />
+    <Import Include="System" />
+    <Import Include="System.Collections" />
+    <Import Include="System.Collections.Generic" />
+    <Import Include="System.Data" />
+    <Import Include="System.Diagnostics" />
+    <Import Include="System.Drawing" />
+    <Import Include="System.Windows.Forms" />
+    <Import Include="System.Linq" />
+    <Import Include="System.Xml.Linq" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Classes\AppData.vb" />
+    <Compile Include="Classes\AreaClearFeature.vb" />
+    <Compile Include="Classes\AutoPunchingEngine.vb" />
+    <Compile Include="Classes\BarrierHoleFeature.vb" />
+    <Compile Include="Classes\bogus.vb" />
+    <Compile Include="Classes\BoltHoleCircleFeature.vb" />
+    <Compile Include="Classes\C3dCoord.vb" />
+    <Compile Include="Classes\CadEntity.vb" />
+    <Compile Include="Classes\CadPoint.vb" />
+    <Compile Include="Classes\CamEntity.vb" />
+    <Compile Include="Classes\CamOperation.vb" />
+    <Compile Include="Classes\clamp.vb" />
+    <Compile Include="Classes\clsMatList.vb" />
+    <Compile Include="Classes\CommandFeature.vb" />
+    <Compile Include="Classes\ConvexHullArc.vb" />
+    <Compile Include="Classes\ConvexHullGeometry.vb" />
+    <Compile Include="Classes\ConvexHullOffsetter.vb" />
+    <Compile Include="Classes\ConvexPartProfile.vb" />
+    <Compile Include="Classes\ConvexToolProfile.vb" />
+    <Compile Include="Classes\CornerRadiusToolShape.vb" />
+    <Compile Include="Classes\CustomToolShape.vb" />
+    <Compile Include="Classes\DatabaseConversion.vb" />
+    <Compile Include="Classes\DoubleDToolShape.vb" />
+    <Compile Include="Classes\DxfDrawable.vb" />
+    <Compile Include="Classes\DxfImport.vb" />
+    <Compile Include="Classes\DynamicMachineProperty.vb" />
+    <Compile Include="Classes\DynamicMachinePropertyBag.vb" />
+    <Compile Include="Classes\DynamicProperty.vb" />
+    <Compile Include="Classes\DynamicPropertyBag.vb" />
+    <Compile Include="Classes\DynamicToolAttributes.vb" />
+    <Compile Include="Classes\GridOfHolesFeature.vb" />
+    <Compile Include="Classes\HelperFunctions.vb" />
+    <Compile Include="Classes\HexagonToolShape.vb" />
+    <Compile Include="Classes\HoleFeature.vb" />
+    <Compile Include="Classes\HolePatternParameters.vb" />
+    <Compile Include="Classes\HotSpot.vb" />
+    <Compile Include="Classes\HotSpotManager.vb" />
+    <Compile Include="Classes\ISelectable.vb" />
+    <Compile Include="Classes\Job.vb" />
+    <Compile Include="Classes\JobContext.vb" />
+    <Compile Include="Classes\JobSheet.vb" />
+    <Compile Include="Classes\JsonLoader.vb" />
+    <Compile Include="Classes\KeyholeToolShape.vb" />
+    <Compile Include="Classes\LayerDefinition.vb" />
+    <Compile Include="Classes\LeadGeometry.vb" />
+    <Compile Include="Classes\LeadIn.vb" />
+    <Compile Include="Classes\LeadOut.vb" />
+    <Compile Include="Classes\LineOfHolesFeature.vb" />
+    <Compile Include="Classes\LineOfHolesAtAngleNormalFeature.vb" />
+    <Compile Include="Classes\LineOfHolesAtAngleParallelFeature.vb" />
+    <Compile Include="Classes\MachineDefinition.vb" />
+    <Compile Include="Classes\MachineEnvelope.vb" />
+    <Compile Include="Classes\MachineLoader.vb" />
+    <Compile Include="Classes\MachineMapAttribute.vb" />
+    <Compile Include="Classes\MachiningFeature.vb" />
+    <Compile Include="Classes\Material.vb" />
+    <Compile Include="Classes\MaterialParameterDescriptor.vb" />
+    <Compile Include="Classes\MaterialPicker.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Classes\MaterialPickerTree.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Classes\MaterialSheet.vb" />
+    <Compile Include="Classes\Part.vb" />
+    <Compile Include="Classes\Pattern.vb" />
+    <Compile Include="Classes\PierceHoleFeature.vb" />
+    <Compile Include="Classes\Polyline2D.vb" />
+    <Compile Include="Classes\Profile.vb" />
+    <Compile Include="Classes\ProfileFeature,vb.vb" />
+    <Compile Include="Classes\PuncfResult.vb" />
+    <Compile Include="Classes\QuadTree.vb" />
+    <Compile Include="Classes\RapidPointFeature.vb" />
+    <Compile Include="Classes\RawOffsetChain.vb" />
+    <Compile Include="Classes\SingleDToolShape.vb" />
+    <Compile Include="Classes\TooledProfile.vb" />
+    <Compile Include="Classes\ToolPathGenerator.vb" />
+    <Compile Include="Classes\ToolpathOffsetter,vb.vb" />
+    <Compile Include="Classes\ToolSelection.vb" />
+    <Compile Include="Classes\ToolShapeFactory.vb" />
+    <Compile Include="Classes\ToolShapes.vb" />
+    <Compile Include="Classes\ToolShapes\ConvexHullArcIterator.vb" />
+    <Compile Include="Classes\TrapezoidToolShape,vb.vb" />
+    <Compile Include="Classes\ViewHelper.vb" />
+    <Compile Include="Classes\WmChain.vb" />
+    <Compile Include="Classes\WmChainAssigner.vb" />
+    <Compile Include="Classes\WmChainDegouger.vb" />
+    <Compile Include="Classes\WmChainResolver.vb" />
+    <Compile Include="Classes\WmChainSplitter.vb" />
+    <Compile Include="Classes\WmElem.vb" />
+    <Compile Include="Classes\WmNode.vb" />
+    <Compile Include="Classes\WmSubchn.vb" />
+    <Compile Include="Classes\WorkZone.vb" />
+    <Compile Include="Classes\WorkZoneFactory.vb" />
+    <Compile Include="Forms\ConfigurationManagerForm.Designer.vb">
+      <DependentUpon>ConfigurationManagerForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ConfigurationManagerForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\dlgAddParam.Designer.vb">
+      <DependentUpon>dlgAddParam.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\dlgAddParam.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\dlgEditClamps.designer.vb">
+      <DependentUpon>dlgEditClamps.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\dlgEditClamps.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\DXFFileSelectionDialog.Designer.vb">
+      <DependentUpon>DXFFileSelectionDialog.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\DXFFileSelectionDialog.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmConvertCMDB.designer.vb">
+      <DependentUpon>frmConvertCMDB.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmConvertCMDB.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmMain.designer.vb">
+      <DependentUpon>frmMain.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmMain.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmOpenProject.designer.vb">
+      <DependentUpon>frmOpenProject.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmOpenProject.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmSelectLayer.designer.vb">
+      <DependentUpon>frmSelectLayer.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmSelectLayer.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmSelectTools.designer.vb">
+      <DependentUpon>frmSelectTools.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmSelectTools.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\MaterialPickerPopUp.Designer.vb">
+      <DependentUpon>MaterialPickerPopUp.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\MaterialPickerPopUp.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\ToolShapeTest.Designer.vb">
+      <DependentUpon>ToolShapeTest.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ToolShapeTest.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Helpers\ConversionHelpers.vb" />
+    <Compile Include="Helpers\Extensions.vb" />
+    <Compile Include="Helpers\IsSelectable.vb" />
+    <Compile Include="Helpers\Logging.vb" />
+    <Compile Include="Helpers\MaterialHelper.vb" />
+    <Compile Include="Helpers\SelectionManager.vb" />
+    <Compile Include="Models\DxfGeometryHelpers.vb" />
+    <Compile Include="Models\Machine.vb" />
+    <Compile Include="Models\Module1.vb" />
+    <Compile Include="Models\tool.vb" />
+    <Compile Include="Models\toolSetup.vb" />
+    <Compile Include="Models\ToolType.vb" />
+    <Compile Include="Models\udp.vb" />
+    <Compile Include="Modules\AccessToJsonExporter.vb" />
+    <Compile Include="Modules\appMain.vb" />
+    <Compile Include="Modules\AutoPunhTest.vb" />
+    <Compile Include="Modules\dxfImporter.vb" />
+    <Compile Include="Modules\Exporters.vb" />
+    <Compile Include="Modules\MachineDefinitionBuilder.vb" />
+    <Compile Include="Modules\modFile.vb" />
+    <Compile Include="Modules\modGeo.vb" />
+    <Compile Include="Modules\modMaterial.vb" />
+    <Compile Include="Modules\GeometryMath.vb" />
+    <Compile Include="Modules\modPath.vb" />
+    <Compile Include="Modules\modProject.vb" />
+    <Compile Include="Modules\modRegistry.vb" />
+    <Compile Include="Modules\modSelection.vb" />
+    <Compile Include="Modules\modSnap.vb" />
+    <Compile Include="Modules\modView.vb" />
+    <Compile Include="Modules\PropertyGridContext.vb" />
+    <Compile Include="Modules\ValidationService.vb" />
+    <Compile Include="My Project\AssemblyInfo.vb" />
+    <Compile Include="My Project\Application.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Application.myapp</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="My Project\Resources.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="My Project\Settings.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="Reports\xrEntityList.Designer.vb">
+      <DependentUpon>xrEntityList.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Reports\xrEntityList.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\ChkBoxFrame.designer.vb">
+      <DependentUpon>ChkBoxFrame.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Resources\User Controls\ChkBoxFrame.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\DnDHighlightHelper.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\LblCombo.designer.vb">
+      <DependentUpon>LblCombo.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Resources\User Controls\LblCombo.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\lblTextBox.designer.vb">
+      <DependentUpon>lblTextBox.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Resources\User Controls\lblTextBox.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\mathbox.designer.vb">
+      <DependentUpon>mathbox.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Resources\User Controls\mathbox.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\UC_picModeler.Designer.vb">
+      <DependentUpon>UC_picModeler.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Resources\User Controls\UC_picModeler.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\UC_PicPattern.Designer.vb">
+      <DependentUpon>UC_PicPattern.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Resources\User Controls\UC_PicPattern.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\UnboundDataSource.vb" />
+    <Compile Include="Resources\User Controls\UnboundGridControl.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\UnboundGridView.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Resources\User Controls\UnboundGridViewInfoRegistrator.vb" />
+    <Compile Include="State\appState.vb" />
+    <Compile Include="User_Controls\MatListTree.designer.vb">
+      <DependentUpon>MatListTree.vb</DependentUpon>
+    </Compile>
+    <Compile Include="User_Controls\MatListTree.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Forms\ConfigurationManagerForm.resx">
+      <DependentUpon>ConfigurationManagerForm.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\dlgAddParam.resx">
+      <DependentUpon>dlgAddParam.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\dlgEditClamps.resx">
+      <DependentUpon>dlgEditClamps.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\DXFFileSelectionDialog.resx">
+      <DependentUpon>DXFFileSelectionDialog.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmConvertCMDB.resx">
+      <DependentUpon>frmConvertCMDB.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmMain.resx">
+      <DependentUpon>frmMain.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmOpenProject.resx">
+      <DependentUpon>frmOpenProject.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmSelectLayer.resx">
+      <DependentUpon>frmSelectLayer.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmSelectTools.resx">
+      <DependentUpon>frmSelectTools.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\ToolShapeTest.resx">
+      <DependentUpon>ToolShapeTest.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="My Project\licenses.licx" />
+    <EmbeddedResource Include="My Project\Resources.resx">
+      <Generator>VbMyResourcesResXFileCodeGenerator</Generator>
+      <CustomToolNamespace>My.Resources</CustomToolNamespace>
+      <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.vb</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Reports\xrEntityList.resx">
+      <DependentUpon>xrEntityList.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\User Controls\ChkBoxFrame.resx">
+      <DependentUpon>ChkBoxFrame.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\User Controls\LblCombo.resX">
+      <DependentUpon>LblCombo.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\User Controls\lblTextBox.resx">
+      <DependentUpon>lblTextBox.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\User Controls\mathbox.resX">
+      <DependentUpon>mathbox.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\User Controls\UC_picModeler.resx">
+      <DependentUpon>UC_picModeler.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\User Controls\UC_PicPattern.resx">
+      <DependentUpon>UC_PicPattern.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\User Controls\UnboundGridControl.resx">
+      <DependentUpon>UnboundGridControl.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="User_Controls\MatListTree.resx">
+      <DependentUpon>MatListTree.vb</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SetupV25.ico" />
+    <None Include="app.config" />
+    <None Include="My Project\app.manifest" />
+    <None Include="My Project\Application.myapp">
+      <Generator>MyApplicationCodeGenerator</Generator>
+      <LastGenOutput>Application.Designer.vb</LastGenOutput>
+    </None>
+    <None Include="My Project\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <CustomToolNamespace>My</CustomToolNamespace>
+      <LastGenOutput>Settings.Designer.vb</LastGenOutput>
+    </None>
+    <None Include="Resources\BM.bmp" />
+    <None Include="Resources\BenchMarkTransLogo.png" />
+    <None Include="Resources\Blue_Select_Arrow.ico" />
+    <None Include="Resources\Blue_Select_Arrow.png" />
+    <None Include="Resources\Blue_Select_By_Filter.png" />
+    <None Include="Resources\Blue_select_By_Layer.png" />
+    <None Include="Resources\Blue_HotDot.png" />
+    <None Include="Resources\Blue_Select_All.png" />
+    <None Include="Resources\Blue_Select_All_By_Filter.png" />
+    <None Include="Resources\Blue_Select_By_Arc.png" />
+    <None Include="Resources\Blue_Select_By_Command.png" />
+    <None Include="Resources\Blue_Select_By_Feature.png" />
+    <None Include="Resources\Blue_Select_By_Hole.png" />
+    <None Include="Resources\Blue_Select_By_Line.png" />
+    <None Include="Resources\Blue_Select_By_Point.png" />
+    <None Include="Resources\Blue_Select_By_Profile.png" />
+    <None Include="Resources\Blue_Select_By_Tool.png" />
+    <None Include="Resources\Blue_Select_By_Window.png" />
+    <None Include="Resources\Blue_Select_Remove_All.png" />
+    <None Include="Resources\Blue_Select_Remove_By_Feature.png" />
+    <Content Include="BM_FAB.ico" />
+    <None Include="Resources\apilogo2.ico" />
+    <Content Include="entitylist.png" />
+    <Content Include="Keyhole_V22.5.ico" />
+    <Content Include="Resources\BM.ico" />
+    <None Include="Resources\WE_CIM_StartUp.png" />
+    <None Include="Resources\SmallBenchMarkTransLogo.png" />
+    <None Include="Resources\Orange_Select_Arrow.ico" />
+    <None Include="Resources\Select_arrow.ico" />
+    <None Include="Resources\UpperLeftX - Copy.png" />
+    <None Include="Resources\Orange_Select_Arrow.png" />
+    <None Include="Resources\Orange_HotDot.png" />
+    <None Include="Resources\Orange_Select_All_By_Filter.png" />
+    <None Include="Resources\Orange_Select_All_lBy_Filter.png" />
+    <None Include="Resources\Orange_Select_By_Command.png" />
+    <None Include="Resources\Orange_Select_By_Features.png" />
+    <None Include="Resources\Orange_Select_BY_Hole.png" />
+    <None Include="Resources\Orange_Select_By_Layer.png" />
+    <None Include="Resources\Orange_Select_By_Line.png" />
+    <None Include="Resources\Orange_Select_By_Point.png" />
+    <None Include="Resources\Orange_Select_By_Profile.png" />
+    <None Include="Resources\Orange_Select_By_Tool.png" />
+    <None Include="Resources\Orange_Select_By_Window.png" />
+    <None Include="Resources\Orange_Select_Remove_All.png" />
+    <None Include="Resources\Orange_Select_Remove_By_Filter.png" />
+    <None Include="Resources\Orange_Select_By_Arc.png" />
+    <None Include="Resources\Orange_Select_All.png" />
+    <None Include="Resources\select.cur" />
+    <None Include="Resources\window.cur" />
+    <None Include="Resources\BM_FAB.ico" />
+    <None Include="Resources\reset.png" />
+    <None Include="Resources\oldWE-CIM_CAD-CAM_All_V22_Text copy.png" />
+    <None Include="Resources\oldWE-CIM_CAD-CAM_All_V22_Text.png" />
+    <None Include="Resources\SetupV22.bmp" />
+    <None Include="Resources\setupV22.ico" />
+    <None Include="Resources\ZoomAll24X24.png" />
+    <None Include="Resources\zoomin24x24.png" />
+    <None Include="Resources\Zoomout24x24.png" />
+    <None Include="Resources\zoomprevious24x24.png" />
+    <None Include="Resources\zoomrefresh24x24.png" />
+    <None Include="Resources\ZoomWindow24x24.png" />
+    <None Include="Resources\measure.png" />
+    <None Include="Resources\EntityListQuestionMark.png" />
+    <None Include="Resources\tbViewFull16x16.png" />
+    <None Include="Resources\tbViewPrevious.png" />
+    <None Include="Resources\tbViewRefresh.png" />
+    <None Include="Resources\tbViewWindow.png" />
+    <None Include="Resources\FreightCar_logo.png" />
+    <None Include="Resources\Diamond_Logo.png" />
+    <None Include="Resources\logo.png" />
+    <None Include="Resources\cabinet-icon-9272.png" />
+    <None Include="Resources\find_32x32.png" />
+    <None Include="Resources\find_32x321.png" />
+    <None Include="Resources\find_16x16.png" />
+    <None Include="Resources\importimage_32x32.png" />
+    <None Include="Resources\importimage_16x16.png" />
+    <None Include="Resources\cancel_32x32.png" />
+    <None Include="Resources\cancel_16x16.png" />
+    <None Include="Resources\cancel_32x321.png" />
+    <None Include="Resources\cancel_16x161.png" />
+    <None Include="Resources\cancel_32x322.png" />
+    <None Include="Resources\cancel_32x323.png" />
+    <None Include="Resources\cancel_16x162.png" />
+    <None Include="Resources\cancel_32x324.png" />
+    <None Include="Resources\EntityList.ico" />
+    <None Include="Resources\Circle_Cyan.ico" />
+    <None Include="Resources\Circle-orange.ico" />
+    <None Include="Resources\Circle-orange.png" />
+    <None Include="Resources\Circle_Cyan.png" />
+    <Content Include="Resources\flipsheet.ico" />
+    <Content Include="Resources\MRP_Round.png" />
+    <None Include="Resources\Rittal_logo_1.png" />
+    <None Include="Resources\refresh_32x32.png" />
+    <None Include="Resources\refresh_16x16.png" />
+    <None Include="Resources\ruler.ico" />
+    <None Include="Resources\ruler.png" />
+    <None Include="Resources\WE-CIM_CAD-CAM_All_V22_5_Te.png" />
+    <None Include="Resources\WE-CIM_CAD-CAM_All_V22_5_Text.bmp" />
+    <None Include="Resources\V23Keyhole.ico" />
+    <None Include="Resources\V23_KeyHole_Icon.ico" />
+    <Content Include="Resources\WE-CIM_CAD-CAM_All_V22_Text.png" />
+    <None Include="Resources\WE-CIM_CAD-CAM_All_V23_Text.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include=".NETFramework,Version=v4.5.2">
+      <Visible>False</Visible>
+      <ProductName>Microsoft .NET Framework 4.5.2 %28x86 and x64%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\LOGO21.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\WE-COMV25.ico" />
+    <Content Include="setupV21.ico" />
+    <EmbeddedResource Include="Resources\Cursor1.cur" />
+    <Content Include="FabV21.ico" />
+    <EmbeddedResource Include="Resources\NELowerLeftX.png" />
+    <EmbeddedResource Include="Resources\LowerLeftX.png" />
+    <EmbeddedResource Include="Resources\UpperLeftY.png" />
+    <EmbeddedResource Include="Resources\UpperRightY.png" />
+    <EmbeddedResource Include="Resources\LowerRightY.png" />
+    <EmbeddedResource Include="Resources\LowerLeftY.png" />
+    <EmbeddedResource Include="Resources\UpperLeftX.png" />
+    <EmbeddedResource Include="Resources\UpperRightX.png" />
+    <EmbeddedResource Include="Resources\LowerRightX.png" />
+    <EmbeddedResource Include="Resources\LowerRight.gif" />
+    <EmbeddedResource Include="Resources\NEUpperRightY.png" />
+    <EmbeddedResource Include="Resources\NELowerRightY.png" />
+    <EmbeddedResource Include="Resources\NELowerLeftY.png" />
+    <EmbeddedResource Include="Resources\NEUpperLeftX.png" />
+    <EmbeddedResource Include="Resources\NEUpperRightX.png" />
+    <EmbeddedResource Include="Resources\NELowerRightX.png" />
+    <EmbeddedResource Include="Resources\NEUpperLeftY.png" />
+    <EmbeddedResource Include="Resources\ITI_Logo.ico" />
+    <EmbeddedResource Include="Resources\weng_V20_Icon.ico" />
+    <EmbeddedResource Include="Resources\TempArrow.cur" />
+    <EmbeddedResource Include="Resources\WECIM_Arrow.cur" />
+    <EmbeddedResource Include="Resources\WECIM_Arrow2.cur" />
+    <None Include="Resources\Clear_All_Mats.png" />
+    <None Include="Resources\delete.png" />
+    <None Include="Resources\delete16.png" />
+    <None Include="Resources\open_16x16.png" />
+    <None Include="Resources\1423946424_21551.ico" />
+    <None Include="Resources\measure.cur" />
+    <None Include="Resources\UseSelected.png" />
+    <Content Include="setup.ico" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <PackageReference Include="IxMilia.Dxf">
+      <Version>0.8.4</Version>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>13.0.4</Version>
+    </PackageReference>
+    <PackageReference Include="System.Buffers">
+      <Version>4.5.1</Version>
+    </PackageReference>
+    <PackageReference Include="System.Memory">
+      <Version>4.5.4</Version>
+    </PackageReference>
+    <PackageReference Include="System.Numerics.Vectors">
+      <Version>4.5.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe">
+      <Version>5.0.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.Text.Json">
+      <Version>5.0.2</Version>
+    </PackageReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.VisualBasic.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
