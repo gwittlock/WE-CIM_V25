@@ -21,10 +21,7 @@ Public Class ConfigurationManagerForm
 
 
     ' --- Class-level variables to store JSON data ---
-    Private machineTypesTable As JsonTable(Of MachineType)
-    Private Machinestable As JsonTable(Of Machine)
-    Public machineAttributesTable As JsonTable(Of MachineAttribute)
-    Public machineAttributeTypesTable As JsonTable(Of MachineAttributeType)
+
     ' Track current machine ID
     Public currentMachineID As Integer = -1
 
@@ -83,7 +80,6 @@ Public Class ConfigurationManagerForm
 
     ' --- Form Load ---
     Private Sub ConfigurationManagerForm_Load(sender As Object, e As EventArgs) Handles Me.Load
-
 
 
         ' Commit edits on ToolSetup grid immediately
@@ -779,12 +775,28 @@ Public Class ConfigurationManagerForm
             Return
         End If
 
+
+
         ' Get attributes for this machine
         Dim attrs As List(Of MachineAttribute) = AppData.MachineAttributes _
         .Where(Function(a) a.MachineID = machine.ID).ToList()
 
         ' Get types
         Dim types As List(Of MachineAttributeType) = AppData.MachineAttributeTypes
+
+        currentAttributeMap = attrs _
+                                        .Join(
+                                            types,
+                                            Function(a) a.AttributeTypeID,
+                                            Function(t) t.ID,
+                                            Function(a, t) New With {
+                                                .Display = t.Display,
+                                                .AttributeTypeID = a.AttributeTypeID
+                                            }) _
+                                        .ToDictionary(
+                                            Function(x) x.Display,
+                                            Function(x) x.AttributeTypeID)
+
 
         ' Create the dynamic property bag
         propgrdMachine.SelectedObject = Nothing
@@ -832,7 +844,7 @@ Public Class ConfigurationManagerForm
         Dim newValue As String = CStr(e.ChangedItem.Value)
 
         ' Find the matching MachineAttribute row
-        Dim target = machineAttributesTable.Rows _
+        Dim target = AppData.MachineAttributesTable.Rows _
                  .FirstOrDefault(Function(a) a.MachineID = currentMachineID AndAlso
                                              a.AttributeTypeID = attrTypeID)
 
@@ -846,7 +858,7 @@ Public Class ConfigurationManagerForm
             .AttributeTypeID = attrTypeID,
             .Value = newValue
         }
-            machineAttributesTable.Rows.Add(target)
+            AppData.MachineAttributesTable.Rows.Add(target)
         End If
 
         ' --- Centralized save routine ---
@@ -890,20 +902,20 @@ Public Class ConfigurationManagerForm
     ''' <param name="machineID">The ID of the machine to refresh.</param>
     Private Sub RefreshPropertyGridForMachine(machineID As Integer)
         ' Find the machine
-        Dim machine = machinesTable.Rows.FirstOrDefault(Function(m) m.ID = machineID)
+        Dim machine = AppData.MachinesTable.Rows.FirstOrDefault(Function(m) m.ID = machineID)
         If machine Is Nothing Then
             propgrdMachine.SelectedObject = Nothing
             Return
         End If
 
         ' Filter attributes for this machine
-        Dim attrs = machineAttributesTable.Rows.Where(Function(a) a.MachineID = machine.ID)
+        Dim attrs = AppData.MachineAttributesTable.Rows.Where(Function(a) a.MachineID = machine.ID)
 
         ' Build property types list and current values dictionary
         Dim propTypes As New List(Of DynamicPropertyType)
         Dim currentValues As New Dictionary(Of String, Object)
 
-        For Each attrType In machineAttributeTypesTable.Rows
+        For Each attrType In AppData.MachineAttributeTypesTable.Rows
             ' Create DynamicPropertyType
             Dim pt As New DynamicPropertyType With {
             .Name = attrType.Display,
@@ -954,11 +966,11 @@ Public Class ConfigurationManagerForm
         Dim attrTypeID As Integer = currentAttributeMap(displayName)
 
         ' Find and remove the attribute from the table
-        Dim targetAttr = machineAttributesTable.Rows _
+        Dim targetAttr = AppData.MachineAttributesTable.Rows _
                      .FirstOrDefault(Function(a) a.MachineID = currentMachineID AndAlso a.AttributeTypeID = attrTypeID)
 
         If targetAttr IsNot Nothing Then
-            machineAttributesTable.Rows.Remove(targetAttr)
+            AppData.MachineAttributesTable.Rows.Remove(targetAttr)
         Else
             MessageBox.Show($"Attribute '{displayName}' not found in table.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
@@ -970,7 +982,7 @@ Public Class ConfigurationManagerForm
         ' Save JSON
         Dim filePath As String = Path.Combine(dataFolder, "MachineAttributes.json")
         Try
-            Dim jsonOut = JsonConvert.SerializeObject(machineAttributesTable, Formatting.Indented)
+            Dim jsonOut = JsonConvert.SerializeObject(AppData.MachineAttributesTable, Formatting.Indented)
             File.WriteAllText(filePath, jsonOut)
         Catch ex As Exception
             MessageBox.Show($"Error saving MachineAttributes.json:{vbCrLf}{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -1863,7 +1875,7 @@ Public Class ConfigurationManagerForm
         If String.IsNullOrWhiteSpace(name) Then Return
 
         ' --- 2. Check for duplicate machine name ---
-        If machinesTable.Rows.Any(Function(m) String.Equals(m.Description, name, StringComparison.OrdinalIgnoreCase)) Then
+        If AppData.MachinesTable.Rows.Any(Function(m) String.Equals(m.Description, name, StringComparison.OrdinalIgnoreCase)) Then
             MessageBox.Show($"A machine with the name '{name}' already exists.", "Duplicate Name", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
         End If
@@ -1872,7 +1884,7 @@ Public Class ConfigurationManagerForm
         Dim nTypeId As Integer = GetValueFromDelimitedData(TreeViewMachines.SelectedNode.Tag, "MachineType_ID", 0)
 
         ' --- 4. Determine next machine ID ---
-        Dim nextID As Integer = If(machinesTable.Rows.Count = 0, 1, machinesTable.Rows.Max(Function(m) m.ID) + 1)
+        Dim nextID As Integer = If(AppData.MachinesTable.Rows.Count = 0, 1, AppData.MachinesTable.Rows.Max(Function(m) m.ID) + 1)
 
         ' --- 5. Create new machine ---
         Dim newMachine As New Machine With {
@@ -1880,11 +1892,11 @@ Public Class ConfigurationManagerForm
         .Description = name,
         .TypeID = nTypeId
     }
-        machinesTable.Rows.Add(newMachine)
+        AppData.MachinesTable.Rows.Add(newMachine)
 
         ' --- 6. Create default attributes ---
-        For Each attrType In machineAttributeTypesTable.Rows
-            Dim nextAttrID As Integer = If(machineAttributesTable.Rows.Count = 0, 1, machineAttributesTable.Rows.Max(Function(a) a.ID) + 1)
+        For Each attrType In AppData.MachineAttributeTypesTable.Rows
+            Dim nextAttrID As Integer = If(AppData.MachineAttributesTable.Rows.Count = 0, 1, AppData.MachineAttributesTable.Rows.Max(Function(a) a.ID) + 1)
             Dim defaultVal As Object = GetDefaultValueForDataType(attrType.DataType)
 
             Dim newAttr As New MachineAttribute With {
@@ -1893,7 +1905,7 @@ Public Class ConfigurationManagerForm
             .AttributeTypeID = attrType.ID,
             .Value = CStr(defaultVal)
         }
-            machineAttributesTable.Rows.Add(newAttr)
+            AppData.MachineAttributesTable.Rows.Add(newAttr)
         Next
 
         ' --- 7. Create a default station ---
@@ -1914,8 +1926,8 @@ Public Class ConfigurationManagerForm
         stationsTable.Rows.Add(defaultStation)
 
         ' --- 8. Save JSON files ---
-        JsonSaver.SaveObjectToJsonFile(machinesTable, Path.Combine(dataFolder, "Machines.json"))
-        JsonSaver.SaveObjectToJsonFile(machineAttributesTable, Path.Combine(dataFolder, "MachineAttributes.json"))
+        JsonSaver.SaveObjectToJsonFile(AppData.MachinesTable, Path.Combine(dataFolder, "Machines.json"))
+        JsonSaver.SaveObjectToJsonFile(AppData.MachineAttributesTable, Path.Combine(dataFolder, "MachineAttributes.json"))
         SaveStationsJson()
 
         ' --- 9. Refresh TreeView ---
@@ -1984,13 +1996,13 @@ Public Class ConfigurationManagerForm
 
         Try
             ' --- 1. Remove machine ---
-            Dim machineRow = machinesTable.Rows.FirstOrDefault(Function(m) m.ID = machineID)
-            If machineRow IsNot Nothing Then machinesTable.Rows.Remove(machineRow)
+            Dim machineRow = AppData.MachinesTable.Rows.FirstOrDefault(Function(m) m.ID = machineID)
+            If machineRow IsNot Nothing Then AppData.MachinesTable.Rows.Remove(machineRow)
 
             ' --- 2. Remove machine attributes ---
-            Dim attrsToRemove = machineAttributesTable.Rows.Where(Function(a) a.MachineID = machineID).ToList()
+            Dim attrsToRemove = AppData.MachineAttributesTable.Rows.Where(Function(a) a.MachineID = machineID).ToList()
             For Each attr In attrsToRemove
-                machineAttributesTable.Rows.Remove(attr)
+                AppData.MachineAttributesTable.Rows.Remove(attr)
             Next
 
             ' --- 3. Remove stations ---
@@ -2012,8 +2024,8 @@ Public Class ConfigurationManagerForm
             propgridMaterial.SelectedObject = Nothing
 
             ' --- 7. Save JSON files ---
-            JsonSaver.SaveObjectToJsonFile(machinesTable, Path.Combine(dataFolder, "Machines.json"))
-            JsonSaver.SaveObjectToJsonFile(machineAttributesTable, Path.Combine(dataFolder, "MachineAttributes.json"))
+            JsonSaver.SaveObjectToJsonFile(AppData.MachinesTable, Path.Combine(dataFolder, "Machines.json"))
+            JsonSaver.SaveObjectToJsonFile(AppData.MachineAttributesTable, Path.Combine(dataFolder, "MachineAttributes.json"))
             SaveStationsJson()
             SaveToolSetupsJson()
 
@@ -2215,41 +2227,41 @@ Public Class ConfigurationManagerForm
                 Dim isVisible As Boolean = dlg.chkIsVisible.Checked
 
                 ' Validate: block duplicates
-                If machineAttributesTable.Rows.Any(Function(a) a.MachineID = currentMachineID AndAlso
-                                                            a.AttributeTypeID = machineAttributeTypesTable.Rows _
+                If AppData.MachineAttributesTable.Rows.Any(Function(a) a.MachineID = currentMachineID AndAlso
+                                                            a.AttributeTypeID = AppData.MachineAttributeTypesTable.Rows _
                                                                                    .FirstOrDefault(Function(t) t.Display = paramDisplay)?.ID) Then
                     MessageBox.Show("This attribute already exists for the machine.")
                     Return
                 End If
 
                 ' Create a new AttributeType if needed
-                Dim nextAttrTypeID As Integer = If(machineAttributeTypesTable.Rows.Count = 0, 1, machineAttributeTypesTable.Rows.Max(Function(t) t.ID) + 1)
+                Dim nextAttrTypeID As Integer = If(AppData.MachineAttributeTypesTable.Rows.Count = 0, 1, AppData.MachineAttributeTypesTable.Rows.Max(Function(t) t.ID) + 1)
                 Dim newAttrType As New MachineAttributeType With {
                     .ID = nextAttrTypeID,
                     .Display = paramDisplay,
                     .DataType = paramDataType
                 }
-                machineAttributeTypesTable.Rows.Add(newAttrType)
+                AppData.MachineAttributeTypesTable.Rows.Add(newAttrType)
 
                 ' Create the MachineAttribute
-                Dim nextAttrID As Integer = If(machineAttributesTable.Rows.Count = 0, 1, machineAttributesTable.Rows.Max(Function(a) a.ID) + 1)
+                Dim nextAttrID As Integer = If(AppData.MachineAttributesTable.Rows.Count = 0, 1, AppData.MachineAttributesTable.Rows.Max(Function(a) a.ID) + 1)
                 Dim newAttr As New MachineAttribute With {
                     .ID = nextAttrID,
                     .MachineID = currentMachineID,
                     .AttributeTypeID = newAttrType.ID,
                     .Value = defaultValue
                 }
-                machineAttributesTable.Rows.Add(newAttr)
+                AppData.MachineAttributesTable.Rows.Add(newAttr)
 
                 ' Refresh property grid
                 RefreshPropertyGridForMachine(currentMachineID)
 
                 ' Save JSON
                 Dim filePath1 = Path.Combine(dataFolder, "MachineAttributes.json")
-                File.WriteAllText(filePath1, JsonConvert.SerializeObject(machineAttributesTable, Formatting.Indented))
+                File.WriteAllText(filePath1, JsonConvert.SerializeObject(AppData.MachineAttributesTable, Formatting.Indented))
 
                 Dim filePath2 = Path.Combine(dataFolder, "MachineAttributeTypes.json")
-                File.WriteAllText(filePath2, JsonConvert.SerializeObject(machineAttributeTypesTable, Formatting.Indented))
+                File.WriteAllText(filePath2, JsonConvert.SerializeObject(AppData.MachineAttributeTypesTable, Formatting.Indented))
             End If
         End Using
 
@@ -2258,37 +2270,37 @@ Public Class ConfigurationManagerForm
     Private Sub AddMachineParameter(paramDisplay As String, defaultValue As Object)
         ' --- Step 1: New attribute type ---
         Dim nextTypeID As Integer
-        If machineAttributeTypesTable.Rows.Count = 0 Then
+        If AppData.MachineAttributeTypesTable.Rows.Count = 0 Then
             nextTypeID = 1
         Else
-            nextTypeID = machineAttributeTypesTable.Rows.Max(Function(t) t.ID) + 1
+            nextTypeID = AppData.MachineAttributeTypesTable.Rows.Max(Function(t) t.ID) + 1
         End If
 
         Dim newType As New MachineAttributeType With {
             .ID = nextTypeID,
             .Display = paramDisplay
         }
-        machineAttributeTypesTable.Rows.Add(newType)
+        AppData.MachineAttributeTypesTable.Rows.Add(newType)
 
         ' --- Step 2: Add attribute for each machine ---
-        Dim nextAttrID As Integer = If(machineAttributesTable.Rows.Count = 0, 1, machineAttributesTable.Rows.Max(Function(a) a.ID) + 1)
-        For Each machine In machinesTable.Rows
+        Dim nextAttrID As Integer = If(AppData.MachineAttributesTable.Rows.Count = 0, 1, AppData.MachineAttributesTable.Rows.Max(Function(a) a.ID) + 1)
+        For Each machine In AppData.MachinesTable.Rows
             Dim newAttr As New MachineAttribute With {
                 .ID = nextAttrID,
                 .MachineID = machine.ID,
                 .AttributeTypeID = newType.ID,
                 .Value = defaultValue
             }
-            machineAttributesTable.Rows.Add(newAttr)
+            AppData.MachineAttributesTable.Rows.Add(newAttr)
             nextAttrID += 1
         Next
 
         ' --- Step 3: Save JSON ---
-        JsonSaver.SaveObjectToJsonFile(machineAttributesTable, Path.Combine(dataFolder, "MachineAttributes.json"))
-        JsonSaver.SaveObjectToJsonFile(machineAttributeTypesTable, Path.Combine(dataFolder, "MachineAttributeTypes.json"))
+        JsonSaver.SaveObjectToJsonFile(AppData.MachineAttributesTable, Path.Combine(dataFolder, "MachineAttributes.json"))
+        JsonSaver.SaveObjectToJsonFile(AppData.MachineAttributeTypesTable, Path.Combine(dataFolder, "MachineAttributeTypes.json"))
 
         ' --- Refresh property grid ---
-        PopulatePropertyGridForMachine(machinesTable.Rows.First().ID)
+        PopulatePropertyGridForMachine(AppData.MachinesTable.Rows.First().ID)
     End Sub
 
     Private Sub AddMaterialTypeTSM_Click(sender As Object, e As EventArgs) Handles AddMaterialTypeTSM.Click
@@ -2978,7 +2990,7 @@ Public Class ConfigurationManagerForm
     Private Sub SaveMachineAttributes()
         Try
             Dim spath = Path.Combine(dataFolder, "MachineAttributes.json")
-            Dim json = JsonConvert.SerializeObject(machineAttributesTable, Formatting.Indented)
+            Dim json = JsonConvert.SerializeObject(AppData.MachineAttributesTable, Formatting.Indented)
             File.WriteAllText(spath, json)
         Catch ex As Exception
             MessageBox.Show("Error saving MachineAttributes.json:" & vbCrLf & ex.Message)
@@ -3476,4 +3488,14 @@ Public Class ConfigurationManagerForm
 
 
     End Sub
+
+    Private Sub propgrdMachine_Click(sender As Object, e As EventArgs) Handles propgrdMachine.Click
+
+    End Sub
+
+    Private Sub propgrdMachine_Move(sender As Object, e As EventArgs) Handles propgrdMachine.Move
+
+    End Sub
+
+
 End Class
