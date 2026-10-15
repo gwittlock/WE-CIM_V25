@@ -949,6 +949,6 @@ Partial Class ConfigurationManagerForm
     Friend WithEvents btnSaveLayerSetp As Button
     Friend WithEvents pnlLayerMapSave As Panel
     Friend WithEvents btnLayerMapSave As Button
-    Friend WithEvents propgrdMachine As PropertyGrid
     Friend WithEvents propgridMaterial As PropertyGrid
+    Private WithEvents propgrdMachine As PropertyGrid
 End Class
