@@ -11,7 +11,7 @@ Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 Imports FabV25_WIN8.DynamicToolAttributes
 Imports System.Dynamic
 Imports System.Linq
-
+Imports System.Drawing
 
 Public Class ConfigurationManagerForm
     Inherits Form
@@ -63,6 +63,7 @@ Public Class ConfigurationManagerForm
     Public CurrentSelectedNode As TreeNode
 
     Private newToolBeingAdded As Tool = Nothing
+    Private currentEditingTool As Tool = Nothing
 
 
 
@@ -149,6 +150,8 @@ Public Class ConfigurationManagerForm
         LoadToolTypes()
         PopulateTreeView()
         HookTreeViewEvents()
+
+        lstTools.BackColor = Color.LightGray
 
 
     End Sub
@@ -1540,21 +1543,55 @@ Public Class ConfigurationManagerForm
     End Sub
 
     Private Sub btnSaveToolProps_Click(sender As Object, e As EventArgs) Handles btnSaveToolProps.Click
+
         Dim dyn = TryCast(propgrdToolProps.SelectedObject, DynamicToolAttributes)
         If dyn Is Nothing Then Return
 
-        Dim currentToolTypeID As Integer =
-    CInt(cboToolType.SelectedItem.GetType().GetProperty("ID").GetValue(cboToolType.SelectedItem))
+        Dim savedTool As Tool = Nothing
 
-        Dim newTool As New Tool With {
-    .ID = GetNextToolCribID(),
-    .TypeID = currentToolTypeID,
-    .Description = lblCurrentDescription.Text,
-    .Attributes = dyn._attributes
-}
+        If currentEditingTool IsNot Nothing Then
 
-        AppData.ToolCrib.Add(newTool)
+            ' EDIT: Update the existing tool.
+            currentEditingTool.Description = lblCurrentDescription.Text
+            currentEditingTool.Attributes = dyn._attributes
+
+            savedTool = currentEditingTool
+
+        ElseIf newToolBeingAdded IsNot Nothing Then
+
+            ' ADD: Update and insert the new tool.
+            newToolBeingAdded.Description = lblCurrentDescription.Text
+            newToolBeingAdded.Attributes = dyn._attributes
+
+            AppData.ToolCrib.Add(newToolBeingAdded)
+
+            savedTool = newToolBeingAdded
+
+        Else
+            MessageBox.Show("Unable to determine whether this is an Add or Edit operation.")
+            Return
+        End If
+
         SaveToolCrib()
+
+        ' Preserve the ID before clearing the operation state.
+        Dim savedToolID As Integer = savedTool.ID
+
+        currentEditingTool = Nothing
+        newToolBeingAdded = Nothing
+
+        ' Refresh the list for the currently selected tool type.
+        LoadToolsForSelectedToolType()
+
+        ' Reselect the saved tool.
+        For i As Integer = 0 To lstTools.Items.Count - 1
+            Dim tool = TryCast(lstTools.Items(i), Tool)
+
+            If tool IsNot Nothing AndAlso tool.ID = savedToolID Then
+                lstTools.SelectedIndex = i
+                Exit For
+            End If
+        Next
 
     End Sub
 
@@ -1600,18 +1637,16 @@ Public Class ConfigurationManagerForm
             Return
         End If
 
-        'Dim gary As String = cboToolType.SelectedItem.ToString
-
-        'Dim selectedToolTypeID As Integer = CInt(cboToolType.SelectedValue)
-        'Dim selectedToolTypeID As String = GetValueFromDelimitedData(gary, "ID", 0)
-
         Dim currentToolTypeID As Integer =
         CInt(cboToolType.SelectedItem.GetType().GetProperty("ID").GetValue(cboToolType.SelectedItem))
-
 
         ' Prompt user for new tool name
         newToolDescription = InputBox("Enter the new tool name:", "Add New Tool")
         If String.IsNullOrWhiteSpace(newToolDescription) Then Return
+
+        ' Explicitly establish Add operation state
+        currentEditingTool = Nothing
+        newToolBeingAdded = Nothing
 
         ' Switch to Tool Properties tab
         tabControlMain.SelectedTab = tabToolProperties
@@ -1628,9 +1663,6 @@ Public Class ConfigurationManagerForm
         .Description = newToolDescription,
         .Attributes = defaultProps
     }
-
-        ' Populate property grid
-        ' propgrdToolProps.SelectedObject = New DictionaryPropertyGridWrapper(newToolBeingAdded.Attributes)
 
         ' Update labels
         lblCurrentMachine.Text = currentMachine
@@ -2586,6 +2618,17 @@ Public Class ConfigurationManagerForm
 
             ' Serialize and save
             Dim json = JsonConvert.SerializeObject(materialSheets, Formatting.Indented)
+
+            Debug.WriteLine($"Table type: {materialSheets.GetType().FullName}")
+            Debug.WriteLine($"Rows type: {materialSheets.Rows.GetType().FullName}")
+            Debug.WriteLine($"Row count: {materialSheets.Rows.Count}")
+
+            For Each row In materialSheets.Rows
+                Debug.WriteLine(If(row Is Nothing, "<Nothing>", row.GetType().FullName))
+                Debug.WriteLine($"Description:{row.Description }")
+
+            Next
+
             File.WriteAllText(materialInventoryPath, json)
         Catch ex As Exception
             MessageBox.Show("Error saving MaterialInventory.json:" & vbCrLf & ex.Message, "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -3269,7 +3312,7 @@ Public Class ConfigurationManagerForm
         End If
 
         ' Store for SaveToolProps
-        ' currentEditingTool = selectedTool
+        currentEditingTool = selectedTool
 
         ' Update labels
         lblCurrentMachine.Text = currentMachine
@@ -3638,4 +3681,62 @@ Public Class ConfigurationManagerForm
 
     End Sub
 
+    Private Sub lstTools_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstTools.SelectedIndexChanged
+
+    End Sub
+
+    Private Sub lstTools_RegionChanged(sender As Object, e As EventArgs) Handles lstTools.RegionChanged
+
+    End Sub
+
+    Private Sub lstTools_DrawItem(
+    sender As Object,
+    e As DrawItemEventArgs
+) Handles lstTools.DrawItem
+
+        If e.Index < 0 OrElse e.Index >= lstTools.Items.Count Then Return
+
+        ' Draw the normal background and selection.
+        e.DrawBackground()
+
+        Dim tool As Tool = TryCast(lstTools.Items(e.Index), Tool)
+        If tool Is Nothing Then Return
+
+        Dim textColor As Color = e.ForeColor
+        Dim colorValue As Object = Nothing
+
+        If tool.Attributes IsNot Nothing Then
+
+            ' Prefer the canonical key; retain compatibility with legacy data.
+            If Not tool.Attributes.TryGetValue("Color", colorValue) Then
+                tool.Attributes.TryGetValue("COLOR", colorValue)
+            End If
+
+        End If
+
+        If colorValue IsNot Nothing Then
+            Try
+                Dim oleColor As Integer = Convert.ToInt32(colorValue)
+                textColor = ColorTranslator.FromOle(oleColor)
+            Catch ex As Exception
+                ' Retain the default foreground if the value is invalid.
+            End Try
+        End If
+
+        Using brush As New SolidBrush(textColor)
+            e.Graphics.DrawString(
+            tool.Description,
+            e.Font,
+            brush,
+            e.Bounds
+        )
+        End Using
+
+        e.DrawFocusRectangle()
+
+    End Sub
+
+    Private Sub TreeViewMachines_CausesValidationChanged(sender As Object, e As EventArgs) Handles TreeViewMachines.CausesValidationChanged
+
+    End Sub
 End Class
