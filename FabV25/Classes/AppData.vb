@@ -13,6 +13,20 @@ Imports System.Windows.Forms.Design
 
 
 Public Class AppData
+    Public Shared StationsTable As JsonTable(Of JObject)
+    Public Shared ToolSetupUDPDefinitions As List(Of ToolSetupUDPDefinition)
+    Public Shared ToolSetupUDPDefinitionsTable As JsonTable(Of ToolSetupUDPDefinition)
+    Public Shared ToolSetupUDPValues As List(Of ToolSetupUDPValue)
+    Public Shared ToolSetupUDPValuesTable As JsonTable(Of ToolSetupUDPValue)
+
+    Public Class ToolSetupUDPDefinition
+        Public Property MachineID As Integer
+        Public Property Name As String
+        Public Property Display As String
+        Public Property [Default] As String
+        Public Property DataType As String
+        Public Property Visible As Boolean
+    End Class
 
     ' Folder where JSON files are stored
     ' App data folder
@@ -21,11 +35,20 @@ Public Class AppData
     ' -------------------------------
     ' MACHINES / MATERIALS
     ' -------------------------------
+
     Public Shared MachineTypes As List(Of MachineType)
+
+    ' Persistence wrappers preserve each JSON file's TableName and Columns metadata.
+    ' Runtime lists reference the corresponding wrapper Rows collections.
+    Public Shared MachinesTable As JsonTable(Of Machine)
+    Public Shared MachineAttributeTypesTable As JsonTable(Of MachineAttributeType)
+    Public Shared MachineAttributesTable As JsonTable(Of MachineAttribute)
+
     Public Shared Machines As List(Of Machine)
     Public Shared MachineAttributeTypes As List(Of MachineAttributeType)
     Public Shared MachineAttributes As List(Of MachineAttribute)
     Public Shared MachineToolTypes As List(Of MachineToolType)
+
 
     Public Shared Stations As List(Of Station)
     Public Shared ToolSetups As List(Of ToolSetup)
@@ -92,9 +115,31 @@ Public Class AppData
 
 
         End If
-        Machines = LoadTableWrapped(Of Machine)("Machines.json")
-        MachineAttributeTypes = LoadTableWrapped(Of MachineAttributeType)("MachineAttributeTypes.json")
-        MachineAttributes = LoadTableWrapped(Of MachineAttribute)("MachineAttributes.json")
+
+        MachinesTable =
+    LoadJsonTableWrapped(Of Machine)("Machines.json")
+        Machines = MachinesTable.Rows
+
+        MachineAttributeTypesTable =
+    LoadJsonTableWrapped(Of MachineAttributeType)(
+        "MachineAttributeTypes.json")
+        MachineAttributeTypes = MachineAttributeTypesTable.Rows
+
+        MachineAttributesTable =
+    LoadJsonTableWrapped(Of MachineAttribute)(
+        "MachineAttributes.json")
+        MachineAttributes = MachineAttributesTable.Rows
+
+        StationsTable = LoadJsonTableWrapped(Of JObject)("Stations.json")
+
+        ToolSetupUDPDefinitionsTable = LoadJsonTableWrapped(Of ToolSetupUDPDefinition)("ToolSetupUDPDefinitions.json")
+
+        ToolSetupUDPDefinitions = ToolSetupUDPDefinitionsTable.Rows
+
+        ToolSetupUDPValuesTable = LoadJsonTableWrapped(Of ToolSetupUDPValue)("ToolSetupUDPValues.json")
+
+        ToolSetupUDPValues = ToolSetupUDPValuesTable.Rows
+
         MachineToolTypes = LoadTableWrapped(Of MachineToolType)("MachineToolTypes.json")
 
         ' ---- TOOL DATA ----
@@ -104,6 +149,7 @@ Public Class AppData
         ToolAttributeTypes = LoadTableWrapped(Of ToolAttributeType)("ToolAttributeTypes.json")
         ToolTypeAttributes = LoadTableWrapped(Of ToolTypeAttribute)("ToolTypeAttributes.json")
         ToolSetupMembers = LoadTableWrapped(Of ToolSetupMember)("ToolSetupMembers.json")
+
 
         ' ---- MATERIAL DATA ----
         MaterialTypes = LoadTableWrapped(Of MaterialType)("MaterialTypes.json")
@@ -138,6 +184,8 @@ Public Class AppData
                 ls.Layers.Add(directiveLookup(d.ID))
             Next
         Next
+
+
 
         ValidateConfigurationState()
 
@@ -297,6 +345,69 @@ Public Class AppData
         Return result
     End Function
 
+    Public Shared Sub SaveJsonTableWrapped(Of T)(
+    table As JsonTable(Of T),
+    filename As String)
+        Dim spath As String = Path.Combine(DataFolder, filename)
+
+        File.WriteAllText(
+        spath,
+        JsonConvert.SerializeObject(table, Formatting.Indented))
+    End Sub
+
+    Public Shared Function LoadJsonTableWrapped(Of T)(
+    fileName As String) As JsonTable(Of T)
+
+        Dim spath As String = Path.Combine(DataFolder, fileName)
+        Dim result As New JsonTable(Of T)()
+
+        If Not File.Exists(spath) Then Return result
+
+        Try
+            Dim json = File.ReadAllText(spath)
+            Dim loaded =
+            JsonConvert.DeserializeObject(Of JsonTable(Of T))(json)
+
+            If loaded Is Nothing Then Return result
+
+            If loaded.Rows Is Nothing Then
+                loaded.Rows = New List(Of T)()
+            End If
+
+            Return loaded
+
+        Catch ex As Exception
+            MessageBox.Show(
+            $"Error parsing JSON {fileName}: {ex.Message}")
+            Return result
+        End Try
+
+    End Function
+
+
+    '--------------------------------------
+    ' JsonColumn - describes a column/property in the JSON table
+    '--------------------------------------
+    Public Class JsonColumn
+        Public Property Field As String
+        Public Property Header As String
+        Public Property Visible As Boolean
+        ' DataType: 0=String, 1=Boolean, 2=Integer, 7=Double/Decimal, etc.
+        Public Property DataType As Integer
+    End Class
+
+
+
+    Public Class JsonTable(Of T)
+        Public Property TableName As String
+        Public Property Columns As List(Of JsonColumn)
+        Public Property Rows As List(Of T)
+
+        Public Sub New()
+            Columns = New List(Of JsonColumn)()
+            Rows = New List(Of T)()
+        End Sub
+    End Class
     ' ------------------------------------------
     ' GENERIC JSON TABLE LOADER
     ' ------------------------------------------
