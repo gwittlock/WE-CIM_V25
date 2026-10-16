@@ -439,6 +439,7 @@ Partial Class ConfigurationManagerForm
         'lstTools
         '
         Me.lstTools.BackColor = System.Drawing.Color.White
+        Me.lstTools.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed
         Me.lstTools.FormattingEnabled = True
         Me.lstTools.Location = New System.Drawing.Point(21, 57)
         Me.lstTools.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
@@ -949,6 +950,6 @@ Partial Class ConfigurationManagerForm
     Friend WithEvents btnSaveLayerSetp As Button
     Friend WithEvents pnlLayerMapSave As Panel
     Friend WithEvents btnLayerMapSave As Button
-    Friend WithEvents propgrdMachine As PropertyGrid
     Friend WithEvents propgridMaterial As PropertyGrid
+    Private WithEvents propgrdMachine As PropertyGrid
 End Class
