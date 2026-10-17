@@ -534,6 +534,12 @@ Public Class AppData
         Public Property Description As String
         Public Property MachineID As Integer
 
+        ' Assigned when a V25 project selects its Tool Setup.
+        Public Property ToolSetupID As Integer = 0
+
+        ' True only for Layer Setups created by the legacy converter.
+        Public Property RequiresToolIDVerification As Boolean = False
+
         ' CAM processing parameters
         Public Property ZLevelMode As Double
         Public Property GapTolerance As Double
