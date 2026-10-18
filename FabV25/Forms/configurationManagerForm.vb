@@ -156,6 +156,10 @@ Public Class ConfigurationManagerForm
         PopulateTreeView()
         HookTreeViewEvents()
 
+        ' Keep the selected tree node highlighted
+        ' when focus moves to another control.
+        TreeViewMachines.HideSelection = False
+
         With tabControlMain
             .Appearance = TabAppearance.FlatButtons
             .ItemSize = New Size(0, 1)
@@ -2139,6 +2143,8 @@ Public Class ConfigurationManagerForm
                 cmsTreeActions.Items.Add("Add Machine", Nothing, AddressOf AddMachineTSM_Click)
 
             Case 10
+                cmsTreeActions.Items.Add("Rename Machine", Nothing, AddressOf RenameMachineTSM_Click)
+                'cmsTreeActions.Items.Add("Copy Machine", Nothing, AddressOf CopyMachineTSM_Click)
                 cmsTreeActions.Items.Add("Delete Machine", Nothing, AddressOf DeleteMachineTSM_Click)
 
             Case 12
@@ -2171,7 +2177,61 @@ Public Class ConfigurationManagerForm
         cmsTreeActions.Show(TreeViewMachines, e.Location)
     End Sub
 
+    Private Sub RenameMachineTSM_Click(sender As Object, e As EventArgs)
+        If TreeViewMachines.SelectedNode Is Nothing Then Return
 
+        Dim machineNode As TreeNode = TreeViewMachines.SelectedNode
+        Dim machineID As Integer =
+        GetValueFromDelimitedData(CStr(machineNode.Tag), "Machine_ID", -1)
+
+        If machineID <= 0 Then
+            MessageBox.Show("Selected node is not a valid machine.",
+                        "Rename Machine",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+            Return
+        End If
+
+        Dim newMachineName As String =
+        InputBox("Enter New Machine Name:", "Rename Machine",
+                 machineNode.Text).Trim()
+
+        If String.IsNullOrWhiteSpace(newMachineName) Then Return
+        If newMachineName = machineNode.Text Then Return
+
+        Try
+            Dim machineRow = AppData.MachinesTable.Rows _
+            .FirstOrDefault(Function(m) m.ID = machineID)
+
+            If machineRow Is Nothing Then
+                MessageBox.Show("Machine record was not found.",
+                            "Rename Machine",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning)
+                Return
+            End If
+
+            Dim oldDescription As String = machineRow.Description
+            machineRow.Description = newMachineName
+
+            Try
+                JsonSaver.SaveObjectToJsonFile(
+                AppData.MachinesTable,
+                Path.Combine(dataFolder, "Machines.json"))
+            Catch
+                machineRow.Description = oldDescription
+                Throw
+            End Try
+
+            machineNode.Text = newMachineName
+
+        Catch ex As Exception
+            MessageBox.Show($"Error renaming machine: {ex.Message}",
+                        "Rename Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+        End Try
+    End Sub
 
     Private Sub btnTSRemoveParameter_Click(sender As Object, e As EventArgs) Handles btnTSRemoveParameter.Click
         If dgvToolSetup.CurrentCell Is Nothing Then Return
