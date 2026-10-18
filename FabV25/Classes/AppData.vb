@@ -13,7 +13,9 @@ Imports System.Windows.Forms.Design
 
 
 Public Class AppData
+
     Public Shared StationsTable As JsonTable(Of JObject)
+    Public Shared StationList As List(Of Station)
     Public Shared ToolSetupUDPDefinitions As List(Of ToolSetupUDPDefinition)
     Public Shared ToolSetupUDPDefinitionsTable As JsonTable(Of ToolSetupUDPDefinition)
     Public Shared ToolSetupUDPValues As List(Of ToolSetupUDPValue)
@@ -88,18 +90,6 @@ Public Class AppData
     Public Shared _selectedDxfPath As String = String.Empty
     Public _dxfPath As String = String.Empty
 
-    Public Enum CutSideEnum
-        None = 0
-        Left = -1
-        Right = 1
-    End Enum
-
-    Public Enum CutDirectionEnum
-        CW = 1
-        CCW = -1
-        Auto = 0
-        As_Specified = 2
-    End Enum
 
     '  LOAD ALL JSON FILES (once)
     ' ------------------------------------------
@@ -132,6 +122,8 @@ Public Class AppData
 
         StationsTable = LoadJsonTableWrapped(Of JObject)("Stations.json")
 
+        StationList = StationsTable.Rows.Select(Function(row) row.ToObject(Of Station)()).ToList()
+
         ToolSetupUDPDefinitionsTable = LoadJsonTableWrapped(Of ToolSetupUDPDefinition)("ToolSetupUDPDefinitions.json")
 
         ToolSetupUDPDefinitions = ToolSetupUDPDefinitionsTable.Rows
@@ -160,8 +152,8 @@ Public Class AppData
         Dim directivesFile = Path.Combine(DataFolder, "Directives.json")
 
         LayerSetups = If(File.Exists(layerSetupsFile),
-        JObject.Parse(File.ReadAllText(layerSetupsFile))("Rows").ToObject(Of List(Of LayerSetup))(),
-        New List(Of LayerSetup)())
+        JObject.Parse(File.ReadAllText(layerSetupsFile))("Rows").ToObject(Of List(Of layersetup))(),
+        New List(Of layersetup)())
 
         Directives = If(File.Exists(directivesFile),
         JObject.Parse(File.ReadAllText(directivesFile))("Rows").ToObject(Of List(Of Directive))(),
@@ -639,6 +631,9 @@ Public Class AppData
         Public Property CADLayer As String
         Public Property CAMLayer As String
 
+        Public Property CutSide As CutSideEnum
+        Public Property CutDirection As CutDirectionEnum
+
         ' Raw numeric color from JSON (optional / legacy)
         Public Property Color As Integer
 
@@ -647,15 +642,54 @@ Public Class AppData
         Public Property DisplayColorName As String
 
         ' Actual runtime color used for rendering
+        Private _displayColor As System.Drawing.Color = System.Drawing.Color.Empty
+
+        Public Enum CutDirectionEnum
+            CW = 0
+            CCW = 1
+            Auto = 2
+            [AsSpecified] = 3
+        End Enum
+
+        Public Enum CutSideEnum
+            Right = -1
+            None = 0
+            Left = 1
+        End Enum
+
+
+        ' Actual runtime color used for rendering
         <JsonIgnore>
         Public Property DisplayColor As Color
+            Get
+                Return _displayColor
+            End Get
+            Set(value As Color)
+                _displayColor = value
 
+                ' Keep the serialized color synchronized.
+                If value.IsKnownColor OrElse value.IsSystemColor Then
+                    DisplayColorName = value.Name
+                Else
+                    ' Preserve custom RGB and alpha values.
+                    DisplayColorName = "#" & value.ToArgb().ToString("X8")
+                End If
+
+                ' Keep the legacy numeric color synchronized.
+                Color = ColorTranslator.ToWin32(value)
+            End Set
+        End Property
+
+
+        <Editor(GetType(DirectiveStationEditor), GetType(UITypeEditor))>
         Public Property Station As String
         Public Property ToolType As Integer?
         Public Property ZLevel As Double
-        Public Property CutSide As Integer
+
+
         Public Property Distance As Double
-        Public Property CutDirection As Integer
+
+
         Public Property ToolID As Integer
         Public Sub Validate()
             If ID <= 0 Then
@@ -675,28 +709,55 @@ Public Class AppData
             End If
         End Sub
 
-
-
         Public Sub ResolveColors()
+            ' 1. Restore custom ARGB colors stored as #AARRGGBB.
+            If Not String.IsNullOrWhiteSpace(DisplayColorName) AndAlso
+       DisplayColorName.StartsWith("#") AndAlso
+       DisplayColorName.Length = 9 Then
 
-            ' 1. Prefer named color if provided
+                Dim alpha As Integer
+                Dim red As Integer
+                Dim green As Integer
+                Dim blue As Integer
+
+                If Integer.TryParse(DisplayColorName.Substring(1, 2),
+                            Globalization.NumberStyles.HexNumber,
+                            Nothing, alpha) AndAlso
+           Integer.TryParse(DisplayColorName.Substring(3, 2),
+                            Globalization.NumberStyles.HexNumber,
+                            Nothing, red) AndAlso
+           Integer.TryParse(DisplayColorName.Substring(5, 2),
+                            Globalization.NumberStyles.HexNumber,
+                            Nothing, green) AndAlso
+           Integer.TryParse(DisplayColorName.Substring(7, 2),
+                            Globalization.NumberStyles.HexNumber,
+                            Nothing, blue) Then
+
+                    DisplayColor = System.Drawing.Color.FromArgb(
+                alpha, red, green, blue)
+                    Return
+                End If
+            End If
+
+            ' 2. Restore existing named colors.
             If Not String.IsNullOrWhiteSpace(DisplayColorName) Then
                 Dim c = System.Drawing.Color.FromName(DisplayColorName)
-                If c.IsKnownColor OrElse c.IsNamedColor Then
+
+                If c.IsKnownColor OrElse c.IsSystemColor Then
                     DisplayColor = c
                     Return
                 End If
             End If
 
-            ' 2. Fallback to integer ARGB if present
+            ' 3. Preserve the existing numeric fallback.
             If Color <> 0 Then
-                DisplayColor = ColorTranslator.FromWin32(Color)
+                Dim c = ColorTranslator.FromWin32(Color)
+                DisplayColor = c
                 Return
             End If
 
-            ' 3. Absolute fallback
+            ' 4. Absolute fallback.
             DisplayColor = System.Drawing.Color.Magenta
-
         End Sub
 
     End Class
