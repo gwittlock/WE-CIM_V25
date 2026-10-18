@@ -12,6 +12,7 @@ Imports FabV25_WIN8.DynamicToolAttributes
 Imports System.Dynamic
 Imports System.Linq
 Imports System.Drawing
+Imports System.Text
 
 Public Class ConfigurationManagerForm
     Inherits Form
@@ -142,6 +143,10 @@ Public Class ConfigurationManagerForm
             materialInventoryTable = New JsonTable(Of MaterialSheet)()
         End If
 
+
+        ' Synchronize AppData with the inventory loaded from JSON.
+        AppData.MaterialSheets = materialInventoryTable.Rows
+
         ' Bind the first MaterialSheet to the property grid for testing
         If AppData.MaterialSheets.Any() Then
             propgridMaterial.SelectedObject = AppData.MaterialSheets(0)
@@ -151,8 +156,16 @@ Public Class ConfigurationManagerForm
         PopulateTreeView()
         HookTreeViewEvents()
 
+        With tabControlMain
+            .Appearance = TabAppearance.FlatButtons
+            .ItemSize = New Size(0, 1)
+            .SizeMode = TabSizeMode.Fixed
+            .Multiline = True          ' sometimes needed
+        End With
+
         lstTools.BackColor = Color.LightGray
 
+        'ExportTreeToFile(Path.Combine(dataFolder, "TreeView.txt"))
 
     End Sub
 
@@ -227,7 +240,7 @@ Public Class ConfigurationManagerForm
                             tsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 13) ' Store ToolSetupID
 
                             ' Layer Setups under Tool Setup
-                            Dim lsForMachine = LayerSetups.Where(Function(ls) ls.MachineID = machine.ID).ToList()
+                            Dim lsForToolSetup = LayerSetups.Where(Function(ls) ls.MachineID = machine.ID AndAlso ls.ToolSetupID = ts.ID).ToList()
                             Dim layerSetupsNode As New TreeNode("Layer Setups")
                             layerSetupsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 14)
 
@@ -235,15 +248,17 @@ Public Class ConfigurationManagerForm
                             ' Add the "Layer Setups" node under the current Tool Setup node
                             tsNode.Nodes.Add(layerSetupsNode)
 
-                            For Each ls In lsForMachine
+                            For Each ls In lsForToolSetup
                                 'Dim lsNode As New TreeNode(ls.Description) With {.Tag = ls.ID}
-                                Dim lsNode As New TreeNode(ls.Description) With {.Tag = EncodeConfigTreeTag(mt.ID, ts.MachineID, toolsetupid, ls.ID, 0, 15)}
+                                Dim lsNode As New TreeNode(ls.Description) With {.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, ls.ID, 0, 15)
+}
                                 layerSetupsNode.Nodes.Add(lsNode)   ' <- add to the Layer Setups node, not tsNode
 
                                 ' Individual layers (directives) under LayerSetup
                                 For Each layer In ls.Layers
                                     ' Dim layerNode As New TreeNode(layer.CADLayer) With {.Tag = layer.ID}
-                                    Dim layerNode As New TreeNode(layer.CADLayer) With {.Tag = EncodeConfigTreeTag(mt.ID, ts.MachineID, toolsetupid, ls.ID, layer.ID, 16)}
+                                    Dim layerNode As New TreeNode(layer.CADLayer) With {.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, ls.ID, layer.ID, 16)
+}
                                     lsNode.Nodes.Add(layerNode)
                                 Next
                             Next
@@ -322,27 +337,23 @@ Public Class ConfigurationManagerForm
                 ToObject(Of List(Of Tool))(),
             New List(Of Tool)())
         End If
+        ' --- Use the shared ToolSetupMembers collection ---
+        If AppData.ToolSetupMembers Is Nothing Then
+            AppData.ToolSetupMembers =
+        New List(Of ToolSetupMember)()
+        End If
 
-        ' --- Load all ToolSetupMembers ---
-        Dim toolSetupMembersFile =
-        Path.Combine(dataFolder, "ToolSetupMembers.json")
-
-        Dim allMembers As List(Of ToolSetupMember) =
-        If(File.Exists(toolSetupMembersFile),
-            JObject.Parse(File.ReadAllText(toolSetupMembersFile))("Rows").
-                ToObject(Of List(Of ToolSetupMember))(),
-            New List(Of ToolSetupMember)())
-
-        ' --- Filter members for this ToolSetup ---
         Dim membersForSetup =
-        allMembers.Where(Function(m) m.ToolSetupID = toolSetupID).ToList()
+    AppData.ToolSetupMembers.
+        Where(Function(m) m.ToolSetupID = toolSetupID).
+        ToList()
 
-        ' --- Get stations involved in this setup ---
-        Dim stationIDs =
-        membersForSetup.Select(Function(m) m.StationID).Distinct().ToList()
-
+        ' --- Get ALL stations belonging to this machine ---
         Dim stationsForMachine =
-        AppData.Stations.Where(Function(s) stationIDs.Contains(s.ID)).ToList()
+    AppData.Stations.
+        Where(Function(s) s.MachineID = machineID).
+        OrderBy(Function(s) s.NCCodeNumber).
+        ToList()
 
         ' --- Build DataTable for the grid ---
         Dim dt As New DataTable()
@@ -391,49 +402,56 @@ Public Class ConfigurationManagerForm
 
         End If
 
-        ' --- Populate rows ---
-        For Each member In membersForSetup
+        ' --- Populate one row for every station ---
+        For Each station In stationsForMachine
 
-            Dim station =
-            stationsForMachine.FirstOrDefault(
-                Function(s) s.ID = member.StationID)
-
-            If station Is Nothing Then Continue For
+            ' A station may not have a ToolSetupMember yet.
+            Dim member =
+        membersForSetup.FirstOrDefault(
+            Function(m) m.StationID = station.ID)
 
             Dim row = dt.NewRow()
 
             row("NCCodeNumber") = station.NCCodeNumber
+            row("PrimaryCode") = If(station.PrimaryCode, "")
+            row("SecondaryCode") = If(station.SecondaryCode, "")
+            row("StationID") = station.ID
 
-            ' --- Get ToolDescription from ToolCrib ---
             Dim toolDesc As String = ""
 
-            Dim tool =
+            If member IsNot Nothing Then
+
+                ' --- Get ToolDescription from ToolCrib ---
+                Dim tool =
             AppData.ToolCrib.FirstOrDefault(
                 Function(t) t.ID = member.ToolID)
 
-            If tool IsNot Nothing Then
-                toolDesc = If(tool.Description, "")
+                If tool IsNot Nothing Then
+                    toolDesc = If(tool.Description, "")
 
-                If String.IsNullOrWhiteSpace(toolDesc) AndAlso
-               tool.Attributes IsNot Nothing Then
+                    If String.IsNullOrWhiteSpace(toolDesc) AndAlso
+               tool.Attributes IsNot Nothing AndAlso
+               tool.Attributes.ContainsKey("Tool Crib.Description") Then
 
-                    If tool.Attributes.ContainsKey("Tool Crib.Description") Then
                         toolDesc =
-                        If(tool.Attributes("Tool Crib.Description")?.ToString(), "")
+                    If(tool.Attributes("Tool Crib.Description")?.ToString(), "")
                     End If
                 End If
+
+                row("IndexAngle") = member.IndexAngle
+                row("FixedStation") = member.FixedStation
+                row("ToolSetupMemberID") = member.ID
+
+            Else
+                ' Empty station: display it without inventing a member.
+                row("IndexAngle") = 0.0
+                row("FixedStation") = False
+                row("ToolSetupMemberID") = DBNull.Value
             End If
 
             row("ToolDescription") = toolDesc
-            row("IndexAngle") = member.IndexAngle
-            row("FixedStation") = member.FixedStation
-            row("PrimaryCode") = station.PrimaryCode
-            row("SecondaryCode") = station.SecondaryCode
-            row("StationID") = station.ID
-            row("ToolSetupMemberID") = member.ID
 
-
-            ' --- Initialize UDP cells from saved values or global defaults ---
+            ' --- Load saved UDP values or global defaults ---
             If AppData.ToolSetupUDPDefinitions IsNot Nothing Then
 
                 For Each udp In AppData.ToolSetupUDPDefinitions
@@ -441,20 +459,25 @@ Public Class ConfigurationManagerForm
                     If String.IsNullOrWhiteSpace(udp.Name) Then Continue For
                     If Not dt.Columns.Contains(udp.Name) Then Continue For
 
-                    ' Find the saved value for this specific tool row and UDP.
-                    Dim savedValue = AppData.ToolSetupUDPValues.
-            FirstOrDefault(
-                Function(v) v.ToolSetupMemberID = member.ID AndAlso
-                    v.ToolSetupID = toolSetupID AndAlso
-                    String.Equals(
-                        v.ParameterName,
-                        udp.Name,
-                        StringComparison.OrdinalIgnoreCase))
+                    Dim savedValue As ToolSetupUDPValue = Nothing
+
+                    If member IsNot Nothing AndAlso
+               AppData.ToolSetupUDPValues IsNot Nothing Then
+
+                        savedValue =
+                    AppData.ToolSetupUDPValues.FirstOrDefault(
+                        Function(v) v.ToolSetupMemberID = member.ID AndAlso
+                            v.ToolSetupID = toolSetupID AndAlso
+                            String.Equals(
+                                v.ParameterName,
+                                udp.Name,
+                                StringComparison.OrdinalIgnoreCase))
+                    End If
 
                     Dim valueToLoad As String =
-            If(savedValue IsNot Nothing,
-               savedValue.Value,
-               udp.Default)
+                If(savedValue IsNot Nothing,
+                   savedValue.Value,
+                   udp.Default)
 
                     If String.IsNullOrWhiteSpace(valueToLoad) Then
                         row(udp.Name) = DBNull.Value
@@ -467,9 +490,9 @@ Public Class ConfigurationManagerForm
 
                             ElseIf columnType Is GetType(Double) Then
                                 row(udp.Name) = Double.Parse(
-                        valueToLoad,
-                        Globalization.NumberStyles.Any,
-                        Globalization.CultureInfo.InvariantCulture)
+                            valueToLoad,
+                            Globalization.NumberStyles.Any,
+                            Globalization.CultureInfo.InvariantCulture)
 
                             ElseIf columnType Is GetType(Boolean) Then
                                 row(udp.Name) = Boolean.Parse(valueToLoad)
@@ -479,20 +502,18 @@ Public Class ConfigurationManagerForm
                             End If
 
                         Catch
-                            ' Invalid stored/default value: leave the cell empty.
                             row(udp.Name) = DBNull.Value
                         End Try
                     End If
 
                 Next
-
             End If
-
 
             dt.Rows.Add(row)
 
-            ' Store the currently selected tool for lstTools integration.
-            currentSelectedToolID = member.ToolID
+            If member IsNot Nothing Then
+                currentSelectedToolID = member.ToolID
+            End If
 
         Next
 
@@ -612,119 +633,119 @@ Public Class ConfigurationManagerForm
 
         CurrentSelectedNode = TreeViewMachines.SelectedNode
 
-            Dim selectedNode = e.Node
-            Dim WhichNode As Integer
+        Dim selectedNode = e.Node
+        Dim WhichNode As Integer
 
-            ' Determine node type
+        ' Determine node type
 
-            ' MATERIAL MUST HAVE PRIORITY
-            WhichNode = -1
+        ' MATERIAL MUST HAVE PRIORITY
+        WhichNode = -1
 
-            ' --- MATERIAL HAS PRIORITY ---
-            If TypeOf selectedNode.Tag Is MaterialSheet Then
+        ' --- MATERIAL HAS PRIORITY ---
+        If TypeOf selectedNode.Tag Is MaterialSheet Then
 
-                WhichNode = 102
+            WhichNode = 102
 
-            ElseIf TypeOf selectedNode.Tag Is String Then
+        ElseIf TypeOf selectedNode.Tag Is String Then
 
-                WhichNode = CInt(GetValueFromDelimitedData(
-                        CStr(selectedNode.Tag),
-                        "NodeType",
-                        "0"))
-            End If
-
-
-            Select Case WhichNode
-                Case 0 To 9
-                    If TypeOf selectedNode.Tag Is MaterialSheet Then Exit Select
-                    txtPreamble.Text = $"You are on the {selectedNode.Text} Node"
-                    tabControlMain.SelectedTab = tabDefinition
-
-                Case 10 ' Actual Machine Node
-                    Dim machineID = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
-                    currentMachineID = machineID
-                    PopulatePropertyGridForMachine(machineID)
-                    tabControlMain.SelectedTab = tabMachine
-                    dgvStations.DataSource = Nothing ' clear stations until loaded
-
-                Case 11 ' Stations Node
-                    Dim machineID = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
-                    currentMachineID = machineID
-                    PopulateStationsGrid(machineID)
-                    tabControlMain.SelectedTab = tabStations
-
-                Case 12 ' Tool Setups Node
-                    Dim machineID = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
-                    currentMachineID = machineID
-                    txtPreamble.Text = "Select a Tool Setup to view details."
-                    tabControlMain.SelectedTab = tabDefinition
-                    dgvToolSetup.DataSource = Nothing
+            WhichNode = CInt(GetValueFromDelimitedData(
+                    CStr(selectedNode.Tag),
+                    "NodeType",
+                    "0"))
+        End If
 
 
+        Select Case WhichNode
+            Case 0 To 9
+                If TypeOf selectedNode.Tag Is MaterialSheet Then Exit Select
+                txtPreamble.Text = $"You are on the {selectedNode.Text} Node"
+                tabControlMain.SelectedTab = tabDefinition
 
-                Case 13 ' Actual Tool Setup Node
-                    Dim machineID = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
-                    currentMachineID = machineID
-                    currentMachine = selectedNode.Parent.Parent.Text
-                    Dim toolSetupID = GetValueFromDelimitedData(selectedNode.Tag, "ToolSetup_ID", -1)
-                    currenttoolSetupID = toolSetupID
-                    currentToolSetup = selectedNode.Text
-                    LoadSelectedToolSetup(toolSetupID, machineID)
+            Case 10 ' Actual Machine Node
+                Dim machineID = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
+                currentMachineID = machineID
+                PopulatePropertyGridForMachine(machineID)
+                tabControlMain.SelectedTab = tabMachine
+                dgvStations.DataSource = Nothing ' clear stations until loaded
 
-                    Dim machineTypeID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "MachineType_ID", 0)
-                    PopulateToolTypeComboBox(machineTypeID)
-                    tabControlMain.SelectedTab = tabToolSetup
+            Case 11 ' Stations Node
+                Dim machineID = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
+                currentMachineID = machineID
+                PopulateStationsGrid(machineID)
+                tabControlMain.SelectedTab = tabStations
 
-                Case 14 ' Layer Setup Root Node
-                    ' Set up the property grid for the Layer Setup root
-                    propgrdLayerSetup.SelectedObject = Nothing
+            Case 12 ' Tool Setups Node
+                Dim machineID = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
+                currentMachineID = machineID
+                txtPreamble.Text = "Select a Tool Setup to view details."
+                tabControlMain.SelectedTab = tabDefinition
+                dgvToolSetup.DataSource = Nothing
 
 
 
-                    txtPreamble.Text = "Select a Layer Setup to view details."
-                    tabControlMain.SelectedTab = tabDefinition
+            Case 13 ' Actual Tool Setup Node
+                Dim machineID = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
+                currentMachineID = machineID
+                currentMachine = selectedNode.Parent.Parent.Text
+                Dim toolSetupID = GetValueFromDelimitedData(selectedNode.Tag, "ToolSetup_ID", -1)
+                currenttoolSetupID = toolSetupID
+                currentToolSetup = selectedNode.Text
+                LoadSelectedToolSetup(toolSetupID, machineID)
 
-                Case 15 ' Layer Setup Node
-                    ' Set up the property grid for the specific Layer Setup
-                    CurrentSelectedNode = selectedNode
-                    Dim layerSetupID = GetValueFromDelimitedData(selectedNode.Tag, "LayerSetup_ID", 0)
-                    Dim layerSetup = LayerSetups.FirstOrDefault(Function(ls) ls.ID = layerSetupID)
-                    propgrdLayerSetup.SelectedObject = layerSetup
-                    txtPreamble.Text = $"Viewing Layer Setup: {selectedNode.Text}"
-                    tabControlMain.SelectedTab = tabLayerSetup
+                Dim machineTypeID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "MachineType_ID", 0)
+                PopulateToolTypeComboBox(machineTypeID)
+                tabControlMain.SelectedTab = tabToolSetup
 
-                Case 16 ' Individual Layer Node
-                    ' Set up the property grid for the individual layer
-                    CurrentSelectedNode = selectedNode
-                    Dim directiveID = GetValueFromDelimitedData(selectedNode.Tag, "Directive_ID", 0)
-                    Dim directive = Directives.FirstOrDefault(Function(d) d.ID = directiveID)
-                    propgrdLayer.SelectedObject = directive
-                    txtPreamble.Text = $"Viewing Layer: {selectedNode.Text}"
-                    tabControlMain.SelectedTab = tabLayer
-
-                Case 100 To 102
-
-                    ' Materials are independent from machine context
-                    currentMachineID = 0
-                    currenttoolSetupID = 0
-
-                    mat = TryCast(selectedNode.Tag, MaterialSheet)
-
-                    If mat IsNot Nothing Then
-                        tabControlMain.SelectedTab = tabMaterialInventory
-
-                        propgridMaterial.Dock = DockStyle.Fill
-                        propgridMaterial.PropertySort = PropertySort.Alphabetical
-                        propgridMaterial.SelectedObject = mat
+            Case 14 ' Layer Setup Root Node
+                ' Set up the property grid for the Layer Setup root
+                propgrdLayerSetup.SelectedObject = Nothing
 
 
-                    Else
-                        propgridMaterial.SelectedObject = Nothing
-                    End If
 
-                    propgridMaterial.Refresh()
+                txtPreamble.Text = "Select a Layer Setup to view details."
+                tabControlMain.SelectedTab = tabDefinition
 
-            End Select
+            Case 15 ' Layer Setup Node
+                ' Set up the property grid for the specific Layer Setup
+                CurrentSelectedNode = selectedNode
+                Dim layerSetupID = GetValueFromDelimitedData(selectedNode.Tag, "LayerSetup_ID", 0)
+                Dim layerSetup = LayerSetups.FirstOrDefault(Function(ls) ls.ID = layerSetupID)
+                propgrdLayerSetup.SelectedObject = layerSetup
+                txtPreamble.Text = $"Viewing Layer Setup: {selectedNode.Text}"
+                tabControlMain.SelectedTab = tabLayerSetup
+
+            Case 16 ' Individual Layer Node
+                ' Set up the property grid for the individual layer
+                CurrentSelectedNode = selectedNode
+                Dim directiveID = GetValueFromDelimitedData(selectedNode.Tag, "Directive_ID", 0)
+                Dim directive = Directives.FirstOrDefault(Function(d) d.ID = directiveID)
+                propgrdLayer.SelectedObject = directive
+                txtPreamble.Text = $"Viewing Layer: {selectedNode.Text}"
+                tabControlMain.SelectedTab = tabLayer
+
+            Case 100 To 102
+
+                ' Materials are independent from machine context
+                currentMachineID = 0
+                currenttoolSetupID = 0
+
+                mat = TryCast(selectedNode.Tag, MaterialSheet)
+
+                If mat IsNot Nothing Then
+                    tabControlMain.SelectedTab = tabMaterialInventory
+
+                    propgridMaterial.Dock = DockStyle.Fill
+                    propgridMaterial.PropertySort = PropertySort.Alphabetical
+                    propgridMaterial.SelectedObject = mat
+
+
+                Else
+                    propgridMaterial.SelectedObject = Nothing
+                End If
+
+                propgridMaterial.Refresh()
+
+        End Select
 
         'Catch ex As Exception
         '    MessageBox.Show($"Error selecting node: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -785,22 +806,22 @@ Public Class ConfigurationManagerForm
     Private Sub PopulateStationsGrid(machineID As Integer)
         'Try
         Dim stationsForMachine As List(Of Station)
-            ' Load the JSON file into a JObject
-            Dim json As JObject = JObject.Parse(File.ReadAllText(Path.Combine(dataFolder, "Stations.json")))
+        ' Load the JSON file into a JObject
+        Dim json As JObject = JObject.Parse(File.ReadAllText(Path.Combine(dataFolder, "Stations.json")))
 
-            ' Extract the "Rows" array and deserialize to List(Of Station)
-            Dim allStations As List(Of Station) = json("Rows") _
-                                               .ToObject(Of List(Of Station))()
+        ' Extract the "Rows" array and deserialize to List(Of Station)
+        Dim allStations As List(Of Station) = json("Rows") _
+                                           .ToObject(Of List(Of Station))()
 
-            If allStations Is Nothing Then
-                stationsForMachine = New List(Of Station)()
-            Else
-                stationsForMachine = allStations.Where(Function(s) s.MachineID = machineID).ToList()
-            End If
+        If allStations Is Nothing Then
+            stationsForMachine = New List(Of Station)()
+        Else
+            stationsForMachine = allStations.Where(Function(s) s.MachineID = machineID).ToList()
+        End If
 
 
-            ' Bind to grid
-            dgvStations.DataSource = stationsForMachine
+        ' Bind to grid
+        dgvStations.DataSource = stationsForMachine
 
         'Catch ex As Exception
         '    MessageBox.Show($"Error populating stations: {ex.Message}")
@@ -1087,6 +1108,12 @@ Public Class ConfigurationManagerForm
         table.Rows.Add(newStation)
         SaveStationsJson()
 
+        ' Refresh the in-memory station list after saving.
+        AppData.Stations =
+    JObject.Parse(File.ReadAllText(
+        Path.Combine(dataFolder, "Stations.json")))("Rows").
+        ToObject(Of List(Of Station))()
+
         ' Refresh the grid and select the new station.
         PopulateStationsGrid(currentMachineID)
 
@@ -1107,16 +1134,32 @@ Public Class ConfigurationManagerForm
     End Sub
 
 
-
     Private Sub btnRemoveStation_Click(sender As Object, e As EventArgs) Handles btnRemoveStation.Click
 
         If dgvStations.SelectedRows.Count = 0 Then
-            MessageBox.Show("Please select at least one station to remove.", "Remove Station", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            MessageBox.Show(
+            "Please select at least one station to remove.",
+            "Remove Station",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
             Return
         End If
 
-        Dim confirm = MessageBox.Show("Are you sure you want to remove the selected station(s)?", "Confirm Remove", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
-        If confirm <> DialogResult.Yes Then Return
+        If AppData.StationsTable Is Nothing OrElse
+       AppData.ToolSetupMembers Is Nothing OrElse
+       AppData.ToolSetupUDPValues Is Nothing Then
+
+            MessageBox.Show(
+            "Station or Tool Setup data has not been loaded.",
+            "Remove Station",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+            Return
+        End If
+
+        ' Collect the selected station IDs for this machine.
+        Dim stationIDs As New HashSet(Of Integer)
+
         For Each dgvRow As DataGridViewRow In dgvStations.SelectedRows
             If dgvRow.IsNewRow Then Continue For
 
@@ -1125,25 +1168,95 @@ Public Class ConfigurationManagerForm
 
             Dim stationID As Integer = Convert.ToInt32(idValue)
 
-            Dim jObj = AppData.StationsTable.Rows.FirstOrDefault(
-        Function(r) r("ID").Value(Of Integer)() = stationID AndAlso
-                    r("MachineID").Value(Of Integer)() = currentMachineID)
+            Dim stationExists = AppData.StationsTable.Rows.Any(
+            Function(r) r("ID").Value(Of Integer)() = stationID AndAlso
+                        r("MachineID").Value(Of Integer)() = currentMachineID)
 
-            If jObj IsNot Nothing Then
-                AppData.StationsTable.Rows.Remove(jObj)
-            End If
+            If stationExists Then stationIDs.Add(stationID)
         Next
 
+        If stationIDs.Count = 0 Then
+            MessageBox.Show(
+            "No valid stations were selected.",
+            "Remove Station",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        ' Find every setup member that references a selected station.
+        Dim membersToRemove = AppData.ToolSetupMembers.
+        Where(Function(m) stationIDs.Contains(m.StationID)).
+        ToList()
+
+        ' Count distinct setups affected by the removal.
+        Dim affectedSetupCount = membersToRemove.
+        Select(Function(m) m.ToolSetupID).
+        Distinct().
+        Count()
+
+        Dim prompt As String =
+        $"Remove {stationIDs.Count} selected station(s)?"
+
+        If affectedSetupCount > 0 Then
+            prompt &= Environment.NewLine &
+            $"They are referenced by {affectedSetupCount} Tool Setup(s)." &
+            Environment.NewLine &
+            "Their Tool Setup Members and associated UDP values will also be deleted."
+        End If
+
+        Dim confirm = MessageBox.Show(
+        prompt,
+        "Confirm Remove Station",
+        MessageBoxButtons.YesNo,
+        MessageBoxIcon.Warning)
+
+        If confirm <> DialogResult.Yes Then Return
+
+        ' Identify UDP values before deleting their members.
+        Dim memberIDsToRemove As New HashSet(Of Integer)(
+        membersToRemove.Select(Function(m) m.ID))
+
+        ' Remove the selected stations from the wrapped station table.
+        AppData.StationsTable.Rows.RemoveAll(
+        Function(r) stationIDs.Contains(r("ID").Value(Of Integer)()) AndAlso
+                    r("MachineID").Value(Of Integer)() = currentMachineID)
+
+        ' Remove UDP values associated with the deleted members.
+        AppData.ToolSetupUDPValues.RemoveAll(
+        Function(v) memberIDsToRemove.Contains(v.ToolSetupMemberID))
+
+        ' Remove the members from every affected Tool Setup.
+        AppData.ToolSetupMembers.RemoveAll(
+        Function(m) stationIDs.Contains(m.StationID))
+
+        ' Persist the updated JSON data.
         SaveStationsJson()
+
+        AppData.SaveJsonTableWrapped(
+        AppData.ToolSetupUDPValuesTable,
+        "ToolSetupUDPValues.json")
+
+        Dim membersWrapper = New With {
+        .TableName = "ToolSetupMembers",
+        .Rows = AppData.ToolSetupMembers
+    }
+
+        File.WriteAllText(
+        Path.Combine(dataFolder, "ToolSetupMembers.json"),
+        JsonConvert.SerializeObject(membersWrapper, Formatting.Indented))
+
+        ' Refresh the in-memory station cache.
+        AppData.Stations =
+        JObject.Parse(
+            File.ReadAllText(Path.Combine(dataFolder, "Stations.json")))("Rows").
+            ToObject(Of List(Of AppData.Station))()
+
+        ' Refresh the station grid.
         PopulateStationsGrid(currentMachineID)
 
-        ' Save JSON
-        'SaveStationsJson()
-
-        ' Refresh grid
-        'PopulateStationsGrid(currentMachineID)
-
     End Sub
+
 
     Private Sub btnAutoFill_Click(sender As Object, e As EventArgs) Handles btnAutoFill.Click
 
@@ -1215,6 +1328,12 @@ Public Class ConfigurationManagerForm
 
         ' --- 4. Save JSON ---
         SaveStationsJson()
+
+        ' Refresh the in-memory station list after saving.
+        AppData.Stations =
+    JObject.Parse(File.ReadAllText(
+        Path.Combine(dataFolder, "Stations.json")))("Rows").
+        ToObject(Of List(Of Station))()
 
         ' --- 5. Refresh grid ---
         PopulateStationsGrid(currentMachineID)
@@ -2415,33 +2534,78 @@ Public Class ConfigurationManagerForm
         SaveMaterialTypesJson(dataFolder, materialTypesTable)
 
     End Sub
-
-
     Private Sub AddMaterialSizeTSM_Click(sender As Object, e As EventArgs) Handles AddMaterialSizeTSM.Click
 
         Dim selectedNode As TreeNode = TreeViewMachines.SelectedNode
         If selectedNode Is Nothing Then Return
 
-        Dim typeID As Integer = CInt(GetValueFromDelimitedData(CStr(selectedNode.Tag), "ID", "-1"))
+        ' Confirm that the selected node is a Material Type node.
+        Dim nodeType As Integer =
+        CInt(GetValueFromDelimitedData(
+            CStr(selectedNode.Tag), "NodeType", "0"))
 
-        Dim sheetName As String = InputBox("Enter new Material Sheet name:", "Add Material Sheet")
-        If String.IsNullOrWhiteSpace(sheetName) Then Return
-
-        If IsDuplicateMaterialName(sheetName, typeID) Then
-            MessageBox.Show($"Material Sheet '{sheetName}' already exists under this Material Type.", "Duplicate Sheet", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        If nodeType <> 101 Then
+            MessageBox.Show(
+            "Please select a Material Type before adding a Material Sheet.",
+            "Select Material Type",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
             Return
         End If
 
-        ' Generate new ID
-        Dim newID As Integer = If(materialInventoryTable.Rows.Count = 0, 1, materialInventoryTable.Rows.Max(Function(s) s.ID) + 1)
+        ' Read the Material Type ID from the encoded tree-node tag.
+        Dim typeID As Integer =
+        CInt(GetValueFromDelimitedData(
+            CStr(selectedNode.Tag), "MachineType_ID", "-1"))
 
-        ' Create new MaterialSheet
+        If typeID < 0 Then
+            MessageBox.Show(
+            "Unable to determine the selected Material Type ID.",
+            "Invalid Material Type",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        ' Request the new Material Sheet description.
+        Dim sheetName As String =
+        InputBox("Enter new Material Sheet name:", "Add Material Sheet")
+
+        If String.IsNullOrWhiteSpace(sheetName) Then Return
+
+        sheetName = sheetName.Trim()
+
+        ' Prevent duplicate sheet names within this Material Type.
+        If IsDuplicateMaterialName(sheetName, typeID) Then
+            MessageBox.Show(
+            $"Material Sheet '{sheetName}' already exists under this Material Type.",
+            "Duplicate Sheet",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        ' Generate a unique Material Sheet ID.
+        Dim newID As Integer =
+        If(materialInventoryTable.Rows.Count = 0,
+           1,
+           materialInventoryTable.Rows.Max(Function(s) s.ID) + 1)
+
+        ' Create the new Material Sheet.
         Dim newSheet As New MaterialSheet With {
         .ID = newID,
         .TypeID = typeID
     }
-
-        ' Add Description parameter
+        ' Initialize the Type ID parameter.
+        newSheet.Values.Add(New MaterialParameter With {
+    .Name = "Type ID",
+    .Display = "Type ID",
+    .Value = typeID,
+    .DataType = 1,
+    .DefaultValue = typeID,
+    .Visible = True
+})
+        ' Initialize the Description parameter.
         newSheet.Values.Add(New MaterialParameter With {
         .Name = "Description",
         .Display = "Description",
@@ -2451,17 +2615,60 @@ Public Class ConfigurationManagerForm
         .Visible = True
     })
 
+        ' Add the new sheet to the in-memory inventory.
         materialInventoryTable.Rows.Add(newSheet)
 
-        ' Add to TreeView
-        Dim sheetNode As TreeNode = selectedNode.Nodes.Add(sheetName)
-        sheetNode.Tag = EncodeConfigTreeTag(typeID, newID, -1, 0, 0, 102) ' nodetype 102
+        ' Synchronize the application inventory.
+        AppData.MaterialSheets = materialInventoryTable.Rows
 
-        ' Show tabMaterial for editing properties
-        tabControlMain.SelectedTab = tabMaterialInventory ' Adjust index
-        propgridMaterial.SelectedObject = newSheet
 
+        ' Persist the updated inventory.
         SaveMaterialInventoryJson(dataFolder, materialInventoryTable)
+
+        ' Rebuild the tree from the synchronized AppData inventory.
+        PopulateTreeView()
+
+        ' Find the newly created Material Type node.
+        Dim materialRoot As TreeNode =
+            TreeViewMachines.Nodes.Cast(Of TreeNode)().
+            FirstOrDefault(Function(n) GetNodeType(n.Tag) = 100)
+
+        If materialRoot IsNot Nothing Then
+            Dim typeNode As TreeNode =
+                materialRoot.Nodes.Cast(Of TreeNode)().
+                FirstOrDefault(
+                    Function(n)
+                        Return GetNodeType(n.Tag) = 101 AndAlso
+                            CInt(GetValueFromDelimitedData(
+                                CStr(n.Tag), "MachineType_ID", "-1")) = typeID
+                    End Function)
+
+            If typeNode IsNot Nothing Then
+                ' Find the new sheet by its ID.
+                Dim sheetNode As TreeNode =
+                    typeNode.Nodes.Cast(Of TreeNode)().
+                    FirstOrDefault(
+                        Function(n)
+                            Dim sheet As MaterialSheet =
+                                TryCast(n.Tag, MaterialSheet)
+
+                            Return sheet IsNot Nothing AndAlso
+                                sheet.ID = newID
+                        End Function)
+
+                If sheetNode IsNot Nothing Then
+                    TreeViewMachines.SelectedNode = sheetNode
+                    sheetNode.EnsureVisible()
+                End If
+            End If
+        End If
+
+        ' Display the new sheet in the property grid.
+        tabControlMain.SelectedTab = tabMaterialInventory
+        propgridMaterial.SelectedObject = newSheet
+        propgridMaterial.Refresh()
+
+
     End Sub
 
     Private Sub DeleteMaterialTypeTSM_Click(sender As Object, e As EventArgs) Handles DeleteMaterialTypeTSM.Click
@@ -2494,29 +2701,113 @@ Public Class ConfigurationManagerForm
         SaveAllMaterialData(dataFolder, materialTypesTable, materialInventoryTable)
     End Sub
 
-    Private Sub DeleteMaterialSizeTSM_Click(sender As Object, e As EventArgs) Handles DeleteMaterialSizeTSM.Click
+
+    Private Sub DeleteMaterialSizeTSM_Click(
+    sender As Object,
+    e As EventArgs
+) Handles DeleteMaterialSizeTSM.Click
+
         Dim selectedNode As TreeNode = TreeViewMachines.SelectedNode
         If selectedNode Is Nothing Then Return
-        If Not selectedNode.Tag.ToString().StartsWith("102") Then
-            MessageBox.Show("Please select a Material Sheet node to delete.", "Delete Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+
+        ' Determine whether the selected node represents a Material Sheet.
+        Dim selectedSheet As MaterialSheet =
+        TryCast(selectedNode.Tag, MaterialSheet)
+
+        Dim sheetID As Integer = -1
+
+        If selectedSheet IsNot Nothing Then
+            ' Current implementation: the node stores the MaterialSheet object.
+            sheetID = selectedSheet.ID
+
+        ElseIf TypeOf selectedNode.Tag Is String Then
+            ' Legacy implementation: the node stores an encoded tag.
+            Dim nodeType As Integer =
+            CInt(GetValueFromDelimitedData(
+                CStr(selectedNode.Tag), "NodeType", "-1"))
+
+            If nodeType <> 102 Then
+                MessageBox.Show(
+                "Please select a Material Sheet node to delete.",
+                "Delete Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+                Return
+            End If
+
+            ' Legacy encoded tags store the sheet ID in Machine_ID.
+            sheetID = CInt(GetValueFromDelimitedData(
+            CStr(selectedNode.Tag), "Machine_ID", "-1"))
+        Else
+            MessageBox.Show(
+            "Please select a Material Sheet node to delete.",
+            "Delete Error",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
             Return
         End If
 
-        Dim sheetID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "MachineType_ID", -1) ' Extract sheet ID from your EncodeTag scheme
-
-        If MessageBox.Show($"Are you sure you want to delete Material Sheet '{selectedNode.Text}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question) = DialogResult.No Then
+        If sheetID < 0 Then
+            MessageBox.Show(
+            "Unable to determine the Material Sheet ID.",
+            "Delete Error",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
             Return
         End If
 
-        ' Remove sheet from the inventory table
-        materialInventoryTable.Rows.RemoveAll(Function(s) s.ID = sheetID)
+        ' Confirm deletion.
+        If MessageBox.Show(
+        $"Are you sure you want to delete Material Sheet '{selectedNode.Text}'?",
+        "Confirm Delete",
+        MessageBoxButtons.YesNo,
+        MessageBoxIcon.Question) <> DialogResult.Yes Then
+            Return
+        End If
 
-        ' Remove node from TreeView
-        selectedNode.Remove()
+        ' Remove the sheet from the configuration manager inventory.
+        materialInventoryTable.Rows.RemoveAll(
+        Function(s) s.ID = sheetID)
 
-        ' Save changes
+        ' Synchronize the application inventory.
+        AppData.MaterialSheets = materialInventoryTable.Rows
+
+        ' Persist the updated inventory.
         SaveMaterialInventoryJson(dataFolder, materialInventoryTable)
+
+        Dim typeID As Integer = selectedSheet.TypeID
+
+        ' Rebuild the tree from the updated inventory.
+        PopulateTreeView()
+
+        ' Find the Material Inventory root.
+        Dim materialRoot As TreeNode =
+    TreeViewMachines.Nodes.Cast(Of TreeNode)().
+    FirstOrDefault(Function(n) GetNodeType(n.Tag) = 100)
+
+        If materialRoot IsNot Nothing Then
+            ' Find the Material Type that contained the deleted sheet.
+            Dim typeNode As TreeNode =
+        materialRoot.Nodes.Cast(Of TreeNode)().
+        FirstOrDefault(
+            Function(n)
+                Return GetNodeType(n.Tag) = 101 AndAlso
+                    CInt(GetValueFromDelimitedData(
+                        CStr(n.Tag), "MachineType_ID", "-1")) = typeID
+            End Function)
+
+            If typeNode IsNot Nothing Then
+                materialRoot.Expand()
+                typeNode.Expand()
+                TreeViewMachines.SelectedNode = typeNode
+            End If
+        End If
+
+        ' Clear the property grid because the sheet no longer exists.
+        propgridMaterial.SelectedObject = Nothing
+
     End Sub
+
 
     Private Function GetNodeType(tag As Object) As Integer
         If tag Is Nothing Then Return -1
@@ -2618,6 +2909,21 @@ Public Class ConfigurationManagerForm
 
             ' Serialize and save
             Dim json = JsonConvert.SerializeObject(materialSheets, Formatting.Indented)
+
+            Debug.WriteLine("Default settings: " &
+    JsonConvert.SerializeObject(materialSheets.Rows(0)))
+
+            Debug.WriteLine("Explicit settings: " &
+    JsonConvert.SerializeObject(materialSheets.Rows(0),
+                                Formatting.Indented))
+
+            Dim savedJson As String = File.ReadAllText(materialInventoryPath)
+
+            Debug.WriteLine("Serialized JSON starts with: " &
+                json.Substring(0, Math.Min(json.Length, 100)))
+
+            Debug.WriteLine("File JSON starts with: " &
+                savedJson.Substring(0, Math.Min(savedJson.Length, 100)))
 
             Debug.WriteLine($"Table type: {materialSheets.GetType().FullName}")
             Debug.WriteLine($"Rows type: {materialSheets.Rows.GetType().FullName}")
@@ -3334,7 +3640,7 @@ Public Class ConfigurationManagerForm
 
     Private Sub btnSaveLayerSetp_Click(sender As Object, e As EventArgs) Handles btnSaveLayerSetp.Click
 
-        Dim editedLayerSetup = TryCast(propgrdLayerSetup.SelectedObject, LayerSetup)
+        Dim editedLayerSetup = TryCast(propgrdLayerSetup.SelectedObject, layersetup)
         If editedLayerSetup Is Nothing Then
             MessageBox.Show("No Layer Setup selected.")
             Return
@@ -3453,7 +3759,7 @@ Public Class ConfigurationManagerForm
             Dim machineID = GetValueFromDelimitedData(selectedToolSetupNode.Tag, "Machine_ID", 0)
 
             ' Create new LayerSetup
-            Dim newLS As New LayerSetup With {
+            Dim newLS As New layersetup With {
             .ID = GetNextLayerSetupID(),
             .Description = "New Layer Setup",
             .MachineID = machineID,
@@ -3737,6 +4043,38 @@ Public Class ConfigurationManagerForm
     End Sub
 
     Private Sub TreeViewMachines_CausesValidationChanged(sender As Object, e As EventArgs) Handles TreeViewMachines.CausesValidationChanged
+
+    End Sub
+
+    Private Sub ExportTreeToFile(filePath As String)
+        ' 1. Ensure the TreeView is fully expanded
+        'TreeViewMachines.ExpandAll()
+
+        Dim sb As New StringBuilder()
+
+        ' 2. Start walking through the top-level root nodes
+        For i As Integer = 0 To TreeViewMachines.Nodes.Count - 1
+            Dim isLastRoot As Boolean = (i = TreeViewMachines.Nodes.Count - 1)
+            AppendNodeWithLines(TreeViewMachines.Nodes(i), sb, "", isLastRoot)
+        Next
+
+        ' 3. Save the structured text to your file silently
+        File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8)
+    End Sub
+
+    Private Sub AppendNodeWithLines(node As TreeNode, sb As StringBuilder, indent As String, isLast As Boolean)
+        Dim marker As String = If(isLast, "└── ", "├── ")
+        sb.AppendLine(indent & marker & node.Text)
+
+        Dim childIndent As String = indent & If(isLast, "    ", "│   ")
+
+        For i As Integer = 0 To node.Nodes.Count - 1
+            Dim isLastChild As Boolean = (i = node.Nodes.Count - 1)
+            AppendNodeWithLines(node.Nodes(i), sb, childIndent, isLastChild)
+        Next
+    End Sub
+
+    Private Sub TreeViewMachines_BeforeExpand(sender As Object, e As TreeViewCancelEventArgs) Handles TreeViewMachines.BeforeExpand
 
     End Sub
 End Class
