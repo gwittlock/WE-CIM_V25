@@ -76,18 +76,6 @@
       "StationSize": 0
     },
     {
-      "ID": 815,
-      "MachineID": 6,
-      "WorkplaneID": 1,
-      "StationLocationX": 0.0,
-      "StationLocationY": 0.0,
-      "AutoIndex": false,
-      "PrimaryCode": "0",
-      "SecondaryCode": "0",
-      "NCCodeNumber": 101,
-      "StationSize": 0
-    },
-    {
       "ID": 821,
       "MachineID": 7,
       "WorkplaneID": 1,
@@ -3925,6 +3913,18 @@
       "PrimaryCode": "0",
       "SecondaryCode": "0",
       "NCCodeNumber": 10098,
+      "StationSize": 0
+    },
+    {
+      "ID": 1137,
+      "MachineID": 10,
+      "WorkplaneID": 1,
+      "StationLocationX": 0.0,
+      "StationLocationY": 0.0,
+      "AutoIndex": false,
+      "PrimaryCode": "0",
+      "SecondaryCode": "0",
+      "NCCodeNumber": 1,
       "StationSize": 0
     },
     {

@@ -1,0 +1,269 @@
+{
+  "Version": 1,
+  "ConvertedAtUtc": "2026-10-17T09:31:23.7690417Z",
+  "BackupDirectory": "ConversionBackup\\20261017_093123_756",
+  "SourceLayerSetupCount": 8,
+  "SourceDirectiveCount": 8,
+  "ConvertedLayerSetupCount": 16,
+  "ConvertedDirectiveCount": 16,
+  "LayerSetupMappings": [
+    {
+      "SourceLayerSetupID": 17,
+      "ConvertedLayerSetupID": 25,
+      "ToolSetupID": 85,
+      "MachineID": 6,
+      "Description": "REI - REI"
+    },
+    {
+      "SourceLayerSetupID": 17,
+      "ConvertedLayerSetupID": 26,
+      "ToolSetupID": 86,
+      "MachineID": 6,
+      "Description": "Global - REI"
+    },
+    {
+      "SourceLayerSetupID": 18,
+      "ConvertedLayerSetupID": 27,
+      "ToolSetupID": 88,
+      "MachineID": 7,
+      "Description": "Punch-Global - Global"
+    },
+    {
+      "SourceLayerSetupID": 19,
+      "ConvertedLayerSetupID": 28,
+      "ToolSetupID": 89,
+      "MachineID": 8,
+      "Description": "Amada LC 3015 - Global"
+    },
+    {
+      "SourceLayerSetupID": 24,
+      "ConvertedLayerSetupID": 29,
+      "ToolSetupID": 89,
+      "MachineID": 8,
+      "Description": "Amada LC 3015 - Default"
+    },
+    {
+      "SourceLayerSetupID": 20,
+      "ConvertedLayerSetupID": 30,
+      "ToolSetupID": 90,
+      "MachineID": 9,
+      "Description": "C3000 - All_Layers"
+    },
+    {
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 31,
+      "ToolSetupID": 94,
+      "MachineID": 11,
+      "Description": "Amada EMK - Global"
+    },
+    {
+      "SourceLayerSetupID": 21,
+      "ConvertedLayerSetupID": 32,
+      "ToolSetupID": 95,
+      "MachineID": 10,
+      "Description": "Trumpf 200 - Global"
+    },
+    {
+      "SourceLayerSetupID": 23,
+      "ConvertedLayerSetupID": 33,
+      "ToolSetupID": 95,
+      "MachineID": 10,
+      "Description": "Trumpf 200 - Global2"
+    },
+    {
+      "SourceLayerSetupID": 20,
+      "ConvertedLayerSetupID": 34,
+      "ToolSetupID": 96,
+      "MachineID": 9,
+      "Description": "C3000a - All_Layers"
+    },
+    {
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 35,
+      "ToolSetupID": 97,
+      "MachineID": 11,
+      "Description": "Amada EMK 01 - Global"
+    },
+    {
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 36,
+      "ToolSetupID": 98,
+      "MachineID": 11,
+      "Description": "01AmadaEMK - Global"
+    },
+    {
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 37,
+      "ToolSetupID": 99,
+      "MachineID": 11,
+      "Description": "Amada EMK-02 - Global"
+    },
+    {
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 38,
+      "ToolSetupID": 100,
+      "MachineID": 11,
+      "Description": "04-0703-00 - Global"
+    },
+    {
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 39,
+      "ToolSetupID": 101,
+      "MachineID": 11,
+      "Description": "Amada EMK-03 - Global"
+    },
+    {
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 40,
+      "ToolSetupID": 102,
+      "MachineID": 11,
+      "Description": "Amada EMK-04 - Global"
+    }
+  ],
+  "DirectiveMappings": [
+    {
+      "SourceDirectiveID": 18,
+      "ConvertedDirectiveID": 26,
+      "SourceLayerSetupID": 17,
+      "ConvertedLayerSetupID": 25,
+      "ToolSetupID": 85,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 18,
+      "ConvertedDirectiveID": 27,
+      "SourceLayerSetupID": 17,
+      "ConvertedLayerSetupID": 26,
+      "ToolSetupID": 86,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 19,
+      "ConvertedDirectiveID": 28,
+      "SourceLayerSetupID": 18,
+      "ConvertedLayerSetupID": 27,
+      "ToolSetupID": 88,
+      "SourceCutDirection": 0,
+      "ConvertedCutDirection": 1
+    },
+    {
+      "SourceDirectiveID": 20,
+      "ConvertedDirectiveID": 29,
+      "SourceLayerSetupID": 19,
+      "ConvertedLayerSetupID": 28,
+      "ToolSetupID": 89,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 25,
+      "ConvertedDirectiveID": 30,
+      "SourceLayerSetupID": 24,
+      "ConvertedLayerSetupID": 29,
+      "ToolSetupID": 89,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 21,
+      "ConvertedDirectiveID": 31,
+      "SourceLayerSetupID": 20,
+      "ConvertedLayerSetupID": 30,
+      "ToolSetupID": 90,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 23,
+      "ConvertedDirectiveID": 32,
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 31,
+      "ToolSetupID": 94,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 22,
+      "ConvertedDirectiveID": 33,
+      "SourceLayerSetupID": 21,
+      "ConvertedLayerSetupID": 32,
+      "ToolSetupID": 95,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 24,
+      "ConvertedDirectiveID": 34,
+      "SourceLayerSetupID": 23,
+      "ConvertedLayerSetupID": 33,
+      "ToolSetupID": 95,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 21,
+      "ConvertedDirectiveID": 35,
+      "SourceLayerSetupID": 20,
+      "ConvertedLayerSetupID": 34,
+      "ToolSetupID": 96,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 23,
+      "ConvertedDirectiveID": 36,
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 35,
+      "ToolSetupID": 97,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 23,
+      "ConvertedDirectiveID": 37,
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 36,
+      "ToolSetupID": 98,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 23,
+      "ConvertedDirectiveID": 38,
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 37,
+      "ToolSetupID": 99,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 23,
+      "ConvertedDirectiveID": 39,
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 38,
+      "ToolSetupID": 100,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 23,
+      "ConvertedDirectiveID": 40,
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 39,
+      "ToolSetupID": 101,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    },
+    {
+      "SourceDirectiveID": 23,
+      "ConvertedDirectiveID": 41,
+      "SourceLayerSetupID": 22,
+      "ConvertedLayerSetupID": 40,
+      "ToolSetupID": 102,
+      "SourceCutDirection": 2,
+      "ConvertedCutDirection": 0
+    }
+  ]
+}

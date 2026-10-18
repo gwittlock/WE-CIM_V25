@@ -1,0 +1,61 @@
+{
+  "TableName": "ToolSetupUDPDefinitions",
+  "Columns": [
+    {
+      "Field": "Name",
+      "Header": "Name",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Display",
+      "Header": "Display",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Default",
+      "Header": "Default",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "DataType",
+      "Header": "Data Type",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Visible",
+      "Header": "Visible",
+      "Visible": true,
+      "DataType": 1
+    }
+  ],
+  "Rows": [
+    {
+      "MachineID": 0,
+      "Name": "DBL_Test",
+      "Display": "DBLTest",
+      "Default": "1765",
+      "DataType": "Double",
+      "Visible": true
+    },
+    {
+      "MachineID": 0,
+      "Name": "INTTest",
+      "Display": "INT TEST",
+      "Default": "6",
+      "DataType": "Integer",
+      "Visible": true
+    },
+    {
+      "MachineID": 0,
+      "Name": "StationRem",
+      "Display": "Station Remove",
+      "Default": "0.0",
+      "DataType": "Double",
+      "Visible": true
+    }
+  ]
+}

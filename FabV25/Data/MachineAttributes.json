@@ -1130,6 +1130,72 @@
       "MachineID": 11,
       "AttributeTypeID": 51,
       "Value": "0"
+    },
+    {
+      "ID": 2224,
+      "MachineID": 12,
+      "AttributeTypeID": 1,
+      "Value": "0"
+    },
+    {
+      "ID": 2225,
+      "MachineID": 12,
+      "AttributeTypeID": 2,
+      "Value": "0"
+    },
+    {
+      "ID": 2226,
+      "MachineID": 12,
+      "AttributeTypeID": 3,
+      "Value": "0"
+    },
+    {
+      "ID": 2227,
+      "MachineID": 12,
+      "AttributeTypeID": 4,
+      "Value": "0"
+    },
+    {
+      "ID": 2228,
+      "MachineID": 12,
+      "AttributeTypeID": 7,
+      "Value": "0"
+    },
+    {
+      "ID": 2229,
+      "MachineID": 12,
+      "AttributeTypeID": 8,
+      "Value": "0"
+    },
+    {
+      "ID": 2230,
+      "MachineID": 12,
+      "AttributeTypeID": 9,
+      "Value": "0"
+    },
+    {
+      "ID": 2231,
+      "MachineID": 12,
+      "AttributeTypeID": 10,
+      "Value": "0"
+    },
+    {
+      "ID": 2232,
+      "MachineID": 12,
+      "AttributeTypeID": 31,
+      "Value": "0"
+    },
+    {
+      "ID": 2233,
+      "MachineID": 12,
+      "AttributeTypeID": 45,
+      "Value": "0"
+    },
+    {
+      "ID": 2234,
+      "MachineID": 12,
+      "AttributeTypeID": 46,
+      "Value": "0"
     }
   ]
 }

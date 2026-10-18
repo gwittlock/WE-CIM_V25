@@ -114,7 +114,7 @@
     {
       "ID": 10,
       "Description": "Trumpf 200",
-      "TypeID": 1,
+      "TypeID": 2,
       "WorkplaneTypeID": 1,
       "Units": 0,
       "CodePartProfile": false,
@@ -132,6 +132,18 @@
       "CodePartProfile": false,
       "HoldDown_CTG": null,
       "Clamp_CTG": "C:\\CTG\\Clamp357.ctg",
+      "Table_CTG": null,
+      "CNC_Folder": null
+    },
+    {
+      "ID": 12,
+      "Description": "test",
+      "TypeID": 5,
+      "WorkplaneTypeID": 1,
+      "Units": 0,
+      "CodePartProfile": false,
+      "HoldDown_CTG": null,
+      "Clamp_CTG": null,
       "Table_CTG": null,
       "CNC_Folder": null
     }

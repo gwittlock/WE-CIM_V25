@@ -1,0 +1,93 @@
+{
+  "TableName": "ToolSetupUDPValues",
+  "Columns": [
+    {
+      "Field": "ID",
+      "Header": "ID",
+      "Visible": false,
+      "DataType": 2
+    },
+    {
+      "Field": "ToolSetupID",
+      "Header": "Tool Setup ID",
+      "Visible": false,
+      "DataType": 2
+    },
+    {
+      "Field": "ToolSetupMemberID",
+      "Header": "Tool Setup Member ID",
+      "Visible": false,
+      "DataType": 2
+    },
+    {
+      "Field": "ParameterName",
+      "Header": "Parameter Name",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Value",
+      "Header": "Value",
+      "Visible": true,
+      "DataType": 0
+    }
+  ],
+  "Rows": [
+    {
+      "ID": 1,
+      "ToolSetupID": 96,
+      "ToolSetupMemberID": 9674,
+      "ParameterName": "DBL_Test",
+      "Value": "5842"
+    },
+    {
+      "ID": 1,
+      "ToolSetupID": 96,
+      "ToolSetupMemberID": 9674,
+      "ParameterName": "DBL_Test",
+      "Value": "2485"
+    },
+    {
+      "ID": 2,
+      "ToolSetupID": 90,
+      "ToolSetupMemberID": 17694,
+      "ParameterName": "DBL_Test",
+      "Value": "9879"
+    },
+    {
+      "ID": 2,
+      "ToolSetupID": 90,
+      "ToolSetupMemberID": 17694,
+      "ParameterName": "DBL_Test",
+      "Value": "1998"
+    },
+    {
+      "ID": 3,
+      "ToolSetupID": 85,
+      "ToolSetupMemberID": 19993,
+      "ParameterName": "StationRem",
+      "Value": "25.3"
+    },
+    {
+      "ID": 3,
+      "ToolSetupID": 85,
+      "ToolSetupMemberID": 19993,
+      "ParameterName": "StationRem",
+      "Value": "25.3"
+    },
+    {
+      "ID": 4,
+      "ToolSetupID": 86,
+      "ToolSetupMemberID": 19984,
+      "ParameterName": "StationRem",
+      "Value": "59.6"
+    },
+    {
+      "ID": 4,
+      "ToolSetupID": 86,
+      "ToolSetupMemberID": 19984,
+      "ParameterName": "StationRem",
+      "Value": "59.6"
+    }
+  ]
+}
