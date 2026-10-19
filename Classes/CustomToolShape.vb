@@ -93,225 +93,222 @@ Namespace ToolShapes
             "CustomToolShape path decomposition has not been implemented.")
     End Function
 
-    Private Shared Function LoadCtgProfile(
-        fileName As String) As IPath2D
+        Private Shared Function LoadCtgProfile(
+    fileName As String) As IPath2D
 
-        Dim records As New List(Of CtgRecord)
+            Dim records As New List(Of CtgRecord)
 
-        Using reader As New StreamReader(fileName)
+            Using reader As New StreamReader(fileName)
 
-            While Not reader.EndOfStream
+                While Not reader.EndOfStream
 
-                Dim line As String = reader.ReadLine()
+                    Dim line As String = reader.ReadLine()
 
-                If String.IsNullOrWhiteSpace(line) Then
-                    Continue While
-                End If
+                    If String.IsNullOrWhiteSpace(line) Then
+                        Continue While
+                    End If
 
-                line = line.Trim()
+                    line = line.Trim()
 
-                If line.StartsWith("#", StringComparison.Ordinal) Then
-                    Continue While
-                End If
+                    If line.StartsWith("#", StringComparison.Ordinal) Then
+                        Continue While
+                    End If
 
-                Dim parts() As String =
-                    line.Split(
-                        New Char() {" "c, ChrW(9)},
-                        StringSplitOptions.RemoveEmptyEntries)
+                    Dim parts() As String =
+                line.Split(
+                    New Char() {" "c, ChrW(9)},
+                    StringSplitOptions.RemoveEmptyEntries)
 
-                If parts.Length < 3 Then
-                    Throw New FormatException(
-                        "Invalid CTG record: " & line)
-                End If
+                    If parts.Length < 3 Then
+                        Throw New FormatException(
+                    "Invalid CTG record: " & line)
+                    End If
 
-                Dim recordType As Integer
+                    Dim recordType As Integer
 
-                If Not Integer.TryParse(
-                    parts(0),
-                    NumberStyles.Integer,
-                    CultureInfo.InvariantCulture,
-                    recordType) Then
+                    If Not Integer.TryParse(
+                parts(0),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                recordType) Then
 
-                    Throw New FormatException(
-                        "Invalid CTG record type: " & line)
-                End If
+                        Throw New FormatException(
+                    "Invalid CTG record type: " & line)
+                    End If
 
-                Dim x As Double
-                Dim y As Double
+                    Dim x As Double
+                    Dim y As Double
 
-                If Not Double.TryParse(
-                    parts(1),
-                    NumberStyles.Float,
-                    CultureInfo.InvariantCulture,
-                    x) Then
+                    If Not Double.TryParse(
+                parts(1),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                x) Then
 
-                    Throw New FormatException(
-                        "Invalid CTG X coordinate: " & line)
-                End If
+                        Throw New FormatException(
+                    "Invalid CTG X coordinate: " & line)
+                    End If
 
-                If Not Double.TryParse(
-                    parts(2),
-                    NumberStyles.Float,
-                    CultureInfo.InvariantCulture,
-                    y) Then
+                    If Not Double.TryParse(
+                parts(2),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                y) Then
 
-                    Throw New FormatException(
-                        "Invalid CTG Y coordinate: " & line)
-                End If
+                        Throw New FormatException(
+                    "Invalid CTG Y coordinate: " & line)
+                    End If
 
-                records.Add(
-                    New CtgRecord(
-                        recordType,
-                        New PointF(
-                            CSng(x),
-                            CSng(y))))
-            End While
-        End Using
+                    records.Add(
+                New CtgRecord(
+                    recordType,
+                    New PointF(
+                        CSng(x),
+                        CSng(y))))
+                End While
+            End Using
 
-        If records.Count = 0 Then
-            Throw New InvalidDataException(
-                "Custom CTG file contains no geometry.")
-        End If
+            If records.Count = 0 Then
+                Throw New InvalidDataException(
+            "Custom CTG file contains no geometry.")
+            End If
 
-        Dim segments As New List(Of IPathSegment)
+            Dim segments As New List(Of IPathSegment)
 
-        Dim index As Integer = 0
+            Dim currentPoint As PointF = Nothing
+            Dim haveCurrentPoint As Boolean = False
 
-        While index < records.Count
+            Dim index As Integer = 0
 
-            Dim record As CtgRecord = records(index)
+            While index < records.Count
 
-            Select Case record.Type
+                Dim record As CtgRecord = records(index)
 
-                Case 0
-                        ' Legacy NOP/rapid record.
+                Select Case record.Type
+
+                    Case 0
+                        '==================================================
+                        ' Start a new independent contour.
                         '
-                        ' A ToolShape CuttingProfile cannot contain
-                        ' a rapid move, so this is not valid profile
-                        ' geometry.
-                        ' Throw New InvalidDataException(
-                        ' "CTG record type 0 cannot be used in a cutting profile.")
+                        ' Legacy CTG type 0 is NOT a NOP.
+                        ' It establishes the current/start point of
+                        ' a contour.
+                        '==================================================
 
-                        ' Legacy CTG NOP / rapid record.
-                        ' It does not contribute geometry to the cutting profile.
+                        currentPoint = record.Point
+                        haveCurrentPoint = True
+
                         index += 1
 
                     Case 1
-                    ' Legacy endpoint:
-                    ' line from previous point to current point.
+                        '==================================================
+                        ' Line endpoint.
+                        '
+                        ' Current point -> record point.
+                        '==================================================
 
-                    If index = 0 Then
-                        Throw New InvalidDataException(
-                            "First CTG record cannot be a line endpoint.")
-                    End If
+                        If Not haveCurrentPoint Then
+                            Throw New InvalidDataException(
+                        "CTG line endpoint has no starting point.")
+                        End If
 
-                    Dim startPoint As PointF =
-                        records(index - 1).Point
+                        segments.Add(
+                    New LineSegment2D(
+                        currentPoint,
+                        record.Point))
 
-                    Dim endPoint As PointF =
-                        record.Point
+                        currentPoint = record.Point
 
-                    segments.Add(
-                        New LineSegment2D(
-                            startPoint,
-                            endPoint))
+                        index += 1
 
-                    index += 1
+                    Case 2, 3
+                        '==================================================
+                        ' Arc center.
+                        '
+                        ' Current point = arc start
+                        ' Current record = arc center
+                        ' Next record = arc endpoint
+                        '
+                        ' Type 2 = clockwise
+                        ' Type 3 = counterclockwise
+                        '==================================================
 
-                Case 2, 3
-                    ' Legacy arc:
-                    '
-                    ' previous point = start
-                    ' current point  = center
-                    ' next point     = end
-                    '
-                    ' Type 2 = clockwise
-                    ' Type 3 = counterclockwise
+                        If Not haveCurrentPoint Then
+                            Throw New InvalidDataException(
+                        "CTG arc center has no starting point.")
+                        End If
 
-                    If index = 0 Then
-                        Throw New InvalidDataException(
-                            "First CTG record cannot be an arc center.")
-                    End If
+                        If index + 1 >= records.Count Then
+                            Throw New InvalidDataException(
+                        "CTG arc record is missing its endpoint.")
+                        End If
 
-                    If index + 1 >= records.Count Then
-                        Throw New InvalidDataException(
-                            "CTG arc record is missing its endpoint.")
-                    End If
+                        Dim startPoint As PointF =
+                    currentPoint
 
-                    Dim startPoint As PointF =
-                        records(index - 1).Point
+                        Dim center As PointF =
+                    record.Point
 
-                    Dim center As PointF =
-                        record.Point
+                        Dim endPoint As PointF =
+                    records(index + 1).Point
 
-                    Dim endPoint As PointF =
-                        records(index + 1).Point
+                        Dim radius As Double =
+                    Distance(startPoint, center)
 
-                    Dim radius As Double =
-                        Distance(startPoint, center)
-
-                    If radius <= 0.0 Then
-                        Throw New InvalidDataException(
-                            "CTG arc has zero radius.")
-                    End If
-
-                        'Dim endRadius As Double =
-                        '    Distance(endPoint, center)
-
-                        'Dim tolerance As Double =
-                        '    Math.Max(0.000001, radius * 0.000001)
-
-                        'If Math.Abs(endRadius - radius) > tolerance Then
-                        '    Throw New InvalidDataException(
-                        '        "CTG arc start and endpoint are not on the same circle.")
-                        'End If
+                        If radius <= 0.0 Then
+                            Throw New InvalidDataException(
+                        "CTG arc has zero radius.")
+                        End If
 
                         Dim startAngle As Double =
-                        Math.Atan2(
-                            startPoint.Y - center.Y,
-                            startPoint.X - center.X)
+                    Math.Atan2(
+                        startPoint.Y - center.Y,
+                        startPoint.X - center.X)
 
-                    Dim endAngle As Double =
-                        Math.Atan2(
-                            endPoint.Y - center.Y,
-                            endPoint.X - center.X)
+                        Dim endAngle As Double =
+                    Math.Atan2(
+                        endPoint.Y - center.Y,
+                        endPoint.X - center.X)
 
-                    Dim isClockwise As Boolean =
-                        (record.Type = 2)
+                        Dim isClockwise As Boolean =
+                    (record.Type = 2)
 
-                    If isClockwise Then
+                        If isClockwise Then
 
-                        If endAngle >= startAngle Then
-                            endAngle -= 2.0 * Math.PI
+                            If endAngle >= startAngle Then
+                                endAngle -= 2.0 * Math.PI
+                            End If
+
+                        Else
+
+                            If endAngle <= startAngle Then
+                                endAngle += 2.0 * Math.PI
+                            End If
+
                         End If
 
-                    Else
+                        segments.Add(
+                    New ArcSegment2D(
+                        center,
+                        radius,
+                        startAngle,
+                        endAngle,
+                        isClockwise))
 
-                        If endAngle <= startAngle Then
-                            endAngle += 2.0 * Math.PI
-                        End If
+                        ' The endpoint record has been consumed.
+                        currentPoint = endPoint
 
-                    End If
+                        index += 2
 
-                    segments.Add(
-                        New ArcSegment2D(
-                            center,
-                            radius,
-                            startAngle,
-                            endAngle,
-                            isClockwise))
+                    Case Else
+                        Throw New InvalidDataException(
+                    "Unsupported CTG record type: " &
+                    record.Type.ToString(
+                        CultureInfo.InvariantCulture))
 
-                    ' The next record was consumed as
-                    ' the arc endpoint.
-                    index += 2
+                End Select
 
-                Case Else
-                    Throw New InvalidDataException(
-                        "Unsupported CTG record type: " &
-                        record.Type.ToString(
-                            CultureInfo.InvariantCulture))
-            End Select
-        End While
+            End While
 
             Dim path As New Path2D()
 
@@ -319,15 +316,11 @@ Namespace ToolShapes
                 path.Add(segment)
             Next
 
-            '    If Not path.IsClosed Then
-            '    Throw New InvalidDataException(
-            '        "Custom CTG profile is not closed.")
-            'End If
-
             Return path
-    End Function
 
-    Private Shared Function CreateFallbackRectangle(
+        End Function
+
+        Private Shared Function CreateFallbackRectangle(
         length As Double,
         width As Double) As IPath2D
 

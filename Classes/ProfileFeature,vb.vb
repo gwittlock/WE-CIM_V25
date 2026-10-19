@@ -7,9 +7,9 @@ Public Class ProfileFeature
 
     Public Property ToolID As Integer
 
-    Public Property CutSide As AppData.CutSideEnum
+    Public Property CutSide As AppData.Directive.CutSideEnum
 
-    Public Property CutDirection As AppData.CutDirectionEnum
+    Public Property CutDirection As AppData.Directive.CutDirectionEnum
 
     Public Property LeadIn As LeadIn
 

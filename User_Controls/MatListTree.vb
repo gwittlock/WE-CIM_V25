@@ -63,4 +63,27 @@ Public Class MatListTree
         End Get
     End Property
 
+
+    Public Sub SelectMaterialByID(materialID As Integer)
+
+        If tl.Nodes.Count = 0 Then Return
+
+        For Each rootNode As TreeListNode In tl.Nodes
+            For Each typeNode As TreeListNode In rootNode.Nodes
+                For Each sheetNode As TreeListNode In typeNode.Nodes
+
+                    Dim sheet = TryCast(sheetNode.Tag, MaterialSheet)
+
+                    If sheet IsNot Nothing AndAlso sheet.ID = materialID Then
+                        tl.FocusedNode = sheetNode
+                        SelectedMaterial = sheet
+                        popupContainerEdit1.EditValue = sheet.Description
+                        Return
+                    End If
+
+                Next
+            Next
+        Next
+
+    End Sub
 End Class

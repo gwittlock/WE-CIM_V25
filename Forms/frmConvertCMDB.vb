@@ -25,11 +25,13 @@ Public Class frmConvertCMDB
 
     Private Sub BtnConvertCMDB_Click(sender As Object, e As EventArgs) Handles btnConvertCMDB.Click
 
-        ExportAllTables(txtCMDBFile.Text, txtDataFolder.Text)
+        If Not ExportAllTables(txtCMDBFile.Text, txtDataFolder.Text) Then
+            Return
+        End If
+
         AppData.LoadAllJson()
         '  ExportMaterialJson(txtCMDBFile.Text, txtDataFolder.Text)
     End Sub
-
 
 
     ' Helper: Convert OleDb data type number to readable name

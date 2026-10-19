@@ -14,6 +14,22 @@ Imports System.Windows.Forms.Design
 
 Public Class AppData
 
+    Public Shared StationsTable As JsonTable(Of JObject)
+    Public Shared StationList As List(Of Station)
+    Public Shared ToolSetupUDPDefinitions As List(Of ToolSetupUDPDefinition)
+    Public Shared ToolSetupUDPDefinitionsTable As JsonTable(Of ToolSetupUDPDefinition)
+    Public Shared ToolSetupUDPValues As List(Of ToolSetupUDPValue)
+    Public Shared ToolSetupUDPValuesTable As JsonTable(Of ToolSetupUDPValue)
+
+    Public Class ToolSetupUDPDefinition
+        Public Property MachineID As Integer
+        Public Property Name As String
+        Public Property Display As String
+        Public Property [Default] As String
+        Public Property DataType As String
+        Public Property Visible As Boolean
+    End Class
+
     ' Folder where JSON files are stored
     ' App data folder
     Public Shared DataFolder As String = Path.Combine(Application.StartupPath, "Data\")
@@ -21,11 +37,20 @@ Public Class AppData
     ' -------------------------------
     ' MACHINES / MATERIALS
     ' -------------------------------
+
     Public Shared MachineTypes As List(Of MachineType)
+
+    ' Persistence wrappers preserve each JSON file's TableName and Columns metadata.
+    ' Runtime lists reference the corresponding wrapper Rows collections.
+    Public Shared MachinesTable As JsonTable(Of Machine)
+    Public Shared MachineAttributeTypesTable As JsonTable(Of MachineAttributeType)
+    Public Shared MachineAttributesTable As JsonTable(Of MachineAttribute)
+
     Public Shared Machines As List(Of Machine)
     Public Shared MachineAttributeTypes As List(Of MachineAttributeType)
     Public Shared MachineAttributes As List(Of MachineAttribute)
     Public Shared MachineToolTypes As List(Of MachineToolType)
+
 
     Public Shared Stations As List(Of Station)
     Public Shared ToolSetups As List(Of ToolSetup)
@@ -65,18 +90,6 @@ Public Class AppData
     Public Shared _selectedDxfPath As String = String.Empty
     Public _dxfPath As String = String.Empty
 
-    Public Enum CutSideEnum
-        None = 0
-        Left = -1
-        Right = 1
-    End Enum
-
-    Public Enum CutDirectionEnum
-        CW = 1
-        CCW = -1
-        Auto = 0
-        As_Specified = 2
-    End Enum
 
     '  LOAD ALL JSON FILES (once)
     ' ------------------------------------------
@@ -92,9 +105,33 @@ Public Class AppData
 
 
         End If
-        Machines = LoadTableWrapped(Of Machine)("Machines.json")
-        MachineAttributeTypes = LoadTableWrapped(Of MachineAttributeType)("MachineAttributeTypes.json")
-        MachineAttributes = LoadTableWrapped(Of MachineAttribute)("MachineAttributes.json")
+
+        MachinesTable =
+    LoadJsonTableWrapped(Of Machine)("Machines.json")
+        Machines = MachinesTable.Rows
+
+        MachineAttributeTypesTable =
+    LoadJsonTableWrapped(Of MachineAttributeType)(
+        "MachineAttributeTypes.json")
+        MachineAttributeTypes = MachineAttributeTypesTable.Rows
+
+        MachineAttributesTable =
+    LoadJsonTableWrapped(Of MachineAttribute)(
+        "MachineAttributes.json")
+        MachineAttributes = MachineAttributesTable.Rows
+
+        StationsTable = LoadJsonTableWrapped(Of JObject)("Stations.json")
+
+        StationList = StationsTable.Rows.Select(Function(row) row.ToObject(Of Station)()).ToList()
+
+        ToolSetupUDPDefinitionsTable = LoadJsonTableWrapped(Of ToolSetupUDPDefinition)("ToolSetupUDPDefinitions.json")
+
+        ToolSetupUDPDefinitions = ToolSetupUDPDefinitionsTable.Rows
+
+        ToolSetupUDPValuesTable = LoadJsonTableWrapped(Of ToolSetupUDPValue)("ToolSetupUDPValues.json")
+
+        ToolSetupUDPValues = ToolSetupUDPValuesTable.Rows
+
         MachineToolTypes = LoadTableWrapped(Of MachineToolType)("MachineToolTypes.json")
 
         ' ---- TOOL DATA ----
@@ -105,17 +142,19 @@ Public Class AppData
         ToolTypeAttributes = LoadTableWrapped(Of ToolTypeAttribute)("ToolTypeAttributes.json")
         ToolSetupMembers = LoadTableWrapped(Of ToolSetupMember)("ToolSetupMembers.json")
 
+
         ' ---- MATERIAL DATA ----
         MaterialTypes = LoadTableWrapped(Of MaterialType)("MaterialTypes.json")
         MaterialSheets = LoadMaterialSheets("MaterialInventory.json")
+
 
         ' ---- LAYER SETUPS / DIRECTIVES ----
         Dim layerSetupsFile = Path.Combine(DataFolder, "LayerSetups.json")
         Dim directivesFile = Path.Combine(DataFolder, "Directives.json")
 
         LayerSetups = If(File.Exists(layerSetupsFile),
-        JObject.Parse(File.ReadAllText(layerSetupsFile))("Rows").ToObject(Of List(Of LayerSetup))(),
-        New List(Of LayerSetup)())
+        JObject.Parse(File.ReadAllText(layerSetupsFile))("Rows").ToObject(Of List(Of layersetup))(),
+        New List(Of layersetup)())
 
         Directives = If(File.Exists(directivesFile),
         JObject.Parse(File.ReadAllText(directivesFile))("Rows").ToObject(Of List(Of Directive))(),
@@ -138,6 +177,8 @@ Public Class AppData
                 ls.Layers.Add(directiveLookup(d.ID))
             Next
         Next
+
+
 
         ValidateConfigurationState()
 
@@ -297,6 +338,69 @@ Public Class AppData
         Return result
     End Function
 
+    Public Shared Sub SaveJsonTableWrapped(Of T)(
+    table As JsonTable(Of T),
+    filename As String)
+        Dim spath As String = Path.Combine(DataFolder, filename)
+
+        File.WriteAllText(
+        spath,
+        JsonConvert.SerializeObject(table, Formatting.Indented))
+    End Sub
+
+    Public Shared Function LoadJsonTableWrapped(Of T)(
+    fileName As String) As JsonTable(Of T)
+
+        Dim spath As String = Path.Combine(DataFolder, fileName)
+        Dim result As New JsonTable(Of T)()
+
+        If Not File.Exists(spath) Then Return result
+
+        Try
+            Dim json = File.ReadAllText(spath)
+            Dim loaded =
+            JsonConvert.DeserializeObject(Of JsonTable(Of T))(json)
+
+            If loaded Is Nothing Then Return result
+
+            If loaded.Rows Is Nothing Then
+                loaded.Rows = New List(Of T)()
+            End If
+
+            Return loaded
+
+        Catch ex As Exception
+            MessageBox.Show(
+            $"Error parsing JSON {fileName}: {ex.Message}")
+            Return result
+        End Try
+
+    End Function
+
+
+    '--------------------------------------
+    ' JsonColumn - describes a column/property in the JSON table
+    '--------------------------------------
+    Public Class JsonColumn
+        Public Property Field As String
+        Public Property Header As String
+        Public Property Visible As Boolean
+        ' DataType: 0=String, 1=Boolean, 2=Integer, 7=Double/Decimal, etc.
+        Public Property DataType As Integer
+    End Class
+
+
+
+    Public Class JsonTable(Of T)
+        Public Property TableName As String
+        Public Property Columns As List(Of JsonColumn)
+        Public Property Rows As List(Of T)
+
+        Public Sub New()
+            Columns = New List(Of JsonColumn)()
+            Rows = New List(Of T)()
+        End Sub
+    End Class
     ' ------------------------------------------
     ' GENERIC JSON TABLE LOADER
     ' ------------------------------------------
@@ -417,11 +521,21 @@ Public Class AppData
     End Class
 
     ' LayerSetup class for WE-CIM v25
+
+    ' LayerSetup class for WE-CIM v25
     Public Class layersetup
+        Implements ICustomTypeDescriptor
+
         ' Unique identifier for the LayerSetup
         Public Property ID As Integer
         Public Property Description As String
         Public Property MachineID As Integer
+
+        ' Assigned when a V25 project selects its Tool Setup.
+        Public Property ToolSetupID As Integer = 0
+
+        ' True only for Layer Setups created by the legacy converter.
+        Public Property RequiresToolIDVerification As Boolean = False
 
         ' CAM processing parameters
         Public Property ZLevelMode As Double
@@ -436,6 +550,7 @@ Public Class AppData
 
         ' Profile direction: Auto, CW, CCW
         Public Property Direction As ProfileDirectionModeEnum
+
         Public Enum ProfileDirectionModeEnum
             Auto
             CW
@@ -443,23 +558,31 @@ Public Class AppData
         End Enum
 
         ' Optional: Dictionary for extra parameters/extensions
-        Public Property Parameters As Dictionary(Of String, Object) = New Dictionary(Of String, Object)()
+        Public Property Parameters As Dictionary(Of String, Object) =
+            New Dictionary(Of String, Object)()
 
         ' Collection of directives/layers for this setup
-        Public Property Layers As List(Of Directive) = New List(Of Directive)
+        Public Property Layers As List(Of Directive) =
+            New List(Of Directive)()
 
         Public Sub Validate()
             If ID <= 0 Then
-                Throw New InvalidOperationException("LayerSetup has invalid ID.")
+                Throw New InvalidOperationException(
+                    "LayerSetup has invalid ID.")
             End If
 
             If Layers Is Nothing OrElse Layers.Count = 0 Then
-                Throw New InvalidOperationException($"LayerSetup {ID} has no directives.")
+                Throw New InvalidOperationException(
+                    $"LayerSetup {ID} has no directives.")
             End If
 
             ' Ensure *default* exists
-            If Not Layers.Any(Function(d) d.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase)) Then
-                Throw New InvalidOperationException($"LayerSetup {ID} is missing *default* directive.")
+            If Not Layers.Any(
+                Function(d) d.CADLayer.Equals(
+                    "*default*", StringComparison.OrdinalIgnoreCase)) Then
+
+                Throw New InvalidOperationException(
+                    $"LayerSetup {ID} is missing *default* directive.")
             End If
 
             ' Ensure no unresolved directives
@@ -468,27 +591,43 @@ Public Class AppData
 
                 If d.LayerSetupID <> ID Then
                     Throw New InvalidOperationException(
-                $"Directive {d.ID} incorrectly assigned to LayerSetup {ID}."
-            )
+                        $"Directive {d.ID} incorrectly assigned to LayerSetup {ID}.")
                 End If
             Next
         End Sub
 
-        Public Function FindRuleByLayer(layerName As String) As AppData.Directive
+        Public Function FindRuleByLayer(
+            layerName As String) As AppData.Directive
+
             If Layers Is Nothing Then Return Nothing
-            Return Layers.FirstOrDefault(Function(r) String.Equals(r.CADLayer, layerName, StringComparison.OrdinalIgnoreCase))
+
+            Return Layers.FirstOrDefault(
+                Function(r) String.Equals(
+                    r.CADLayer,
+                    layerName,
+                    StringComparison.OrdinalIgnoreCase))
         End Function
 
         ' Utility method to get the display color for a specific CAD layer
-        Public Function GetColorForLayer(cadLayerName As String) As Color?
+        Public Function GetColorForLayer(
+            cadLayerName As String) As Color?
+
             If Layers Is Nothing Then Return Nothing
 
             ' Try to find directive matching the CAD layer
-            Dim directive = Layers.FirstOrDefault(Function(d) String.Equals(d.CADLayer, cadLayerName, StringComparison.OrdinalIgnoreCase))
+            Dim directive = Layers.FirstOrDefault(
+                Function(d) String.Equals(
+                    d.CADLayer,
+                    cadLayerName,
+                    StringComparison.OrdinalIgnoreCase))
 
             ' Fallback to "*default*" if not found
             If directive Is Nothing Then
-                directive = Layers.FirstOrDefault(Function(d) String.Equals(d.CADLayer, "*default*", StringComparison.OrdinalIgnoreCase))
+                directive = Layers.FirstOrDefault(
+                    Function(d) String.Equals(
+                        d.CADLayer,
+                        "*default*",
+                        StringComparison.OrdinalIgnoreCase))
             End If
 
             ' Return the DisplayColor if found
@@ -496,92 +635,413 @@ Public Class AppData
                 Return directive.DisplayColor
             End If
 
-            ' Not found
             Return Nothing
         End Function
 
-        ' Optional: Add helper to quickly get a parameter by name
-        Public Function GetParameter(Of T)(paramName As String, Optional defaultValue As T = Nothing) As T
-            If Parameters IsNot Nothing AndAlso Parameters.ContainsKey(paramName) Then
+        ' Get a parameter by name
+        Public Function GetParameter(Of T)(
+            paramName As String,
+            Optional defaultValue As T = Nothing) As T
+
+            If Parameters IsNot Nothing AndAlso
+                Parameters.ContainsKey(paramName) Then
+
                 Return CType(Parameters(paramName), T)
             End If
+
             Return defaultValue
         End Function
 
-        ' Optional: Set or override a parameter
-        Public Sub SetParameter(paramName As String, value As Object)
-            If Parameters Is Nothing Then Parameters = New Dictionary(Of String, Object)()
+        ' Set or override a parameter
+        Public Sub SetParameter(
+            paramName As String,
+            value As Object)
+
+            If Parameters Is Nothing Then
+                Parameters = New Dictionary(Of String, Object)()
+            End If
+
             Parameters(paramName) = value
         End Sub
 
+        ' ============================================
+        ' ICustomTypeDescriptor implementation
+        ' ============================================
+
+        Public Function GetAttributes() As AttributeCollection _
+            Implements ICustomTypeDescriptor.GetAttributes
+
+            Return TypeDescriptor.GetAttributes(Me, True)
+        End Function
+
+        Public Function GetClassName() As String _
+            Implements ICustomTypeDescriptor.GetClassName
+
+            Return TypeDescriptor.GetClassName(Me, True)
+        End Function
+
+        Public Function GetComponentName() As String _
+            Implements ICustomTypeDescriptor.GetComponentName
+
+            Return TypeDescriptor.GetComponentName(Me, True)
+        End Function
+
+        Public Function GetConverter() As TypeConverter _
+            Implements ICustomTypeDescriptor.GetConverter
+
+            Return TypeDescriptor.GetConverter(Me, True)
+        End Function
+
+        Public Function GetDefaultEvent() As EventDescriptor _
+            Implements ICustomTypeDescriptor.GetDefaultEvent
+
+            Return TypeDescriptor.GetDefaultEvent(Me, True)
+        End Function
+
+        Public Function GetDefaultProperty() As PropertyDescriptor _
+            Implements ICustomTypeDescriptor.GetDefaultProperty
+
+            Return TypeDescriptor.GetDefaultProperty(Me, True)
+        End Function
+
+        Public Function GetEditor(
+            editorBaseType As Type) As Object _
+            Implements ICustomTypeDescriptor.GetEditor
+
+            Return TypeDescriptor.GetEditor(Me, editorBaseType, True)
+        End Function
+
+        Public Function GetEvents() As EventDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetEvents
+
+            Return TypeDescriptor.GetEvents(Me, True)
+        End Function
+
+        Public Function GetEvents(
+            attributes As Attribute()) As EventDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetEvents
+
+            Return TypeDescriptor.GetEvents(Me, attributes, True)
+        End Function
+
+        Public Function GetProperties() As PropertyDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetProperties
+
+            Return GetProperties(New Attribute() {})
+        End Function
+
+        Public Function GetProperties(
+            attributes As Attribute()) As PropertyDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetProperties
+
+            ' Get the underlying properties without recursively calling
+            ' this custom descriptor.
+            Dim allProperties As PropertyDescriptorCollection =
+                TypeDescriptor.GetProperties(Me, attributes, True)
+
+            ' These are the ONLY properties shown, in this order.
+            Dim allowedNames As String() = {
+                "Description",
+                "ZLevelMode",
+                "GapTolerance",
+                "CleanTolerance",
+                "FilterTolerance",
+                "SharpAngle",
+                "ProcessText",
+                "Restrict_Offset",
+                "Color",
+                "Visible",
+                "Direction"
+            }
+
+            Dim selectedProperties As New List(Of PropertyDescriptor)
+
+            For Each propertyName As String In allowedNames
+                Dim propertyDescriptor As PropertyDescriptor =
+                    allProperties.Find(propertyName, False)
+
+                If propertyDescriptor IsNot Nothing Then
+                    selectedProperties.Add(propertyDescriptor)
+                End If
+            Next
+
+            Return New PropertyDescriptorCollection(
+                selectedProperties.ToArray(), True)
+        End Function
+
+        Public Function GetPropertyOwner(
+            pd As PropertyDescriptor) As Object _
+            Implements ICustomTypeDescriptor.GetPropertyOwner
+
+            Return Me
+        End Function
+
     End Class
+
+
+
     ' Directive class
     Public Class Directive
+        Implements ICustomTypeDescriptor
+
         Public Property ID As Integer
         Public Property LayerSetupID As Integer
+
+        <DisplayName("CAD Layer")>
         Public Property CADLayer As String
+
+        <DisplayName("CAM Layer")>
         Public Property CAMLayer As String
+
+        Public Property CutSide As CutSideEnum
+        Public Property CutDirection As CutDirectionEnum
 
         ' Raw numeric color from JSON (optional / legacy)
         Public Property Color As Integer
 
-        ' Human-readable color name from JSON
+        ' JSON stores this value as "DisplayColor".
+        ' This is the persisted color name or #AARRGGBB value.
         <JsonProperty("DisplayColor")>
         Public Property DisplayColorName As String
 
-        ' Actual runtime color used for rendering
+        ' Actual runtime color used for rendering and editing.
+        Private _displayColor As System.Drawing.Color =
+            System.Drawing.Color.Empty
+
+        Public Enum CutDirectionEnum
+            CW = 0
+            CCW = 1
+            Auto = 2
+            [AsSpecified] = 3
+        End Enum
+
+        Public Enum CutSideEnum
+            Right = -1
+            None = 0
+            Left = 1
+        End Enum
+
+        <DisplayName("Z Level")>
+        Public Property ZLevel As Double
+
+        <DisplayName("Color")>
         <JsonIgnore>
         Public Property DisplayColor As Color
+            Get
+                Return _displayColor
+            End Get
+            Set(value As Color)
+                _displayColor = value
 
+                If value.IsKnownColor OrElse value.IsSystemColor Then
+                    DisplayColorName = value.Name
+                Else
+                    DisplayColorName =
+                        "#" & value.ToArgb().ToString("X8")
+                End If
+
+                Color = ColorTranslator.ToWin32(value)
+            End Set
+        End Property
+
+        <DisplayName("Station")>
+        <Editor(GetType(DirectiveStationEditor), GetType(UITypeEditor))>
         Public Property Station As String
+
         Public Property ToolType As Integer?
-        Public Property ZLevel As Double
-        Public Property CutSide As Integer
+
+        <DisplayName("Distance")>
         Public Property Distance As Double
-        Public Property CutDirection As Integer
+
         Public Property ToolID As Integer
+
         Public Sub Validate()
             If ID <= 0 Then
-                Throw New InvalidOperationException("Directive ID is invalid.")
+                Throw New InvalidOperationException(
+                    "Directive ID is invalid.")
             End If
 
             If String.IsNullOrWhiteSpace(CADLayer) Then
-                Throw New InvalidOperationException($"Directive {ID} has no CADLayer.")
+                Throw New InvalidOperationException(
+                    $"Directive {ID} has no CADLayer.")
             End If
 
             If LayerSetupID <= 0 Then
-                Throw New InvalidOperationException($"Directive {ID} has invalid LayerSetupID.")
+                Throw New InvalidOperationException(
+                    $"Directive {ID} has invalid LayerSetupID.")
             End If
 
             If DisplayColor.IsEmpty Then
-                Throw New InvalidOperationException($"Directive {ID} has unresolved DisplayColor.")
+                Throw New InvalidOperationException(
+                    $"Directive {ID} has unresolved DisplayColor.")
             End If
         End Sub
 
-
-
         Public Sub ResolveColors()
+            ' 1. Restore custom ARGB colors stored as #AARRGGBB.
+            If Not String.IsNullOrWhiteSpace(DisplayColorName) AndAlso
+               DisplayColorName.StartsWith("#") AndAlso
+               DisplayColorName.Length = 9 Then
 
-            ' 1. Prefer named color if provided
+                Dim alpha As Integer
+                Dim red As Integer
+                Dim green As Integer
+                Dim blue As Integer
+
+                If Integer.TryParse(
+                    DisplayColorName.Substring(1, 2),
+                    Globalization.NumberStyles.HexNumber,
+                    Nothing, alpha) AndAlso
+                   Integer.TryParse(
+                    DisplayColorName.Substring(3, 2),
+                    Globalization.NumberStyles.HexNumber,
+                    Nothing, red) AndAlso
+                   Integer.TryParse(
+                    DisplayColorName.Substring(5, 2),
+                    Globalization.NumberStyles.HexNumber,
+                    Nothing, green) AndAlso
+                   Integer.TryParse(
+                    DisplayColorName.Substring(7, 2),
+                    Globalization.NumberStyles.HexNumber,
+                    Nothing, blue) Then
+
+                    DisplayColor = System.Drawing.Color.FromArgb(
+                        alpha, red, green, blue)
+                    Return
+                End If
+            End If
+
+            ' 2. Restore existing named colors.
             If Not String.IsNullOrWhiteSpace(DisplayColorName) Then
-                Dim c = System.Drawing.Color.FromName(DisplayColorName)
-                If c.IsKnownColor OrElse c.IsNamedColor Then
+                Dim c =
+                    System.Drawing.Color.FromName(DisplayColorName)
+
+                If c.IsKnownColor OrElse c.IsSystemColor Then
                     DisplayColor = c
                     Return
                 End If
             End If
 
-            ' 2. Fallback to integer ARGB if present
+            ' 3. Preserve the existing numeric fallback.
             If Color <> 0 Then
-                DisplayColor = ColorTranslator.FromWin32(Color)
+                Dim c = ColorTranslator.FromWin32(Color)
+                DisplayColor = c
                 Return
             End If
 
-            ' 3. Absolute fallback
+            ' 4. Absolute fallback.
             DisplayColor = System.Drawing.Color.Magenta
-
         End Sub
 
+        ' ============================================
+        ' ICustomTypeDescriptor implementation
+        ' ============================================
+
+        Public Function GetAttributes() As AttributeCollection _
+            Implements ICustomTypeDescriptor.GetAttributes
+
+            Return TypeDescriptor.GetAttributes(Me, True)
+        End Function
+
+        Public Function GetClassName() As String _
+            Implements ICustomTypeDescriptor.GetClassName
+
+            Return TypeDescriptor.GetClassName(Me, True)
+        End Function
+
+        Public Function GetComponentName() As String _
+            Implements ICustomTypeDescriptor.GetComponentName
+
+            Return TypeDescriptor.GetComponentName(Me, True)
+        End Function
+
+        Public Function GetConverter() As TypeConverter _
+            Implements ICustomTypeDescriptor.GetConverter
+
+            Return TypeDescriptor.GetConverter(Me, True)
+        End Function
+
+        Public Function GetDefaultEvent() As EventDescriptor _
+            Implements ICustomTypeDescriptor.GetDefaultEvent
+
+            Return TypeDescriptor.GetDefaultEvent(Me, True)
+        End Function
+
+        Public Function GetDefaultProperty() As PropertyDescriptor _
+            Implements ICustomTypeDescriptor.GetDefaultProperty
+
+            Return TypeDescriptor.GetDefaultProperty(Me, True)
+        End Function
+
+        Public Function GetEditor(editorBaseType As Type) As Object _
+            Implements ICustomTypeDescriptor.GetEditor
+
+            Return TypeDescriptor.GetEditor(Me, editorBaseType, True)
+        End Function
+
+        Public Function GetEvents() As EventDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetEvents
+
+            Return TypeDescriptor.GetEvents(Me, True)
+        End Function
+
+        Public Function GetEvents(
+            attributes As Attribute()) As EventDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetEvents
+
+            Return TypeDescriptor.GetEvents(Me, attributes, True)
+        End Function
+
+        Public Function GetProperties() As PropertyDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetProperties
+
+            Return GetProperties(New Attribute() {})
+        End Function
+
+        Public Function GetProperties(
+            attributes As Attribute()) As PropertyDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetProperties
+
+            ' Get the underlying properties without recursively
+            ' invoking this custom descriptor.
+            Dim allProperties As PropertyDescriptorCollection =
+                TypeDescriptor.GetProperties(Me, attributes, True)
+
+            ' Only these eight properties appear, in this order.
+            Dim allowedNames As String() = {
+                "CADLayer",
+                "CAMLayer",
+                "ZLevel",
+                "DisplayColor",
+                "Station",
+                "CutDirection",
+                "CutSide",
+                "Distance"
+            }
+
+            Dim selectedProperties As New List(Of PropertyDescriptor)
+
+            For Each propertyName As String In allowedNames
+                Dim pd As PropertyDescriptor =
+                    allProperties.Find(propertyName, False)
+
+                If pd IsNot Nothing Then
+                    selectedProperties.Add(pd)
+                End If
+            Next
+
+            Return New PropertyDescriptorCollection(
+                selectedProperties.ToArray(), True)
+        End Function
+
+        Public Function GetPropertyOwner(
+            pd As PropertyDescriptor) As Object _
+            Implements ICustomTypeDescriptor.GetPropertyOwner
+
+            Return Me
+        End Function
+
     End Class
+
 
 End Class

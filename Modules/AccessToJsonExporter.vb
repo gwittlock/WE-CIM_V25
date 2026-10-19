@@ -1518,50 +1518,40 @@ Public Module AccessToJsonExporter
         Using conn As New OleDbConnection($"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbPath};")
             conn.Open()
 
+            Using countCmd As New OleDbCommand(
+    "SELECT COUNT(*) FROM [Layer Setups]", conn)
+
+                Debug.WriteLine(
+        "Layer Setups count: " & countCmd.ExecuteScalar().ToString())
+            End Using
+
             ' Read Layer Setups
             Using cmd As New OleDbCommand($"SELECT * FROM [{tableName}]", conn)
                 Using reader As OleDbDataReader = cmd.ExecuteReader()
                     While reader.Read()
                         ' Build LayerSetup row from actual columns
                         Dim row As New Dictionary(Of String, Object) From {
-                        {"ID", reader("ID")},
-                        {"Description", reader("Description")},
-                        {"MachineID", reader("Machine ID")},
-                        {"ZLevelMode", reader("Z Level Mode")},
-                        {"GapTolerance", reader("Gap Tolerance")},
-                        {"CleanTolerance", reader("Clean Tolerance")},
-                        {"FilterTolerance", reader("Filter Tolerance")},
-                        {"SharpAngle", reader("Sharp Angle")},
-                        {"ProcessText", reader("ProcessText")},
-                        {"RestrictOffset", reader("Restrict_Offset")}
-                    }
+                                            {"ID", reader("ID")},
+                                            {"Description", reader("Description")},
+                                            {"MachineID", reader("Machine ID")},
+                                            {"ZLevelMode", reader("Z Level Mode")},
+                                            {"GapTolerance", reader("Gap Tolerance")},
+                                            {"CleanTolerance", reader("Clean Tolerance")},
+                                            {"FilterTolerance", reader("Filter Tolerance")},
+                                            {"SharpAngle", reader("Sharp Angle")},
+                                            {"ProcessText", reader("ProcessText")},
+                                            {"Restrict_Offset", If(
+                                                reader.IsDBNull(reader.GetOrdinal("Restrict_Offset")),
+                                                False,
+                                                Convert.ToBoolean(reader("Restrict_Offset"))
+                                            )},
+                                            {"ToolSetupID", 0},
+                                            {"RequiresToolIDVerification", True}
+                                        }
 
-                        ' Read child Directives for this LayerSetup
-                        Dim directives As New List(Of Dictionary(Of String, Object))
-                        Using cmdDir As New OleDbCommand($"SELECT * FROM [Directives] WHERE [Layer Setup ID]={row("ID")}", conn)
-                            Using readerDir As OleDbDataReader = cmdDir.ExecuteReader()
-                                While readerDir.Read()
-                                    Dim dirRow As New Dictionary(Of String, Object) From {
-                                    {"ID", readerDir("ID")},
-                                    {"LayerSetupID", readerDir("Layer Setup ID")},
-                                    {"CADLayer", readerDir("CAD Layer")},
-                                    {"CAMLayer", readerDir("CAM Layer")},
-                                    {"Color", readerDir("Color")},
-                                    {"DisplayColor", ColorTranslator.FromOle(CInt(readerDir("Color"))).Name},
-                                    {"Station", readerDir("Station")},
-                                    {"ToolType", readerDir("Tool Type")},
-                                    {"ZLevel", readerDir("Z Level")},
-                                    {"CutSide", readerDir("Cut Side")},
-                                    {"Distance", readerDir("Distance")},
-                                    {"CutDirection", readerDir("Cut Direction")}
-                                }
-                                    directives.Add(dirRow)
-                                End While
-                            End Using
-                        End Using
+                        Debug.WriteLine("Exporting ID: " & reader("ID").ToString())
 
-                        ' Attach Directives to LayerSetup row
-                        row("Layers") = directives
+
                         layerSetupRows.Add(row)
                     End While
                 End Using
@@ -1663,6 +1653,13 @@ Public Module AccessToJsonExporter
         Using conn As New OleDbConnection($"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbPath};")
             conn.Open()
 
+            Using countCmd As New OleDbCommand(
+    "SELECT COUNT(*) FROM [Directives]", conn)
+
+                Debug.WriteLine(
+        "Directives count: " & countCmd.ExecuteScalar().ToString())
+            End Using
+
             Using cmd As New OleDbCommand($"SELECT * FROM [{tableName}]", conn)
                 Using reader As OleDbDataReader = cmd.ExecuteReader()
                     While reader.Read()
@@ -1680,9 +1677,13 @@ Public Module AccessToJsonExporter
                             End If
                         Next
 
+                        Debug.WriteLine("Nested Directive ID: " &
+                reader("ID").ToString())
+
                         ' Compute DisplayColor from OLE Color integer
                         Dim oleColor As Integer = If(row.ContainsKey("Color") AndAlso row("Color") IsNot Nothing, CInt(row("Color")), 0)
-                        row("DisplayColor") = ColorTranslator.FromOle(oleColor)
+                        row("DisplayColor") = ColorTranslator.FromOle(oleColor).Name
+                        row("ToolID") = 0
 
                         rows.Add(row)
                     End While
@@ -2187,9 +2188,10 @@ Public Module AccessToJsonExporter
     Private sJsonName As String
 
 
-    Public Sub ExportAllTables(mdbPath As String, outputFolder As String)
-
+    Public Function ExportAllTables(mdbPath As String, outputFolder As String) As Boolean
+        Dim exportFailed As Boolean = False
         Dim filePath As String = "C:\Program Files (x86)\WE-CIM\25.0\Data\ExportTable_errors.txt"
+
 
         ' Using statement ensures the StreamWriter is disposed of properly
         Using writer As New StreamWriter(filePath, True) ' Setting the second parameter to True appends text
@@ -2213,27 +2215,41 @@ Public Module AccessToJsonExporter
                             Try
                                 ExportMDBTable(mdbPath, outputFolder, tableName)
                             Catch ex As Exception
+                                exportFailed = True
 
-                                writer.WriteLine($"Failed to export table {tableName} ")
+                                writer.WriteLine($"Failed to export table {tableName}")
                                 writer.WriteLine($"Using ExportTableType. {sExportType}")
-                                writer.WriteLine($" The error is : {ex.Message}")
+                                writer.WriteLine($"The error is: {ex.Message}")
                                 writer.WriteLine("")
                                 writer.WriteLine("")
-
                             End Try
                         End If
                     End If
                 Next
             End Using
 
-            MessageBox.Show("Export complete!" & vbCrLf &
-                        "JSON files written to: " & outputFolder,
-                        "Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            If exportFailed Then
+                MessageBox.Show(
+                            "One or more tables failed to export." & vbCrLf &
+                            "Check the export error log before continuing." & vbCrLf &
+                            "Output folder: " & outputFolder,
+                            "Export Warning",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning)
+            Else
+                MessageBox.Show(
+                            "Export complete!" & vbCrLf &
+                            "JSON files written to: " & outputFolder,
+                            "Complete",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information)
+            End If
 
 
         End Using
 
-    End Sub
+    End Function
+
     Public Sub ExportMachineAttributeTypes(mdbPath As String, outputFolder As String, tableName As String, jsonName As String)
         Try
             Dim connString As String = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={mdbPath};Persist Security Info=False;"

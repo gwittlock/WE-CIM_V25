@@ -384,7 +384,6 @@ Public Class ToolShapeTest
         End Try
 
     End Sub
-
     Private Sub pnlToolShape_Paint(
     sender As Object,
     e As PaintEventArgs) Handles pnlToolShape.Paint
@@ -393,58 +392,118 @@ Public Class ToolShapeTest
 
         g.Clear(Color.White)
 
-        ' Coordinate origin.
+        Dim panelWidth As Single =
+        pnlToolShape.ClientSize.Width
+
+        Dim panelHeight As Single =
+        pnlToolShape.ClientSize.Height
+
+        If panelWidth <= 0.0F OrElse panelHeight <= 0.0F Then
+            Return
+        End If
+
+        '==========================================================
+        ' Reference origin.
+        '
+        ' The origin remains the actual CTG/tool coordinate origin.
+        ' The fitted geometry does NOT redefine the origin.
+        '==========================================================
+
         Dim originX As Single =
-        pnlToolShape.ClientSize.Width / 2.0F
+        panelWidth / 2.0F
 
         Dim originY As Single =
-        pnlToolShape.ClientSize.Height / 2.0F
+        panelHeight / 2.0F
+
+        '==========================================================
+        ' Axes
+        '==========================================================
 
         Using axisPen As New Pen(Color.LightGray, 1.0F)
 
             ' X axis.
             g.DrawLine(
             axisPen,
-            0,
+            0.0F,
             originY,
-            pnlToolShape.ClientSize.Width,
+            panelWidth,
             originY)
 
             ' Y axis.
             g.DrawLine(
             axisPen,
             originX,
-            0,
+            0.0F,
             originX,
-            pnlToolShape.ClientSize.Height)
+            panelHeight)
 
         End Using
 
-        ' Reference center.
-        Using centerBrush As New SolidBrush(Color.Red)
 
-            g.FillEllipse(
-            centerBrush,
-            originX - 3.0F,
-            originY - 3.0F,
-            6.0F,
-            6.0F)
 
-        End Using
-
-        If _testToolShape IsNot Nothing Then
-
-            DrawToolShape(
-                g,
-                _testToolShape,
-                originX,
-                originY,
-                100.0F)
-
+        If _testToolShape Is Nothing Then
+            Return
         End If
 
-    End Sub
+        '==========================================================
+        ' Fit the complete tool shape into the panel.
+        '==========================================================
 
+        Dim profile As IPath2D =
+        _testToolShape.CuttingProfile
+
+        If profile Is Nothing Then
+            Return
+        End If
+
+        Dim bounds As RectangleF =
+        profile.BoundingBox
+
+        If bounds.IsEmpty Then
+            Return
+        End If
+
+        Const marginPixels As Single = 20.0F
+
+        Dim availableWidth As Single =
+        panelWidth - (marginPixels * 2.0F)
+
+        Dim availableHeight As Single =
+        panelHeight - (marginPixels * 2.0F)
+
+        If availableWidth <= 0.0F OrElse
+       availableHeight <= 0.0F Then
+
+            Return
+        End If
+
+        Dim boundsWidth As Double =
+        Math.Max(
+            CDbl(bounds.Width),
+            0.000001)
+
+        Dim boundsHeight As Double =
+        Math.Max(
+            CDbl(bounds.Height),
+            0.000001)
+
+        Dim scaleX As Double =
+        availableWidth / boundsWidth
+
+        Dim scaleY As Double =
+        availableHeight / boundsHeight
+
+        Dim scale As Single =
+        CSng(Math.Min(scaleX, scaleY))
+
+        DrawToolShape(
+        g,
+        _testToolShape,
+        originX,
+        originY,
+        scale)
+
+    End Sub
     Private Sub DrawToolShape(
     g As Graphics,
     shape As ToolShape,
@@ -456,75 +515,166 @@ Public Class ToolShapeTest
             Return
         End If
 
+        If shape.CuttingProfile Is Nothing Then
+            Return
+        End If
+
+        Dim bounds As RectangleF =
+        shape.CuttingProfile.BoundingBox
+
+        If bounds.IsEmpty Then
+            Return
+        End If
+
+        '==========================================================
+        ' Center the bounding box in the viewport.
+        '
+        ' Important:
+        ' The CTG's actual coordinate system is unchanged.
+        ' We calculate a display translation only.
+        '==========================================================
+
+        Dim boundsCenterX As Double =
+        CDbl(bounds.Left) +
+        (CDbl(bounds.Width) / 2.0)
+
+        Dim boundsCenterY As Double =
+        CDbl(bounds.Top) +
+        (CDbl(bounds.Height) / 2.0)
+
+        Dim displayCenterX As Double =
+        originX
+
+        Dim displayCenterY As Double =
+        originY
+
         Using profilePen As New Pen(Color.Blue, 2.0F)
 
             For Each segment As IPathSegment In
-                shape.CuttingProfile.Segments
+            shape.CuttingProfile.Segments
+
+                If segment Is Nothing Then
+                    Continue For
+                End If
 
                 Select Case segment.SegmentType
 
                     Case PathSegmentType.Line
 
                         Dim startPoint As PointF =
-                            segment.StartPoint
+                        segment.StartPoint
 
                         Dim endPoint As PointF =
-                            segment.EndPoint
+                        segment.EndPoint
 
                         Dim screenStart As New PointF(
-                            originX + CSng(startPoint.X * scale),
-                            originY - CSng(startPoint.Y * scale))
+                        CSng(
+                            displayCenterX +
+                            ((CDbl(startPoint.X) - boundsCenterX) * scale)),
+                        CSng(
+                            displayCenterY -
+                            ((CDbl(startPoint.Y) - boundsCenterY) * scale)))
 
                         Dim screenEnd As New PointF(
-                            originX + CSng(endPoint.X * scale),
-                            originY - CSng(endPoint.Y * scale))
+                        CSng(
+                            displayCenterX +
+                            ((CDbl(endPoint.X) - boundsCenterX) * scale)),
+                        CSng(
+                            displayCenterY -
+                            ((CDbl(endPoint.Y) - boundsCenterY) * scale)))
 
                         g.DrawLine(
-                            profilePen,
-                            screenStart,
-                            screenEnd)
+                        profilePen,
+                        screenStart,
+                        screenEnd)
 
                     Case PathSegmentType.Arc
 
                         Dim arc As ArcSegment2D =
-                            DirectCast(segment, ArcSegment2D)
+                        DirectCast(segment, ArcSegment2D)
 
                         Dim center As PointF =
-                            arc.Center
+                        arc.Center
 
                         Dim diameter As Single =
-                            CSng(arc.Radius * 2.0 * scale)
+                        CSng(
+                            arc.Radius *
+                            2.0 *
+                            scale)
 
                         Dim left As Single =
-                            originX +
-                            CSng((center.X - arc.Radius) * scale)
+                        CSng(
+                            displayCenterX +
+                            ((CDbl(center.X) -
+                              CDbl(arc.Radius) -
+                              boundsCenterX) * scale))
 
                         Dim top As Single =
-                            originY -
-                            CSng((center.Y + arc.Radius) * scale)
+                        CSng(
+                            displayCenterY -
+                            ((CDbl(center.Y) +
+                              CDbl(arc.Radius) -
+                              boundsCenterY) * scale))
 
                         ' Arc angles are stored in radians.
                         ' Graphics.DrawArc uses degrees.
+                        '
+                        ' The Y-axis is inverted for screen coordinates,
+                        ' so the angle direction is inverted here.
                         Dim startAngle As Single =
-                            CSng(-arc.StartAngle * 180.0 / Math.PI)
+                        CSng(
+                            -arc.StartAngle *
+                            180.0 /
+                            Math.PI)
 
                         Dim sweepAngle As Single =
-                            CSng(
-                                -(arc.EndAngle - arc.StartAngle) *
-                                180.0 / Math.PI)
+                        CSng(
+                            -(arc.EndAngle -
+                              arc.StartAngle) *
+                            180.0 /
+                            Math.PI)
 
                         g.DrawArc(
-                            profilePen,
-                            left,
-                            top,
-                            diameter,
-                            diameter,
-                            startAngle,
-                            sweepAngle)
+                        profilePen,
+                        left,
+                        top,
+                        diameter,
+                        diameter,
+                        startAngle,
+                        sweepAngle)
 
                 End Select
 
             Next
+
+        End Using
+
+        '==========================================================
+        ' Draw the actual CTG coordinate origin.
+        '
+        ' Because the fitted geometry may not be centered around
+        ' (0,0), the origin can be somewhere other than the center
+        ' of the CTG.
+        '==========================================================
+
+        Dim screenOriginX As Single =
+        CSng(
+            displayCenterX -
+            (boundsCenterX * scale))
+
+        Dim screenOriginY As Single =
+        CSng(
+            displayCenterY +
+            (boundsCenterY * scale))
+
+        Using centerBrush As New SolidBrush(Color.Red)
+
+            g.FillEllipse(
+            centerBrush,
+            screenOriginX - 3.0F,
+            screenOriginY - 3.0F,
+            6.0F,
+            6.0F)
 
         End Using
 

@@ -364,39 +364,6 @@ Public Class frmOpenProject
     End Sub
 
 
-    Private Sub popupContainerEdit1_EditValueChanged(sender As Object, e As EventArgs)
-        Dim sPieces() As String
-        Try
-
-
-            If (popupContainerEdit1.Tag IsNot Nothing) Then
-                sPieces = Split(popupContainerEdit1.Tag, ",")
-
-                Dim materialID As Long
-
-                'MsgBox("The material ID is < " & e.ToString)
-
-                materialID = (sPieces(1))
-
-                tebMaterialLength.Text = modMaterial.GetMaterialLength(MaterialSheets, _SelectedMaterialID)
-                tebMaterialWidth.Text = modMaterial.GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
-                tebMaterialThickness.Text = modMaterial.GetMaterialThickness(MaterialSheets, _SelectedMaterialID)
-            End If
-
-        Catch ex As Exception
-            MessageBox.Show("popupContainerEdit1_EditValueChanged: " & ex.Message)
-        End Try
-        'EnableOkButton()
-    End Sub
-
-
-    Private Sub popupContainerEdit1_QueryDisplayText(sender As Object, e As QueryDisplayTextEventArgs)
-        e.DisplayText = If(e.EditValue IsNot Nothing, e.EditValue.ToString(), "")
-
-    End Sub
-
-
-
     Private Sub LoadLayerSetupsForMachine(machineID As Integer)
 
         cboLayerSetup.Properties.Items.Clear()
@@ -440,7 +407,36 @@ Public Class frmOpenProject
     End Sub
 
     Private Sub frmOpenProject_Shown(sender As Object, e As EventArgs) Handles Me.Shown
-        InitMaterialCombo()
+        MatListTree1.SelectMaterialByID(nMyMaterialID)
+    End Sub
+
+    Private Sub popupContainerEdit1_EditValueChanged(sender As Object, e As EventArgs) Handles popupContainerEdit1.EditValueChanged
+        Dim sPieces() As String
+        Try
+
+
+            If (popupContainerEdit1.Tag IsNot Nothing) Then
+                sPieces = Split(popupContainerEdit1.Tag, ",")
+
+                Dim materialID As Long
+
+                'MsgBox("The material ID is < " & e.ToString)
+
+                materialID = (sPieces(1))
+
+                tebMaterialLength.Text = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+                tebMaterialWidth.Text = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+                tebMaterialThickness.Text = modMaterial.GetMaterialThickness(MaterialSheets, _SelectedMaterialID)
+            End If
+
+        Catch ex As Exception
+            MessageBox.Show("popupContainerEdit1_EditValueChanged: " & ex.Message)
+        End Try
+        'EnableOkButton()
+    End Sub
+
+    Private Sub popupContainerEdit1_QueryDisplayText(sender As Object, e As QueryDisplayTextEventArgs) Handles popupContainerEdit1.QueryDisplayText
+        e.DisplayText = If(e.EditValue IsNot Nothing, e.EditValue.ToString(), "")
     End Sub
 End Class
 

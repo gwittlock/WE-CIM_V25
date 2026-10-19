@@ -73,13 +73,17 @@ Public Class DynamicPropertyBag
         Return EventDescriptorCollection.Empty
     End Function
 
+
     Public Function GetProperties() As PropertyDescriptorCollection Implements ICustomTypeDescriptor.GetProperties
-        Dim arr(_properties.Count - 1) As PropertyDescriptor
-        For i As Integer = 0 To _properties.Count - 1
-            arr(i) = _properties(i)
+        Dim arr(_props.Count - 1) As PropertyDescriptor
+
+        For i As Integer = 0 To _props.Count - 1
+            arr(i) = _props(i)
         Next
+
         Return New PropertyDescriptorCollection(arr)
     End Function
+
 
     Public Function GetProperties(attributes() As Attribute) As PropertyDescriptorCollection Implements ICustomTypeDescriptor.GetProperties
         Return GetProperties()

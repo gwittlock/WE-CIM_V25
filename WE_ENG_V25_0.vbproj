@@ -97,7 +97,7 @@
     </DocumentationFile>
     <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
     <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <Prefer32Bit>true</Prefer32Bit>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -105,7 +105,7 @@
     </WarningsAsErrors>
     <DefineConstants>CCS_FAB=false,DIAMOND=0, Rittal =0, APIHeatTransfer=0</DefineConstants>
     <UseVSHostingProcess>false</UseVSHostingProcess>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
@@ -336,6 +336,7 @@
     <Compile Include="Classes\CornerRadiusToolShape.vb" />
     <Compile Include="Classes\CustomToolShape.vb" />
     <Compile Include="Classes\DatabaseConversion.vb" />
+    <Compile Include="Classes\DirectiveStationEditor.vb" />
     <Compile Include="Classes\DoubleDToolShape.vb" />
     <Compile Include="Classes\DxfDrawable.vb" />
     <Compile Include="Classes\DxfImport.vb" />
@@ -358,6 +359,7 @@
     <Compile Include="Classes\JsonLoader.vb" />
     <Compile Include="Classes\KeyholeToolShape.vb" />
     <Compile Include="Classes\LayerDefinition.vb" />
+    <Compile Include="Classes\LayerSetupConversionService.vb" />
     <Compile Include="Classes\LeadGeometry.vb" />
     <Compile Include="Classes\LeadIn.vb" />
     <Compile Include="Classes\LeadOut.vb" />
@@ -378,6 +380,7 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Classes\MaterialSheet.vb" />
+    <Compile Include="Classes\MaterialSheetPropertyDescriptor.vb" />
     <Compile Include="Classes\Part.vb" />
     <Compile Include="Classes\Pattern.vb" />
     <Compile Include="Classes\PierceHoleFeature.vb" />

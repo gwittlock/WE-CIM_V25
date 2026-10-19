@@ -1,4 +1,6 @@
 ﻿Imports System.ComponentModel
+Imports System.Drawing.Design
+Imports System.Drawing
 Public Class DynamicToolAttributes
     Implements ICustomTypeDescriptor
 
@@ -93,54 +95,145 @@ Public Class DynamicToolAttributes
     End Property
 End Class
 
+
+Public Class CtgFileEditor
+    Inherits UITypeEditor
+
+    Public Overrides Function GetEditStyle(
+        context As ITypeDescriptorContext
+    ) As UITypeEditorEditStyle
+
+        Return UITypeEditorEditStyle.Modal
+    End Function
+
+    Public Overrides Function EditValue(
+        context As ITypeDescriptorContext,
+        provider As IServiceProvider,
+        value As Object
+    ) As Object
+
+        Using dialog As New OpenFileDialog()
+            dialog.Title = "Select CTG Tool Definition"
+            dialog.Filter = "CTG Files (*.ctg)|*.ctg"
+            dialog.CheckFileExists = True
+            dialog.Multiselect = False
+
+            If value IsNot Nothing Then
+                Dim currentPath As String = Convert.ToString(value)
+
+                If IO.File.Exists(currentPath) Then
+                    dialog.InitialDirectory = IO.Path.GetDirectoryName(currentPath)
+                    dialog.FileName = IO.Path.GetFileName(currentPath)
+                End If
+            End If
+
+            If dialog.ShowDialog() = DialogResult.OK Then
+                Return dialog.FileName
+            End If
+        End Using
+
+        Return value
+    End Function
+End Class
+
 ' ---------------------------
 ' Dynamic Property Descriptor
 ' ---------------------------
+
 Public Class DynamicPropertyDescriptor
-        Inherits PropertyDescriptor
+    Inherits PropertyDescriptor
 
-        Private _propertyType As Type
+    Private ReadOnly _propertyType As Type
 
-        Public Sub New(name As String, propertyType As Type)
-            MyBase.New(name, Nothing)
+    Public Sub New(name As String, propertyType As Type)
+        MyBase.New(name, Nothing)
+
+        If String.Equals(name, "Color", StringComparison.OrdinalIgnoreCase) Then
+            _propertyType = GetType(Color)
+        Else
             _propertyType = propertyType
-        End Sub
+        End If
+    End Sub
 
-        Public Overrides ReadOnly Property PropertyType As Type
-            Get
-                Return _propertyType
-            End Get
-        End Property
+    Public Overrides ReadOnly Property PropertyType As Type
+        Get
+            Return _propertyType
+        End Get
+    End Property
 
-        Public Overrides ReadOnly Property ComponentType As Type
-            Get
-                Return GetType(DynamicToolAttributes)
-            End Get
-        End Property
+    Public Overrides ReadOnly Property ComponentType As Type
+        Get
+            Return GetType(DynamicToolAttributes)
+        End Get
+    End Property
 
-        Public Overrides ReadOnly Property IsReadOnly As Boolean
-            Get
-                Return False
-            End Get
-        End Property
+    Public Overrides ReadOnly Property IsReadOnly As Boolean
+        Get
+            Select Case Name
+                Case "Tool Crib.Description",
+                     "Tool Crib.ID",
+                     "Type ID",
+                     "Workplanes.Description"
+                    Return True
 
-        Public Overrides Function CanResetValue(component As Object) As Boolean
-            Return False
-        End Function
+                Case Else
+                    Return False
+            End Select
+        End Get
+    End Property
 
-        Public Overrides Function GetValue(component As Object) As Object
-            Return CType(component, DynamicToolAttributes)(Name)
-        End Function
 
-        Public Overrides Sub ResetValue(component As Object)
-            ' Not implemented
-        End Sub
+    Public Overrides Function GetEditor(editorBaseType As Type) As Object
+        If editorBaseType Is GetType(UITypeEditor) Then
+            If String.Equals(Name, "Color", StringComparison.OrdinalIgnoreCase) Then
+                Return New ColorEditor()
+            End If
 
-        Public Overrides Sub SetValue(component As Object, value As Object)
+            If String.Equals(Name, "Filename", StringComparison.OrdinalIgnoreCase) Then
+                Return New CtgFileEditor()
+            End If
+        End If
+
+        Return MyBase.GetEditor(editorBaseType)
+    End Function
+
+
+    Public Overrides Function CanResetValue(component As Object) As Boolean
+        Return False
+    End Function
+
+    Public Overrides Function GetValue(component As Object) As Object
+        Dim value = CType(component, DynamicToolAttributes)(Name)
+
+        If String.Equals(Name, "Color", StringComparison.OrdinalIgnoreCase) Then
+            If value Is Nothing Then Return Color.White
+
+            Try
+                Return ColorTranslator.FromOle(Convert.ToInt32(value))
+            Catch
+                Return Color.White
+            End Try
+        End If
+
+        Return value
+    End Function
+
+    Public Overrides Sub ResetValue(component As Object)
+        ' Not implemented
+    End Sub
+
+    Public Overrides Sub SetValue(component As Object, value As Object)
+        If String.Equals(Name, "Color", StringComparison.OrdinalIgnoreCase) Then
+            Dim selectedColor As Color = CType(value, Color)
+            CType(component, DynamicToolAttributes)(Name) =
+                ColorTranslator.ToOle(selectedColor)
+        Else
             CType(component, DynamicToolAttributes)(Name) = value
-        End Sub
+        End If
+    End Sub
 
-        Public Overrides Function ShouldSerializeValue(component As Object) As Boolean
-            Return True
-        End Function
-    End Class
+    Public Overrides Function ShouldSerializeValue(component As Object) As Boolean
+        Return True
+    End Function
+End Class
+

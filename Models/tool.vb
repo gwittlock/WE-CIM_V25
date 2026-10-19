@@ -47,39 +47,6 @@ Namespace WE_ENG_V25_0.Core.Models
             Return Math.Abs(a - b) < 0.25
         End Function
 
-        '        Public Function FindExactMatch(
-        '    profile As Polyline2D,
-        '    rule As LayerPunchRule
-        ') As ToolMatch
-
-        '            Dim sig = profile.GetSignature()
-        '            If sig.ShapeType = ProfileShapeType.Unknown Then
-        '                Return Nothing
-        '            End If
-
-        '            Dim geomAngle As Double = profile.GetOrientationAngle()
-
-        '            For Each tool In ToolSignatures
-
-        '                ' Shape + size must match first
-        '                If Not tool.Signature.Equals(sig) Then Continue For
-
-        '                ' Indexing rules
-        '                If rule.AutoIndex Then
-        '                    Return New ToolMatch With {.ToolID = tool.ToolID}
-        '                End If
-
-        '                ' AutoIndex = False → angle must match
-        '                If NearlyEqualAngle(tool.IndexAngle, geomAngle) Then
-        '                    Return New ToolMatch With {.ToolID = tool.ToolID}
-        '                End If
-
-        '            Next
-
-        '            Return Nothing
-
-        '        End Function
-
 
         Public Function TryDecompose(profile As Polyline2D) As List(Of Integer)
             ' STUB — decomposition logic comes later
@@ -97,10 +64,11 @@ Namespace WE_ENG_V25_0.Core.Models
         Public Property FixedStation As Boolean
         Public Property IndexAngle As Double
     End Class
-
-    'Public Class ToolSignature
-    '    Public Property ToolID As Integer
-    '    Public Property Signature As ProfileSignature
-    '    Public Property IndexAngle As Double   ' Degrees
-    'End Class
+    Public Class ToolSetupUDPValue
+        Public Property ID As Integer
+        Public Property ToolSetupID As Integer
+        Public Property ToolSetupMemberID As Integer
+        Public Property ParameterName As String
+        Public Property Value As String
+    End Class
 End Namespace

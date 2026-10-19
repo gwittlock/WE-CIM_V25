@@ -32,20 +32,20 @@ Partial Class frmMain
     Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(frmMain))
-        Dim SuperToolTip1 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem1 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem1 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip2 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem2 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem2 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip3 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem3 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem3 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip4 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipItem4 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip5 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem4 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem5 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip6 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem5 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem6 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip7 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem6 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem7 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip8 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem7 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem8 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip9 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipItem9 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip10 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem8 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem10 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
         Me.navbarImageListLarge = New System.Windows.Forms.ImageList(Me.components)
         Me.navbarImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.RibbonControl = New DevExpress.XtraBars.Ribbon.RibbonControl()
@@ -143,6 +143,8 @@ Partial Class frmMain
         Me.BarUseWhiteBG = New DevExpress.XtraBars.BarCheckItem()
         Me.barSnapResolution = New DevExpress.XtraBars.BarEditItem()
         Me.repSnapResolution = New DevExpress.XtraEditors.Repository.RepositoryItemTextEdit()
+        Me.bbiMaterialColor = New DevExpress.XtraBars.BarEditItem()
+        Me.RepositoryItemColorEdit1 = New DevExpress.XtraEditors.Repository.RepositoryItemColorEdit()
         Me.bbCreateLine = New DevExpress.XtraBars.BarButtonItem()
         Me.bbCreateArc = New DevExpress.XtraBars.BarButtonItem()
         Me.bbCreateHole = New DevExpress.XtraBars.BarButtonItem()
@@ -436,6 +438,7 @@ Partial Class frmMain
         CType(Me.repShowSolidHits, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.repWhiteBG, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.repSnapResolution, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.RepositoryItemColorEdit1, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.repCMDBFile, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.RepositoryItemMRUEdit1, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.repAPPDBFile, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -502,10 +505,10 @@ Partial Class frmMain
         Me.RibbonControl.CausesValidation = False
         Me.RibbonControl.ExpandCollapseItem.Id = 0
         Me.RibbonControl.Images = Me.ribbonImageCollection
-        Me.RibbonControl.Items.AddRange(New DevExpress.XtraBars.BarItem() {Me.RibbonControl.ExpandCollapseItem, Me.iNew, Me.iOpen, Me.iSave, Me.iSaveAs, Me.iExit, Me.iHelp, Me.iAbout, Me.statusLocation, Me.statusActiveLayer, Me.rgbiSkins, Me.statusSelection, Me.statusDate, Me.statusTime, Me.iOpenPDB, Me.iMerge, Me.iExportCNC, Me.iPrintGraphics, Me.iPrintTools, Me.iPrintNest, Me.iUndo, Me.iRedo, Me.iDelete, Me.iPurge, Me.iChangeTool, Me.iChangeAttrib, Me.iChangeEntities, Me.iHolePattern, Me.iLabels, Me.iDeletePattern, Me.iExplodePattern, Me.iDisAssociate, Me.iFeatureAdd, Me.iFeatureExtract, Me.iFeatureInsert, Me.iFeatureRemove, Me.chkShowStock, Me.chkShowZones, Me.chkShowTable, Me.chkShowToolpath, Me.chkShowProfiles, Me.chkShowEndPoints, Me.chkShowInstance, Me.chkShowLegend, Me.chkShowHandles, Me.chkHighlightProf, Me.chkShowRapids, Me.chkShowNibble, Me.chkShowSolid, Me.chkWhitBackground, Me.bbViewFull, Me.bbViewWindow, Me.bbViewZoomIn, Me.bbViewZoomOut, Me.bbViewPrevious, Me.bbViewRefresh, Me.bbViewEntityList, Me.bbViewCodeViewer, Me.bbViewHotspot, Me.bbViewTravel, Me.sbViewOptions, Me.BarShowStock, Me.BarShowWorkzones, Me.BarShowTableGraphics, Me.BarShowToolpathDashed, Me.BarShowProfileMarkers, Me.BarShowEndpoints, Me.BarShowInstanceText, Me.BarShowLegend, Me.BarShowHandles, Me.BarHighlightProfiles, Me.BarShowRapidMoves, Me.BarShowNibbleHits, Me.BarShowSolidHits, Me.BarSaveLastUsed, Me.BarUseWhiteBG, Me.bbCreateLine, Me.bbCreateArc, Me.bbCreateHole, Me.bbCreatePoint, Me.bbRubberBand, Me.bbCreateBoundingBox, Me.bbAssociate, Me.bbAutoPunch, Me.bbManualLead, Me.bbAutoLead, Me.bbNotch, Me.bbShakerTab, Me.bbCommad, Me.bbSlit, Me.bbLinearCler, Me.bbAreaClear, Me.bbShapeLIbrary, Me.bbTransformMove, Me.bbTransFormCopy, Me.bbTransFormScale, Me.bbTRansformMirror, Me.bbTransformRotate, Me.bbModTrimExtend, Me.bbModSplit, Me.bbModFillet, Me.bbModChampher, Me.bbModDropStop, Me.bbModChainCut, Me.bbModCutBack, Me.bbModZonesManage, Me.bbModZonesExtract, Me.bbModClamps, Me.bbModReposition, Me.bbEditProject, Me.bbModIndvHIts, Me.bbSequenceChain, Me.bbSequemceUnchain, Me.bbSequenceRevOrder, Me.bbSeqManOrder, Me.bbConfigMan, Me.bbNesting, Me.bbCodeView, Me.bbCadToCode, Me.bbRemnant, Me.bbExport, Me.bbMacroExecute, Me.BarDockingMenuItem1, Me.BarSubItem1, Me.BarSubItem2, Me.BarStaticItem1, Me.BarStaticItem2, Me.BarButtonItem1, Me.BarButtonItem2, Me.BarButtonItem3, Me.BarButtonItem5, Me.BarButtonItem6, Me.BarButtonItem7, Me.BarButtonItem8, Me.BarButtonItem9, Me.ribG_NestingParts, Me.barSnapResolution, Me.bbWallOfset, Me.StstausPlaceHoilder, Me.BarButtonItem11, Me.BarButtonItem12, Me.bbCreatePattern, Me.bbCreateInstance, Me.bbTrueShape, Me.bbManulNestingGrid, Me.bbStaggerNest, Me.bbSkeltonCutOff, Me.bbCMDB, Me.bbEWM, Me.bbAdminDumpModel, Me.bbLogFileRecord, Me.bbLogFileStop, Me.bbbLogFilePlay, Me.bbExecutePortal, Me.BarEditItem1, Me.BarListItem1, Me.barRecentFiles, Me.BarListItem2, Me.BarSubItem4, Me.BarStaticItem3, Me.BarSubItem3, Me.mnuMeasue, Me.mnuProperties, Me.BarStaticItem6, Me.BarStaticItem7, Me.BarSubItem5, Me.bbInquire, Me.bbNestingDefaults, Me.BarButtonItem13, Me.bbManualNestAddPart, Me.bbiTools, Me.bbiSetLayer, Me.bbResetAppdb, Me.bbiForTesting, Me.BarButtonItem14, Me.bbiZoomToPart, Me.BarEditItem3, Me.bbiMeasure, Me.puContainerEdit, Me.BarEditItem4, Me.bbPatternBump, Me.bbShowWelcome, Me.bbiWECAD, Me.bbiCutShop, Me.bbiDeactivate, Me.bbiBenchMark, Me.BarButtonItem16, Me.beGraphicsPref, Me.BarHeaderItem1, Me.BarButtonItem17, Me.BarButtonItem18, Me.bbiFreightCarAmerica, Me.bbiDiamondLife, Me.bbiTechConnect, Me.BarButtonItem19, Me.bbiMRP, Me.bbi_Rittal, Me.bbiForm1, Me.btmHeatTransfer, Me.BarButtonItem20, Me.BarButtonItem21, Me.bbiFileManage, Me.BarButtonItem22, Me.bbiQuickSave, Me.bbiSaveAs, Me.bbiPartExtents, Me.ProfileBlend, Me.PrintEntityList, Me.PrintCrossData, Me.bbiProfileBlend, Me.bbiFlipSheet, Me.bbiMaterialList, Me.BarButtonItem23, Me.BarStaticItem4, Me.bbZoomToPart})
+        Me.RibbonControl.Items.AddRange(New DevExpress.XtraBars.BarItem() {Me.RibbonControl.ExpandCollapseItem, Me.iNew, Me.iOpen, Me.iSave, Me.iSaveAs, Me.iExit, Me.iHelp, Me.iAbout, Me.statusLocation, Me.statusActiveLayer, Me.rgbiSkins, Me.statusSelection, Me.statusDate, Me.statusTime, Me.iOpenPDB, Me.iMerge, Me.iExportCNC, Me.iPrintGraphics, Me.iPrintTools, Me.iPrintNest, Me.iUndo, Me.iRedo, Me.iDelete, Me.iPurge, Me.iChangeTool, Me.iChangeAttrib, Me.iChangeEntities, Me.iHolePattern, Me.iLabels, Me.iDeletePattern, Me.iExplodePattern, Me.iDisAssociate, Me.iFeatureAdd, Me.iFeatureExtract, Me.iFeatureInsert, Me.iFeatureRemove, Me.chkShowStock, Me.chkShowZones, Me.chkShowTable, Me.chkShowToolpath, Me.chkShowProfiles, Me.chkShowEndPoints, Me.chkShowInstance, Me.chkShowLegend, Me.chkShowHandles, Me.chkHighlightProf, Me.chkShowRapids, Me.chkShowNibble, Me.chkShowSolid, Me.chkWhitBackground, Me.bbViewFull, Me.bbViewWindow, Me.bbViewZoomIn, Me.bbViewZoomOut, Me.bbViewPrevious, Me.bbViewRefresh, Me.bbViewEntityList, Me.bbViewCodeViewer, Me.bbViewHotspot, Me.bbViewTravel, Me.sbViewOptions, Me.BarShowStock, Me.BarShowWorkzones, Me.BarShowTableGraphics, Me.BarShowToolpathDashed, Me.BarShowProfileMarkers, Me.BarShowEndpoints, Me.BarShowInstanceText, Me.BarShowLegend, Me.BarShowHandles, Me.BarHighlightProfiles, Me.BarShowRapidMoves, Me.BarShowNibbleHits, Me.BarShowSolidHits, Me.BarSaveLastUsed, Me.BarUseWhiteBG, Me.bbCreateLine, Me.bbCreateArc, Me.bbCreateHole, Me.bbCreatePoint, Me.bbRubberBand, Me.bbCreateBoundingBox, Me.bbAssociate, Me.bbAutoPunch, Me.bbManualLead, Me.bbAutoLead, Me.bbNotch, Me.bbShakerTab, Me.bbCommad, Me.bbSlit, Me.bbLinearCler, Me.bbAreaClear, Me.bbShapeLIbrary, Me.bbTransformMove, Me.bbTransFormCopy, Me.bbTransFormScale, Me.bbTRansformMirror, Me.bbTransformRotate, Me.bbModTrimExtend, Me.bbModSplit, Me.bbModFillet, Me.bbModChampher, Me.bbModDropStop, Me.bbModChainCut, Me.bbModCutBack, Me.bbModZonesManage, Me.bbModZonesExtract, Me.bbModClamps, Me.bbModReposition, Me.bbEditProject, Me.bbModIndvHIts, Me.bbSequenceChain, Me.bbSequemceUnchain, Me.bbSequenceRevOrder, Me.bbSeqManOrder, Me.bbConfigMan, Me.bbNesting, Me.bbCodeView, Me.bbCadToCode, Me.bbRemnant, Me.bbExport, Me.bbMacroExecute, Me.BarDockingMenuItem1, Me.BarSubItem1, Me.BarSubItem2, Me.BarStaticItem1, Me.BarStaticItem2, Me.BarButtonItem1, Me.BarButtonItem2, Me.BarButtonItem3, Me.BarButtonItem5, Me.BarButtonItem6, Me.BarButtonItem7, Me.BarButtonItem8, Me.BarButtonItem9, Me.ribG_NestingParts, Me.barSnapResolution, Me.bbWallOfset, Me.StstausPlaceHoilder, Me.BarButtonItem11, Me.BarButtonItem12, Me.bbCreatePattern, Me.bbCreateInstance, Me.bbTrueShape, Me.bbManulNestingGrid, Me.bbStaggerNest, Me.bbSkeltonCutOff, Me.bbCMDB, Me.bbEWM, Me.bbAdminDumpModel, Me.bbLogFileRecord, Me.bbLogFileStop, Me.bbbLogFilePlay, Me.bbExecutePortal, Me.BarEditItem1, Me.BarListItem1, Me.barRecentFiles, Me.BarListItem2, Me.BarSubItem4, Me.BarStaticItem3, Me.BarSubItem3, Me.mnuMeasue, Me.mnuProperties, Me.BarStaticItem6, Me.BarStaticItem7, Me.BarSubItem5, Me.bbInquire, Me.bbNestingDefaults, Me.BarButtonItem13, Me.bbManualNestAddPart, Me.bbiTools, Me.bbiSetLayer, Me.bbResetAppdb, Me.bbiForTesting, Me.BarButtonItem14, Me.bbiZoomToPart, Me.BarEditItem3, Me.bbiMeasure, Me.puContainerEdit, Me.BarEditItem4, Me.bbPatternBump, Me.bbShowWelcome, Me.bbiWECAD, Me.bbiCutShop, Me.bbiDeactivate, Me.bbiBenchMark, Me.BarButtonItem16, Me.beGraphicsPref, Me.BarHeaderItem1, Me.BarButtonItem17, Me.BarButtonItem18, Me.bbiFreightCarAmerica, Me.bbiDiamondLife, Me.bbiTechConnect, Me.BarButtonItem19, Me.bbiMRP, Me.bbi_Rittal, Me.bbiForm1, Me.btmHeatTransfer, Me.BarButtonItem20, Me.BarButtonItem21, Me.bbiFileManage, Me.BarButtonItem22, Me.bbiQuickSave, Me.bbiSaveAs, Me.bbiPartExtents, Me.ProfileBlend, Me.PrintEntityList, Me.PrintCrossData, Me.bbiProfileBlend, Me.bbiFlipSheet, Me.bbiMaterialList, Me.BarButtonItem23, Me.BarStaticItem4, Me.bbZoomToPart, Me.bbiMaterialColor})
         Me.RibbonControl.LargeImages = Me.ribbonImageCollectionLarge
         Me.RibbonControl.Location = New System.Drawing.Point(0, 0)
-        Me.RibbonControl.MaxItemId = 435
+        Me.RibbonControl.MaxItemId = 436
         Me.RibbonControl.Name = "RibbonControl"
         Me.RibbonControl.OptionsCustomizationForm.FormIcon = CType(resources.GetObject("resource.FormIcon"), System.Drawing.Icon)
         Me.RibbonControl.PageHeaderItemLinks.Add(Me.iAbout)
@@ -516,7 +519,7 @@ Partial Class frmMain
         Me.RibbonControl.QuickToolbarItemLinks.Add(Me.iSaveAs)
         Me.RibbonControl.QuickToolbarItemLinks.Add(Me.iHelp)
         Me.RibbonControl.QuickToolbarItemLinks.Add(Me.bbExport)
-        Me.RibbonControl.RepositoryItems.AddRange(New DevExpress.XtraEditors.Repository.RepositoryItem() {Me.repHandleX, Me.repHandleY, Me.repOrientation, Me.repMoveCopy, Me.RepositoryItemTextEdit2, Me.RepositoryItemTextEdit3, Me.repSheetsGridLookUp, Me.RepositoryItemPopupContainerEdit1, Me.RepositoryItemTextEdit6, Me.RepositoryItemTextEdit1, Me.repGraphicsPref})
+        Me.RibbonControl.RepositoryItems.AddRange(New DevExpress.XtraEditors.Repository.RepositoryItem() {Me.repHandleX, Me.repHandleY, Me.repOrientation, Me.repMoveCopy, Me.RepositoryItemTextEdit2, Me.RepositoryItemTextEdit3, Me.repSheetsGridLookUp, Me.RepositoryItemPopupContainerEdit1, Me.RepositoryItemTextEdit6, Me.RepositoryItemTextEdit1, Me.repGraphicsPref, Me.RepositoryItemColorEdit1})
         Me.RibbonControl.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonControlStyle.Office2010
         Me.RibbonControl.ShowApplicationButton = DevExpress.Utils.DefaultBoolean.[True]
         Me.RibbonControl.ShowItemCaptionsInPageHeader = True
@@ -1302,7 +1305,7 @@ Partial Class frmMain
         Me.sbViewOptions.Id = 148
         Me.sbViewOptions.ImageOptions.Image = CType(resources.GetObject("sbViewOptions.ImageOptions.Image"), System.Drawing.Image)
         Me.sbViewOptions.ImageOptions.LargeImageIndex = 134
-        Me.sbViewOptions.LinksPersistInfo.AddRange(New DevExpress.XtraBars.LinkPersistInfo() {New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowStock), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowWorkzones), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowTableGraphics), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowToolpathDashed), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowProfileMarkers, True), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowEndpoints), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowInstanceText), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowLegend), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowHandles), New DevExpress.XtraBars.LinkPersistInfo(Me.BarHighlightProfiles), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowRapidMoves), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowNibbleHits), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowSolidHits), New DevExpress.XtraBars.LinkPersistInfo(Me.BarSaveLastUsed), New DevExpress.XtraBars.LinkPersistInfo(Me.BarUseWhiteBG), New DevExpress.XtraBars.LinkPersistInfo(Me.barSnapResolution)})
+        Me.sbViewOptions.LinksPersistInfo.AddRange(New DevExpress.XtraBars.LinkPersistInfo() {New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowStock), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowWorkzones), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowTableGraphics), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowToolpathDashed), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowProfileMarkers, True), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowEndpoints), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowInstanceText), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowLegend), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowHandles), New DevExpress.XtraBars.LinkPersistInfo(Me.BarHighlightProfiles), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowRapidMoves), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowNibbleHits), New DevExpress.XtraBars.LinkPersistInfo(Me.BarShowSolidHits), New DevExpress.XtraBars.LinkPersistInfo(Me.BarSaveLastUsed), New DevExpress.XtraBars.LinkPersistInfo(Me.BarUseWhiteBG), New DevExpress.XtraBars.LinkPersistInfo(Me.barSnapResolution), New DevExpress.XtraBars.LinkPersistInfo(Me.bbiMaterialColor)})
         Me.sbViewOptions.Name = "sbViewOptions"
         Me.sbViewOptions.ShowItemShortcut = DevExpress.Utils.DefaultBoolean.[True]
         '
@@ -1409,6 +1412,19 @@ Partial Class frmMain
         Me.repSnapResolution.AutoHeight = False
         Me.repSnapResolution.MaxLength = 25
         Me.repSnapResolution.Name = "repSnapResolution"
+        '
+        'bbiMaterialColor
+        '
+        Me.bbiMaterialColor.Caption = "Material Color"
+        Me.bbiMaterialColor.Edit = Me.RepositoryItemColorEdit1
+        Me.bbiMaterialColor.Id = 435
+        Me.bbiMaterialColor.Name = "bbiMaterialColor"
+        '
+        'RepositoryItemColorEdit1
+        '
+        Me.RepositoryItemColorEdit1.AutoHeight = False
+        Me.RepositoryItemColorEdit1.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.RepositoryItemColorEdit1.Name = "RepositoryItemColorEdit1"
         '
         'bbCreateLine
         '
@@ -1732,11 +1748,11 @@ Partial Class frmMain
         Me.bbConfigMan.Id = 211
         Me.bbConfigMan.ImageOptions.LargeImageIndex = 176
         Me.bbConfigMan.Name = "bbConfigMan"
-        ToolTipTitleItem1.Text = "Configuration Manager"
-        ToolTipItem1.LeftIndent = 6
-        SuperToolTip1.Items.Add(ToolTipTitleItem1)
-        SuperToolTip1.Items.Add(ToolTipItem1)
-        Me.bbConfigMan.SuperTip = SuperToolTip1
+        ToolTipTitleItem5.Text = "Configuration Manager"
+        ToolTipItem6.LeftIndent = 6
+        SuperToolTip6.Items.Add(ToolTipTitleItem5)
+        SuperToolTip6.Items.Add(ToolTipItem6)
+        Me.bbConfigMan.SuperTip = SuperToolTip6
         '
         'bbNesting
         '
@@ -2225,13 +2241,13 @@ Partial Class frmMain
         Me.bbShowWelcome.Id = 385
         Me.bbShowWelcome.ImageOptions.LargeImageIndex = 203
         Me.bbShowWelcome.Name = "bbShowWelcome"
-        ToolTipTitleItem2.Text = "Show Welcome Dilaog"
-        ToolTipItem2.LeftIndent = 6
-        ToolTipItem2.Text = "This button displys the Welcome dialog that appears when you first execute the ap" &
+        ToolTipTitleItem6.Text = "Show Welcome Dilaog"
+        ToolTipItem7.LeftIndent = 6
+        ToolTipItem7.Text = "This button displys the Welcome dialog that appears when you first execute the ap" &
     "plicatuon."
-        SuperToolTip2.Items.Add(ToolTipTitleItem2)
-        SuperToolTip2.Items.Add(ToolTipItem2)
-        Me.bbShowWelcome.SuperTip = SuperToolTip2
+        SuperToolTip7.Items.Add(ToolTipTitleItem6)
+        SuperToolTip7.Items.Add(ToolTipItem7)
+        Me.bbShowWelcome.SuperTip = SuperToolTip7
         '
         'bbiWECAD
         '
@@ -2253,12 +2269,12 @@ Partial Class frmMain
         Me.bbiDeactivate.Id = 389
         Me.bbiDeactivate.ImageOptions.LargeImageIndex = 206
         Me.bbiDeactivate.Name = "bbiDeactivate"
-        ToolTipTitleItem3.Text = "DeActivate"
-        ToolTipItem3.LeftIndent = 6
-        ToolTipItem3.Text = "Deactivate the licnse on This PC in order to instal WE-CIMl and license a new PC"
-        SuperToolTip3.Items.Add(ToolTipTitleItem3)
-        SuperToolTip3.Items.Add(ToolTipItem3)
-        Me.bbiDeactivate.SuperTip = SuperToolTip3
+        ToolTipTitleItem7.Text = "DeActivate"
+        ToolTipItem8.LeftIndent = 6
+        ToolTipItem8.Text = "Deactivate the licnse on This PC in order to instal WE-CIMl and license a new PC"
+        SuperToolTip8.Items.Add(ToolTipTitleItem7)
+        SuperToolTip8.Items.Add(ToolTipItem8)
+        Me.bbiDeactivate.SuperTip = SuperToolTip8
         '
         'bbiBenchMark
         '
@@ -2275,9 +2291,9 @@ Partial Class frmMain
         Me.BarButtonItem16.ImageOptions.Image = CType(resources.GetObject("BarButtonItem16.ImageOptions.Image"), System.Drawing.Image)
         Me.BarButtonItem16.ImageOptions.LargeImage = Global.FabV25_WIN8.My.Resources.Resources.reset
         Me.BarButtonItem16.Name = "BarButtonItem16"
-        ToolTipItem4.Text = "Rsets the last PDB setting in the registry"
-        SuperToolTip4.Items.Add(ToolTipItem4)
-        Me.BarButtonItem16.SuperTip = SuperToolTip4
+        ToolTipItem9.Text = "Rsets the last PDB setting in the registry"
+        SuperToolTip9.Items.Add(ToolTipItem9)
+        Me.BarButtonItem16.SuperTip = SuperToolTip9
         '
         'beGraphicsPref
         '
@@ -3112,12 +3128,12 @@ Partial Class frmMain
         'rpgCustomMacros
         '
         Me.rpgCustomMacros.Name = "rpgCustomMacros"
-        ToolTipTitleItem4.Text = "Add an Icon"
-        ToolTipItem5.LeftIndent = 6
-        ToolTipItem5.Text = "Click the arrows in the lower right corner to add " & Global.Microsoft.VisualBasic.ChrW(13) & Global.Microsoft.VisualBasic.ChrW(10) & "Macros to the ToolBar"
-        SuperToolTip5.Items.Add(ToolTipTitleItem4)
-        SuperToolTip5.Items.Add(ToolTipItem5)
-        Me.rpgCustomMacros.SuperTip = SuperToolTip5
+        ToolTipTitleItem8.Text = "Add an Icon"
+        ToolTipItem10.LeftIndent = 6
+        ToolTipItem10.Text = "Click the arrows in the lower right corner to add " & Global.Microsoft.VisualBasic.ChrW(13) & Global.Microsoft.VisualBasic.ChrW(10) & "Macros to the ToolBar"
+        SuperToolTip10.Items.Add(ToolTipTitleItem8)
+        SuperToolTip10.Items.Add(ToolTipItem10)
+        Me.rpgCustomMacros.SuperTip = SuperToolTip10
         Me.rpgCustomMacros.Text = "Custom Macros"
         '
         'AdminRibbonPage
@@ -3968,6 +3984,7 @@ Partial Class frmMain
         CType(Me.repShowSolidHits, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.repWhiteBG, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.repSnapResolution, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.RepositoryItemColorEdit1, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.repCMDBFile, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.RepositoryItemMRUEdit1, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.repAPPDBFile, System.ComponentModel.ISupportInitialize).EndInit()
@@ -4391,4 +4408,6 @@ Partial Class frmMain
     Friend WithEvents BarStaticItem4 As BarStaticItem
     Friend WithEvents bbZoomToPart As BarButtonItem
     Friend WithEvents tbSelect_Circle As ToolStripButton
+    Friend WithEvents bbiMaterialColor As BarEditItem
+    Friend WithEvents RepositoryItemColorEdit1 As Repository.RepositoryItemColorEdit
 End Class

@@ -281,6 +281,7 @@ Partial Class frmOpenProject
         Me.MatListTree1.AutoSize = True
         Me.MatListTree1.Location = New System.Drawing.Point(135, 157)
         Me.MatListTree1.Name = "MatListTree1"
+        Me.MatListTree1.SelectedMaterial = Nothing
         Me.MatListTree1.Size = New System.Drawing.Size(228, 22)
         Me.MatListTree1.TabIndex = 61
         '
