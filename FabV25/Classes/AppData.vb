@@ -147,6 +147,7 @@ Public Class AppData
         MaterialTypes = LoadTableWrapped(Of MaterialType)("MaterialTypes.json")
         MaterialSheets = LoadMaterialSheets("MaterialInventory.json")
 
+
         ' ---- LAYER SETUPS / DIRECTIVES ----
         Dim layerSetupsFile = Path.Combine(DataFolder, "LayerSetups.json")
         Dim directivesFile = Path.Combine(DataFolder, "Directives.json")
@@ -520,7 +521,11 @@ Public Class AppData
     End Class
 
     ' LayerSetup class for WE-CIM v25
+
+    ' LayerSetup class for WE-CIM v25
     Public Class layersetup
+        Implements ICustomTypeDescriptor
+
         ' Unique identifier for the LayerSetup
         Public Property ID As Integer
         Public Property Description As String
@@ -545,6 +550,7 @@ Public Class AppData
 
         ' Profile direction: Auto, CW, CCW
         Public Property Direction As ProfileDirectionModeEnum
+
         Public Enum ProfileDirectionModeEnum
             Auto
             CW
@@ -552,23 +558,31 @@ Public Class AppData
         End Enum
 
         ' Optional: Dictionary for extra parameters/extensions
-        Public Property Parameters As Dictionary(Of String, Object) = New Dictionary(Of String, Object)()
+        Public Property Parameters As Dictionary(Of String, Object) =
+            New Dictionary(Of String, Object)()
 
         ' Collection of directives/layers for this setup
-        Public Property Layers As List(Of Directive) = New List(Of Directive)
+        Public Property Layers As List(Of Directive) =
+            New List(Of Directive)()
 
         Public Sub Validate()
             If ID <= 0 Then
-                Throw New InvalidOperationException("LayerSetup has invalid ID.")
+                Throw New InvalidOperationException(
+                    "LayerSetup has invalid ID.")
             End If
 
             If Layers Is Nothing OrElse Layers.Count = 0 Then
-                Throw New InvalidOperationException($"LayerSetup {ID} has no directives.")
+                Throw New InvalidOperationException(
+                    $"LayerSetup {ID} has no directives.")
             End If
 
             ' Ensure *default* exists
-            If Not Layers.Any(Function(d) d.CADLayer.Equals("*default*", StringComparison.OrdinalIgnoreCase)) Then
-                Throw New InvalidOperationException($"LayerSetup {ID} is missing *default* directive.")
+            If Not Layers.Any(
+                Function(d) d.CADLayer.Equals(
+                    "*default*", StringComparison.OrdinalIgnoreCase)) Then
+
+                Throw New InvalidOperationException(
+                    $"LayerSetup {ID} is missing *default* directive.")
             End If
 
             ' Ensure no unresolved directives
@@ -577,27 +591,43 @@ Public Class AppData
 
                 If d.LayerSetupID <> ID Then
                     Throw New InvalidOperationException(
-                $"Directive {d.ID} incorrectly assigned to LayerSetup {ID}."
-            )
+                        $"Directive {d.ID} incorrectly assigned to LayerSetup {ID}.")
                 End If
             Next
         End Sub
 
-        Public Function FindRuleByLayer(layerName As String) As AppData.Directive
+        Public Function FindRuleByLayer(
+            layerName As String) As AppData.Directive
+
             If Layers Is Nothing Then Return Nothing
-            Return Layers.FirstOrDefault(Function(r) String.Equals(r.CADLayer, layerName, StringComparison.OrdinalIgnoreCase))
+
+            Return Layers.FirstOrDefault(
+                Function(r) String.Equals(
+                    r.CADLayer,
+                    layerName,
+                    StringComparison.OrdinalIgnoreCase))
         End Function
 
         ' Utility method to get the display color for a specific CAD layer
-        Public Function GetColorForLayer(cadLayerName As String) As Color?
+        Public Function GetColorForLayer(
+            cadLayerName As String) As Color?
+
             If Layers Is Nothing Then Return Nothing
 
             ' Try to find directive matching the CAD layer
-            Dim directive = Layers.FirstOrDefault(Function(d) String.Equals(d.CADLayer, cadLayerName, StringComparison.OrdinalIgnoreCase))
+            Dim directive = Layers.FirstOrDefault(
+                Function(d) String.Equals(
+                    d.CADLayer,
+                    cadLayerName,
+                    StringComparison.OrdinalIgnoreCase))
 
             ' Fallback to "*default*" if not found
             If directive Is Nothing Then
-                directive = Layers.FirstOrDefault(Function(d) String.Equals(d.CADLayer, "*default*", StringComparison.OrdinalIgnoreCase))
+                directive = Layers.FirstOrDefault(
+                    Function(d) String.Equals(
+                        d.CADLayer,
+                        "*default*",
+                        StringComparison.OrdinalIgnoreCase))
             End If
 
             ' Return the DisplayColor if found
@@ -605,27 +635,153 @@ Public Class AppData
                 Return directive.DisplayColor
             End If
 
-            ' Not found
             Return Nothing
         End Function
 
-        ' Optional: Add helper to quickly get a parameter by name
-        Public Function GetParameter(Of T)(paramName As String, Optional defaultValue As T = Nothing) As T
-            If Parameters IsNot Nothing AndAlso Parameters.ContainsKey(paramName) Then
+        ' Get a parameter by name
+        Public Function GetParameter(Of T)(
+            paramName As String,
+            Optional defaultValue As T = Nothing) As T
+
+            If Parameters IsNot Nothing AndAlso
+                Parameters.ContainsKey(paramName) Then
+
                 Return CType(Parameters(paramName), T)
             End If
+
             Return defaultValue
         End Function
 
-        ' Optional: Set or override a parameter
-        Public Sub SetParameter(paramName As String, value As Object)
-            If Parameters Is Nothing Then Parameters = New Dictionary(Of String, Object)()
+        ' Set or override a parameter
+        Public Sub SetParameter(
+            paramName As String,
+            value As Object)
+
+            If Parameters Is Nothing Then
+                Parameters = New Dictionary(Of String, Object)()
+            End If
+
             Parameters(paramName) = value
         End Sub
 
+        ' ============================================
+        ' ICustomTypeDescriptor implementation
+        ' ============================================
+
+        Public Function GetAttributes() As AttributeCollection _
+            Implements ICustomTypeDescriptor.GetAttributes
+
+            Return TypeDescriptor.GetAttributes(Me, True)
+        End Function
+
+        Public Function GetClassName() As String _
+            Implements ICustomTypeDescriptor.GetClassName
+
+            Return TypeDescriptor.GetClassName(Me, True)
+        End Function
+
+        Public Function GetComponentName() As String _
+            Implements ICustomTypeDescriptor.GetComponentName
+
+            Return TypeDescriptor.GetComponentName(Me, True)
+        End Function
+
+        Public Function GetConverter() As TypeConverter _
+            Implements ICustomTypeDescriptor.GetConverter
+
+            Return TypeDescriptor.GetConverter(Me, True)
+        End Function
+
+        Public Function GetDefaultEvent() As EventDescriptor _
+            Implements ICustomTypeDescriptor.GetDefaultEvent
+
+            Return TypeDescriptor.GetDefaultEvent(Me, True)
+        End Function
+
+        Public Function GetDefaultProperty() As PropertyDescriptor _
+            Implements ICustomTypeDescriptor.GetDefaultProperty
+
+            Return TypeDescriptor.GetDefaultProperty(Me, True)
+        End Function
+
+        Public Function GetEditor(
+            editorBaseType As Type) As Object _
+            Implements ICustomTypeDescriptor.GetEditor
+
+            Return TypeDescriptor.GetEditor(Me, editorBaseType, True)
+        End Function
+
+        Public Function GetEvents() As EventDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetEvents
+
+            Return TypeDescriptor.GetEvents(Me, True)
+        End Function
+
+        Public Function GetEvents(
+            attributes As Attribute()) As EventDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetEvents
+
+            Return TypeDescriptor.GetEvents(Me, attributes, True)
+        End Function
+
+        Public Function GetProperties() As PropertyDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetProperties
+
+            Return GetProperties(New Attribute() {})
+        End Function
+
+        Public Function GetProperties(
+            attributes As Attribute()) As PropertyDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetProperties
+
+            ' Get the underlying properties without recursively calling
+            ' this custom descriptor.
+            Dim allProperties As PropertyDescriptorCollection =
+                TypeDescriptor.GetProperties(Me, attributes, True)
+
+            ' These are the ONLY properties shown, in this order.
+            Dim allowedNames As String() = {
+                "Description",
+                "ZLevelMode",
+                "GapTolerance",
+                "CleanTolerance",
+                "FilterTolerance",
+                "SharpAngle",
+                "ProcessText",
+                "Restrict_Offset",
+                "Color",
+                "Visible",
+                "Direction"
+            }
+
+            Dim selectedProperties As New List(Of PropertyDescriptor)
+
+            For Each propertyName As String In allowedNames
+                Dim propertyDescriptor As PropertyDescriptor =
+                    allProperties.Find(propertyName, False)
+
+                If propertyDescriptor IsNot Nothing Then
+                    selectedProperties.Add(propertyDescriptor)
+                End If
+            Next
+
+            Return New PropertyDescriptorCollection(
+                selectedProperties.ToArray(), True)
+        End Function
+
+        Public Function GetPropertyOwner(
+            pd As PropertyDescriptor) As Object _
+            Implements ICustomTypeDescriptor.GetPropertyOwner
+
+            Return Me
+        End Function
+
     End Class
+
+
     ' Directive class
     Public Class Directive
+        Implements ICustomTypeDescriptor
         Public Property ID As Integer
         Public Property LayerSetupID As Integer
         Public Property CADLayer As String
@@ -640,6 +796,12 @@ Public Class AppData
         ' Human-readable color name from JSON
         <JsonProperty("DisplayColor")>
         Public Property DisplayColorName As String
+
+        <DisplayName("CAD Layer")>
+        Public Property CADLayer As String
+
+        <DisplayName("CAM Layer")>
+        Public Property CAMLayer As String
 
         ' Actual runtime color used for rendering
         Private _displayColor As System.Drawing.Color = System.Drawing.Color.Empty
@@ -759,6 +921,7 @@ Public Class AppData
             ' 4. Absolute fallback.
             DisplayColor = System.Drawing.Color.Magenta
         End Sub
+
 
     End Class
 
