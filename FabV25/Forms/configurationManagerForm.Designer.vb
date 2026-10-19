@@ -158,7 +158,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.btnConvertCMDB.AutoSize = True
         Me.btnConvertCMDB.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.btnConvertCMDB.Location = New System.Drawing.Point(34, 14)
+        Me.btnConvertCMDB.Location = New System.Drawing.Point(47, 17)
         Me.btnConvertCMDB.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.btnConvertCMDB.Name = "btnConvertCMDB"
         Me.btnConvertCMDB.Size = New System.Drawing.Size(117, 27)
@@ -168,11 +168,9 @@ Partial Class ConfigurationManagerForm
         '
         'TreeViewMachines
         '
-        Me.TreeViewMachines.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.TreeViewMachines.Location = New System.Drawing.Point(0, 0)
-        Me.TreeViewMachines.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
+        Me.TreeViewMachines.Location = New System.Drawing.Point(12, 3)
         Me.TreeViewMachines.Name = "TreeViewMachines"
-        Me.TreeViewMachines.Size = New System.Drawing.Size(236, 531)
+        Me.TreeViewMachines.Size = New System.Drawing.Size(221, 467)
         Me.TreeViewMachines.TabIndex = 1
         '
         'tabControlMain
@@ -614,6 +612,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.propgridMaterial.Location = New System.Drawing.Point(0, 0)
         Me.propgridMaterial.Name = "propgridMaterial"
+        Me.propgridMaterial.PropertySort = System.Windows.Forms.PropertySort.NoSort
         Me.propgridMaterial.Size = New System.Drawing.Size(556, 285)
         Me.propgridMaterial.TabIndex = 0
         '
