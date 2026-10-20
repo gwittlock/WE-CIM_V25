@@ -41,6 +41,7 @@ Partial Class ConfigurationManagerForm
         Me.tabToolSetup = New System.Windows.Forms.TabPage()
         Me.SplitContainer2 = New System.Windows.Forms.SplitContainer()
         Me.Panel1 = New System.Windows.Forms.Panel()
+        Me.btnRemFromStation = New System.Windows.Forms.Button()
         Me.btnTSRemoveParameter = New System.Windows.Forms.Button()
         Me.btnAddTSParameter = New System.Windows.Forms.Button()
         Me.dgvToolSetup = New System.Windows.Forms.DataGridView()
@@ -158,7 +159,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.btnConvertCMDB.AutoSize = True
         Me.btnConvertCMDB.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.btnConvertCMDB.Location = New System.Drawing.Point(34, 14)
+        Me.btnConvertCMDB.Location = New System.Drawing.Point(47, 17)
         Me.btnConvertCMDB.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.btnConvertCMDB.Name = "btnConvertCMDB"
         Me.btnConvertCMDB.Size = New System.Drawing.Size(117, 27)
@@ -168,11 +169,9 @@ Partial Class ConfigurationManagerForm
         '
         'TreeViewMachines
         '
-        Me.TreeViewMachines.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.TreeViewMachines.Location = New System.Drawing.Point(0, 0)
-        Me.TreeViewMachines.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
+        Me.TreeViewMachines.Location = New System.Drawing.Point(12, 3)
         Me.TreeViewMachines.Name = "TreeViewMachines"
-        Me.TreeViewMachines.Size = New System.Drawing.Size(236, 531)
+        Me.TreeViewMachines.Size = New System.Drawing.Size(221, 467)
         Me.TreeViewMachines.TabIndex = 1
         '
         'tabControlMain
@@ -336,20 +335,31 @@ Partial Class ConfigurationManagerForm
         '
         'Panel1
         '
+        Me.Panel1.Controls.Add(Me.btnRemFromStation)
         Me.Panel1.Controls.Add(Me.btnTSRemoveParameter)
         Me.Panel1.Controls.Add(Me.btnAddTSParameter)
         Me.Panel1.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.Panel1.Location = New System.Drawing.Point(0, 461)
+        Me.Panel1.Location = New System.Drawing.Point(0, 434)
         Me.Panel1.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.Panel1.Name = "Panel1"
-        Me.Panel1.Size = New System.Drawing.Size(410, 44)
+        Me.Panel1.Size = New System.Drawing.Size(410, 71)
         Me.Panel1.TabIndex = 4
+        '
+        'btnRemFromStation
+        '
+        Me.btnRemFromStation.AutoSize = True
+        Me.btnRemFromStation.Location = New System.Drawing.Point(131, 6)
+        Me.btnRemFromStation.Name = "btnRemFromStation"
+        Me.btnRemFromStation.Size = New System.Drawing.Size(143, 26)
+        Me.btnRemFromStation.TabIndex = 6
+        Me.btnRemFromStation.Text = "Remove Tool From Station"
+        Me.btnRemFromStation.UseVisualStyleBackColor = True
         '
         'btnTSRemoveParameter
         '
         Me.btnTSRemoveParameter.AutoSize = True
         Me.btnTSRemoveParameter.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.btnTSRemoveParameter.Location = New System.Drawing.Point(249, 11)
+        Me.btnTSRemoveParameter.Location = New System.Drawing.Point(201, 37)
         Me.btnTSRemoveParameter.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.btnTSRemoveParameter.Name = "btnTSRemoveParameter"
         Me.btnTSRemoveParameter.Size = New System.Drawing.Size(140, 27)
@@ -361,7 +371,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.btnAddTSParameter.AutoSize = True
         Me.btnAddTSParameter.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.btnAddTSParameter.Location = New System.Drawing.Point(54, 11)
+        Me.btnAddTSParameter.Location = New System.Drawing.Point(82, 37)
         Me.btnAddTSParameter.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.btnAddTSParameter.Name = "btnAddTSParameter"
         Me.btnAddTSParameter.Size = New System.Drawing.Size(113, 27)
@@ -614,6 +624,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.propgridMaterial.Location = New System.Drawing.Point(0, 0)
         Me.propgridMaterial.Name = "propgridMaterial"
+        Me.propgridMaterial.PropertySort = System.Windows.Forms.PropertySort.NoSort
         Me.propgridMaterial.Size = New System.Drawing.Size(556, 285)
         Me.propgridMaterial.TabIndex = 0
         '
@@ -952,4 +963,5 @@ Partial Class ConfigurationManagerForm
     Friend WithEvents btnLayerMapSave As Button
     Friend WithEvents propgridMaterial As PropertyGrid
     Private WithEvents propgrdMachine As PropertyGrid
+    Friend WithEvents btnRemFromStation As Button
 End Class

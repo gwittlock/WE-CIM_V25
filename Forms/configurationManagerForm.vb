@@ -240,6 +240,7 @@ Public Class ConfigurationManagerForm
                 If AppData.ToolSetups IsNot Nothing Then
                     For Each ts As ToolSetup In AppData.ToolSetups
                         If ts.MachineID = machine.ID Then
+
                             Dim tsNode As TreeNode = toolSetupsNode.Nodes.Add(ts.Description)
                             tsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 13) ' Store ToolSetupID
 
@@ -553,85 +554,6 @@ Public Class ConfigurationManagerForm
     End Sub
 
 
-
-
-
-    'Private Sub TreeViewMachines_AfterSelect(sender As Object, e As TreeViewEventArgs) Handles TreeViewMachines.AfterSelect
-    '    Try
-    '        Dim selectedNode As TreeNode = e.Node
-    '        If selectedNode Is Nothing Then Return
-
-    '        Dim WhichNode As Integer
-
-    '        If TypeOf selectedNode.Tag Is String Then
-    '            WhichNode = CInt(GetValueFromDelimitedData(CStr(selectedNode.Tag), "NodeType", "0"))
-    '        ElseIf TypeOf selectedNode.Tag Is MaterialSheet Then
-    '            WhichNode = 102 ' Material Sheet node
-    '        End If
-
-    '        Select Case WhichNode
-    '            Case 0 To 9
-    '                ' Machine Type nodes
-    '                txtPreamble.Text = $"You are on a Node of type {WhichNode}"
-    '                tabControlMain.SelectedTab = tabDefinition
-
-    '            Case 10
-    '                ' Actual Machine Node
-    '                Dim machineID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
-    '                currentMachineID = machineID
-    '                PopulatePropertyGridForMachine(machineID)
-    '                dgvStations.DataSource = Nothing
-    '                tabControlMain.SelectedTab = tabMachine
-
-    '            Case 11
-    '                ' Stations Node
-    '                Dim machineID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
-    '                currentMachineID = machineID
-    '                isLoadingStations = True
-    '                PopulateStationsGrid(machineID)
-    '                isLoadingStations = False
-    '                tabControlMain.SelectedTab = tabStations
-
-    '            Case 12
-    '                ' Tool Setups Node
-    '                Dim machineID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
-    '                currentMachineID = machineID
-    '                txtPreamble.Text = "Select a Tool Setup to view details."
-    '                dgvToolSetup.DataSource = Nothing
-    '                tabControlMain.SelectedTab = tabDefinition
-
-    '            Case 13
-    '                ' Actual Tool Setup Node
-    '                Dim machineID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "Machine_ID", 0)
-    '                currentMachineID = machineID
-    '                Dim toolSetupID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "ToolSetup_ID", -1)
-    '                LoadSelectedToolSetup(toolSetupID)
-
-    '                Dim machineTypeID As Integer = GetValueFromDelimitedData(selectedNode.Tag, "MachineType_ID", 0)
-    '                PopulateToolTypeComboBox(machineTypeID)
-    '                InitializeToolDescriptionColumnIndex()
-    '                tabControlMain.SelectedTab = tabToolSetup
-
-    '            Case 100
-    '                propgridMaterial.SelectedObject = Nothing
-
-    '            Case 101
-    '                propgridMaterial.SelectedObject = Nothing
-
-    '            Case 102
-    '                If TypeOf selectedNode.Tag Is MaterialSheet Then
-    '                    propgridMaterial.SelectedObject = DirectCast(selectedNode.Tag, MaterialSheetWrapper)
-    '                    tabControlMain.SelectedTab = tabMaterialInventory
-    '                Else
-    '                    propgridMaterial.SelectedObject = Nothing
-    '                End If
-
-    '        End Select
-
-    '    Catch ex As Exception
-    '        MessageBox.Show($"Error selecting node: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
-    '    End Try
-    'End Sub
     Private Sub TreeViewMachines_AfterSelect(sender As Object, e As TreeViewEventArgs) Handles TreeViewMachines.AfterSelect
         'Try
 
@@ -739,9 +661,14 @@ Public Class ConfigurationManagerForm
                     tabControlMain.SelectedTab = tabMaterialInventory
 
                     propgridMaterial.Dock = DockStyle.Fill
-                    propgridMaterial.PropertySort = PropertySort.Alphabetical
-                    propgridMaterial.SelectedObject = mat
+                    propgridMaterial.PropertySort = PropertySort.NoSort
 
+                    Dim converter = TypeDescriptor.GetConverter(mat)
+                    Dim props = TypeDescriptor.GetProperties(mat)
+
+
+                    propgridMaterial.SelectedObject = mat
+                    propgridMaterial.Refresh()
 
                 Else
                     propgridMaterial.SelectedObject = Nothing
@@ -2092,12 +2019,163 @@ Public Class ConfigurationManagerForm
     End Sub
 
 
-    Private Sub AddToolSetupTSM_Click(sender As Object, e As EventArgs) Handles AddToolSetupTSM.Click
-        Dim name As String = InputBox("Enter new Tool Setup name:", "Add Tool Setup")
-        If String.IsNullOrWhiteSpace(name) Then Return
-        ' --- Refresh TreeView ---
-        PopulateTreeView()
+    Private Sub AddToolSetupTSM_Click(sender As Object, e As EventArgs)
+
+        Dim selectedNode As TreeNode = TreeViewMachines.SelectedNode
+
+        ' 1. Validate the selected Tool Setups parent.
+        If selectedNode Is Nothing OrElse
+       Not TypeOf selectedNode.Tag Is String Then
+            Return
+        End If
+
+        Dim nodeType As Integer =
+        GetValueFromDelimitedData(
+            CStr(selectedNode.Tag), "NodeType", "0")
+
+        If nodeType <> 12 Then
+            MessageBox.Show(
+            "Please select the Tool Setups parent under a machine.",
+            "Add Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        ' 2. Retrieve the owning machine ID.
+        Dim machineID As Integer
+
+        If Not Integer.TryParse(
+        GetValueFromDelimitedData(
+            CStr(selectedNode.Tag), "Machine_ID", "0"),
+        machineID) OrElse machineID <= 0 Then
+
+            MessageBox.Show(
+            "The selected machine could not be identified.",
+            "Add Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        ' 3. Ask for the new Tool Setup description.
+        Dim newDescription As String =
+        InputBox(
+            "Enter new Tool Setup name:",
+            "Add Tool Setup").Trim()
+
+        If String.IsNullOrWhiteSpace(newDescription) Then Return
+
+        If AppData.ToolSetups Is Nothing Then
+            MessageBox.Show(
+            "Tool Setup data has not been loaded.",
+            "Add Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+            Return
+        End If
+
+        ' 4. Prevent duplicate descriptions for this machine.
+        If AppData.ToolSetups.Any(
+        Function(ts) ts.MachineID = machineID AndAlso
+            String.Equals(
+                ts.Description,
+                newDescription,
+                StringComparison.OrdinalIgnoreCase)) Then
+
+            MessageBox.Show(
+            $"A Tool Setup named '{newDescription}' already exists " &
+            "for this machine.",
+            "Duplicate Description",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        Try
+            ' 5. Create an empty Tool Setup.
+            Dim newToolSetupID As Integer =
+            If(AppData.ToolSetups.Count = 0,
+               1,
+               AppData.ToolSetups.Max(Function(ts) ts.ID) + 1)
+
+            Dim newSetup As New ToolSetup With {
+            .ID = newToolSetupID,
+            .Description = newDescription,
+            .MachineID = machineID
+        }
+
+            AppData.ToolSetups.Add(newSetup)
+
+            ' 6. Save ToolSetups.json.
+            JsonSaver.SaveObjectToJsonFile(
+            AppData.ToolSetups,
+            Path.Combine(dataFolder, "ToolSetups.json"))
+
+            ' 7. Refresh the tree and select the new setup.
+            PopulateTreeView()
+
+            Dim newNode As TreeNode = Nothing
+            Dim nodesToCheck As New Stack(Of TreeNode)
+
+            For Each rootNode As TreeNode In TreeViewMachines.Nodes
+                nodesToCheck.Push(rootNode)
+            Next
+
+            While nodesToCheck.Count > 0
+                Dim node As TreeNode = nodesToCheck.Pop()
+
+                If TypeOf node.Tag Is String Then
+                    Dim nodeTag As String = CStr(node.Tag)
+
+                    Dim nodeTagType As Integer =
+                    GetValueFromDelimitedData(
+                        nodeTag, "NodeType", "0")
+
+                    Dim nodeSetupID As Integer =
+                    GetValueFromDelimitedData(
+                        nodeTag, "ToolSetup_ID", "-1")
+
+                    If nodeTagType = 13 AndAlso
+                   nodeSetupID = newToolSetupID Then
+
+                        newNode = node
+                        Exit While
+                    End If
+                End If
+
+                For Each child As TreeNode In node.Nodes
+                    nodesToCheck.Push(child)
+                Next
+            End While
+
+            If newNode IsNot Nothing Then
+                If newNode.Parent IsNot Nothing Then
+                    newNode.Parent.Expand()
+                End If
+
+                newNode.EnsureVisible()
+                TreeViewMachines.SelectedNode = newNode
+                TreeViewMachines.Focus()
+
+                currenttoolSetupID = newToolSetupID
+                currentMachineID = machineID
+
+                LoadSelectedToolSetup(newToolSetupID, machineID)
+            End If
+
+        Catch ex As Exception
+            MessageBox.Show(
+            "Add Tool Setup failed:" & vbCrLf & ex.Message &
+            vbCrLf & vbCrLf &
+            "If saving failed, inspect ToolSetups.json before continuing.",
+            "Add Tool Setup Error",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+        End Try
+
     End Sub
+
 
     Private Sub DeleteToolSetupTSM_Click(sender As Object, e As EventArgs) Handles DeleteToolSetupTSM.Click
         '' --- Find selected ToolSetup row ---
@@ -2144,13 +2222,14 @@ Public Class ConfigurationManagerForm
 
             Case 10
                 cmsTreeActions.Items.Add("Rename Machine", Nothing, AddressOf RenameMachineTSM_Click)
-                'cmsTreeActions.Items.Add("Copy Machine", Nothing, AddressOf CopyMachineTSM_Click)
+                cmsTreeActions.Items.Add("Copy Machine", Nothing, AddressOf CopyMachineTSM_Click)
                 cmsTreeActions.Items.Add("Delete Machine", Nothing, AddressOf DeleteMachineTSM_Click)
 
             Case 12
                 cmsTreeActions.Items.Add("Add Tool Setup", Nothing, AddressOf AddToolSetupTSM_Click)
 
             Case 13
+                cmsTreeActions.Items.Add("Copy Tool Setup", Nothing, AddressOf CopyToolSetupTSM_Click)
                 cmsTreeActions.Items.Add("Delete Tool Setup", Nothing, AddressOf DeleteToolSetupTSM_Click)
 
             Case 14
@@ -2232,6 +2311,726 @@ Public Class ConfigurationManagerForm
                         MessageBoxIcon.Error)
         End Try
     End Sub
+
+
+    Private Sub CopyToolSetupTSM_Click(sender As Object, e As EventArgs)
+
+        Dim selectedNode As TreeNode = TreeViewMachines.SelectedNode
+
+        If selectedNode Is Nothing OrElse
+       Not TypeOf selectedNode.Tag Is String Then
+            Return
+        End If
+
+        Dim nodeType As Integer =
+        GetValueFromDelimitedData(
+            CStr(selectedNode.Tag), "NodeType", 0)
+
+        If nodeType <> 13 Then
+            MessageBox.Show(
+            "Please select an individual Tool Setup to copy.",
+            "Copy Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        Dim sourceToolSetupID As Integer =
+        GetValueFromDelimitedData(
+            CStr(selectedNode.Tag), "ToolSetup_ID", -1)
+
+        Dim sourceSetup As ToolSetup =
+        AppData.ToolSetups.FirstOrDefault(
+            Function(ts) ts.ID = sourceToolSetupID)
+
+        If sourceSetup Is Nothing Then
+            MessageBox.Show(
+            "The source Tool Setup could not be found.",
+            "Copy Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        If AppData.ToolSetupMembers Is Nothing OrElse
+       AppData.ToolSetupUDPValuesTable Is Nothing OrElse
+       AppData.ToolSetupUDPValuesTable.Rows Is Nothing Then
+
+            MessageBox.Show(
+            "Required Tool Setup data has not been loaded.",
+            "Copy Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+            Return
+        End If
+
+        Dim newDescription As String =
+        InputBox(
+            "Enter the description for the copied Tool Setup:",
+            "Copy Tool Setup",
+            sourceSetup.Description & " Copy").Trim()
+
+        If String.IsNullOrWhiteSpace(newDescription) Then Return
+
+        If AppData.ToolSetups.Any(
+        Function(ts) ts.MachineID = sourceSetup.MachineID AndAlso
+            String.Equals(
+                ts.Description,
+                newDescription,
+                StringComparison.OrdinalIgnoreCase)) Then
+
+            MessageBox.Show(
+            $"A Tool Setup named '{newDescription}' already exists " &
+            "for this machine.",
+            "Duplicate Description",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        Try
+            ' --------------------------------------------------
+            ' 1. Snapshot the source data before adding anything.
+            ' --------------------------------------------------
+            Dim sourceMembers As List(Of ToolSetupMember) =
+            AppData.ToolSetupMembers.
+                Where(Function(m) m.ToolSetupID = sourceToolSetupID).
+                ToList()
+
+            Dim sourceUDPValues As List(Of ToolSetupUDPValue) =
+            AppData.ToolSetupUDPValuesTable.Rows.
+                Where(Function(v) v.ToolSetupID = sourceToolSetupID).
+                ToList()
+
+            ' --------------------------------------------------
+            ' 2. Generate a new Tool Setup ID.
+            ' --------------------------------------------------
+            Dim newToolSetupID As Integer =
+            If(AppData.ToolSetups.Count = 0,
+               1,
+               AppData.ToolSetups.Max(Function(ts) ts.ID) + 1)
+
+            Dim copiedSetup As New ToolSetup With {
+            .ID = newToolSetupID,
+            .Description = newDescription,
+            .MachineID = sourceSetup.MachineID
+        }
+
+            ' --------------------------------------------------
+            ' 3. Copy members with new IDs.
+            '    Station and tool assignments remain unchanged.
+            ' --------------------------------------------------
+            Dim nextMemberID As Integer =
+            If(AppData.ToolSetupMembers.Count = 0,
+               1,
+               AppData.ToolSetupMembers.Max(Function(m) m.ID) + 1)
+
+            Dim memberIDMap As New Dictionary(Of Integer, Integer)
+            Dim copiedMembers As New List(Of ToolSetupMember)
+
+            For Each member In sourceMembers
+
+                memberIDMap.Add(member.ID, nextMemberID)
+
+                copiedMembers.Add(
+                New ToolSetupMember With {
+                    .ID = nextMemberID,
+                    .ToolSetupID = newToolSetupID,
+                    .StationID = member.StationID,
+                    .ToolID = member.ToolID,
+                    .FixedStation = member.FixedStation,
+                    .IndexAngle = member.IndexAngle
+                })
+
+                nextMemberID += 1
+            Next
+
+            ' --------------------------------------------------
+            ' 4. Copy UDP values with new IDs and member mapping.
+            ' --------------------------------------------------
+            Dim nextUDPValueID As Integer =
+            If(AppData.ToolSetupUDPValuesTable.Rows.Count = 0,
+               1,
+               AppData.ToolSetupUDPValuesTable.Rows.
+                   Max(Function(v) v.ID) + 1)
+
+            Dim copiedUDPValues As New List(Of ToolSetupUDPValue)
+
+            For Each udpValue In sourceUDPValues
+
+                Dim newMemberID As Integer = 0
+
+                If udpValue.ToolSetupMemberID <> 0 Then
+
+                    If Not memberIDMap.ContainsKey(
+                    udpValue.ToolSetupMemberID) Then
+
+                        Throw New InvalidOperationException(
+                        $"UDP value {udpValue.ID} references member " &
+                        $"{udpValue.ToolSetupMemberID}, which was not copied.")
+                    End If
+
+                    newMemberID =
+                    memberIDMap(udpValue.ToolSetupMemberID)
+                End If
+
+                copiedUDPValues.Add(
+                New ToolSetupUDPValue With {
+                    .ID = nextUDPValueID,
+                    .ToolSetupID = newToolSetupID,
+                    .ToolSetupMemberID = newMemberID,
+                    .ParameterName = udpValue.ParameterName,
+                    .Value = udpValue.Value
+                })
+
+                nextUDPValueID += 1
+            Next
+
+            ' --------------------------------------------------
+            ' 5. Add the copied records to the existing collections.
+            ' --------------------------------------------------
+            AppData.ToolSetups.Add(copiedSetup)
+            AppData.ToolSetupMembers.AddRange(copiedMembers)
+            AppData.ToolSetupUDPValuesTable.Rows.AddRange(copiedUDPValues)
+
+            ' Keep the separate value collection synchronized if
+            ' it is not the same list as the table's Rows collection.
+            If AppData.ToolSetupUDPValues IsNot
+           AppData.ToolSetupUDPValuesTable.Rows Then
+
+                AppData.ToolSetupUDPValues.AddRange(copiedUDPValues)
+            End If
+
+            ' --------------------------------------------------
+            ' 6. Persist only the three affected JSON files.
+            ' --------------------------------------------------
+            JsonSaver.SaveObjectToJsonFile(
+            AppData.ToolSetups,
+            Path.Combine(dataFolder, "ToolSetups.json"))
+
+            Dim membersWrapper = New With {
+            .TableName = "ToolSetupMembers",
+            .Rows = AppData.ToolSetupMembers
+        }
+
+            File.WriteAllText(
+            Path.Combine(dataFolder, "ToolSetupMembers.json"),
+            JsonConvert.SerializeObject(
+                membersWrapper, Formatting.Indented))
+
+            AppData.SaveJsonTableWrapped(
+            AppData.ToolSetupUDPValuesTable,
+            "ToolSetupUDPValues.json")
+
+            ' --------------------------------------------------
+            ' 7. Refresh the tree and select the copied setup.
+            ' --------------------------------------------------
+            PopulateTreeView()
+
+            Dim nodesToCheck As New Stack(Of TreeNode)
+
+            For Each rootNode As TreeNode In TreeViewMachines.Nodes
+                nodesToCheck.Push(rootNode)
+            Next
+
+            Dim copiedNode As TreeNode = Nothing
+
+            While nodesToCheck.Count > 0
+
+                Dim node As TreeNode = nodesToCheck.Pop()
+
+                If TypeOf node.Tag Is String Then
+
+                    Dim nodeTag As String = CStr(node.Tag)
+
+                    Dim nodeTagType As Integer =
+                    GetValueFromDelimitedData(
+                        nodeTag, "NodeType", 0)
+
+                    Dim nodeSetupID As Integer =
+                    GetValueFromDelimitedData(
+                        nodeTag, "ToolSetup_ID", -1)
+
+                    If nodeTagType = 13 AndAlso
+                   nodeSetupID = newToolSetupID Then
+
+                        copiedNode = node
+                        Exit While
+                    End If
+                End If
+
+                For Each child As TreeNode In node.Nodes
+                    nodesToCheck.Push(child)
+                Next
+            End While
+
+            If copiedNode IsNot Nothing Then
+                If copiedNode.Parent IsNot Nothing Then
+                    copiedNode.Parent.Expand()
+                End If
+
+                copiedNode.EnsureVisible()
+                TreeViewMachines.SelectedNode = copiedNode
+                TreeViewMachines.Focus()
+
+                currenttoolSetupID = newToolSetupID
+                currentMachineID = sourceSetup.MachineID
+
+                LoadSelectedToolSetup(
+                newToolSetupID,
+                sourceSetup.MachineID)
+            End If
+
+            MessageBox.Show(
+            $"Tool Setup '{sourceSetup.Description}' was copied as " &
+            $"'{newDescription}'.",
+            "Copy Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+
+        Catch ex As Exception
+
+            MessageBox.Show(
+            "Copy Tool Setup failed:" & vbCrLf & ex.Message &
+            vbCrLf & vbCrLf &
+            "If saving failed, inspect the affected JSON files " &
+            "before continuing.",
+            "Copy Tool Setup Error",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+
+        End Try
+
+    End Sub
+
+    Private Sub CopyMachineTSM_Click(sender As Object, e As EventArgs)
+
+        If TreeViewMachines.SelectedNode Is Nothing Then Return
+
+        Dim machineNode As TreeNode = TreeViewMachines.SelectedNode
+        Dim nodeType As Integer =
+        GetValueFromDelimitedData(CStr(machineNode.Tag), "NodeType", "0")
+
+        If nodeType <> 10 Then
+            MessageBox.Show("Please select a machine to copy.",
+                        "Copy Machine",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information)
+            Return
+        End If
+
+        Dim sourceMachineID As Integer =
+        GetValueFromDelimitedData(CStr(machineNode.Tag), "Machine_ID", -1)
+
+        Dim sourceMachine = AppData.MachinesTable.Rows.
+        FirstOrDefault(Function(m) m.ID = sourceMachineID)
+
+        If sourceMachine Is Nothing Then
+            MessageBox.Show("The source machine could not be found.",
+                        "Copy Machine",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+            Return
+        End If
+
+        Dim newName As String =
+        InputBox("Enter the description for the copied machine:",
+                 "Copy Machine",
+                 sourceMachine.Description & " Copy").Trim()
+
+        If String.IsNullOrWhiteSpace(newName) Then Return
+
+        If AppData.MachinesTable.Rows.Any(
+        Function(m) String.Equals(m.Description, newName,
+                                  StringComparison.OrdinalIgnoreCase)) Then
+
+            MessageBox.Show($"A machine with the name '{newName}' already exists.",
+                        "Duplicate Name",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+            Return
+        End If
+
+        If AppData.StationsTable Is Nothing OrElse
+       AppData.MachineAttributesTable Is Nothing OrElse
+       AppData.ToolSetupUDPDefinitionsTable Is Nothing OrElse
+       AppData.ToolSetupUDPValuesTable Is Nothing Then
+
+            MessageBox.Show("Required machine configuration data has not been loaded.",
+                        "Copy Machine",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+            Return
+        End If
+
+        Try
+            ' --------------------------------------------------
+            ' 1. Create the machine, preserving its machine type.
+            ' --------------------------------------------------
+            Dim newMachineID As Integer =
+            If(AppData.MachinesTable.Rows.Count = 0, 1,
+               AppData.MachinesTable.Rows.Max(Function(m) m.ID) + 1)
+
+            Dim newMachine As New Machine With {
+            .ID = newMachineID,
+            .Description = newName,
+            .TypeID = sourceMachine.TypeID
+        }
+
+            ' --------------------------------------------------
+            ' 2. Copy machine attributes.
+            ' --------------------------------------------------
+            Dim sourceAttributes = AppData.MachineAttributesTable.Rows.
+            Where(Function(a) a.MachineID = sourceMachineID).ToList()
+
+            Dim nextAttributeID As Integer =
+            If(AppData.MachineAttributesTable.Rows.Count = 0, 1,
+               AppData.MachineAttributesTable.Rows.Max(Function(a) a.ID) + 1)
+
+            Dim copiedAttributes As New List(Of MachineAttribute)
+
+            For Each attr In sourceAttributes
+                copiedAttributes.Add(
+                New MachineAttribute With {
+                    .ID = nextAttributeID,
+                    .MachineID = newMachineID,
+                    .AttributeTypeID = attr.AttributeTypeID,
+                    .Value = attr.Value
+                })
+
+                nextAttributeID += 1
+            Next
+
+            ' --------------------------------------------------
+            ' 3. Copy stations and build old-to-new ID mapping.
+            ' --------------------------------------------------
+            Dim sourceStations = AppData.StationsTable.Rows.
+            Where(Function(r) r("MachineID").Value(Of Integer)() =
+                              sourceMachineID).ToList()
+
+            Dim nextStationID As Integer =
+            If(AppData.StationsTable.Rows.Count = 0, 1,
+               AppData.StationsTable.Rows.Max(
+                   Function(r) r("ID").Value(Of Integer)()) + 1)
+
+            Dim stationIDMap As New Dictionary(Of Integer, Integer)
+            Dim copiedStations As New List(Of JObject)
+
+            For Each station In sourceStations
+                Dim oldID As Integer = station("ID").Value(Of Integer)()
+                Dim copiedStation As JObject = DirectCast(station.DeepClone(), JObject)
+
+                stationIDMap.Add(oldID, nextStationID)
+
+                copiedStation("ID") = nextStationID
+                copiedStation("MachineID") = newMachineID
+
+                copiedStations.Add(copiedStation)
+                nextStationID += 1
+            Next
+
+            ' --------------------------------------------------
+            ' 4. Copy tool setups and build ID mapping.
+            ' --------------------------------------------------
+            Dim sourceSetups = AppData.ToolSetups.
+            Where(Function(ts) ts.MachineID = sourceMachineID).ToList()
+
+            Dim nextToolSetupID As Integer =
+            If(AppData.ToolSetups.Count = 0, 1,
+               AppData.ToolSetups.Max(Function(ts) ts.ID) + 1)
+
+            Dim toolSetupIDMap As New Dictionary(Of Integer, Integer)
+            Dim copiedSetups As New List(Of ToolSetup)
+
+            For Each setup In sourceSetups
+                toolSetupIDMap.Add(setup.ID, nextToolSetupID)
+
+                copiedSetups.Add(
+                New ToolSetup With {
+                    .ID = nextToolSetupID,
+                    .Description = setup.Description,
+                    .MachineID = newMachineID
+                })
+
+                nextToolSetupID += 1
+            Next
+
+            Dim sourceSetupIDs As New HashSet(Of Integer)(
+            sourceSetups.Select(Function(ts) ts.ID))
+
+            ' --------------------------------------------------
+            ' 5. Copy setup members and remap setup/station IDs.
+            ' --------------------------------------------------
+            Dim sourceMembers = AppData.ToolSetupMembers.
+            Where(Function(m) sourceSetupIDs.Contains(m.ToolSetupID)).ToList()
+
+            Dim nextMemberID As Integer =
+            If(AppData.ToolSetupMembers.Count = 0, 1,
+               AppData.ToolSetupMembers.Max(Function(m) m.ID) + 1)
+
+            Dim memberIDMap As New Dictionary(Of Integer, Integer)
+            Dim copiedMembers As New List(Of ToolSetupMember)
+
+            For Each member In sourceMembers
+                If member.StationID <> 0 AndAlso
+               Not stationIDMap.ContainsKey(member.StationID) Then
+
+                    Throw New InvalidOperationException(
+                    $"Tool setup member {member.ID} references station " &
+                    $"{member.StationID}, which does not belong to the source machine.")
+                End If
+
+                memberIDMap.Add(member.ID, nextMemberID)
+
+                copiedMembers.Add(
+                New ToolSetupMember With {
+                    .ID = nextMemberID,
+                    .ToolSetupID = toolSetupIDMap(member.ToolSetupID),
+                    .StationID = If(member.StationID = 0,
+                                    0, stationIDMap(member.StationID)),
+                    .ToolID = member.ToolID,
+                    .FixedStation = member.FixedStation,
+                    .IndexAngle = member.IndexAngle
+                })
+
+                nextMemberID += 1
+            Next
+
+            ' --------------------------------------------------
+            ' 6. Copy layer setups and remap tool setup IDs.
+            ' --------------------------------------------------
+            Dim sourceLayerSetups = AppData.LayerSetups.
+            Where(Function(ls) ls.MachineID = sourceMachineID).ToList()
+
+            Dim nextLayerSetupID As Integer =
+            If(AppData.LayerSetups.Count = 0, 1,
+               AppData.LayerSetups.Max(Function(ls) ls.ID) + 1)
+
+            Dim layerSetupIDMap As New Dictionary(Of Integer, Integer)
+            Dim copiedLayerSetups As New List(Of layersetup)
+
+            For Each layerSetup In sourceLayerSetups
+                If layerSetup.ToolSetupID <> 0 AndAlso
+               Not toolSetupIDMap.ContainsKey(layerSetup.ToolSetupID) Then
+
+                    Throw New InvalidOperationException(
+                    $"Layer setup {layerSetup.ID} references a tool setup " &
+                    $"{layerSetup.ToolSetupID} that was not copied.")
+                End If
+
+                Dim copiedLayerSetup As layersetup =
+                JsonConvert.DeserializeObject(Of layersetup)(
+                    JsonConvert.SerializeObject(layerSetup))
+
+                layerSetupIDMap.Add(layerSetup.ID, nextLayerSetupID)
+
+                copiedLayerSetup.ID = nextLayerSetupID
+                copiedLayerSetup.MachineID = newMachineID
+
+                If copiedLayerSetup.ToolSetupID <> 0 Then
+                    copiedLayerSetup.ToolSetupID =
+                    toolSetupIDMap(copiedLayerSetup.ToolSetupID)
+                End If
+
+                ' Directives are copied separately below.
+                copiedLayerSetup.Layers = New List(Of Directive)()
+
+                copiedLayerSetups.Add(copiedLayerSetup)
+                nextLayerSetupID += 1
+            Next
+
+            Dim sourceLayerSetupIDs As New HashSet(Of Integer)(
+            sourceLayerSetups.Select(Function(ls) ls.ID))
+
+            ' --------------------------------------------------
+            ' 7. Copy directives and remap layer setup IDs.
+            ' --------------------------------------------------
+            Dim sourceDirectives = AppData.Directives.
+            Where(Function(d) sourceLayerSetupIDs.Contains(d.LayerSetupID)).ToList()
+
+            Dim nextDirectiveID As Integer =
+            If(AppData.Directives.Count = 0, 1,
+               AppData.Directives.Max(Function(d) d.ID) + 1)
+
+            Dim copiedDirectives As New List(Of Directive)
+
+            For Each directive In sourceDirectives
+                Dim copiedDirective As Directive =
+                JsonConvert.DeserializeObject(Of Directive)(
+                    JsonConvert.SerializeObject(directive))
+
+                copiedDirective.ID = nextDirectiveID
+                copiedDirective.LayerSetupID =
+                layerSetupIDMap(directive.LayerSetupID)
+
+                copiedDirective.ResolveColors()
+
+                copiedDirectives.Add(copiedDirective)
+                nextDirectiveID += 1
+            Next
+
+            ' --------------------------------------------------
+            ' 8. Copy machine-scoped UDP definitions.
+            '    Definitions have no row ID.
+            ' --------------------------------------------------
+            Dim sourceDefinitions =
+            AppData.ToolSetupUDPDefinitionsTable.Rows.
+            Where(Function(d) d.MachineID = sourceMachineID).ToList()
+
+            Dim copiedDefinitions As New List(Of AppData.ToolSetupUDPDefinition)
+
+            For Each definition In sourceDefinitions
+                copiedDefinitions.Add(
+                New AppData.ToolSetupUDPDefinition With {
+                    .MachineID = newMachineID,
+                    .Name = definition.Name,
+                    .Display = definition.Display,
+                    .Default = definition.Default,
+                    .DataType = definition.DataType,
+                    .Visible = definition.Visible
+                })
+            Next
+
+            ' --------------------------------------------------
+            ' 9. Copy UDP values and remap setup/member IDs.
+            ' --------------------------------------------------
+            Dim sourceUDPValues = AppData.ToolSetupUDPValuesTable.Rows.
+            Where(Function(v) sourceSetupIDs.Contains(v.ToolSetupID)).ToList()
+
+            Dim nextUDPValueID As Integer =
+            If(AppData.ToolSetupUDPValuesTable.Rows.Count = 0, 1,
+               AppData.ToolSetupUDPValuesTable.Rows.Max(Function(v) v.ID) + 1)
+
+            Dim copiedUDPValues As New List(Of ToolSetupUDPValue)
+
+            For Each udpValue In sourceUDPValues
+                Dim newMemberID As Integer = 0
+
+                If udpValue.ToolSetupMemberID <> 0 Then
+                    If Not memberIDMap.ContainsKey(udpValue.ToolSetupMemberID) Then
+                        Throw New InvalidOperationException(
+                        $"UDP value {udpValue.ID} references tool setup member " &
+                        $"{udpValue.ToolSetupMemberID}, which was not copied.")
+                    End If
+
+                    newMemberID = memberIDMap(udpValue.ToolSetupMemberID)
+                End If
+
+                copiedUDPValues.Add(
+                New ToolSetupUDPValue With {
+                    .ID = nextUDPValueID,
+                    .ToolSetupID = toolSetupIDMap(udpValue.ToolSetupID),
+                    .ToolSetupMemberID = newMemberID,
+                    .ParameterName = udpValue.ParameterName,
+                    .Value = udpValue.Value
+                })
+
+                nextUDPValueID += 1
+            Next
+
+            ' --------------------------------------------------
+            ' 10. Add all copied records to the in-memory tables.
+            ' --------------------------------------------------
+            AppData.MachinesTable.Rows.Add(newMachine)
+
+            AppData.MachineAttributesTable.Rows.AddRange(copiedAttributes)
+            AppData.StationsTable.Rows.AddRange(copiedStations)
+            AppData.ToolSetups.AddRange(copiedSetups)
+            AppData.ToolSetupMembers.AddRange(copiedMembers)
+            AppData.LayerSetups.AddRange(copiedLayerSetups)
+            AppData.Directives.AddRange(copiedDirectives)
+
+            AppData.ToolSetupUDPDefinitionsTable.Rows.AddRange(copiedDefinitions)
+            AppData.ToolSetupUDPValuesTable.Rows.AddRange(copiedUDPValues)
+
+            ' --------------------------------------------------
+            ' 11. Persist the affected JSON files.
+            ' --------------------------------------------------
+            JsonSaver.SaveObjectToJsonFile(
+            AppData.MachinesTable,
+            Path.Combine(dataFolder, "Machines.json"))
+
+            File.WriteAllText(
+            Path.Combine(dataFolder, "MachineAttributes.json"),
+            JsonConvert.SerializeObject(
+                AppData.MachineAttributesTable, Formatting.Indented))
+
+            SaveStationsJson()
+
+            JsonSaver.SaveObjectToJsonFile(
+            AppData.ToolSetups,
+            Path.Combine(dataFolder, "ToolSetups.json"))
+
+            Dim membersWrapper = New With {
+            .TableName = "ToolSetupMembers",
+            .Rows = AppData.ToolSetupMembers
+        }
+
+            File.WriteAllText(
+            Path.Combine(dataFolder, "ToolSetupMembers.json"),
+            JsonConvert.SerializeObject(membersWrapper, Formatting.Indented))
+
+            AppData.SaveJsonTableWrapped(
+            AppData.ToolSetupUDPDefinitionsTable,
+            "ToolSetupUDPDefinitions.json")
+
+            AppData.SaveJsonTableWrapped(
+            AppData.ToolSetupUDPValuesTable,
+            "ToolSetupUDPValues.json")
+
+            SaveLayerSetups()
+            SaveDirectives()
+
+            ' Refresh runtime station caches.
+            AppData.StationList =
+            AppData.StationsTable.Rows.
+            Select(Function(r) r.ToObject(Of AppData.Station)()).ToList()
+
+            AppData.Stations = AppData.StationList
+
+            ' --------------------------------------------------
+            ' 12. Refresh the tree and select the copied machine.
+            ' --------------------------------------------------
+            PopulateTreeView()
+
+            Dim copiedMachineNode As TreeNode =
+            FindMachineNode(TreeViewMachines.Nodes, newMachineID)
+
+            If copiedMachineNode IsNot Nothing Then
+                If copiedMachineNode.Parent IsNot Nothing Then
+                    copiedMachineNode.Parent.Expand()
+                End If
+
+                copiedMachineNode.EnsureVisible()
+                TreeViewMachines.SelectedNode = copiedMachineNode
+                copiedMachineNode.Expand()
+                TreeViewMachines.Focus()
+
+                currentMachineID = newMachineID
+                PopulatePropertyGridForMachine(newMachineID)
+            End If
+
+            MessageBox.Show(
+            $"Machine '{sourceMachine.Description}' was copied as '{newName}'.",
+            "Copy Machine",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+
+        Catch ex As Exception
+            MessageBox.Show(
+            "Copy Machine failed:" & vbCrLf & ex.Message &
+            vbCrLf & vbCrLf &
+            "If the failure occurred while saving, inspect the affected JSON files " &
+            "before continuing.",
+            "Copy Machine Error",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+        End Try
+
+    End Sub
+
+
+
 
     Private Sub btnTSRemoveParameter_Click(sender As Object, e As EventArgs) Handles btnTSRemoveParameter.Click
         If dgvToolSetup.CurrentCell Is Nothing Then Return
@@ -3107,8 +3906,25 @@ Public Class ConfigurationManagerForm
         End Try
     End Function
     Public Sub ExportMaterialJsonWithColumns(accessDbPath As String, outputFolder As String)
-        ' Ensure output folder exists
-        If Not Directory.Exists(outputFolder) Then Directory.CreateDirectory(outputFolder)
+
+        Dim materialTypesPath =
+    Path.Combine(outputFolder, "MaterialTypes.json")
+
+        Dim materialInventoryPath =
+    Path.Combine(outputFolder, "MaterialInventory.json")
+
+        Dim materialTypesTable As New JsonTable(Of MaterialType) With {
+    .TableName = "MaterialTypes"
+}
+
+        Dim materialInventoryTable As New JsonTable(Of MaterialSheet) With {
+    .TableName = "MaterialInventory"
+}
+
+        If Not Directory.Exists(outputFolder) Then
+            Directory.CreateDirectory(outputFolder)
+        End If
+
 
         Dim connStr As String = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={accessDbPath};Persist Security Info=False;"
 
@@ -3141,7 +3957,7 @@ Public Class ConfigurationManagerForm
         End Using
 
         ' Save JSON
-        Dim materialTypesPath = Path.Combine(outputFolder, "MaterialTypes.json")
+
         File.WriteAllText(materialTypesPath, JsonConvert.SerializeObject(materialTypes, Formatting.Indented))
 
         ' ----------------------------
@@ -3189,7 +4005,7 @@ Public Class ConfigurationManagerForm
         End Using
 
         ' Save JSON
-        Dim materialInventoryPath = Path.Combine(outputFolder, "MaterialInventory.json")
+
         File.WriteAllText(materialInventoryPath, JsonConvert.SerializeObject(materialInventory, Formatting.Indented))
 
         MessageBox.Show("Material JSON export with columns complete.", "Export Finished", MessageBoxButtons.OK, MessageBoxIcon.Information)
@@ -4134,7 +4950,102 @@ Public Class ConfigurationManagerForm
         Next
     End Sub
 
-    Private Sub TreeViewMachines_BeforeExpand(sender As Object, e As TreeViewCancelEventArgs) Handles TreeViewMachines.BeforeExpand
+    Private Sub btnRemFromStation_Click(sender As Object, e As EventArgs) Handles btnRemFromStation.Click
+
+        ' 1. Validate the selected row.
+        If dgvToolSetup.SelectedRows.Count = 0 Then
+            MessageBox.Show("Please select a station first.")
+            Return
+        End If
+
+        Dim selectedRow As DataGridViewRow =
+        dgvToolSetup.SelectedRows(0)
+
+        If Not dgvToolSetup.Columns.Contains("ToolSetupMemberID") Then
+            MessageBox.Show("The Tool Setup member ID column is missing.")
+            Return
+        End If
+
+        ' 2. Identify the assignment.
+        Dim memberValue As Object =
+        selectedRow.Cells("ToolSetupMemberID").Value
+
+        Dim memberID As Integer
+
+        If memberValue Is Nothing OrElse
+       memberValue Is DBNull.Value OrElse
+       Not Integer.TryParse(Convert.ToString(memberValue), memberID) Then
+
+            MessageBox.Show("This station does not have a tool assignment.")
+            Return
+        End If
+
+        If AppData.ToolSetupMembers Is Nothing OrElse
+       AppData.ToolSetupUDPValues Is Nothing OrElse
+       AppData.ToolSetupUDPValuesTable Is Nothing OrElse
+       AppData.ToolSetupUDPValuesTable.Rows Is Nothing Then
+
+            MessageBox.Show("Required Tool Setup data has not been loaded.")
+            Return
+        End If
+
+        Dim member As ToolSetupMember =
+        AppData.ToolSetupMembers.FirstOrDefault(
+            Function(m) m.ID = memberID AndAlso
+                        m.ToolSetupID = currenttoolSetupID)
+
+        If member Is Nothing Then
+            MessageBox.Show("The selected Tool Setup assignment could not be found.")
+            Return
+        End If
+
+        Try
+            ' 3. Find UDP values belonging to this member.
+            Dim removedUDPValues As List(Of ToolSetupUDPValue) =
+            AppData.ToolSetupUDPValues.
+                Where(Function(v) v.ToolSetupID = currenttoolSetupID AndAlso
+                                  v.ToolSetupMemberID = memberID).
+                ToList()
+
+            ' 4. Remove the assignment and its UDP values.
+            AppData.ToolSetupMembers.Remove(member)
+
+            For Each udpValue In removedUDPValues
+                AppData.ToolSetupUDPValues.Remove(udpValue)
+                AppData.ToolSetupUDPValuesTable.Rows.Remove(udpValue)
+            Next
+
+            ' 5. Save ToolSetupMembers.json.
+            Dim membersWrapper = New With {
+            .TableName = "ToolSetupMembers",
+            .Rows = AppData.ToolSetupMembers
+        }
+
+            File.WriteAllText(
+            Path.Combine(dataFolder, "ToolSetupMembers.json"),
+            JsonConvert.SerializeObject(
+                membersWrapper, Formatting.Indented))
+
+            ' 6. Save ToolSetupUDPValues.json.
+            AppData.SaveJsonTableWrapped(
+            AppData.ToolSetupUDPValuesTable,
+            "ToolSetupUDPValues.json")
+
+            ' 7. Reload the setup.
+            '    The station should remain visible without its tool.
+            LoadSelectedToolSetup(currenttoolSetupID, currentMachineID)
+
+        Catch ex As Exception
+            MessageBox.Show(
+            "Remove Tool From Station failed:" & vbCrLf &
+            ex.Message & vbCrLf & vbCrLf &
+            "Check the affected JSON files before continuing.",
+            "Remove Tool From Station Error",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+        End Try
 
     End Sub
+
+
 End Class
