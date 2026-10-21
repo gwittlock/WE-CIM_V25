@@ -197,6 +197,6 @@ Public Class frmConvertCMDB
     End Sub
 
     Private Sub frmConvertCMDB_Load(sender As Object, e As EventArgs) Handles Me.Load
-        txtDataFolder.Text = "C:\Program Files (x86)\WE-CIM\24.0\Data"
+        txtDataFolder.Text = "C:\Program Files (x86)\WE-CIM\25.0\Data"
     End Sub
 End Class

@@ -307,29 +307,6 @@ Public Class frmMain
     Private Sub iOpen_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iOpen.ItemClick
 
         FileOpen()
-
-
-
-        ' Open DXF and import as CamProfiles
-        '_importedProfiles = FileOpen()  ' returns List(Of CamProfile)
-        ' FileOpen()
-
-        'If _importedProfiles IsNot Nothing AndAlso _importedProfiles.Count > 0 Then
-        '    Flatten all CadEntities from profiles into _importedEntities for legacy code
-        '    _importedEntities = New List(Of ImportedEntity)
-
-        '    For Each profile In _importedProfiles
-        '        For Each cad In profile.Entities
-        '            _importedEntities.Add(ConvertCadEntityToImportedEntity(cad, _selectedLayerSetup))
-        '        Next
-        '    Next
-
-        '' Refresh the drawing panel
-        'pnlPicmodeler.Invalidate()
-        ''End If
-
-        '' Ensure view is updated
-        'ViewFull()
     End Sub
 
 

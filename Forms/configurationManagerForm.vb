@@ -240,11 +240,18 @@ Public Class ConfigurationManagerForm
                 If AppData.ToolSetups IsNot Nothing Then
                     For Each ts As ToolSetup In AppData.ToolSetups
                         If ts.MachineID = machine.ID Then
+
                             Dim tsNode As TreeNode = toolSetupsNode.Nodes.Add(ts.Description)
                             tsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 13) ' Store ToolSetupID
 
                             ' Layer Setups under Tool Setup
-                            Dim lsForToolSetup = LayerSetups.Where(Function(ls) ls.MachineID = machine.ID AndAlso ls.ToolSetupID = ts.ID).ToList()
+                            'Dim lsForToolSetup = LayerSetups.Where(Function(ls) ls.MachineID = machine.ID AndAlso ls.ToolSetupID = ts.ID).ToList()
+                            Dim lsForToolSetup = LayerSetups.Where(Function(ls) ls.MachineID = machine.ID).ToList()
+
+                            Debug.WriteLine("Machine ID = " & machine.ID)
+                            Debug.WriteLine("Tool Setup ID = " & ts.ID)
+                            Debug.WriteLine("Matching Layer Setups = " & lsForToolSetup.Count)
+
                             Dim layerSetupsNode As New TreeNode("Layer Setups")
                             layerSetupsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 14)
 
@@ -2018,12 +2025,163 @@ Public Class ConfigurationManagerForm
     End Sub
 
 
-    Private Sub AddToolSetupTSM_Click(sender As Object, e As EventArgs) Handles AddToolSetupTSM.Click
-        Dim name As String = InputBox("Enter new Tool Setup name:", "Add Tool Setup")
-        If String.IsNullOrWhiteSpace(name) Then Return
-        ' --- Refresh TreeView ---
-        PopulateTreeView()
+    Private Sub AddToolSetupTSM_Click(sender As Object, e As EventArgs)
+
+        Dim selectedNode As TreeNode = TreeViewMachines.SelectedNode
+
+        ' 1. Validate the selected Tool Setups parent.
+        If selectedNode Is Nothing OrElse
+       Not TypeOf selectedNode.Tag Is String Then
+            Return
+        End If
+
+        Dim nodeType As Integer =
+        GetValueFromDelimitedData(
+            CStr(selectedNode.Tag), "NodeType", "0")
+
+        If nodeType <> 12 Then
+            MessageBox.Show(
+            "Please select the Tool Setups parent under a machine.",
+            "Add Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        ' 2. Retrieve the owning machine ID.
+        Dim machineID As Integer
+
+        If Not Integer.TryParse(
+        GetValueFromDelimitedData(
+            CStr(selectedNode.Tag), "Machine_ID", "0"),
+        machineID) OrElse machineID <= 0 Then
+
+            MessageBox.Show(
+            "The selected machine could not be identified.",
+            "Add Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        ' 3. Ask for the new Tool Setup description.
+        Dim newDescription As String =
+        InputBox(
+            "Enter new Tool Setup name:",
+            "Add Tool Setup").Trim()
+
+        If String.IsNullOrWhiteSpace(newDescription) Then Return
+
+        If AppData.ToolSetups Is Nothing Then
+            MessageBox.Show(
+            "Tool Setup data has not been loaded.",
+            "Add Tool Setup",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+            Return
+        End If
+
+        ' 4. Prevent duplicate descriptions for this machine.
+        If AppData.ToolSetups.Any(
+        Function(ts) ts.MachineID = machineID AndAlso
+            String.Equals(
+                ts.Description,
+                newDescription,
+                StringComparison.OrdinalIgnoreCase)) Then
+
+            MessageBox.Show(
+            $"A Tool Setup named '{newDescription}' already exists " &
+            "for this machine.",
+            "Duplicate Description",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        Try
+            ' 5. Create an empty Tool Setup.
+            Dim newToolSetupID As Integer =
+            If(AppData.ToolSetups.Count = 0,
+               1,
+               AppData.ToolSetups.Max(Function(ts) ts.ID) + 1)
+
+            Dim newSetup As New ToolSetup With {
+            .ID = newToolSetupID,
+            .Description = newDescription,
+            .MachineID = machineID
+        }
+
+            AppData.ToolSetups.Add(newSetup)
+
+            ' 6. Save ToolSetups.json.
+            JsonSaver.SaveObjectToJsonFile(
+            AppData.ToolSetups,
+            Path.Combine(dataFolder, "ToolSetups.json"))
+
+            ' 7. Refresh the tree and select the new setup.
+            PopulateTreeView()
+
+            Dim newNode As TreeNode = Nothing
+            Dim nodesToCheck As New Stack(Of TreeNode)
+
+            For Each rootNode As TreeNode In TreeViewMachines.Nodes
+                nodesToCheck.Push(rootNode)
+            Next
+
+            While nodesToCheck.Count > 0
+                Dim node As TreeNode = nodesToCheck.Pop()
+
+                If TypeOf node.Tag Is String Then
+                    Dim nodeTag As String = CStr(node.Tag)
+
+                    Dim nodeTagType As Integer =
+                    GetValueFromDelimitedData(
+                        nodeTag, "NodeType", "0")
+
+                    Dim nodeSetupID As Integer =
+                    GetValueFromDelimitedData(
+                        nodeTag, "ToolSetup_ID", "-1")
+
+                    If nodeTagType = 13 AndAlso
+                   nodeSetupID = newToolSetupID Then
+
+                        newNode = node
+                        Exit While
+                    End If
+                End If
+
+                For Each child As TreeNode In node.Nodes
+                    nodesToCheck.Push(child)
+                Next
+            End While
+
+            If newNode IsNot Nothing Then
+                If newNode.Parent IsNot Nothing Then
+                    newNode.Parent.Expand()
+                End If
+
+                newNode.EnsureVisible()
+                TreeViewMachines.SelectedNode = newNode
+                TreeViewMachines.Focus()
+
+                currenttoolSetupID = newToolSetupID
+                currentMachineID = machineID
+
+                LoadSelectedToolSetup(newToolSetupID, machineID)
+            End If
+
+        Catch ex As Exception
+            MessageBox.Show(
+            "Add Tool Setup failed:" & vbCrLf & ex.Message &
+            vbCrLf & vbCrLf &
+            "If saving failed, inspect ToolSetups.json before continuing.",
+            "Add Tool Setup Error",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+        End Try
+
     End Sub
+
 
     Private Sub DeleteToolSetupTSM_Click(sender As Object, e As EventArgs) Handles DeleteToolSetupTSM.Click
         '' --- Find selected ToolSetup row ---
@@ -4797,5 +4955,103 @@ Public Class ConfigurationManagerForm
             AppendNodeWithLines(node.Nodes(i), sb, childIndent, isLastChild)
         Next
     End Sub
+
+    Private Sub btnRemFromStation_Click(sender As Object, e As EventArgs) Handles btnRemFromStation.Click
+
+        ' 1. Validate the selected row.
+        If dgvToolSetup.SelectedRows.Count = 0 Then
+            MessageBox.Show("Please select a station first.")
+            Return
+        End If
+
+        Dim selectedRow As DataGridViewRow =
+        dgvToolSetup.SelectedRows(0)
+
+        If Not dgvToolSetup.Columns.Contains("ToolSetupMemberID") Then
+            MessageBox.Show("The Tool Setup member ID column is missing.")
+            Return
+        End If
+
+        ' 2. Identify the assignment.
+        Dim memberValue As Object =
+        selectedRow.Cells("ToolSetupMemberID").Value
+
+        Dim memberID As Integer
+
+        If memberValue Is Nothing OrElse
+       memberValue Is DBNull.Value OrElse
+       Not Integer.TryParse(Convert.ToString(memberValue), memberID) Then
+
+            MessageBox.Show("This station does not have a tool assignment.")
+            Return
+        End If
+
+        If AppData.ToolSetupMembers Is Nothing OrElse
+       AppData.ToolSetupUDPValues Is Nothing OrElse
+       AppData.ToolSetupUDPValuesTable Is Nothing OrElse
+       AppData.ToolSetupUDPValuesTable.Rows Is Nothing Then
+
+            MessageBox.Show("Required Tool Setup data has not been loaded.")
+            Return
+        End If
+
+        Dim member As ToolSetupMember =
+        AppData.ToolSetupMembers.FirstOrDefault(
+            Function(m) m.ID = memberID AndAlso
+                        m.ToolSetupID = currenttoolSetupID)
+
+        If member Is Nothing Then
+            MessageBox.Show("The selected Tool Setup assignment could not be found.")
+            Return
+        End If
+
+        Try
+            ' 3. Find UDP values belonging to this member.
+            Dim removedUDPValues As List(Of ToolSetupUDPValue) =
+            AppData.ToolSetupUDPValues.
+                Where(Function(v) v.ToolSetupID = currenttoolSetupID AndAlso
+                                  v.ToolSetupMemberID = memberID).
+                ToList()
+
+            ' 4. Remove the assignment and its UDP values.
+            AppData.ToolSetupMembers.Remove(member)
+
+            For Each udpValue In removedUDPValues
+                AppData.ToolSetupUDPValues.Remove(udpValue)
+                AppData.ToolSetupUDPValuesTable.Rows.Remove(udpValue)
+            Next
+
+            ' 5. Save ToolSetupMembers.json.
+            Dim membersWrapper = New With {
+            .TableName = "ToolSetupMembers",
+            .Rows = AppData.ToolSetupMembers
+        }
+
+            File.WriteAllText(
+            Path.Combine(dataFolder, "ToolSetupMembers.json"),
+            JsonConvert.SerializeObject(
+                membersWrapper, Formatting.Indented))
+
+            ' 6. Save ToolSetupUDPValues.json.
+            AppData.SaveJsonTableWrapped(
+            AppData.ToolSetupUDPValuesTable,
+            "ToolSetupUDPValues.json")
+
+            ' 7. Reload the setup.
+            '    The station should remain visible without its tool.
+            LoadSelectedToolSetup(currenttoolSetupID, currentMachineID)
+
+        Catch ex As Exception
+            MessageBox.Show(
+            "Remove Tool From Station failed:" & vbCrLf &
+            ex.Message & vbCrLf & vbCrLf &
+            "Check the affected JSON files before continuing.",
+            "Remove Tool From Station Error",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+        End Try
+
+    End Sub
+
 
 End Class

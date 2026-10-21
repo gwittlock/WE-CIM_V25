@@ -1,12 +1,33 @@
 ﻿Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models.Tool
 
 Namespace WE_ENG_V25_0.Core.Models
+
     Public Class Tool
-        Public Property ID As Integer
+        Implements IGeoAssociation
+
+        Public Property ID As Integer Implements IGeoAssociation.ID
         Public Property TypeID As Integer
         Public Property Description As String
         Public Property Attributes As Dictionary(Of String, Object)
+
+
+        Public ReadOnly Property Color As System.Drawing.Color
+            Get
+                If Attributes Is Nothing OrElse Not Attributes.ContainsKey("COLOR") Then
+                    Return System.Drawing.Color.White
+                End If
+
+                Try
+                    Return System.Drawing.ColorTranslator.FromOle(
+                Convert.ToInt32(Attributes("COLOR")))
+                Catch
+                    Return System.Drawing.Color.White
+                End Try
+            End Get
+        End Property
+
     End Class
+
 
     ' Tool Types
     Public Class ToolType

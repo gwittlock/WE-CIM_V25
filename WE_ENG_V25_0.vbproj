@@ -334,6 +334,7 @@
     <Compile Include="Classes\ConvexPartProfile.vb" />
     <Compile Include="Classes\ConvexToolProfile.vb" />
     <Compile Include="Classes\CornerRadiusToolShape.vb" />
+    <Compile Include="Classes\CreateGeo.vb" />
     <Compile Include="Classes\CustomToolShape.vb" />
     <Compile Include="Classes\DatabaseConversion.vb" />
     <Compile Include="Classes\DirectiveStationEditor.vb" />
@@ -345,6 +346,12 @@
     <Compile Include="Classes\DynamicProperty.vb" />
     <Compile Include="Classes\DynamicPropertyBag.vb" />
     <Compile Include="Classes\DynamicToolAttributes.vb" />
+    <Compile Include="Classes\GeoArc,vb.vb" />
+    <Compile Include="Classes\GeoCircle.vb" />
+    <Compile Include="Classes\GeoEntity.vb" />
+    <Compile Include="Classes\GeoLine.vb" />
+    <Compile Include="Classes\GeoPoint.vb" />
+    <Compile Include="Classes\GeoProfile.vb" />
     <Compile Include="Classes\GridOfHolesFeature.vb" />
     <Compile Include="Classes\HelperFunctions.vb" />
     <Compile Include="Classes\HexagonToolShape.vb" />
@@ -352,12 +359,15 @@
     <Compile Include="Classes\HolePatternParameters.vb" />
     <Compile Include="Classes\HotSpot.vb" />
     <Compile Include="Classes\HotSpotManager.vb" />
+    <Compile Include="Classes\IGeoAssociation.vb" />
+    <Compile Include="Classes\ImportDXF.vb" />
     <Compile Include="Classes\ISelectable.vb" />
     <Compile Include="Classes\Job.vb" />
     <Compile Include="Classes\JobContext.vb" />
     <Compile Include="Classes\JobSheet.vb" />
     <Compile Include="Classes\JsonLoader.vb" />
     <Compile Include="Classes\KeyholeToolShape.vb" />
+    <Compile Include="Classes\Layer.vb" />
     <Compile Include="Classes\LayerDefinition.vb" />
     <Compile Include="Classes\LayerSetupConversionService.vb" />
     <Compile Include="Classes\LeadGeometry.vb" />
@@ -506,6 +516,7 @@
     <Compile Include="Modules\modSelection.vb" />
     <Compile Include="Modules\modSnap.vb" />
     <Compile Include="Modules\modView.vb" />
+    <Compile Include="Modules\PartGeometryBuilder.vb" />
     <Compile Include="Modules\PropertyGridContext.vb" />
     <Compile Include="Modules\ValidationService.vb" />
     <Compile Include="My Project\AssemblyInfo.vb" />
