@@ -153,6 +153,47 @@
         Next
 
 
+
+        For Each profile As GeoProfile In profiles
+
+            Dim ordered As Boolean =
+        OrderGeoProfileSegments(profile)
+
+            Dim valid As Boolean = False
+
+            If ordered Then
+                valid = ValidateGeoProfileSegments(profile)
+            End If
+
+            Debug.WriteLine(
+        "GeoProfile " & profile.ID &
+        " | Ordered: " & ordered &
+        " | Connected: " & valid &
+        " | Entities: " & profile.Entities.Count &
+        " | Segments: " & profile.Segments.Count)
+
+            If ordered AndAlso valid AndAlso profile.IsClosed Then
+
+                Dim signedArea As Double =
+            CalculateGeoProfileSignedArea(profile)
+
+                Dim direction As String = "Degenerate"
+
+                If signedArea > 0 Then
+                    direction = "CCW"
+                ElseIf signedArea < 0 Then
+                    direction = "CW"
+                End If
+
+                Debug.WriteLine(
+            "GeoProfile " & profile.ID &
+            " | Signed Area: " & signedArea &
+            " | Direction: " & direction)
+
+            End If
+
+        Next
+
         '-----------------------------------------
         ' Step 4 - Diagnostic output.
         '-----------------------------------------
@@ -438,5 +479,232 @@
 
     End Function
 
+    Private Function GetSegmentEndPoint(
+    segment As GeoProfileSegment) As GeoPoint
+
+        Dim line As GeoLine =
+            TryCast(segment.Entity, GeoLine)
+
+        If line Is Nothing Then Return Nothing
+
+        If segment.Reversed Then
+            Return line.StartPoint
+        End If
+
+        Return line.EndPoint
+
+    End Function
+
+    Private Function GetSegmentStartPoint(
+    segment As GeoProfileSegment) As GeoPoint
+
+        Dim line As GeoLine =
+            TryCast(segment.Entity, GeoLine)
+
+        If line Is Nothing Then Return Nothing
+
+        If segment.Reversed Then
+            Return line.EndPoint
+        End If
+
+        Return line.StartPoint
+
+    End Function
+
+    Private Function OrderGeoProfileSegments(
+        profile As GeoProfile) As Boolean
+
+        If profile Is Nothing OrElse
+           profile.Entities.Count = 0 Then
+            Return False
+        End If
+
+        profile.Segments.Clear()
+
+        Dim firstLine As GeoLine =
+            TryCast(profile.Entities(0), GeoLine)
+
+        If firstLine Is Nothing Then Return False
+
+        Dim startLine As GeoLine = firstLine
+        Dim reverseFirst As Boolean = False
+
+        If Not profile.IsClosed Then
+
+            Dim endpoints As List(Of GeoPoint) =
+        GetProfileEndpoints(profile)
+
+            If endpoints.Count <> 2 Then Return False
+
+            Dim startPoint As GeoPoint = endpoints(0)
+
+            For Each entity As GeoEntity In profile.Entities
+
+                Dim line As GeoLine = TryCast(entity, GeoLine)
+
+                If line Is Nothing Then Continue For
+
+                If Object.ReferenceEquals(line.StartPoint, startPoint) Then
+                    startLine = line
+                    reverseFirst = False
+                    Exit For
+
+                ElseIf Object.ReferenceEquals(line.EndPoint, startPoint) Then
+                    startLine = line
+                    reverseFirst = True
+                    Exit For
+
+                End If
+
+            Next
+
+        End If
+
+        Dim firstSegment As New GeoProfileSegment With {
+    .Entity = startLine,
+    .Reversed = reverseFirst
+}
+
+        profile.Segments.Add(firstSegment)
+
+        Dim remaining As New List(Of GeoEntity)(profile.Entities)
+        remaining.Remove(startLine)
+
+        While remaining.Count > 0
+
+            Dim currentPoint As GeoPoint =
+                GetSegmentEndPoint(
+                    profile.Segments(profile.Segments.Count - 1))
+
+            Dim nextIndex As Integer = -1
+            Dim reverseNext As Boolean = False
+
+            For i As Integer = 0 To remaining.Count - 1
+
+                Dim line As GeoLine =
+                    TryCast(remaining(i), GeoLine)
+
+                If line Is Nothing Then Continue For
+
+                If Object.ReferenceEquals(
+                    line.StartPoint, currentPoint) Then
+
+                    nextIndex = i
+                    reverseNext = False
+                    Exit For
+
+                ElseIf Object.ReferenceEquals(
+                    line.EndPoint, currentPoint) Then
+
+                    nextIndex = i
+                    reverseNext = True
+                    Exit For
+
+                End If
+
+            Next
+
+            If nextIndex = -1 Then
+                profile.Segments.Clear()
+                Return False
+            End If
+
+            profile.Segments.Add(
+                New GeoProfileSegment With {
+                    .Entity = remaining(nextIndex),
+                    .Reversed = reverseNext
+                })
+
+            remaining.RemoveAt(nextIndex)
+
+        End While
+
+        Return True
+
+    End Function
+
+
+    Private Function ValidateGeoProfileSegments(
+    profile As GeoProfile) As Boolean
+
+        If profile Is Nothing OrElse
+           profile.Segments.Count = 0 Then
+            Return False
+        End If
+
+        If profile.Segments.Count <> profile.Entities.Count Then
+            Return False
+        End If
+
+        For i As Integer = 0 To profile.Segments.Count - 2
+
+            Dim endPoint As GeoPoint =
+                GetSegmentEndPoint(profile.Segments(i))
+
+            Dim nextStart As GeoPoint =
+                GetSegmentStartPoint(profile.Segments(i + 1))
+
+            If Not Object.ReferenceEquals(endPoint, nextStart) Then
+                Return False
+            End If
+
+        Next
+
+        If profile.IsClosed Then
+
+            Dim lastEnd As GeoPoint =
+                GetSegmentEndPoint(
+                    profile.Segments(profile.Segments.Count - 1))
+
+            Dim firstStart As GeoPoint =
+                GetSegmentStartPoint(profile.Segments(0))
+
+            If Not Object.ReferenceEquals(lastEnd, firstStart) Then
+                Return False
+            End If
+
+        End If
+
+        Return True
+
+    End Function
+
+    Private Function CalculateGeoProfileSignedArea(
+        profile As GeoProfile) As Double
+
+        If profile Is Nothing OrElse
+           Not profile.IsClosed OrElse
+           profile.Segments.Count < 3 Then
+
+            Return 0.0
+
+        End If
+
+        Dim area As Double = 0.0
+
+        For i As Integer = 0 To profile.Segments.Count - 1
+
+            Dim currentPoint As GeoPoint =
+                GetSegmentStartPoint(profile.Segments(i))
+
+            Dim nextPoint As GeoPoint =
+                GetSegmentEndPoint(profile.Segments(i))
+
+            If currentPoint Is Nothing OrElse
+               nextPoint Is Nothing Then
+
+                Return 0.0
+
+            End If
+
+            area +=
+                (currentPoint.X * nextPoint.Y) -
+                (nextPoint.X * currentPoint.Y)
+
+        Next
+
+        Return area / 2.0
+
+    End Function
 
 End Module
