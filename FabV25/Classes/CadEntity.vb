@@ -3,7 +3,7 @@
 ' CadEntity base class
 ' =============================
 Public MustInherit Class CadEntity
-    Implements IsSelectable
+    Implements isSelectable
 
     Public Property LayerName As String
     Public Property Color As Color

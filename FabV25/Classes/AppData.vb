@@ -779,12 +779,18 @@ Public Class AppData
     End Class
 
 
+
     ' Directive class
     Public Class Directive
         Implements ICustomTypeDescriptor
+
         Public Property ID As Integer
         Public Property LayerSetupID As Integer
+
+        <DisplayName("CAD Layer")>
         Public Property CADLayer As String
+
+        <DisplayName("CAM Layer")>
         Public Property CAMLayer As String
 
         Public Property CutSide As CutSideEnum
@@ -793,18 +799,14 @@ Public Class AppData
         ' Raw numeric color from JSON (optional / legacy)
         Public Property Color As Integer
 
-        ' Human-readable color name from JSON
+        ' JSON stores this value as "DisplayColor".
+        ' This is the persisted color name or #AARRGGBB value.
         <JsonProperty("DisplayColor")>
         Public Property DisplayColorName As String
 
-        <DisplayName("CAD Layer")>
-        Public Property CADLayer As String
-
-        <DisplayName("CAM Layer")>
-        Public Property CAMLayer As String
-
-        ' Actual runtime color used for rendering
-        Private _displayColor As System.Drawing.Color = System.Drawing.Color.Empty
+        ' Actual runtime color used for rendering and editing.
+        Private _displayColor As System.Drawing.Color =
+            System.Drawing.Color.Empty
 
         Public Enum CutDirectionEnum
             CW = 0
@@ -819,8 +821,10 @@ Public Class AppData
             Left = 1
         End Enum
 
+        <DisplayName("Z Level")>
+        Public Property ZLevel As Double
 
-        ' Actual runtime color used for rendering
+        <DisplayName("Color")>
         <JsonIgnore>
         Public Property DisplayColor As Color
             Get
@@ -829,81 +833,88 @@ Public Class AppData
             Set(value As Color)
                 _displayColor = value
 
-                ' Keep the serialized color synchronized.
                 If value.IsKnownColor OrElse value.IsSystemColor Then
                     DisplayColorName = value.Name
                 Else
-                    ' Preserve custom RGB and alpha values.
-                    DisplayColorName = "#" & value.ToArgb().ToString("X8")
+                    DisplayColorName =
+                        "#" & value.ToArgb().ToString("X8")
                 End If
 
-                ' Keep the legacy numeric color synchronized.
                 Color = ColorTranslator.ToWin32(value)
             End Set
         End Property
 
-
+        <DisplayName("Station")>
         <Editor(GetType(DirectiveStationEditor), GetType(UITypeEditor))>
         Public Property Station As String
+
         Public Property ToolType As Integer?
-        Public Property ZLevel As Double
 
-
+        <DisplayName("Distance")>
         Public Property Distance As Double
 
-
         Public Property ToolID As Integer
+
         Public Sub Validate()
             If ID <= 0 Then
-                Throw New InvalidOperationException("Directive ID is invalid.")
+                Throw New InvalidOperationException(
+                    "Directive ID is invalid.")
             End If
 
             If String.IsNullOrWhiteSpace(CADLayer) Then
-                Throw New InvalidOperationException($"Directive {ID} has no CADLayer.")
+                Throw New InvalidOperationException(
+                    $"Directive {ID} has no CADLayer.")
             End If
 
             If LayerSetupID <= 0 Then
-                Throw New InvalidOperationException($"Directive {ID} has invalid LayerSetupID.")
+                Throw New InvalidOperationException(
+                    $"Directive {ID} has invalid LayerSetupID.")
             End If
 
             If DisplayColor.IsEmpty Then
-                Throw New InvalidOperationException($"Directive {ID} has unresolved DisplayColor.")
+                Throw New InvalidOperationException(
+                    $"Directive {ID} has unresolved DisplayColor.")
             End If
         End Sub
 
         Public Sub ResolveColors()
             ' 1. Restore custom ARGB colors stored as #AARRGGBB.
             If Not String.IsNullOrWhiteSpace(DisplayColorName) AndAlso
-       DisplayColorName.StartsWith("#") AndAlso
-       DisplayColorName.Length = 9 Then
+               DisplayColorName.StartsWith("#") AndAlso
+               DisplayColorName.Length = 9 Then
 
                 Dim alpha As Integer
                 Dim red As Integer
                 Dim green As Integer
                 Dim blue As Integer
 
-                If Integer.TryParse(DisplayColorName.Substring(1, 2),
-                            Globalization.NumberStyles.HexNumber,
-                            Nothing, alpha) AndAlso
-           Integer.TryParse(DisplayColorName.Substring(3, 2),
-                            Globalization.NumberStyles.HexNumber,
-                            Nothing, red) AndAlso
-           Integer.TryParse(DisplayColorName.Substring(5, 2),
-                            Globalization.NumberStyles.HexNumber,
-                            Nothing, green) AndAlso
-           Integer.TryParse(DisplayColorName.Substring(7, 2),
-                            Globalization.NumberStyles.HexNumber,
-                            Nothing, blue) Then
+                If Integer.TryParse(
+                    DisplayColorName.Substring(1, 2),
+                    Globalization.NumberStyles.HexNumber,
+                    Nothing, alpha) AndAlso
+                   Integer.TryParse(
+                    DisplayColorName.Substring(3, 2),
+                    Globalization.NumberStyles.HexNumber,
+                    Nothing, red) AndAlso
+                   Integer.TryParse(
+                    DisplayColorName.Substring(5, 2),
+                    Globalization.NumberStyles.HexNumber,
+                    Nothing, green) AndAlso
+                   Integer.TryParse(
+                    DisplayColorName.Substring(7, 2),
+                    Globalization.NumberStyles.HexNumber,
+                    Nothing, blue) Then
 
                     DisplayColor = System.Drawing.Color.FromArgb(
-                alpha, red, green, blue)
+                        alpha, red, green, blue)
                     Return
                 End If
             End If
 
             ' 2. Restore existing named colors.
             If Not String.IsNullOrWhiteSpace(DisplayColorName) Then
-                Dim c = System.Drawing.Color.FromName(DisplayColorName)
+                Dim c =
+                    System.Drawing.Color.FromName(DisplayColorName)
 
                 If c.IsKnownColor OrElse c.IsSystemColor Then
                     DisplayColor = c
@@ -922,7 +933,115 @@ Public Class AppData
             DisplayColor = System.Drawing.Color.Magenta
         End Sub
 
+        ' ============================================
+        ' ICustomTypeDescriptor implementation
+        ' ============================================
+
+        Public Function GetAttributes() As AttributeCollection _
+            Implements ICustomTypeDescriptor.GetAttributes
+
+            Return TypeDescriptor.GetAttributes(Me, True)
+        End Function
+
+        Public Function GetClassName() As String _
+            Implements ICustomTypeDescriptor.GetClassName
+
+            Return TypeDescriptor.GetClassName(Me, True)
+        End Function
+
+        Public Function GetComponentName() As String _
+            Implements ICustomTypeDescriptor.GetComponentName
+
+            Return TypeDescriptor.GetComponentName(Me, True)
+        End Function
+
+        Public Function GetConverter() As TypeConverter _
+            Implements ICustomTypeDescriptor.GetConverter
+
+            Return TypeDescriptor.GetConverter(Me, True)
+        End Function
+
+        Public Function GetDefaultEvent() As EventDescriptor _
+            Implements ICustomTypeDescriptor.GetDefaultEvent
+
+            Return TypeDescriptor.GetDefaultEvent(Me, True)
+        End Function
+
+        Public Function GetDefaultProperty() As PropertyDescriptor _
+            Implements ICustomTypeDescriptor.GetDefaultProperty
+
+            Return TypeDescriptor.GetDefaultProperty(Me, True)
+        End Function
+
+        Public Function GetEditor(editorBaseType As Type) As Object _
+            Implements ICustomTypeDescriptor.GetEditor
+
+            Return TypeDescriptor.GetEditor(Me, editorBaseType, True)
+        End Function
+
+        Public Function GetEvents() As EventDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetEvents
+
+            Return TypeDescriptor.GetEvents(Me, True)
+        End Function
+
+        Public Function GetEvents(
+            attributes As Attribute()) As EventDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetEvents
+
+            Return TypeDescriptor.GetEvents(Me, attributes, True)
+        End Function
+
+        Public Function GetProperties() As PropertyDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetProperties
+
+            Return GetProperties(New Attribute() {})
+        End Function
+
+        Public Function GetProperties(
+            attributes As Attribute()) As PropertyDescriptorCollection _
+            Implements ICustomTypeDescriptor.GetProperties
+
+            ' Get the underlying properties without recursively
+            ' invoking this custom descriptor.
+            Dim allProperties As PropertyDescriptorCollection =
+                TypeDescriptor.GetProperties(Me, attributes, True)
+
+            ' Only these eight properties appear, in this order.
+            Dim allowedNames As String() = {
+                "CADLayer",
+                "CAMLayer",
+                "ZLevel",
+                "DisplayColor",
+                "Station",
+                "CutDirection",
+                "CutSide",
+                "Distance"
+            }
+
+            Dim selectedProperties As New List(Of PropertyDescriptor)
+
+            For Each propertyName As String In allowedNames
+                Dim pd As PropertyDescriptor =
+                    allProperties.Find(propertyName, False)
+
+                If pd IsNot Nothing Then
+                    selectedProperties.Add(pd)
+                End If
+            Next
+
+            Return New PropertyDescriptorCollection(
+                selectedProperties.ToArray(), True)
+        End Function
+
+        Public Function GetPropertyOwner(
+            pd As PropertyDescriptor) As Object _
+            Implements ICustomTypeDescriptor.GetPropertyOwner
+
+            Return Me
+        End Function
 
     End Class
+
 
 End Class
