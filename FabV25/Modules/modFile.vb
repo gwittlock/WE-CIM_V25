@@ -184,7 +184,7 @@ Public Module modFile
         '============================================================
         ' Import DXF
         '============================================================
-        _cadEntities = ImportDxf(_selectedDxfPath)
+        _cadEntities = DxfImport.ImportDxf(_selectedDxfPath)
 
         '============================================================
         ' Initialize Hot Spot Manager
@@ -210,6 +210,45 @@ Public Module modFile
         _cadEntities,
         matLength,
         matWidth)
+
+
+        '============================================================
+        ' TEST - Native Part Geometry Conversion
+        '============================================================
+        Dim nativeGeometry As List(Of GeoEntity) =
+    PartGeometryBuilder.CreatePartGeometry(
+        _cadEntities,
+        _selectedLayerSetup)
+
+        Debug.WriteLine(
+    "Native Geometry Count: " & nativeGeometry.Count)
+
+        If nativeGeometry.Count = 2 AndAlso
+   TypeOf nativeGeometry(0) Is GeoLine AndAlso
+   TypeOf nativeGeometry(1) Is GeoLine Then
+
+            Dim line1 As GeoLine = DirectCast(nativeGeometry(0), GeoLine)
+            Dim line2 As GeoLine = DirectCast(nativeGeometry(1), GeoLine)
+
+            Dim sharedPoint As Boolean =
+        Object.ReferenceEquals(line1.StartPoint, line2.StartPoint) OrElse
+        Object.ReferenceEquals(line1.StartPoint, line2.EndPoint) OrElse
+        Object.ReferenceEquals(line1.EndPoint, line2.StartPoint) OrElse
+        Object.ReferenceEquals(line1.EndPoint, line2.EndPoint)
+
+            Debug.WriteLine("Shared GeoPoint: " & sharedPoint)
+
+            Debug.WriteLine(
+    "Shared Layer: " &
+    Object.ReferenceEquals(
+        line1.Association,
+        line2.Association))
+
+        End If
+
+        '  importedPart.Geometry.AddRange(nativeGeometry)
+
+
 
         '============================================================
         ' Convert CAD Entities to Imported Entities
@@ -238,6 +277,8 @@ Public Module modFile
         '============================================================
         importedPart.CADGeometry.AddRange(
         _cadEntities)
+
+        importedPart.Geometry.AddRange(nativeGeometry)
 
         productionSheet.Parts.Add(
         importedPart)

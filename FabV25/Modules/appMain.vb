@@ -21,7 +21,7 @@ Public Module appMain
     Public CHR2 As String = Convert.ToChar(2)
     ' --- Class-level variables to store JSON data ---
     'Public machineTypesTable As JsonTable(Of MachineType)
-    Private machinesTable As JsonTable(Of Machine)
+    ' Private machinesTable As JsonTable(Of Machine)
     'Public machineAttributesTable As JsonTable(Of MachineAttribute)
     'Public machineAttributeTypesTable As JsonTable(Of MachineAttributeType)
     ' Track current machine ID
@@ -257,6 +257,18 @@ Public Module appMain
             End Set
         End Property
 
+        <JsonIgnore()>
+        Public Property Cost_Per_Unit As Decimal
+            Get
+                Dim v = GetValue("Cost Per Unit")
+                Return If(v IsNot Nothing, Convert.ToDecimal(v), 0D)
+            End Get
+            Set(value As Decimal)
+                SetValue("Cost Per Unit", value)
+            End Set
+        End Property
+
+
         ' Helper to get a value from Values
         Private Function GetValue(name As String) As Object
             Dim param = Values.FirstOrDefault(Function(p) p.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
@@ -281,27 +293,28 @@ Public Module appMain
         End Sub
     End Class
 
+
     Public Class MaterialSheetTypeConverter
         Inherits ExpandableObjectConverter
 
-        Public Overrides Function GetPropertiesSupported(context As ITypeDescriptorContext) As Boolean
+        Public Overrides Function GetPropertiesSupported(
+            context As ITypeDescriptorContext) As Boolean
+
             Return True
         End Function
 
-        Public Overrides Function GetProperties(context As ITypeDescriptorContext, value As Object, attributes() As Attribute) As PropertyDescriptorCollection
-            Dim sheet = TryCast(value, MaterialSheet)
-            If sheet Is Nothing Then Return MyBase.GetProperties(context, value, attributes)
+        Dim props As PropertyDescriptor() = {
+    New MaterialSheetPropertyDescriptor("Description", "Description"),
+    New MaterialSheetPropertyDescriptor("Length", "Length"),
+    New MaterialSheetPropertyDescriptor("Width", "Width"),
+    New MaterialSheetPropertyDescriptor("Thickness", "Thickness"),
+    New MaterialSheetPropertyDescriptor("Weight", "Weight"),
+    New MaterialSheetPropertyDescriptor("Cost_Per_Unit", "Cost Per Unit"),
+    New MaterialSheetPropertyDescriptor("Quantity", "Quantity")
+}
 
-            Dim props As New List(Of PropertyDescriptor)
-
-            ' Add all UDPs / Values
-            For Each param In sheet.Values
-                'props.Add(New MaterialParameterDescriptor(param))
-            Next
-
-            Return New PropertyDescriptorCollection(props.ToArray())
-        End Function
     End Class
+
 
     Public Class MaterialInventoryItem
         Public Property ID As Integer
@@ -316,29 +329,6 @@ Public Module appMain
         Public Property DataType As Integer     ' 0=String, 1=Integer, 7=Decimal, 4=Boolean, etc.
         Public Property DefaultValue As Object  ' Default value if none is set
         Public Property Visible As Boolean = True
-    End Class
-
-
-    Public Class JsonTable(Of T)
-        Public Property TableName As String
-        Public Property Columns As List(Of JsonColumn)
-        Public Property Rows As List(Of T)
-
-        Public Sub New()
-            Columns = New List(Of JsonColumn)()
-            Rows = New List(Of T)()
-        End Sub
-    End Class
-
-    '--------------------------------------
-    ' JsonColumn - describes a column/property in the JSON table
-    '--------------------------------------
-    Public Class JsonColumn
-        Public Property Field As String
-        Public Property Header As String
-        Public Property Visible As Boolean
-        ' DataType: 0=String, 1=Boolean, 2=Integer, 7=Double/Decimal, etc.
-        Public Property DataType As Integer
     End Class
 
     ' --- JSON Classes ---
