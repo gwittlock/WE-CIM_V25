@@ -346,6 +346,8 @@ Public Module modFile
 
         Try
 
+            Debug.WriteLine("Right before  New DXFFileSelectionDialog()")
+
             Using dlg As New DXFFileSelectionDialog()
 
                 If dlg.ShowDialog() <> DialogResult.OK Then
@@ -385,6 +387,7 @@ Public Module modFile
                     ' Tell the UI that a new file needs preparation.
                     ' The Paint event performs PrePareUI().
                     '-------------------------------------------------
+                    Debug.WriteLine("Tell the UI that a new file needs preparation.")
 
                     _DoPrepareUI = True
                     _DoDrawUI = False

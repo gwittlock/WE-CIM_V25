@@ -66,6 +66,11 @@
         Next
 
 
+        ApplyGeoFilterTolerance(
+    geometry,
+    layerSetup.FilterTolerance)
+
+
         Dim geoProfiles As List(Of GeoProfile) = BuildGeoProfiles(geometry, layerSetup.GapTolerance)
 
         Debug.WriteLine(
@@ -89,16 +94,11 @@
 
             If Not TypeOf entity Is GeoLine Then Continue For
 
-            Dim line As GeoLine = DirectCast(entity, GeoLine)
-
             Debug.WriteLine(
         "Line " & entity.ID &
-        " | Start Branch: " &
-        IsThreeWayJunction(
-            line.StartPoint, geometry, entity, gapTolerance) &
-        " | End Branch: " &
-        IsThreeWayJunction(
-            line.EndPoint, geometry, entity, gapTolerance))
+        " | In Branched Group: " &
+        IsInBranchedGroup(
+            entity, geometry, gapTolerance))
 
         Next
         '-----------------------------------------
@@ -112,12 +112,7 @@
                 Continue For
             End If
 
-            Dim line As GeoLine = DirectCast(entity, GeoLine)
-
-            If IsThreeWayJunction(
-    line.StartPoint, geometry, entity, gapTolerance) OrElse
-   IsThreeWayJunction(
-    line.EndPoint, geometry, entity, gapTolerance) Then
+            If IsInBranchedGroup(entity, geometry, gapTolerance) Then
 
                 Continue For
 
@@ -1078,6 +1073,109 @@
             End If
 
         Next
+
+        Return False
+
+    End Function
+
+
+    Private Sub ApplyGeoFilterTolerance(
+    geometry As List(Of GeoEntity),
+    filterTolerance As Double)
+
+        If geometry Is Nothing OrElse filterTolerance <= 0 Then
+            Return
+        End If
+
+        For i As Integer = geometry.Count - 1 To 0 Step -1
+
+            If Not TypeOf geometry(i) Is GeoLine Then
+                Continue For
+            End If
+
+            Dim line As GeoLine =
+                DirectCast(geometry(i), GeoLine)
+
+            Dim dx As Double =
+                line.EndPoint.X - line.StartPoint.X
+
+            Dim dy As Double =
+                line.EndPoint.Y - line.StartPoint.Y
+
+            Dim length As Double =
+                Math.Sqrt(dx * dx + dy * dy)
+
+            If length < filterTolerance Then
+                geometry.RemoveAt(i)
+            End If
+
+        Next
+
+    End Sub
+
+    Private Function IsInBranchedGroup(
+    startEntity As GeoEntity,
+    geometry As List(Of GeoEntity),
+    gapTolerance As Double) As Boolean
+
+        If startEntity Is Nothing OrElse geometry Is Nothing Then
+            Return False
+        End If
+
+        Dim visited As New HashSet(Of GeoEntity)()
+        Dim pending As New Queue(Of GeoEntity)()
+
+        pending.Enqueue(startEntity)
+        visited.Add(startEntity)
+
+        While pending.Count > 0
+
+            Dim current As GeoEntity = pending.Dequeue()
+
+            Dim currentStart As GeoPoint = Nothing
+            Dim currentEnd As GeoPoint = Nothing
+
+            If Not GetGeoEntityEndpoints(
+                current, currentStart, currentEnd) Then Continue While
+
+            If IsThreeWayJunction(
+                currentStart, geometry, current, gapTolerance) OrElse
+               IsThreeWayJunction(
+                currentEnd, geometry, current, gapTolerance) Then
+
+                Return True
+
+            End If
+
+            For Each candidate As GeoEntity In geometry
+
+                If visited.Contains(candidate) Then Continue For
+
+                If Not TypeOf candidate Is GeoLine Then Continue For
+
+                If Not SameGeoAssociation(current, candidate) Then
+                    Continue For
+                End If
+
+                Dim candidateStart As GeoPoint = Nothing
+                Dim candidateEnd As GeoPoint = Nothing
+
+                If Not GetGeoEntityEndpoints(
+                    candidate, candidateStart, candidateEnd) Then Continue For
+
+                If PointsWithinGap(currentStart, candidateStart, gapTolerance) OrElse
+                   PointsWithinGap(currentStart, candidateEnd, gapTolerance) OrElse
+                   PointsWithinGap(currentEnd, candidateStart, gapTolerance) OrElse
+                   PointsWithinGap(currentEnd, candidateEnd, gapTolerance) Then
+
+                    visited.Add(candidate)
+                    pending.Enqueue(candidate)
+
+                End If
+
+            Next
+
+        End While
 
         Return False
 
