@@ -21,8 +21,11 @@
     " | CAD Layer: " &
     cad.LayerName)
 
-            If Not TypeOf cad Is CadEntity.CadLine Then
+            If Not TypeOf cad Is CadEntity.CadLine AndAlso
+                Not TypeOf cad Is CadEntity.CadArc Then
+
                 Continue For
+
             End If
 
             Dim directive = FindLayerDirective(
@@ -37,14 +40,25 @@
         directive.CAMLayer,
         System.Drawing.Color.FromArgb(directive.Color),
         layers)
+            If TypeOf cad Is CadEntity.CadLine Then
 
-            Dim line As GeoLine = ConvertCadLine(
+                Dim line As GeoLine = ConvertCadLine(
         DirectCast(cad, CadEntity.CadLine),
         layer,
         points)
 
-            geometry.Add(line)
+                geometry.Add(line)
 
+            ElseIf TypeOf cad Is CadEntity.CadArc Then
+
+                Dim arc As GeoArc = ConvertCadArc(
+        DirectCast(cad, CadEntity.CadArc),
+        layer,
+        points)
+
+                geometry.Add(arc)
+
+            End If
             Debug.WriteLine(
                 "CAD Layer: " & cad.LayerName &
                 " → CAM Layer: " & layer.Name)
@@ -52,8 +66,7 @@
         Next
 
 
-        Dim geoProfiles As List(Of GeoProfile) =
-    BuildGeoProfiles(geometry)
+        Dim geoProfiles As List(Of GeoProfile) = BuildGeoProfiles(geometry, layerSetup.GapTolerance)
 
         Debug.WriteLine(
     "Native GeoProfile Count: " & geoProfiles.Count)
@@ -63,7 +76,8 @@
     End Function
 
     Private Function BuildGeoProfiles(
-    geometry As List(Of GeoEntity)) As List(Of GeoProfile)
+    geometry As List(Of GeoEntity),
+    gapTolerance As Double) As List(Of GeoProfile)
 
         Dim profiles As New List(Of GeoProfile)()
 
@@ -71,6 +85,22 @@
             Return profiles
         End If
 
+        For Each entity As GeoEntity In geometry
+
+            If Not TypeOf entity Is GeoLine Then Continue For
+
+            Dim line As GeoLine = DirectCast(entity, GeoLine)
+
+            Debug.WriteLine(
+        "Line " & entity.ID &
+        " | Start Branch: " &
+        IsThreeWayJunction(
+            line.StartPoint, geometry, entity, gapTolerance) &
+        " | End Branch: " &
+        IsThreeWayJunction(
+            line.EndPoint, geometry, entity, gapTolerance))
+
+        Next
         '-----------------------------------------
         ' Step 1 - Create an initial profile
         ' for each native line.
@@ -81,6 +111,18 @@
             If Not TypeOf entity Is GeoLine Then
                 Continue For
             End If
+
+            Dim line As GeoLine = DirectCast(entity, GeoLine)
+
+            If IsThreeWayJunction(
+    line.StartPoint, geometry, entity, gapTolerance) OrElse
+   IsThreeWayJunction(
+    line.EndPoint, geometry, entity, gapTolerance) Then
+
+                Continue For
+
+            End If
+
 
             Dim profile As New GeoProfile With {
             .ID = profiles.Count + 1,
@@ -111,8 +153,9 @@
             While j < profiles.Count
 
                 If TryMergeGeoProfiles(
-                profiles(i),
-                profiles(j)) Then
+                        profiles(i),
+                        profiles(j),
+                        gapTolerance) Then
 
                     profiles(i).Entities.AddRange(
                     profiles(j).Entities)
@@ -144,7 +187,7 @@
         For Each profile As GeoProfile In profiles
 
             Dim endpoints As List(Of GeoPoint) =
-            GetProfileEndpoints(profile)
+            GetProfileEndpoints(profile, gapTolerance)
 
             profile.IsClosed =
             (profile.Entities.Count >= 3 AndAlso
@@ -152,17 +195,13 @@
 
         Next
 
-
-
         For Each profile As GeoProfile In profiles
-
             Dim ordered As Boolean =
-        OrderGeoProfileSegments(profile)
-
+    OrderGeoProfileSegments(profile, gapTolerance)
             Dim valid As Boolean = False
 
             If ordered Then
-                valid = ValidateGeoProfileSegments(profile)
+                valid = ValidateGeoProfileSegments(profile, gapTolerance)
             End If
 
             Debug.WriteLine(
@@ -190,6 +229,16 @@
             " | Signed Area: " & signedArea &
             " | Direction: " & direction)
 
+
+                Dim bounds As RectangleF =
+    GetGeoProfileBounds(profile)
+
+                Debug.WriteLine(
+                    "GeoProfile " & profile.ID &
+                    " | Bounds X: " & bounds.X &
+                    " | Y: " & bounds.Y &
+                    " | Width: " & bounds.Width &
+                    " | Height: " & bounds.Height)
             End If
 
         Next
@@ -201,7 +250,7 @@
         For Each profile As GeoProfile In profiles
 
             Dim endpoints As List(Of GeoPoint) =
-            GetProfileEndpoints(profile)
+            GetProfileEndpoints(profile, gapTolerance)
 
             Debug.WriteLine(
             "GeoProfile " & profile.ID &
@@ -227,43 +276,66 @@
     End Function
 
     Private Function GetProfileEndpoints(
-    profile As GeoProfile) As List(Of GeoPoint)
+    profile As GeoProfile,
+    gapTolerance As Double) As List(Of GeoPoint)
 
-        Dim counts As New Dictionary(Of GeoPoint, Integer)()
+        Dim allEndpoints As New List(Of GeoPoint)
+
+        If profile Is Nothing Then
+            Return allEndpoints
+        End If
 
         For Each entity As GeoEntity In profile.Entities
 
-            If Not TypeOf entity Is GeoLine Then
-                Continue For
+            Dim startPoint As GeoPoint = Nothing
+            Dim endPoint As GeoPoint = Nothing
+
+            If GetGeoEntityEndpoints(
+            entity, startPoint, endPoint) Then
+
+                allEndpoints.Add(startPoint)
+                allEndpoints.Add(endPoint)
+
             End If
-
-            Dim line As GeoLine = DirectCast(entity, GeoLine)
-
-            For Each pt As GeoPoint In {
-            line.StartPoint,
-            line.EndPoint
-        }
-
-                If Not counts.ContainsKey(pt) Then
-                    counts(pt) = 0
-                End If
-
-                counts(pt) += 1
-
-            Next
 
         Next
 
-        Return counts.
-        Where(Function(item) item.Value = 1).
-        Select(Function(item) item.Key).
-        ToList()
+        Dim freeEndpoints As New List(Of GeoPoint)
+
+        For i As Integer = 0 To allEndpoints.Count - 1
+
+            Dim connectionCount As Integer = 0
+
+            For j As Integer = 0 To allEndpoints.Count - 1
+
+                If i = j Then Continue For
+
+                If PointsWithinGap(
+                allEndpoints(i),
+                allEndpoints(j),
+                gapTolerance) Then
+
+                    connectionCount += 1
+
+                End If
+
+            Next
+
+            If connectionCount = 0 Then
+                freeEndpoints.Add(allEndpoints(i))
+            End If
+
+        Next
+
+        Return freeEndpoints
 
     End Function
 
+
     Private Function CanMergeProfiles(
     profile1 As GeoProfile,
-    profile2 As GeoProfile) As Boolean
+    profile2 As GeoProfile,
+    gapTolerance As Double) As Boolean
 
         If profile1 Is Nothing OrElse profile2 Is Nothing Then
             Return False
@@ -321,17 +393,21 @@
 
     Private Function TryMergeGeoProfiles(
     profile1 As GeoProfile,
-    profile2 As GeoProfile) As Boolean
+    profile2 As GeoProfile,
+    gapTolerance As Double) As Boolean
 
-        If Not CanMergeProfiles(profile1, profile2) Then
+        If Not CanMergeProfiles(
+    profile1,
+    profile2,
+    gapTolerance) Then
             Return False
         End If
 
         Dim endpoints1 As List(Of GeoPoint) =
-        GetProfileEndpoints(profile1)
+        GetProfileEndpoints(profile1, gapTolerance)
 
         Dim endpoints2 As List(Of GeoPoint) =
-        GetProfileEndpoints(profile2)
+        GetProfileEndpoints(profile2, gapTolerance)
 
         If endpoints1.Count <> 2 OrElse
        endpoints2.Count <> 2 Then
@@ -342,9 +418,10 @@
 
             For Each point2 As GeoPoint In endpoints2
 
-                If Object.ReferenceEquals(point1, point2) Then
+                If PointsWithinGap(point1, point2, gapTolerance) Then
                     Return True
                 End If
+
 
             Next
 
@@ -479,40 +556,127 @@
 
     End Function
 
+
+
+    Private Function ConvertCadArc(
+    cad As CadEntity.CadArc,
+    layer As Layer,
+    points As Dictionary(Of (Double, Double), GeoPoint)) As GeoArc
+
+        Dim startRadians As Double =
+        CDbl(cad.StartAngle) * Math.PI / 180.0
+
+        Dim endRadians As Double =
+        CDbl(cad.EndAngle) * Math.PI / 180.0
+
+        Dim centerX As Double = CDbl(cad.Center.X)
+        Dim centerY As Double = CDbl(cad.Center.Y)
+        Dim radius As Double = CDbl(cad.Radius)
+
+        Dim centerPoint As GeoPoint =
+        GetOrCreatePoint(centerX, centerY, points)
+
+        Dim startPoint As GeoPoint =
+        GetOrCreatePoint(
+            centerX + radius * Math.Cos(startRadians),
+            centerY + radius * Math.Sin(startRadians),
+            points)
+
+        Dim endPoint As GeoPoint =
+        GetOrCreatePoint(
+            centerX + radius * Math.Cos(endRadians),
+            centerY + radius * Math.Sin(endRadians),
+            points)
+
+        Dim arc As New GeoArc With {
+        .Center = centerPoint,
+        .Radius = radius,
+        .StartAngle = CDbl(cad.StartAngle),
+        .EndAngle = CDbl(cad.EndAngle),
+        .IsClockwise = cad.IsClockwise,
+        .StartPoint = startPoint,
+        .EndPoint = endPoint,
+        .Association = layer
+    }
+
+        Return arc
+
+    End Function
+
+
     Private Function GetSegmentEndPoint(
     segment As GeoProfileSegment) As GeoPoint
 
-        Dim line As GeoLine =
-            TryCast(segment.Entity, GeoLine)
-
-        If line Is Nothing Then Return Nothing
-
-        If segment.Reversed Then
-            Return line.StartPoint
+        If segment Is Nothing OrElse segment.Entity Is Nothing Then
+            Return Nothing
         End If
 
-        Return line.EndPoint
+        If TypeOf segment.Entity Is GeoLine Then
+
+            Dim line As GeoLine =
+            DirectCast(segment.Entity, GeoLine)
+
+            If segment.Reversed Then
+                Return line.StartPoint
+            End If
+
+            Return line.EndPoint
+
+        ElseIf TypeOf segment.Entity Is GeoArc Then
+
+            Dim arc As GeoArc =
+            DirectCast(segment.Entity, GeoArc)
+
+            If segment.Reversed Then
+                Return arc.StartPoint
+            End If
+
+            Return arc.EndPoint
+
+        End If
+
+        Return Nothing
 
     End Function
 
     Private Function GetSegmentStartPoint(
     segment As GeoProfileSegment) As GeoPoint
 
-        Dim line As GeoLine =
-            TryCast(segment.Entity, GeoLine)
-
-        If line Is Nothing Then Return Nothing
-
-        If segment.Reversed Then
-            Return line.EndPoint
+        If segment Is Nothing OrElse segment.Entity Is Nothing Then
+            Return Nothing
         End If
 
-        Return line.StartPoint
+        If TypeOf segment.Entity Is GeoLine Then
+
+            Dim line As GeoLine =
+            DirectCast(segment.Entity, GeoLine)
+
+            If segment.Reversed Then
+                Return line.EndPoint
+            End If
+
+            Return line.StartPoint
+
+        ElseIf TypeOf segment.Entity Is GeoArc Then
+
+            Dim arc As GeoArc =
+            DirectCast(segment.Entity, GeoArc)
+
+            If segment.Reversed Then
+                Return arc.EndPoint
+            End If
+
+            Return arc.StartPoint
+
+        End If
+
+        Return Nothing
 
     End Function
 
     Private Function OrderGeoProfileSegments(
-        profile As GeoProfile) As Boolean
+    profile As GeoProfile,
+    gapTolerance As Double) As Boolean
 
         If profile Is Nothing OrElse
            profile.Entities.Count = 0 Then
@@ -532,7 +696,10 @@
         If Not profile.IsClosed Then
 
             Dim endpoints As List(Of GeoPoint) =
-        GetProfileEndpoints(profile)
+        GetProfileEndpoints(profile, gapTolerance)
+
+            Debug.WriteLine(
+    "ORDER CHECK: Free Endpoints = " & endpoints.Count)
 
             If endpoints.Count <> 2 Then Return False
 
@@ -586,15 +753,15 @@
 
                 If line Is Nothing Then Continue For
 
-                If Object.ReferenceEquals(
-                    line.StartPoint, currentPoint) Then
+                If PointsWithinGap(
+    line.StartPoint, currentPoint, gapTolerance) Then
 
                     nextIndex = i
                     reverseNext = False
                     Exit For
 
-                ElseIf Object.ReferenceEquals(
-                    line.EndPoint, currentPoint) Then
+                ElseIf PointsWithinGap(
+    line.EndPoint, currentPoint, gapTolerance) Then
 
                     nextIndex = i
                     reverseNext = True
@@ -625,7 +792,8 @@
 
 
     Private Function ValidateGeoProfileSegments(
-    profile As GeoProfile) As Boolean
+    profile As GeoProfile,
+    gapTolerance As Double) As Boolean
 
         If profile Is Nothing OrElse
            profile.Segments.Count = 0 Then
@@ -644,7 +812,9 @@
             Dim nextStart As GeoPoint =
                 GetSegmentStartPoint(profile.Segments(i + 1))
 
-            If Not Object.ReferenceEquals(endPoint, nextStart) Then
+            If Not PointsWithinGap(
+    endPoint, nextStart, gapTolerance) Then
+
                 Return False
             End If
 
@@ -706,5 +876,212 @@
         Return area / 2.0
 
     End Function
+
+    Private Function GetGeoProfileBounds(
+    profile As GeoProfile) As RectangleF
+
+        If profile Is Nothing OrElse
+           profile.Segments.Count = 0 Then
+
+            Return RectangleF.Empty
+
+        End If
+
+        Dim minX As Double = Double.MaxValue
+        Dim minY As Double = Double.MaxValue
+        Dim maxX As Double = Double.MinValue
+        Dim maxY As Double = Double.MinValue
+
+        For Each segment As GeoProfileSegment In profile.Segments
+
+            Dim startPt As GeoPoint =
+                GetSegmentStartPoint(segment)
+
+            Dim endPt As GeoPoint =
+                GetSegmentEndPoint(segment)
+
+            If startPt Is Nothing OrElse endPt Is Nothing Then
+                Continue For
+            End If
+
+            minX = Math.Min(minX, Math.Min(startPt.X, endPt.X))
+            minY = Math.Min(minY, Math.Min(startPt.Y, endPt.Y))
+
+            maxX = Math.Max(maxX, Math.Max(startPt.X, endPt.X))
+            maxY = Math.Max(maxY, Math.Max(startPt.Y, endPt.Y))
+
+        Next
+
+        If minX = Double.MaxValue Then
+            Return RectangleF.Empty
+        End If
+
+        Return New RectangleF(
+            CSng(minX),
+            CSng(minY),
+            CSng(maxX - minX),
+            CSng(maxY - minY))
+
+    End Function
+
+    Private Function PointsWithinGap(
+    point1 As GeoPoint,
+    point2 As GeoPoint,
+    gapTolerance As Double) As Boolean
+
+        If point1 Is Nothing OrElse point2 Is Nothing Then
+            Return False
+        End If
+
+        If gapTolerance < 0 Then
+            Return False
+        End If
+
+        Dim dx As Double = point1.X - point2.X
+        Dim dy As Double = point1.Y - point2.Y
+
+        Dim distanceSquared As Double =
+            dx * dx + dy * dy
+
+        Return distanceSquared <=
+            gapTolerance * gapTolerance
+
+    End Function
+
+
+    Private Function GetGeoEntityEndpoints(
+    entity As GeoEntity,
+    ByRef startPoint As GeoPoint,
+    ByRef endPoint As GeoPoint) As Boolean
+
+        startPoint = Nothing
+        endPoint = Nothing
+
+        If TypeOf entity Is GeoLine Then
+
+            Dim line As GeoLine = DirectCast(entity, GeoLine)
+
+            startPoint = line.StartPoint
+            endPoint = line.EndPoint
+
+        ElseIf TypeOf entity Is GeoArc Then
+
+            Dim arc As GeoArc = DirectCast(entity, GeoArc)
+
+            startPoint = arc.StartPoint
+            endPoint = arc.EndPoint
+
+        Else
+            Return False
+        End If
+
+        Return startPoint IsNot Nothing AndAlso
+           endPoint IsNot Nothing
+
+    End Function
+
+
+    Private Function FindNextGeoCurve(
+    currentPoint As GeoPoint,
+    remaining As List(Of GeoEntity),
+    gapTolerance As Double,
+    ByRef reverseNext As Boolean) As GeoEntity
+
+        reverseNext = False
+
+        If currentPoint Is Nothing OrElse
+       remaining Is Nothing Then
+            Return Nothing
+        End If
+
+        Dim bestEntity As GeoEntity = Nothing
+        Dim bestDistanceSquared As Double = Double.MaxValue
+
+        For Each entity As GeoEntity In remaining
+
+            Dim startPoint As GeoPoint = Nothing
+            Dim endPoint As GeoPoint = Nothing
+
+            If Not GetGeoEntityEndpoints(
+            entity, startPoint, endPoint) Then
+                Continue For
+            End If
+
+            Dim candidatePoints As GeoPoint() = {
+            startPoint, endPoint
+        }
+
+            For endpointIndex As Integer = 0 To 1
+
+                Dim pt As GeoPoint = candidatePoints(endpointIndex)
+
+                If Not PointsWithinGap(
+                currentPoint, pt, gapTolerance) Then
+                    Continue For
+                End If
+
+                Dim dx As Double = currentPoint.X - pt.X
+                Dim dy As Double = currentPoint.Y - pt.Y
+
+                Dim distanceSquared As Double =
+                dx * dx + dy * dy
+
+                If distanceSquared < bestDistanceSquared Then
+
+                    bestDistanceSquared = distanceSquared
+                    bestEntity = entity
+
+                    reverseNext = (endpointIndex = 1)
+
+                End If
+
+            Next
+
+        Next
+
+        Return bestEntity
+
+    End Function
+
+    Private Function IsThreeWayJunction(
+    targetPoint As GeoPoint,
+    geometry As List(Of GeoEntity),
+    sourceEntity As GeoEntity,
+    gapTolerance As Double) As Boolean
+
+        If targetPoint Is Nothing OrElse
+           geometry Is Nothing OrElse
+           sourceEntity Is Nothing Then Return False
+
+        Dim connectionCount As Integer = 0
+
+        For Each entity As GeoEntity In geometry
+
+            If Not TypeOf entity Is GeoLine Then Continue For
+
+            If Not SameGeoAssociation(sourceEntity, entity) Then
+                Continue For
+            End If
+
+            Dim startPoint As GeoPoint = Nothing
+            Dim endPoint As GeoPoint = Nothing
+
+            If Not GetGeoEntityEndpoints(
+                entity, startPoint, endPoint) Then Continue For
+
+            If PointsWithinGap(targetPoint, startPoint, gapTolerance) OrElse
+               PointsWithinGap(targetPoint, endPoint, gapTolerance) Then
+
+                connectionCount += 1
+
+                If connectionCount >= 3 Then Return True
+            End If
+
+        Next
+
+        Return False
+
+    End Function
+
 
 End Module

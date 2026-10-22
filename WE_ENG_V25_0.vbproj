@@ -346,6 +346,7 @@
     <Compile Include="Classes\DynamicProperty.vb" />
     <Compile Include="Classes\DynamicPropertyBag.vb" />
     <Compile Include="Classes\DynamicToolAttributes.vb" />
+    <Compile Include="Classes\FindNextGeoCurve.vb" />
     <Compile Include="Classes\GeoArc,vb.vb" />
     <Compile Include="Classes\GeoCircle.vb" />
     <Compile Include="Classes\GeoEntity.vb" />
