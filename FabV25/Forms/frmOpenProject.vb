@@ -407,7 +407,7 @@ Public Class frmOpenProject
     End Sub
 
     Private Sub frmOpenProject_Shown(sender As Object, e As EventArgs) Handles Me.Shown
-        InitMaterialCombo()
+        MatListTree1.SelectMaterialByID(nMyMaterialID)
     End Sub
 
     Private Sub popupContainerEdit1_EditValueChanged(sender As Object, e As EventArgs) Handles popupContainerEdit1.EditValueChanged

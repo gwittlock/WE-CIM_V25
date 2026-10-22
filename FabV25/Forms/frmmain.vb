@@ -49,6 +49,8 @@ Imports System.Runtime.CompilerServices
 Public Class frmMain
     Inherits RibbonForm
 
+    Private _materialDisplayColor As Color = System.Drawing.Color.LightGray
+
     ' Application lifecycle
     Private _uiInitialized As Boolean = False
 
@@ -282,7 +284,12 @@ Public Class frmMain
             statusDate.Caption = "Date: " & Now.ToString("MMMM dd, yyyy")
             statusTime.Caption = "Time: " & Now.ToString("hh:mm tt")
 
-        
+            Dim savedMaterialColor As Integer = CInt(RegGetString("Preferences\ViewOptions", "MaterialColor", _materialDisplayColor.ToArgb()))
+
+            _materialDisplayColor = System.Drawing.Color.FromArgb(savedMaterialColor)
+            bbiMaterialColor.EditValue = _materialDisplayColor
+
+
 
             Logging.Log("AppState loaded successfully.")
 
@@ -300,29 +307,6 @@ Public Class frmMain
     Private Sub iOpen_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iOpen.ItemClick
 
         FileOpen()
-
-
-
-        ' Open DXF and import as CamProfiles
-        '_importedProfiles = FileOpen()  ' returns List(Of CamProfile)
-        ' FileOpen()
-
-        'If _importedProfiles IsNot Nothing AndAlso _importedProfiles.Count > 0 Then
-        '    Flatten all CadEntities from profiles into _importedEntities for legacy code
-        '    _importedEntities = New List(Of ImportedEntity)
-
-        '    For Each profile In _importedProfiles
-        '        For Each cad In profile.Entities
-        '            _importedEntities.Add(ConvertCadEntityToImportedEntity(cad, _selectedLayerSetup))
-        '        Next
-        '    Next
-
-        '' Refresh the drawing panel
-        'pnlPicmodeler.Invalidate()
-        ''End If
-
-        '' Ensure view is updated
-        'ViewFull()
     End Sub
 
 
@@ -817,7 +801,9 @@ Public Class frmMain
         Dim bl As PointF = WorldToScreen(0, 0, myTransform, panelHeight)
         Dim tr As PointF = WorldToScreen(sheetWidth, sheetHeight, myTransform, panelHeight)
         Dim sheetRect = HelperFunctions.RectFromPoints(bl, tr)
-        g.FillRectangle(Brushes.LightGray, sheetRect)
+        Using materialBrush As New SolidBrush(_materialDisplayColor)
+            g.FillRectangle(materialBrush, sheetRect)
+        End Using
         g.DrawRectangle(Pens.Black, sheetRect.X, sheetRect.Y, sheetRect.Width, sheetRect.Height)
 
         ' --- Draw workzones ---
@@ -3756,17 +3742,6 @@ Public Class frmMain
 
     End Sub
 
-    Private Sub bbCreatePoint_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbCreatePoint.ItemClick
-
-    End Sub
-
-    Private Sub tbSelect_Lines_DragOver(sender As Object, e As DragEventArgs) Handles tbSelect_Lines.DragOver
-
-    End Sub
-
-    Private Sub pnlPicmodeler_Enter(sender As Object, e As EventArgs) Handles pnlPicmodeler.Enter
-
-    End Sub
     Private Sub pnlPicmodeler_Resize(sender As Object, e As EventArgs) Handles pnlPicmodeler.Resize
 
         ' Keep the legacy panel dimensions synchronized
@@ -3818,7 +3793,30 @@ Public Class frmMain
     Private Sub BarButtonItem19_ItemClick(sender As Object, e As ItemClickEventArgs) Handles BarButtonItem19.ItemClick
         ToolShapeTest.ShowDialog(Me)
     End Sub
+    Private Sub bbiMaterialColor_ItemClick(sender As Object, e As ItemClickEventArgs) _
+    Handles bbiMaterialColor.ItemClick
 
+        If bbiMaterialColor.EditValue Is Nothing Then Exit Sub
+
+        _materialDisplayColor = CType(bbiMaterialColor.EditValue, Color)
+        Invalidate()
+
+    End Sub
+    Private Sub bbiMaterialColor_EditValueChanged(sender As Object, e As EventArgs) Handles bbiMaterialColor.EditValueChanged
+
+        If bbiMaterialColor.EditValue Is Nothing Then Exit Sub
+
+        _materialDisplayColor = CType(bbiMaterialColor.EditValue, Color)
+
+        Call RegPutString(
+        "Preferences\ViewOptions",
+        "MaterialColor",
+        _materialDisplayColor.ToArgb()
+    )
+
+        Invalidate()
+
+    End Sub
 
 
 End Class

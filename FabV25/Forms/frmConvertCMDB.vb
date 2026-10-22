@@ -25,11 +25,13 @@ Public Class frmConvertCMDB
 
     Private Sub BtnConvertCMDB_Click(sender As Object, e As EventArgs) Handles btnConvertCMDB.Click
 
-        ExportAllTables(txtCMDBFile.Text, txtDataFolder.Text)
+        If Not ExportAllTables(txtCMDBFile.Text, txtDataFolder.Text) Then
+            Return
+        End If
+
         AppData.LoadAllJson()
         '  ExportMaterialJson(txtCMDBFile.Text, txtDataFolder.Text)
     End Sub
-
 
 
     ' Helper: Convert OleDb data type number to readable name
@@ -195,6 +197,6 @@ Public Class frmConvertCMDB
     End Sub
 
     Private Sub frmConvertCMDB_Load(sender As Object, e As EventArgs) Handles Me.Load
-        txtDataFolder.Text = "C:\Program Files (x86)\WE-CIM\24.0\Data"
+        txtDataFolder.Text = "C:\Program Files (x86)\WE-CIM\25.0\Data"
     End Sub
 End Class
