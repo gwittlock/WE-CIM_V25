@@ -158,6 +158,7 @@ Public Class frmMain
     Private WithEvents entityTip As New ToolTip()
     Private lastHoverEntity As CadEntity = Nothing
     Private _hoverEntity As CadEntity = Nothing
+    Private _hoverMouseWorld As PointF
     Private _modelerToolTip As New ToolTip() With {
     .ShowAlways = False,
     .InitialDelay = 400,
@@ -487,6 +488,8 @@ Public Class frmMain
 
     ' Central overlay routine
     Private Sub DrawOverlay(g As Graphics)
+        Debug.WriteLine("DRAW OVERLAY CALLED")
+
         ' --------------------------
         ' 1) Hot-Dot
         ' --------------------------
@@ -509,6 +512,11 @@ Public Class frmMain
         If _windowSelecting Then
             DrawRubberBand(_windowStart, _windowEnd, g)
         End If
+
+        ' 4) Hover direction arrow
+        ' --------------------------
+        DrawHoverLineArrow(g)
+
     End Sub
 
     ''' <summary>
@@ -1721,6 +1729,7 @@ Public Class frmMain
         ' 2) Update model coordinates display
         ' --------------------------
         Dim modelPt As PointF = ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height)
+        _hoverMouseWorld = modelPt
         statusLocation.Caption = $"Location: X={modelPt.X:0.###}, Y={modelPt.Y:0.###}"
 
         ' 3) ViewWindow rubber-band
@@ -3188,6 +3197,7 @@ Public Class frmMain
             g.DrawRectangle(Pens.Black, Rectangle.Round(r))
             g.DrawString(text, f, fg, r.Left + 3, r.Top + 2)
         End Using
+        DrawHoverLineArrow(g)
 
     End Sub
     Private Sub DrawSnapIndicator(
@@ -3818,6 +3828,109 @@ Public Class frmMain
 
     End Sub
 
+    Private Function GetHoverLineArrow(ByRef arrowPoint As PointF,
+                                  ByRef arrowDirection As PointF) As Boolean
+
+        Dim line As CadLine = TryCast(_hoverEntity, CadLine)
+
+        If line Is Nothing Then Return False
+
+        Dim dx As Double = line.EndPoint.X - line.StartPoint.X
+        Dim dy As Double = line.EndPoint.Y - line.StartPoint.Y
+
+        Dim lengthSquared As Double = dx * dx + dy * dy
+
+        If lengthSquared <= 0.000000000001 Then Return False
+
+        ' Project the mouse onto the line segment.
+        Dim mx As Double = _hoverMouseWorld.X - line.StartPoint.X
+        Dim my As Double = _hoverMouseWorld.Y - line.StartPoint.Y
+
+        Dim t As Double = (mx * dx + my * dy) / lengthSquared
+
+        ' Keep the arrow on the line segment.
+        t = Math.Max(0.0, Math.Min(1.0, t))
+
+        arrowPoint = New PointF(
+            CSng(line.StartPoint.X + t * dx),
+            CSng(line.StartPoint.Y + t * dy)
+        )
+
+        ' Normalize the direction vector.
+        Dim length As Double = Math.Sqrt(lengthSquared)
+
+        arrowDirection = New PointF(
+            CSng(dx / length),
+            CSng(dy / length)
+        )
+
+        Return True
+
+    End Function
+
+    Private Sub DrawHoverLineArrow(g As Graphics)
+
+        Dim arrowPoint As PointF
+        Dim arrowDirection As PointF
+
+        Debug.WriteLine("ENTERED DrawHoverLineArrow")
+        If _hoverEntity Is Nothing Then
+            Debug.WriteLine("ARROW: No hovered entity")
+        Else
+            Debug.WriteLine("ARROW: " & _hoverEntity.GetType().Name)
+        End If
+
+
+        If Not GetHoverLineArrow(arrowPoint, arrowDirection) Then Return
+
+        ' Convert arrow location to screen coordinates.
+        Dim screenPt As PointF = WorldToScreen(
+            arrowPoint.X,
+            arrowPoint.Y,
+            myTransform,
+            pnlPicmodeler.ClientSize.Height)
+
+        ' Convert world direction to screen direction.
+        ' Screen Y is inverted.
+        Dim dx As Single = arrowDirection.X
+        Dim dy As Single = -arrowDirection.Y
+
+        Dim arrowLength As Single = 14.0F
+        Dim headLength As Single = 5.0F
+        Dim headWidth As Single = 4.0F
+
+        Dim tip As New PointF(
+            screenPt.X + dx * arrowLength / 2,
+            screenPt.Y + dy * arrowLength / 2)
+
+        Dim tail As New PointF(
+            screenPt.X - dx * arrowLength / 2,
+            screenPt.Y - dy * arrowLength / 2)
+
+        Dim basePt As New PointF(
+            tip.X - dx * headLength,
+            tip.Y - dy * headLength)
+
+        Dim perpX As Single = -dy
+        Dim perpY As Single = dx
+
+        Dim wing1 As New PointF(
+            basePt.X + perpX * headWidth,
+            basePt.Y + perpY * headWidth)
+
+        Dim wing2 As New PointF(
+            basePt.X - perpX * headWidth,
+            basePt.Y - perpY * headWidth)
+
+        Using arrowPen As New Pen(System.Drawing.Color.Yellow, 2.0F)
+
+            g.DrawLine(arrowPen, tail, tip)
+            g.DrawLine(arrowPen, tip, wing1)
+            g.DrawLine(arrowPen, tip, wing2)
+
+        End Using
+
+    End Sub
 
 End Class
 

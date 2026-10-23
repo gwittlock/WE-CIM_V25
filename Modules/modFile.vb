@@ -215,13 +215,19 @@ Public Module modFile
         '============================================================
         ' TEST - Native Part Geometry Conversion
         '============================================================
-        Dim nativeGeometry As List(Of GeoEntity) =
+        Dim nativePart As PartGeometry =
     PartGeometryBuilder.CreatePartGeometry(
         _cadEntities,
         _selectedLayerSetup)
 
+
+        Dim nativeGeometry As List(Of GeoEntity) = nativePart.Entities
+
         Debug.WriteLine(
-    "Native Geometry Count: " & nativeGeometry.Count)
+    "Native Geometry Count: " & nativePart.Entities.Count)
+
+        Debug.WriteLine(
+    "Native Profile Count: " & nativePart.Profiles.Count)
 
         If nativeGeometry.Count = 2 AndAlso
    TypeOf nativeGeometry(0) Is GeoLine AndAlso

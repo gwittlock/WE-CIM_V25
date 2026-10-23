@@ -393,6 +393,7 @@
     <Compile Include="Classes\MaterialSheet.vb" />
     <Compile Include="Classes\MaterialSheetPropertyDescriptor.vb" />
     <Compile Include="Classes\Part.vb" />
+    <Compile Include="Classes\PartGeometry.vb" />
     <Compile Include="Classes\Pattern.vb" />
     <Compile Include="Classes\PierceHoleFeature.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
