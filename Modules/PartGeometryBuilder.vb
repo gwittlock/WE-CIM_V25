@@ -65,13 +65,12 @@
 
         Next
 
+        ApplyGeoFilterTolerance(geometry, layerSetup.FilterTolerance)
 
-        ApplyGeoFilterTolerance(
-    geometry,
-    layerSetup.FilterTolerance)
+        ApplyGeoCleanTolerance(geometry, layerSetup.CleanTolerance)
 
-
-        Dim geoProfiles As List(Of GeoProfile) = BuildGeoProfiles(geometry, layerSetup.GapTolerance)
+        Dim geoProfiles As List(Of GeoProfile) =
+    BuildGeoProfiles(geometry, layerSetup.GapTolerance)
 
         Debug.WriteLine(
     "Native GeoProfile Count: " & geoProfiles.Count)
@@ -1105,8 +1104,15 @@
             Dim length As Double =
                 Math.Sqrt(dx * dx + dy * dy)
 
-            If length < filterTolerance Then
+            If length = 0 OrElse
+    (filterTolerance > 0 AndAlso length < filterTolerance) Then
+
+                Debug.WriteLine(
+                    "FILTER REMOVED LINE: Length = " &
+                    length.ToString("F6"))
+
                 geometry.RemoveAt(i)
+
             End If
 
         Next
@@ -1180,6 +1186,123 @@
         Return False
 
     End Function
+
+
+    Private Sub ApplyGeoCleanTolerance(
+    geometry As List(Of GeoEntity),
+    cleanTol As Double)
+
+        Debug.WriteLine("========== ENTERING GEO CLEAN ==========")
+
+        Debug.WriteLine(
+    "Geometry Count = " &
+    If(geometry Is Nothing, -1, geometry.Count))
+
+        Debug.WriteLine(
+    "Clean Tolerance = " & cleanTol)
+
+
+        If geometry Is Nothing OrElse
+           geometry.Count < 2 OrElse
+           cleanTol <= 0 Then Return
+
+        Dim lines As List(Of GeoLine) =
+            geometry.OfType(Of GeoLine)().ToList()
+
+        Dim usedPoints As New HashSet(Of GeoPoint)()
+
+        For i As Integer = 0 To lines.Count - 2
+
+            Dim line1 As GeoLine = lines(i)
+
+            For j As Integer = i + 1 To lines.Count - 1
+
+                Dim line2 As GeoLine = lines(j)
+
+                Debug.WriteLine(
+    "CLEAN ASSOCIATION CHECK: " &
+    SameGeoAssociation(line1, line2).ToString())
+
+
+                If Not SameGeoAssociation(line1, line2) Then
+                    Continue For
+                End If
+
+                Dim points1 As GeoPoint() = {
+                    line1.StartPoint, line1.EndPoint
+                }
+
+                Dim points2 As GeoPoint() = {
+                    line2.StartPoint, line2.EndPoint
+                }
+
+                For Each p1 As GeoPoint In points1
+                    For Each p2 As GeoPoint In points2
+
+                        Debug.WriteLine(
+    "CLEAN POINT CHECK: " &
+    "P1 Nothing=" & (p1 Is Nothing).ToString() &
+    " | P2 Nothing=" & (p2 Is Nothing).ToString() &
+    " | Same Reference=" & Object.ReferenceEquals(p1, p2).ToString() &
+    " | P1 Used=" & usedPoints.Contains(p1).ToString() &
+    " | P2 Used=" & usedPoints.Contains(p2).ToString())
+
+                        If p1 Is Nothing OrElse p2 Is Nothing Then
+                            Continue For
+                        End If
+
+                        If Object.ReferenceEquals(p1, p2) Then
+                            Continue For
+                        End If
+
+                        If usedPoints.Contains(p1) OrElse
+                           usedPoints.Contains(p2) Then
+                            Continue For
+                        End If
+
+                        Dim dx As Double = p1.X - p2.X
+                        Dim dy As Double = p1.Y - p2.Y
+
+                        Dim distance As Double =
+                            Math.Sqrt(dx * dx + dy * dy)
+
+                        Debug.WriteLine(
+    "CLEAN DISTANCE: " &
+    distance.ToString("F6") &
+    " | Tolerance: " &
+    cleanTol.ToString("F6"))
+
+                        If distance >= cleanTol Then
+                            Continue For
+                        End If
+
+                        Dim midX As Double = (p1.X + p2.X) / 2.0
+                        Dim midY As Double = (p1.Y + p2.Y) / 2.0
+
+                        p1.X = midX
+                        p1.Y = midY
+
+                        p2.X = midX
+                        p2.Y = midY
+
+                        usedPoints.Add(p1)
+                        usedPoints.Add(p2)
+
+                        Debug.WriteLine(
+                            "CLEAN Line-Line: " &
+                            distance.ToString("F6") &
+                            " → Midpoint (" &
+                            midX.ToString("F6") & ", " &
+                            midY.ToString("F6") & ")")
+
+                    Next
+                Next
+
+            Next
+
+        Next
+
+    End Sub
 
 
 End Module
