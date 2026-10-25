@@ -259,10 +259,10 @@ Public Module modFile
         '============================================================
         ' Convert CAD Entities to Imported Entities
         '============================================================
-        _importedEntities =
-        ConvertCadEntitiesToImportedEntities(
-            _cadEntities,
-            _selectedLayerSetup)
+        '_importedEntities =
+        'ConvertCadEntitiesToImportedEntities(
+        '    _cadEntities,
+        '    _selectedLayerSetup)
 
         If _selectedLayerSetup Is Nothing Then
             Exit Sub
@@ -281,10 +281,14 @@ Public Module modFile
         '============================================================
         ' Store CAD Geometry
         '============================================================
-        importedPart.CADGeometry.AddRange(
-        _cadEntities)
+        ' importedPart.CADGeometry.AddRange(_cadEntities)
 
         importedPart.Geometry.AddRange(nativeGeometry)
+
+        importedPart.GeoProfiles.AddRange(nativePart.Profiles)
+
+        Debug.WriteLine("PART GEO PROFILES COUNT = " &
+                importedPart.GeoProfiles.Count)
 
         productionSheet.Parts.Add(
         importedPart)
@@ -292,13 +296,13 @@ Public Module modFile
         '============================================================
         ' Build Profiles from Imported CAM Entities
         '============================================================
-        Dim profileResults As List(Of ProfileBuildResult) =
-        BuildProfilesFromEntities(
-            _importedEntities,
-            _selectedLayerSetup.GapTolerance)
+        'Dim profileResults As List(Of ProfileBuildResult) =
+        'BuildProfilesFromEntities(
+        '    _importedEntities,
+        '    _selectedLayerSetup.GapTolerance)
 
-        Debug.WriteLine(
-        $"PROFILE RESULTS COUNT = {profileResults.Count}")
+        ' Debug.WriteLine(
+        '$"PROFILE RESULTS COUNT = {profileResults.Count}")
 
         '============================================================
         ' Store CAD-derived Profiles
@@ -306,23 +310,23 @@ Public Module modFile
         ' Profiles are CAD geometry interpretation.
         ' They are NOT machining features.
         '============================================================
-        For Each profileResult As ProfileBuildResult In profileResults
+        'For Each profileResult As ProfileBuildResult In profileResults
 
-            If profileResult Is Nothing Then
-                Continue For
-            End If
+        '    If profileResult Is Nothing Then
+        '        Continue For
+        '    End If
 
-            If profileResult.Profile Is Nothing Then
-                Continue For
-            End If
+        '    If profileResult.Profile Is Nothing Then
+        '        Continue For
+        '    End If
 
-            importedPart.Profiles.Add(
-            profileResult.Profile)
+        '    importedPart.Profiles.Add(
+        '    profileResult.Profile)
 
-        Next
+        'Next
 
-        Debug.WriteLine(
-        $"PART PROFILES COUNT = {importedPart.Profiles.Count}")
+        'Debug.WriteLine(
+        '$"PART PROFILES COUNT = {importedPart.Profiles.Count}")
 
         '============================================================
         ' Create Imported Pattern

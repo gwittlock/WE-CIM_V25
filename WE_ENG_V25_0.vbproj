@@ -361,7 +361,6 @@
     <Compile Include="Classes\HotSpot.vb" />
     <Compile Include="Classes\HotSpotManager.vb" />
     <Compile Include="Classes\IGeoAssociation.vb" />
-    <Compile Include="Classes\ImportDXF.vb" />
     <Compile Include="Classes\ISelectable.vb" />
     <Compile Include="Classes\Job.vb" />
     <Compile Include="Classes\JobContext.vb" />
@@ -505,6 +504,7 @@
     <Compile Include="Modules\AccessToJsonExporter.vb" />
     <Compile Include="Modules\appMain.vb" />
     <Compile Include="Modules\AutoPunhTest.vb" />
+    <Compile Include="Modules\DrawGeoEntities.vb" />
     <Compile Include="Modules\dxfImporter.vb" />
     <Compile Include="Modules\Exporters.vb" />
     <Compile Include="Modules\MachineDefinitionBuilder.vb" />

@@ -1,9 +1,8 @@
 ﻿Public Module PartGeometryBuilder
 
     Public Function CreatePartGeometry(
-     cadEntities As List(Of CadEntity),
-     layerSetup As AppData.layersetup) As PartGeometry
-
+    cadEntities As List(Of CadEntity),
+    layerSetup As AppData.layersetup) As PartGeometry
 
         Dim geometry As New List(Of GeoEntity)()
 
@@ -12,69 +11,74 @@
 
         Dim points As New Dictionary(Of (Double, Double), GeoPoint)()
 
-
-
         For Each cad As CadEntity In cadEntities
 
-            Debug.WriteLine(
-    "NATIVE INPUT: " &
-    cad.GetType().Name &
-    " | CAD Layer: " &
-    cad.LayerName)
-
             If Not TypeOf cad Is CadEntity.CadLine AndAlso
-                Not TypeOf cad Is CadEntity.CadArc Then
+           Not TypeOf cad Is CadEntity.CadArc AndAlso
+           Not TypeOf cad Is CadEntity.CadCircle Then
 
                 Continue For
-
             End If
 
             Dim directive = FindLayerDirective(
-        cad.LayerName,
-        layerSetup)
+            cad.LayerName,
+            layerSetup)
 
             If directive Is Nothing Then
                 Continue For
             End If
 
             Dim layer As Layer = GetOrCreateLayer(
-        directive.CAMLayer,
-        System.Drawing.Color.FromArgb(directive.Color),
-        layers)
+            directive.CAMLayer,
+            directive.DisplayColor,
+            layers)
+
             If TypeOf cad Is CadEntity.CadLine Then
 
                 Dim line As GeoLine = ConvertCadLine(
-        DirectCast(cad, CadEntity.CadLine),
-        layer,
-        points)
+                DirectCast(cad, CadEntity.CadLine),
+                layer,
+                points)
 
                 geometry.Add(line)
 
             ElseIf TypeOf cad Is CadEntity.CadArc Then
 
                 Dim arc As GeoArc = ConvertCadArc(
-        DirectCast(cad, CadEntity.CadArc),
-        layer,
-        points)
+                DirectCast(cad, CadEntity.CadArc),
+                layer,
+                points)
 
                 geometry.Add(arc)
 
+            ElseIf TypeOf cad Is CadEntity.CadCircle Then
+
+                Dim circle As GeoCircle = ConvertCadCircle(
+                DirectCast(cad, CadEntity.CadCircle),
+                layer,
+                points)
+
+                geometry.Add(circle)
+
             End If
-            Debug.WriteLine(
-                "CAD Layer: " & cad.LayerName &
-                " → CAM Layer: " & layer.Name)
 
         Next
 
-        ApplyGeoFilterTolerance(geometry, layerSetup.FilterTolerance)
+        ApplyGeoFilterTolerance(
+        geometry,
+        layerSetup.FilterTolerance)
 
-        ApplyGeoCleanTolerance(geometry, layerSetup.CleanTolerance)
+        ApplyGeoCleanTolerance(
+        geometry,
+        layerSetup.CleanTolerance)
 
         Dim geoProfiles As List(Of GeoProfile) =
-    BuildGeoProfiles(geometry, layerSetup.GapTolerance)
+        BuildGeoProfiles(
+            geometry,
+            layerSetup.GapTolerance)
 
         Debug.WriteLine(
-    "Native GeoProfile Count: " & geoProfiles.Count)
+        "Native GeoProfile Count: " & geoProfiles.Count)
 
         Dim part As New PartGeometry()
 
@@ -113,16 +117,20 @@
 
         For Each entity As GeoEntity In geometry
 
-            If Not TypeOf entity Is GeoLine Then
-                Continue For
-            End If
-
-            If IsInBranchedGroup(entity, geometry, gapTolerance) Then
+            ' Only lines and arcs participate in profiles.
+            If Not TypeOf entity Is GeoLine AndAlso
+       Not TypeOf entity Is GeoArc Then
 
                 Continue For
 
             End If
 
+            If IsInBranchedGroup(
+        entity, geometry, gapTolerance) Then
+
+                Continue For
+
+            End If
 
             Dim profile As New GeoProfile With {
             .ID = profiles.Count + 1,
@@ -260,6 +268,51 @@
             " | IsClosed: " & profile.IsClosed)
 
         Next
+
+
+        '-----------------------------------------
+        ' Step 5 - Build closed circle profiles
+        '-----------------------------------------
+        Dim nextProfileID As Integer =
+    profiles.Max(Function(p) p.ID) + 1
+
+        For Each entity As GeoEntity In geometry
+
+            If Not TypeOf entity Is GeoCircle Then
+                Continue For
+            End If
+
+            Dim circle As GeoCircle = DirectCast(entity, GeoCircle)
+
+            Dim profile As New GeoProfile With {
+    .ID = nextProfileID,
+    .IsClosed = True
+}
+
+            nextProfileID += 1
+
+
+            ' Preserve the original circle entity.
+            profile.Entities.Add(circle)
+
+            ' A circle is inherently closed and requires
+            ' no endpoint ordering.
+            profile.Segments.Add(
+        New GeoProfileSegment With {
+            .Entity = circle,
+            .Reversed = False
+        })
+
+            profiles.Add(profile)
+
+            Debug.WriteLine(
+        "GeoCircle Profile " & profile.ID &
+        " | Closed: " & profile.IsClosed &
+        " | Entities: " & profile.Entities.Count &
+        " | Segments: " & profile.Segments.Count)
+
+        Next
+
 
         Return profiles
 
@@ -496,10 +549,7 @@
 
     End Function
 
-    Private Function GetOrCreatePoint(
-    x As Double,
-    y As Double,
-    points As Dictionary(Of (Double, Double), GeoPoint)) As GeoPoint
+    Private Function GetOrCreatePoint(x As Double, y As Double, points As Dictionary(Of (Double, Double), GeoPoint)) As GeoPoint
 
         Dim key = (x, y)
         Dim existingPoint As GeoPoint = Nothing
@@ -508,10 +558,7 @@
             Return existingPoint
         End If
 
-        Dim newPoint As New GeoPoint With {
-            .X = x,
-            .Y = y
-        }
+        Dim newPoint As New GeoPoint With {.X = x, .Y = y}
 
         points.Add(key, newPoint)
 
@@ -546,59 +593,52 @@
 
     End Function
 
+    Private Function ConvertCadCircle(
+    cad As CadEntity.CadCircle,
+    layer As Layer,
+    points As Dictionary(Of (Double, Double), GeoPoint)) As GeoCircle
 
+        Dim centerPoint As GeoPoint =
+        GetOrCreatePoint(
+            CDbl(cad.Center.X),
+            CDbl(cad.Center.Y),
+            points)
+
+        Dim circle As New GeoCircle With {
+        .Center = centerPoint,
+        .Radius = cad.Radius,
+        .Association = layer
+    }
+
+        Return circle
+
+    End Function
 
     Private Function ConvertCadArc(
-    cad As CadEntity.CadArc,
-    layer As Layer,
-    points As Dictionary(Of (Double, Double), GeoPoint)) As GeoArc
+    cad As CadEntity.CadArc, layer As Layer, points As Dictionary(Of (Double, Double), GeoPoint)) As GeoArc
 
-        Dim startRadians As Double =
-        CDbl(cad.StartAngle) * Math.PI / 180.0
+        Dim startRadians As Double = CDbl(cad.StartAngle) * Math.PI / 180.0
 
-        ' Calculate the counterclockwise angular sweep.
-        Dim rawSweep As Double =
-    CDbl(cad.EndAngle) - CDbl(cad.StartAngle)
+        '' Calculate the counterclockwise angular sweep.
+        'Dim rawSweep As Double = CDbl(cad.EndAngle) - CDbl(cad.StartAngle)
 
-        Dim sweep As Double =
-    ((rawSweep Mod 360.0) + 360.0) Mod 360.0
+        'Dim sweep As Double = ((rawSweep Mod 360.0) + 360.0) Mod 360.0
 
-        Debug.WriteLine(
-    "GEO ARC SWEEP: Start=" & cad.StartAngle &
-    " End=" & cad.EndAngle &
-    " Sweep=" & sweep.ToString("F6"))
-        Dim endRadians As Double =
-        CDbl(cad.EndAngle) * Math.PI / 180.0
+        Dim endRadians As Double = CDbl(cad.EndAngle) * Math.PI / 180.0
 
         Dim centerX As Double = CDbl(cad.Center.X)
         Dim centerY As Double = CDbl(cad.Center.Y)
         Dim radius As Double = CDbl(cad.Radius)
 
-        Dim centerPoint As GeoPoint =
-        GetOrCreatePoint(centerX, centerY, points)
+        Dim centerPoint As GeoPoint = GetOrCreatePoint(centerX, centerY, points)
 
-        Dim startPoint As GeoPoint =
-        GetOrCreatePoint(
-            centerX + radius * Math.Cos(startRadians),
-            centerY + radius * Math.Sin(startRadians),
-            points)
+        Dim startPoint As GeoPoint = GetOrCreatePoint(centerX + radius * Math.Cos(startRadians), centerY + radius * Math.Sin(startRadians), points)
 
-        Dim endPoint As GeoPoint =
-        GetOrCreatePoint(
-            centerX + radius * Math.Cos(endRadians),
-            centerY + radius * Math.Sin(endRadians),
-            points)
+        Dim endPoint As GeoPoint = GetOrCreatePoint(centerX + radius * Math.Cos(endRadians), centerY + radius * Math.Sin(endRadians), points)
 
-        Dim arc As New GeoArc With {
-        .Center = centerPoint,
-        .Radius = radius,
-        .StartAngle = CDbl(cad.StartAngle),
-        .EndAngle = CDbl(cad.EndAngle),
-        .IsClockwise = cad.IsClockwise,
-        .StartPoint = startPoint,
-        .EndPoint = endPoint,
-        .Association = layer
-    }
+        Dim arc As New GeoArc With {.Center = centerPoint, .Radius = radius,
+            .StartAngle = CDbl(cad.StartAngle), .EndAngle = CDbl(cad.EndAngle),
+            .IsClockwise = cad.IsClockwise, .StartPoint = startPoint, .EndPoint = endPoint, .Association = layer}
 
         Return arc
 
@@ -1285,10 +1325,11 @@
 
                 If visited.Contains(candidate) Then Continue For
 
-                If Not TypeOf candidate Is GeoLine Then Continue For
+                If Not TypeOf candidate Is GeoLine AndAlso
+                         Not TypeOf candidate Is GeoArc Then
 
-                If Not SameGeoAssociation(current, candidate) Then
                     Continue For
+
                 End If
 
                 Dim candidateStart As GeoPoint = Nothing

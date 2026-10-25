@@ -121,27 +121,6 @@ Public Class SelectionManager
         Next
 
 
-        Debug.Print("========== QUADTREE CHECK ==========")
-        Debug.Print("Entity count = " & _entities.Count)
-
-        Dim pointCount As Integer = 0
-
-        For Each entity As CadEntity In _entities
-            If TypeOf entity Is CadPoint Then
-                pointCount += 1
-
-                Dim cp As CadPoint = DirectCast(entity, CadPoint)
-
-                Debug.Print(
-                    "QuadTree input POINT: X=" &
-                    cp.Position.X.ToString("0.######") &
-                    ", Y=" &
-                    cp.Position.Y.ToString("0.######"))
-            End If
-        Next
-
-        Debug.Print("CadPoint count entering QuadTree = " & pointCount)
-        Debug.Print("====================================")
     End Sub
 
 #End Region
