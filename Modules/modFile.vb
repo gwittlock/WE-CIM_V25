@@ -16,7 +16,6 @@ Imports FabV25_WIN8.CamBuilder
 Imports FabV25_WIN8.dxfImporter
 Imports FabV25_WIN8.DrawableEntity
 Imports FabV25_WIN8.DxfImporter_IxMilia
-Imports FabV25_WIN8.DxfDrawable
 Imports FabV25_WIN8.CamEntity
 Imports System.Runtime.CompilerServices
 Imports FabV25_WIN8.AutoPunchingEngine
@@ -49,7 +48,6 @@ Public Module modFile
     Public CurrentJob As JobContext
     Public CurrentProductionJob As Job
     Public _importedEntities As List(Of ImportedEntity)
-    Public _drawables As List(Of DxfDrawable)
 
     ' Store all loaded CAD entities
     Public _cadEntities As List(Of CadEntity)

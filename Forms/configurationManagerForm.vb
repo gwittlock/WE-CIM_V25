@@ -167,7 +167,7 @@ Public Class ConfigurationManagerForm
             .Multiline = True          ' sometimes needed
         End With
 
-        lstTools.BackColor = Color.LightGray
+        lstTools.BackColor = ColorTranslator.FromOle(RegGetString("Preferences\ViewOptions", "MaterialColor", System.Drawing.Color.Gray))
 
         'ExportTreeToFile(Path.Combine(dataFolder, "TreeView.txt"))
 

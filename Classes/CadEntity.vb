@@ -8,7 +8,6 @@ Public MustInherit Class CadEntity
     Public Property LayerName As String
     Public Property Color As Color
     Public Property GeometryType As EntityType
-    Public Property Drawable As DxfDrawable
 
     Public Property IsSelected As Boolean Implements isSelectable.IsSelected
     Public Property IsHovered As Boolean Implements isSelectable.IsHovered

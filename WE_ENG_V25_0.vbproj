@@ -339,7 +339,6 @@
     <Compile Include="Classes\DatabaseConversion.vb" />
     <Compile Include="Classes\DirectiveStationEditor.vb" />
     <Compile Include="Classes\DoubleDToolShape.vb" />
-    <Compile Include="Classes\DxfDrawable.vb" />
     <Compile Include="Classes\DxfImport.vb" />
     <Compile Include="Classes\DynamicMachineProperty.vb" />
     <Compile Include="Classes\DynamicMachinePropertyBag.vb" />
@@ -361,7 +360,6 @@
     <Compile Include="Classes\HotSpot.vb" />
     <Compile Include="Classes\HotSpotManager.vb" />
     <Compile Include="Classes\IGeoAssociation.vb" />
-    <Compile Include="Classes\ISelectable.vb" />
     <Compile Include="Classes\Job.vb" />
     <Compile Include="Classes\JobContext.vb" />
     <Compile Include="Classes\JobSheet.vb" />

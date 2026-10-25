@@ -14,8 +14,9 @@
         For Each cad As CadEntity In cadEntities
 
             If Not TypeOf cad Is CadEntity.CadLine AndAlso
-           Not TypeOf cad Is CadEntity.CadArc AndAlso
-           Not TypeOf cad Is CadEntity.CadCircle Then
+               Not TypeOf cad Is CadEntity.CadArc AndAlso
+               Not TypeOf cad Is CadEntity.CadCircle AndAlso
+               Not TypeOf cad Is CadPoint Then
 
                 Continue For
             End If
@@ -60,6 +61,18 @@
 
                 geometry.Add(circle)
 
+            ElseIf TypeOf cad Is CadPoint Then
+
+                Dim cadPoint As CadPoint =
+                    DirectCast(cad, CadPoint)
+
+                Dim geoPoint As New GeoPoint With {
+                    .X = CDbl(cadPoint.Position.X),
+                    .Y = CDbl(cadPoint.Position.Y),
+                    .Association = layer
+                }
+
+                geometry.Add(geoPoint)
             End If
 
         Next
@@ -103,11 +116,11 @@
 
             If Not TypeOf entity Is GeoLine Then Continue For
 
-            Debug.WriteLine(
-        "Line " & entity.ID &
-        " | In Branched Group: " &
-        IsInBranchedGroup(
-            entity, geometry, gapTolerance))
+            '    Debug.WriteLine(
+            '"Line " & entity.ID &
+            '" | In Branched Group: " &
+            'IsInBranchedGroup(
+            '    entity, geometry, gapTolerance))
 
         Next
         '-----------------------------------------
@@ -136,7 +149,7 @@
             .ID = profiles.Count + 1,
             .IsClosed = False
         }
-            Debug.WriteLine("profile " & profile.ID)
+            'Debug.WriteLine("profile " & profile.ID)
 
             profile.Entities.Add(entity)
             profiles.Add(profile)
@@ -213,12 +226,12 @@
                 valid = ValidateGeoProfileSegments(profile, gapTolerance)
             End If
 
-            Debug.WriteLine(
-        "GeoProfile " & profile.ID &
-        " | Ordered: " & ordered &
-        " | Connected: " & valid &
-        " | Entities: " & profile.Entities.Count &
-        " | Segments: " & profile.Segments.Count)
+            '    Debug.WriteLine(
+            '"GeoProfile " & profile.ID &
+            '" | Ordered: " & ordered &
+            '" | Connected: " & valid &
+            '" | Entities: " & profile.Entities.Count &
+            '" | Segments: " & profile.Segments.Count)
 
             If ordered AndAlso valid AndAlso profile.IsClosed Then
 
@@ -233,21 +246,21 @@
                     direction = "CW"
                 End If
 
-                Debug.WriteLine(
-            "GeoProfile " & profile.ID &
-            " | Signed Area: " & signedArea &
-            " | Direction: " & direction)
+                '    Debug.WriteLine(
+                '"GeoProfile " & profile.ID &
+                '" | Signed Area: " & signedArea &
+                '" | Direction: " & direction)
 
 
                 Dim bounds As RectangleF =
     GetGeoProfileBounds(profile)
 
-                Debug.WriteLine(
-                    "GeoProfile " & profile.ID &
-                    " | Bounds X: " & bounds.X &
-                    " | Y: " & bounds.Y &
-                    " | Width: " & bounds.Width &
-                    " | Height: " & bounds.Height)
+                ''Debug.WriteLine(
+                ''    "GeoProfile " & profile.ID &
+                ''    " | Bounds X: " & bounds.X &
+                ''    " | Y: " & bounds.Y &
+                ''    " | Width: " & bounds.Width &
+                ''    " | Height: " & bounds.Height)
             End If
 
         Next
@@ -261,11 +274,11 @@
             Dim endpoints As List(Of GeoPoint) =
             GetProfileEndpoints(profile, gapTolerance)
 
-            Debug.WriteLine(
-            "GeoProfile " & profile.ID &
-            " | Lines: " & profile.Entities.Count &
-            " | Free Endpoints: " & endpoints.Count &
-            " | IsClosed: " & profile.IsClosed)
+            'Debug.WriteLine(
+            '"GeoProfile " & profile.ID &
+            '" | Lines: " & profile.Entities.Count &
+            '" | Free Endpoints: " & endpoints.Count &
+            '" | IsClosed: " & profile.IsClosed)
 
         Next
 
@@ -305,11 +318,11 @@
 
             profiles.Add(profile)
 
-            Debug.WriteLine(
-        "GeoCircle Profile " & profile.ID &
-        " | Closed: " & profile.IsClosed &
-        " | Entities: " & profile.Entities.Count &
-        " | Segments: " & profile.Segments.Count)
+            '    Debug.WriteLine(
+            '"GeoCircle Profile " & profile.ID &
+            '" | Closed: " & profile.IsClosed &
+            '" | Entities: " & profile.Entities.Count &
+            '" | Segments: " & profile.Segments.Count)
 
         Next
 
@@ -1361,14 +1374,14 @@
     geometry As List(Of GeoEntity),
     cleanTol As Double)
 
-        Debug.WriteLine("========== ENTERING GEO CLEAN ==========")
+        '    Debug.WriteLine("========== ENTERING GEO CLEAN ==========")
 
-        Debug.WriteLine(
-    "Geometry Count = " &
-    If(geometry Is Nothing, -1, geometry.Count))
+        '    Debug.WriteLine(
+        '"Geometry Count = " &
+        'If(geometry Is Nothing, -1, geometry.Count))
 
-        Debug.WriteLine(
-    "Clean Tolerance = " & cleanTol)
+        '    Debug.WriteLine(
+        '"Clean Tolerance = " & cleanTol)
 
 
         If geometry Is Nothing OrElse
@@ -1388,9 +1401,9 @@
 
                 Dim line2 As GeoLine = lines(j)
 
-                Debug.WriteLine(
-    "CLEAN ASSOCIATION CHECK: " &
-    SameGeoAssociation(line1, line2).ToString())
+                '            Debug.WriteLine(
+                '"CLEAN ASSOCIATION CHECK: " &
+                'SameGeoAssociation(line1, line2).ToString())
 
 
                 If Not SameGeoAssociation(line1, line2) Then
@@ -1408,13 +1421,13 @@
                 For Each p1 As GeoPoint In points1
                     For Each p2 As GeoPoint In points2
 
-                        Debug.WriteLine(
-    "CLEAN POINT CHECK: " &
-    "P1 Nothing=" & (p1 Is Nothing).ToString() &
-    " | P2 Nothing=" & (p2 Is Nothing).ToString() &
-    " | Same Reference=" & Object.ReferenceEquals(p1, p2).ToString() &
-    " | P1 Used=" & usedPoints.Contains(p1).ToString() &
-    " | P2 Used=" & usedPoints.Contains(p2).ToString())
+                        '                    Debug.WriteLine(
+                        '"CLEAN POINT CHECK: " &
+                        '"P1 Nothing=" & (p1 Is Nothing).ToString() &
+                        '" | P2 Nothing=" & (p2 Is Nothing).ToString() &
+                        '" | Same Reference=" & Object.ReferenceEquals(p1, p2).ToString() &
+                        '" | P1 Used=" & usedPoints.Contains(p1).ToString() &
+                        '" | P2 Used=" & usedPoints.Contains(p2).ToString())
 
                         If p1 Is Nothing OrElse p2 Is Nothing Then
                             Continue For
@@ -1435,11 +1448,11 @@
                         Dim distance As Double =
                             Math.Sqrt(dx * dx + dy * dy)
 
-                        Debug.WriteLine(
-    "CLEAN DISTANCE: " &
-    distance.ToString("F6") &
-    " | Tolerance: " &
-    cleanTol.ToString("F6"))
+                        '                    Debug.WriteLine(
+                        '"CLEAN DISTANCE: " &
+                        'distance.ToString("F6") &
+                        '" | Tolerance: " &
+                        'cleanTol.ToString("F6"))
 
                         If distance >= cleanTol Then
                             Continue For

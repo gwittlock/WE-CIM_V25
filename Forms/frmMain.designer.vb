@@ -32,20 +32,20 @@ Partial Class frmMain
     Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(frmMain))
-        Dim SuperToolTip6 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem5 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem6 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip7 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem6 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem7 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip8 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem7 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem8 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip9 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipItem9 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip10 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem8 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem10 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip1 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem1 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem1 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip2 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem2 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem2 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip3 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem3 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem3 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip4 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipItem4 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip5 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem4 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem5 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
         Me.navbarImageListLarge = New System.Windows.Forms.ImageList(Me.components)
         Me.navbarImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.RibbonControl = New DevExpress.XtraBars.Ribbon.RibbonControl()
@@ -1748,11 +1748,11 @@ Partial Class frmMain
         Me.bbConfigMan.Id = 211
         Me.bbConfigMan.ImageOptions.LargeImageIndex = 176
         Me.bbConfigMan.Name = "bbConfigMan"
-        ToolTipTitleItem5.Text = "Configuration Manager"
-        ToolTipItem6.LeftIndent = 6
-        SuperToolTip6.Items.Add(ToolTipTitleItem5)
-        SuperToolTip6.Items.Add(ToolTipItem6)
-        Me.bbConfigMan.SuperTip = SuperToolTip6
+        ToolTipTitleItem1.Text = "Configuration Manager"
+        ToolTipItem1.LeftIndent = 6
+        SuperToolTip1.Items.Add(ToolTipTitleItem1)
+        SuperToolTip1.Items.Add(ToolTipItem1)
+        Me.bbConfigMan.SuperTip = SuperToolTip1
         '
         'bbNesting
         '
@@ -2241,13 +2241,13 @@ Partial Class frmMain
         Me.bbShowWelcome.Id = 385
         Me.bbShowWelcome.ImageOptions.LargeImageIndex = 203
         Me.bbShowWelcome.Name = "bbShowWelcome"
-        ToolTipTitleItem6.Text = "Show Welcome Dilaog"
-        ToolTipItem7.LeftIndent = 6
-        ToolTipItem7.Text = "This button displys the Welcome dialog that appears when you first execute the ap" &
+        ToolTipTitleItem2.Text = "Show Welcome Dilaog"
+        ToolTipItem2.LeftIndent = 6
+        ToolTipItem2.Text = "This button displys the Welcome dialog that appears when you first execute the ap" &
     "plicatuon."
-        SuperToolTip7.Items.Add(ToolTipTitleItem6)
-        SuperToolTip7.Items.Add(ToolTipItem7)
-        Me.bbShowWelcome.SuperTip = SuperToolTip7
+        SuperToolTip2.Items.Add(ToolTipTitleItem2)
+        SuperToolTip2.Items.Add(ToolTipItem2)
+        Me.bbShowWelcome.SuperTip = SuperToolTip2
         '
         'bbiWECAD
         '
@@ -2269,12 +2269,12 @@ Partial Class frmMain
         Me.bbiDeactivate.Id = 389
         Me.bbiDeactivate.ImageOptions.LargeImageIndex = 206
         Me.bbiDeactivate.Name = "bbiDeactivate"
-        ToolTipTitleItem7.Text = "DeActivate"
-        ToolTipItem8.LeftIndent = 6
-        ToolTipItem8.Text = "Deactivate the licnse on This PC in order to instal WE-CIMl and license a new PC"
-        SuperToolTip8.Items.Add(ToolTipTitleItem7)
-        SuperToolTip8.Items.Add(ToolTipItem8)
-        Me.bbiDeactivate.SuperTip = SuperToolTip8
+        ToolTipTitleItem3.Text = "DeActivate"
+        ToolTipItem3.LeftIndent = 6
+        ToolTipItem3.Text = "Deactivate the licnse on This PC in order to instal WE-CIMl and license a new PC"
+        SuperToolTip3.Items.Add(ToolTipTitleItem3)
+        SuperToolTip3.Items.Add(ToolTipItem3)
+        Me.bbiDeactivate.SuperTip = SuperToolTip3
         '
         'bbiBenchMark
         '
@@ -2291,9 +2291,9 @@ Partial Class frmMain
         Me.BarButtonItem16.ImageOptions.Image = CType(resources.GetObject("BarButtonItem16.ImageOptions.Image"), System.Drawing.Image)
         Me.BarButtonItem16.ImageOptions.LargeImage = Global.FabV25_WIN8.My.Resources.Resources.reset
         Me.BarButtonItem16.Name = "BarButtonItem16"
-        ToolTipItem9.Text = "Rsets the last PDB setting in the registry"
-        SuperToolTip9.Items.Add(ToolTipItem9)
-        Me.BarButtonItem16.SuperTip = SuperToolTip9
+        ToolTipItem4.Text = "Rsets the last PDB setting in the registry"
+        SuperToolTip4.Items.Add(ToolTipItem4)
+        Me.BarButtonItem16.SuperTip = SuperToolTip4
         '
         'beGraphicsPref
         '
@@ -3128,12 +3128,12 @@ Partial Class frmMain
         'rpgCustomMacros
         '
         Me.rpgCustomMacros.Name = "rpgCustomMacros"
-        ToolTipTitleItem8.Text = "Add an Icon"
-        ToolTipItem10.LeftIndent = 6
-        ToolTipItem10.Text = "Click the arrows in the lower right corner to add " & Global.Microsoft.VisualBasic.ChrW(13) & Global.Microsoft.VisualBasic.ChrW(10) & "Macros to the ToolBar"
-        SuperToolTip10.Items.Add(ToolTipTitleItem8)
-        SuperToolTip10.Items.Add(ToolTipItem10)
-        Me.rpgCustomMacros.SuperTip = SuperToolTip10
+        ToolTipTitleItem4.Text = "Add an Icon"
+        ToolTipItem5.LeftIndent = 6
+        ToolTipItem5.Text = "Click the arrows in the lower right corner to add " & Global.Microsoft.VisualBasic.ChrW(13) & Global.Microsoft.VisualBasic.ChrW(10) & "Macros to the ToolBar"
+        SuperToolTip5.Items.Add(ToolTipTitleItem4)
+        SuperToolTip5.Items.Add(ToolTipItem5)
+        Me.rpgCustomMacros.SuperTip = SuperToolTip5
         Me.rpgCustomMacros.Text = "Custom Macros"
         '
         'AdminRibbonPage
