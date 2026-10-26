@@ -1,49 +1,21 @@
-
-Imports DevExpress.UserSkins
-Imports DevExpress.Skins
-Imports DevExpress.LookAndFeel
-Imports DevExpress.Spreadsheet
+Imports System.Data.OleDb
+Imports System.Drawing.Drawing2D
+Imports System.IO
+Imports System.Reflection
 Imports DevExpress.Utils
-Imports DevExpress.Utils.Drawing
 Imports DevExpress.XtraBars
 Imports DevExpress.XtraBars.Helpers
 Imports DevExpress.XtraBars.Ribbon
-Imports DevExpress.XtraBars.Ribbon.ViewInfo
-Imports DevExpress.XtraEditors.Controls
-Imports DevExpress.XtraEditors.Drawing
-Imports DevExpress.XtraSplashScreen
-Imports Microsoft.Win32
-Imports System.ComponentModel
-Imports System.Data.OleDb
-Imports System.Drawing.Imaging
-Imports System.IO
-Imports System.Numerics
-Imports FabV25_WIN8.WE_ENG_V25_0.Core.Helpers
-Imports FabV25_WIN8.WE_ENG_V25_0.Core.Services
 Imports FabV25_WIN8.AppData
-Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
-Imports FabV25_WIN8.ImportedEntity
 Imports FabV25_WIN8.CadEntity
-Imports FabV25_WIN8.modView
-Imports FabV25_WIN8.MateriaWrapper
-
-Imports FabV25_WIN8.DxfDrawable
-Imports Newtonsoft.Json
-Imports Formatting = Newtonsoft.Json.Formatting
-Imports System.Drawing
-Imports System.Drawing.Drawing2D
-Imports System.Windows.Forms
-Imports System.Linq
-Imports System.Math
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Helpers
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Services
 ' IxMilia DXF imports
 Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
-Imports System.Reflection
-Imports System.Text
-Imports FabV25_WIN8.MachineEnvelope
-Imports FabV25_WIN8.MaterialWrapper
-Imports FabV25_WIN8.SelectionSet
-Imports System.Runtime.CompilerServices
+Imports Newtonsoft.Json
+Imports Formatting = Newtonsoft.Json.Formatting
 
 
 Public Class frmMain
@@ -53,8 +25,6 @@ Public Class frmMain
 
     ' Application lifecycle
     Private _uiInitialized As Boolean = False
-
-    Private _hoverDrawable As DxfDrawable = Nothing
 
     Dim currentScale As Double
 
@@ -155,10 +125,11 @@ Public Class frmMain
 
     Private lastEntity As ImportedEntity = Nothing
     '------------------------------------------
-    Private WithEvents entityTip As New ToolTip()
+    Private WithEvents entityTip As New System.Windows.Forms.ToolTip()
     Private lastHoverEntity As CadEntity = Nothing
     Private _hoverEntity As CadEntity = Nothing
-    Private _modelerToolTip As New ToolTip() With {
+    Private _hoverMouseWorld As PointF
+    Private _modelerToolTip As New System.Windows.Forms.ToolTip() With {
     .ShowAlways = False,
     .InitialDelay = 400,
     .ReshowDelay = 100,
@@ -196,12 +167,6 @@ Public Class frmMain
 
         Me.splitContainerControl.ResumeLayout()
 
-#If DEBUG Then
-
-        Dim hotSpotTest As New HotSpotManager(_cadEntities)
-        hotSpotTest.DebugTestLineHotSpots()
-
-#End If
     End Sub
     Sub InitSkins()
         Try
@@ -237,12 +202,10 @@ Public Class frmMain
             MessageBox.Show("InitSkinGallery: " & ex.Message)
         End Try
     End Sub
-
     Private Sub OnSelectionChanged()
-        Debug.Print("frmMain.OnSelectionChanged FIRED")
-        Debug.Print("Selected Count = " & _selectionManager.Selected.Count.ToString())
 
         pnlPicmodeler.Invalidate()
+
     End Sub
 
     Private Sub rgbiSkins_GalleryInitDropDownGallery(ByVal sender As Object, ByVal e As DevExpress.XtraBars.Ribbon.InplaceGalleryEventArgs) Handles rgbiSkins.GalleryInitDropDownGallery
@@ -398,10 +361,7 @@ Public Class frmMain
             File.WriteAllText(savePath, json)
         End Using
     End Sub
-    Public Sub LoadImportedEntities(entities As List(Of ImportedEntity))
-        _importedEntities = entities
-        Me.Invalidate() ' trigger repaint
-    End Sub
+
 
     Private Sub ResetModelView()
 
@@ -455,9 +415,6 @@ Public Class frmMain
             Return
         End If
 
-
-        If _cadEntities Is Nothing Then _cadEntities = New List(Of CadEntity)
-
         ' --------------------------------------------
         ' 3) Draw base scene
         ' --------------------------------------------
@@ -487,6 +444,8 @@ Public Class frmMain
 
     ' Central overlay routine
     Private Sub DrawOverlay(g As Graphics)
+        Debug.WriteLine("DRAW OVERLAY CALLED")
+
         ' --------------------------
         ' 1) Hot-Dot
         ' --------------------------
@@ -509,6 +468,11 @@ Public Class frmMain
         If _windowSelecting Then
             DrawRubberBand(_windowStart, _windowEnd, g)
         End If
+
+        ' 4) Hover direction arrow
+        ' --------------------------
+        DrawHoverLineArrow(g)
+
     End Sub
 
     ''' <summary>
@@ -539,7 +503,7 @@ Public Class frmMain
         ' -------------------------------------------------
         RestoreAndDrawJob()
         DrawSheetAndWorkzones(g, matLength, matWidth)
-        DrawCadEntities(g, myTransform, panelHeight)
+        DrawProductionGeometry(g, myTransform, panelHeight)
 
         ' -------------------------------------------------
         ' 2) HOVER HIGHLIGHT (still View-owned for now)
@@ -794,6 +758,318 @@ Public Class frmMain
 
     End Sub
 
+
+    Private Sub DrawGeoLine(
+    l As GeoLine,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If l Is Nothing OrElse
+       l.StartPoint Is Nothing OrElse
+       l.EndPoint Is Nothing Then
+            Exit Sub
+        End If
+
+        Dim p1 = WorldToScreen(
+        l.StartPoint.X,
+        l.StartPoint.Y,
+        vt,
+        panelHeight)
+
+        Dim p2 = WorldToScreen(
+        l.EndPoint.X,
+        l.EndPoint.Y,
+        vt,
+        panelHeight)
+
+        Dim drawColor As System.Drawing.Color = l.Color
+        Dim drawWidth As Single = 1.0F
+        Dim drawDashed As Boolean = False
+
+        If l.Selected Then
+
+            drawColor = System.Drawing.Color.Red
+            drawWidth = 1.0F
+
+        ElseIf l.IsHovered Then
+
+            drawColor = System.Drawing.Color.Red
+            drawWidth = 2.0F
+            drawDashed = True
+
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
+
+            If drawDashed Then
+                pen.DashStyle = DashStyle.Dash
+            End If
+
+            g.DrawLine(pen, p1, p2)
+
+        End Using
+
+    End Sub
+
+
+    Private Sub DrawGeoArc(
+    a As GeoArc,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If a Is Nothing OrElse a.Center Is Nothing Then
+            Exit Sub
+        End If
+
+        Dim centerScreen = WorldToScreen(
+        a.Center.X,
+        a.Center.Y,
+        vt,
+        panelHeight)
+
+        Dim r As Single = CSng(a.Radius * vt.Scale)
+
+        Dim p1 As New PointF(centerScreen.X - r, centerScreen.Y - r)
+        Dim p2 As New PointF(centerScreen.X + r, centerScreen.Y + r)
+
+        Dim rect As RectangleF = HelperFunctions.RectFromPoints(p1, p2)
+
+        Dim sweep As Single
+
+        If a.IsClockwise Then
+
+            sweep = CSng(a.StartAngle - a.EndAngle)
+
+            If sweep < 0 Then
+                sweep += 360
+            End If
+
+        Else
+
+            sweep = CSng(a.EndAngle - a.StartAngle)
+
+            If sweep < 0 Then
+                sweep += 360
+            End If
+
+        End If
+
+        Dim startAngle As Single = CSng(-a.StartAngle)
+
+        Dim sweepAngle As Single
+
+        If a.IsClockwise Then
+            sweepAngle = sweep
+        Else
+            sweepAngle = -sweep
+        End If
+
+        Dim drawColor As System.Drawing.Color = a.Color
+        Dim drawWidth As Single = 1.0F
+        Dim drawDashed As Boolean = False
+
+        If a.Selected Then
+
+            drawColor = System.Drawing.Color.Red
+            drawWidth = 1.0F
+
+        ElseIf a.IsHovered Then
+
+            drawColor = System.Drawing.Color.Red
+            drawWidth = 2.0F
+            drawDashed = True
+
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
+
+
+            If a.Selected Then
+
+                    pen.DashStyle = DashStyle.Dot
+
+                ElseIf drawDashed Then
+
+                    pen.DashStyle = DashStyle.Dash
+
+                End If
+
+
+            Debug.WriteLine(
+    "DrawGeoArc: Selected=" & a.Selected.ToString() &
+    " Color=" & pen.Color.Name &
+    " DashStyle=" & pen.DashStyle.ToString())
+            g.DrawArc(pen, rect, startAngle, sweepAngle)
+
+            End Using
+
+
+    End Sub
+
+
+    Private Sub DrawGeoCircle(
+    c As GeoCircle,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If c Is Nothing OrElse c.Center Is Nothing Then
+            Exit Sub
+        End If
+
+        Dim center = WorldToScreen(
+        c.Center.X,
+        c.Center.Y,
+        vt,
+        panelHeight)
+
+        Dim r As Single = CSng(c.Radius * vt.Scale)
+
+        Dim p1 As New PointF(center.X - r, center.Y - r)
+        Dim p2 As New PointF(center.X + r, center.Y + r)
+
+        Dim rect = HelperFunctions.RectFromPoints(p1, p2)
+
+        Dim drawColor As System.Drawing.Color = c.Color
+        Dim drawWidth As Single = 1.0F
+        Dim drawDashed As Boolean = False
+
+        If c.Selected Then
+
+            drawColor = System.Drawing.Color.Red
+            drawWidth = 1.0F
+
+        ElseIf c.IsHovered Then
+
+            drawColor = System.Drawing.Color.Red
+            drawWidth = 2.0F
+            drawDashed = True
+
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
+
+            If c.Selected Then
+
+                pen.DashStyle = DashStyle.Dot
+
+            ElseIf drawDashed Then
+
+                pen.DashStyle = DashStyle.Dash
+
+            End If
+
+            g.DrawEllipse(pen, rect)
+
+        End Using
+
+
+    End Sub
+
+
+    Private Sub DrawProductionGeometry(
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If CurrentProductionJob Is Nothing Then Exit Sub
+
+        Debug.WriteLine(
+    "RENDER PRODUCTION JOB: Sheets=" &
+    CurrentProductionJob.JobSheets.Count)
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            Debug.WriteLine(
+        "RENDER SHEET: Parts=" & sheet.Parts.Count)
+
+            For Each part As Part In sheet.Parts
+
+                Debug.WriteLine(
+            "RENDER PART: Native Entities=" & part.Geometry.Count)
+
+                Dim pointCount As Integer = 0
+
+                For Each ge As GeoEntity In part.Geometry
+
+                    If TypeOf ge Is GeoPoint Then
+                        pointCount += 1
+                    End If
+
+                Next
+
+                Debug.WriteLine(
+                "RENDER PART: GeoPoints=" & pointCount)
+
+            Next
+
+        Next
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            If sheet Is Nothing Then Continue For
+
+            For Each part As Part In sheet.Parts
+
+                If part Is Nothing Then Continue For
+
+                DrawGeoEntities(
+                part.Geometry,
+                g,
+                vt,
+                panelHeight)
+
+            Next
+
+        Next
+
+    End Sub
+
+    Public Sub DrawGeoEntities(
+    entities As IEnumerable(Of GeoEntity),
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If entities Is Nothing Then Exit Sub
+
+        For Each ge As GeoEntity In entities
+
+            '        Debug.WriteLine(
+            '"NATIVE DRAW TYPE: " & ge.GetType().Name)
+            If ge Is Nothing Then Continue For
+
+            Select Case True
+
+                Case TypeOf ge Is GeoLine
+                    DrawGeoLine(
+                    DirectCast(ge, GeoLine),
+                    g, vt, panelHeight)
+
+                Case TypeOf ge Is GeoArc
+                    DrawGeoArc(
+                    DirectCast(ge, GeoArc),
+                    g, vt, panelHeight)
+
+                Case TypeOf ge Is GeoCircle
+                    DrawGeoCircle(
+                    DirectCast(ge, GeoCircle),
+                    g, vt, panelHeight)
+
+                Case TypeOf ge Is GeoPoint
+                    DrawGeoPoint(
+                    DirectCast(ge, GeoPoint),
+                    g, vt, panelHeight)
+
+            End Select
+
+        Next
+
+    End Sub
+
+
     Public Sub DrawSheetAndWorkzones(g As Graphics, sheetWidth As Double, sheetHeight As Double)
         Dim margin As Integer = 20
 
@@ -856,233 +1132,87 @@ Public Class frmMain
 
         Next
     End Sub
-
-    'Public Sub BuildDrawables()
-    '    _drawables = New List(Of DxfDrawable)
-
-    '    For Each cad In _cadEntities
-    '        Dim d As New DxfDrawable With {
-    '            .Entity = cad,
-    '            .LayerName = cad.LayerName,
-    '            .Color = System.Drawing.Color.Black
-    '        }
-
-    '        ' Map geometry by type
-    '        If TypeOf cad Is CadEntity.CadLine Then
-    '            Dim line = DirectCast(cad, CadEntity.CadLine)
-    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
-    '            d.StartPoint = line.StartPoint
-    '            d.EndPoint = line.EndPoint
-
-    '        ElseIf TypeOf cad Is CadEntity.CadCircle Then
-    '            Dim circle = DirectCast(cad, CadEntity.CadCircle)
-    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
-    '            d.Center = circle.Center
-    '            d.Radius = circle.Radius
-
-    '        ElseIf TypeOf cad Is CadEntity.CadArc Then
-    '            Dim arc = DirectCast(cad, CadEntity.CadArc)
-    '            d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
-    '            d.Center = arc.Center
-    '            d.Radius = arc.Radius
-    '            d.StartAngle = arc.StartAngle
-    '            d.EndAngle = arc.EndAngle
-
-    '            'ElseIf TypeOf cad Is CadEntity.CadPolyline Then
-    '            '    Dim pl = DirectCast(cad, CadEntity.CadPolyline)
-    '            '    d.DrawableType = DxfDrawable.DrawableTypeEnum.PolyLine
-    '            '    d.Points = New List(Of PointF)(pl.Points)
-
-    '            'ElseIf TypeOf cad Is CadEntity.CadRectangle Then
-    '            '    Dim rect = DirectCast(cad, CadEntity.CadRectangle)
-    '            '    d.DrawableType = DxfDrawable.DrawableTypeEnum.Rectangle
-    '            '    d.StartPoint = rect.StartPoint
-    '            '    d.Width = rect.Width
-    '            '    d.Height = rect.Height
-    '        End If
-
-    '        ' Add to drawables
-    '        _drawables.Add(d)
-
-    '        Dim cad As CadEntity = sourceCad
-
-    '        Dim d As New DxfDrawable()
-
-    '        d.Entity = cad
-
-    '        cad.Drawable = d
-
-    '    Next
-
-    '    Debug.Print("MODEL EXTENTS CHECK")
-
-
-    '    Dim allBounds As New List(Of RectangleF)
-
-    '    For Each d In _drawables
-    '        allBounds.Add(GetBounds(d))
-    '    Next
-
-    '    Dim minX = allBounds.Min(Function(r) r.Left)
-    '    Dim maxX = allBounds.Max(Function(r) r.Right)
-    '    Dim minY = allBounds.Min(Function(r) r.Top)
-    '    Dim maxY = allBounds.Max(Function(r) r.Bottom)
-
-    '    Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
-    '    Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
-
-    'End Sub
-
     Public Sub BuildDrawables()
 
-        ' ---------------------------------
-        ' INIT (ONLY ONCE)
-        ' ---------------------------------
-        _drawables = New List(Of DxfDrawable)
 
-        Debug.Print("========== CAD ENTITY CHECK ==========")
-        Debug.Print("_cadEntities.Count = " & _cadEntities.Count.ToString())
-
-        Dim pointCount As Integer = 0
-
-        For Each cad In _cadEntities
-
-            If TypeOf cad Is CadPoint Then
-                pointCount += 1
-
-                Dim pt = DirectCast(cad, CadPoint)
-
-                Debug.Print(
-            $"CAD POINT: X={pt.Position.X}, Y={pt.Position.Y}")
-
-            End If
-
-        Next
-
-        Debug.Print("CadPoint Count = " & pointCount.ToString())
-        Debug.Print("======================================")
+        Debug.WriteLine("ENTERED BuildDrawables")
 
         ' ---------------------------------
-        ' BUILD DRAWABLES FROM CAD ENTITIES
+        ' IDENTIFY CAD GEOMETRY TYPES
         ' ---------------------------------
         For Each cad In _cadEntities
 
-            Dim d As New DxfDrawable With {
-            .Entity = cad,
-            .LayerName = cad.LayerName,
-            .Color = System.Drawing.Color.Black
-        }
-
-            ' Link BOTH directions (important for selection + rendering)
-            cad.Drawable = d
-
-            ' ---------------------------------
-            ' GEOMETRY MAPPING (SINGLE SOURCE)
-            ' ---------------------------------
             If TypeOf cad Is CadLine Then
-
-                Dim line = DirectCast(cad, CadLine)
-
-                d.DrawableType = DxfDrawable.DrawableTypeEnum.Line
-                d.StartPoint = line.StartPoint
-                d.EndPoint = line.EndPoint
 
                 cad.GeometryType = GeometryTypeEnum.Line
 
             ElseIf TypeOf cad Is CadCircle Then
 
-                Dim circle = DirectCast(cad, CadCircle)
-
-                d.DrawableType = DxfDrawable.DrawableTypeEnum.Circle
-                d.Center = circle.Center
-                d.Radius = circle.Radius
-
                 cad.GeometryType = GeometryTypeEnum.Circle
 
             ElseIf TypeOf cad Is CadArc Then
-
-                Dim arc = DirectCast(cad, CadArc)
-
-                d.DrawableType = DxfDrawable.DrawableTypeEnum.Arc
-                d.Center = arc.Center
-                d.Radius = arc.Radius
-                d.StartAngle = arc.StartAngle
-                d.EndAngle = arc.EndAngle
 
                 cad.GeometryType = GeometryTypeEnum.Arc
 
             ElseIf TypeOf cad Is CadPoint Then
 
-                Dim pt = DirectCast(cad, CadPoint)
-
-                d.DrawableType = DxfDrawable.DrawableTypeEnum.Point
-                d.Center = pt.Position   ' assuming Position is PointF
-
                 cad.GeometryType = GeometryTypeEnum.Point
 
             Else
-                cad.GeometryType = GeometryTypeEnum.Unknown
-            End If
 
-            ' ---------------------------------
-            ' ADD ONCE
-            ' ---------------------------------
-            _drawables.Add(d)
+                cad.GeometryType = GeometryTypeEnum.Unknown
+
+            End If
 
         Next
 
-        ' ---------------------------------
-        ' DEBUG EXTENTS (NOW TRUSTWORTHY)
-        ' ---------------------------------
-        Debug.Print("MODEL EXTENTS CHECK")
+        Dim cadPointCount As Integer = 0
 
-        If _drawables.Count = 0 Then
-            Debug.Print("NO DRAWABLES")
-            Return
-        End If
+        For Each cad As CadEntity In _cadEntities
 
-        Dim allBounds = _drawables.
-        Select(Function(d) DxfDrawable.GetBounds(d)).
-        Where(Function(r) r <> RectangleF.Empty).
-        ToList()
+            If TypeOf cad Is CadPoint Then
+                cadPointCount += 1
+            End If
 
-        If allBounds.Count = 0 Then
-            Debug.Print("NO VALID BOUNDS")
-            Return
-        End If
+        Next
 
-        Dim minX = allBounds.Min(Function(r) r.Left)
-        Dim maxX = allBounds.Max(Function(r) r.Right)
-        Dim minY = allBounds.Min(Function(r) r.Top)
-        Dim maxY = allBounds.Max(Function(r) r.Bottom)
-
-        Debug.Print($"EXTENTS: X {minX} → {maxX}   Y {minY} → {maxY}")
-
-        ' ---------------------------------
-        ' BUILD SPATIAL INDEX (CRITICAL)
-        ' ---------------------------------
+        Debug.WriteLine("CAD POINT COUNT = " & cadPointCount)
         ' ---------------------------------
         ' SYNC SELECTION MANAGER
         ' ---------------------------------
-        Debug.Print("========== SELECTION INPUT ==========")
-        Debug.Print("Selection input count = " & _cadEntities.Count)
-
-        For Each ce As CadEntity In _cadEntities
-            If TypeOf ce Is CadPoint Then
-                Dim cp As CadPoint = DirectCast(ce, CadPoint)
-                Debug.Print("Selection CadPoint: X=" &
-                    cp.Position.X.ToString() &
-                    ", Y=" &
-                    cp.Position.Y.ToString())
-            End If
-        Next
-
         _selectionManager.SetEntities(_cadEntities)
 
         ' ---------------------------------
         ' BUILD SPATIAL INDEX
         ' ---------------------------------
         _selectionManager.BuildSpatialIndex()
+
+        ' ---------------------------------
+        ' BUILD NATIVE GEO SPATIAL INDEX
+        ' ---------------------------------
+
+        Dim geoEntities As New List(Of GeoEntity)
+
+        If CurrentProductionJob IsNot Nothing Then
+
+            For Each jobSheet In CurrentProductionJob.JobSheets
+
+                For Each part In jobSheet.Parts
+
+                    geoEntities.AddRange(part.Geometry)
+
+                Next
+
+            Next
+
+        End If
+
+        _selectionManager.SetGeoEntities(geoEntities)
+        _selectionManager.BuildGeoSpatialIndex()
+
+        Debug.WriteLine(
+    "NATIVE GEO ENTITIES REGISTERED = " &
+    geoEntities.Count)
 
     End Sub
 
@@ -1130,87 +1260,9 @@ Public Class frmMain
     '    End Sub
 
 
-    Private Sub DrawCircle(
-    c As DxfCircle,
-    g As Graphics,
-    scale As Double,
-    ox As Double,
-    oy As Double,
-    worldMaxY As Double,
-    color As Color,
-    isDefaultMapped As Boolean)
-
-        ' Convert DXF center to screen space
-        Dim centerWorld As PointF = DxfToPointF(c.Center)
-        Dim centerScreen As PointF = ToScreen(centerWorld, scale, ox, oy, worldMaxY)
-
-        ' Scale radius
-        Dim r As Single = CSng(c.Radius * scale)
-
-        ' Define bounding box points
-        Dim p1 As New PointF(centerScreen.X - r, centerScreen.Y - r) ' bottom-left / top-left
-        Dim p2 As New PointF(centerScreen.X + r, centerScreen.Y + r) ' top-right / bottom-right
-
-        ' Create rectangle from points (normalizes width/height automatically)
-        Dim rect As RectangleF = HelperFunctions.RectFromPoints(p1, p2)
-
-        ' Draw the ellipse
-        Using pen As New Pen(color, If(isDefaultMapped, 1.0F, 2.0F))
-            g.DrawEllipse(pen, rect)
-        End Using
-    End Sub
 
 
-    Private Sub DrawArc(
-    a As DxfArc,
-    g As Graphics,
-    scale As Double,
-    ox As Double,
-    oy As Double,
-    worldMaxY As Double,
-    color As Color,
-    isDefaultMapped As Boolean)
 
-        ' --------------------------------
-        ' Center in screen coordinates
-        ' --------------------------------
-        Dim centerWorld As PointF = DxfToPointF(a.Center)
-        Dim centerScreen As PointF = ToScreen(centerWorld, scale, ox, oy, worldMaxY)
-
-        ' --------------------------------
-        ' Radius scaled
-        ' --------------------------------
-        Dim r As Single = CSng(a.Radius * scale)
-
-        ' --------------------------------
-        ' Define bounding rectangle points
-        ' --------------------------------
-        Dim p1 As New PointF(centerScreen.X - r, centerScreen.Y - r) ' top-left
-        Dim p2 As New PointF(centerScreen.X + r, centerScreen.Y + r) ' bottom-right
-
-        ' --------------------------------
-        ' Create rectangle using helper
-        ' --------------------------------
-        Dim rect As RectangleF = HelperFunctions.RectFromPoints(p1, p2)
-
-        ' --------------------------------
-        ' DXF → GDI+ angle conversion
-        ' DXF: counter-clockwise, 0° at +X axis
-        ' GDI+: clockwise, 0° at +X axis
-        ' --------------------------------
-        Dim startAngle As Single = CSng(-a.StartAngle)
-        Dim sweepAngle As Single = CSng(-(a.EndAngle - a.StartAngle))
-
-        ' Normalize sweep
-        If sweepAngle <= 0 Then
-            sweepAngle += 360.0F
-        End If
-
-        ' Draw the arc
-        Using pen As New Pen(color, If(isDefaultMapped, 1.0F, 2.0F))
-            g.DrawArc(pen, rect, startAngle, sweepAngle)
-        End Using
-    End Sub
 
     Private Sub DrawCadPoint(
     pt As CadPoint,
@@ -1236,41 +1288,67 @@ Public Class frmMain
 
     End Sub
 
-    'Private Sub DrawPolyline(points As List(Of DxfPoint), g As Graphics,
-    '                     scale As Double, ox As Double, oy As Double,
-    '                     color As Color, isDefaultMapped As Boolean)
+    Private Sub DrawGeoPoint(
+    pt As GeoPoint,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
 
-    '    If points Is Nothing OrElse points.Count < 2 Then Return
+        If pt Is Nothing Then Exit Sub
 
-    '    ' Choose pen width based on default mapping
-    '    Dim width As Single = If(isDefaultMapped, DEFAULT_WIDTH, NORMAL_WIDTH)
+        Dim screenPt As PointF =
+        WorldToScreen(
+            pt.X,
+            pt.Y,
+            vt,
+            panelHeight)
 
-    '    Using pen As New Pen(color, width)
-    '        ' Draw each segment
-    '        For i As Integer = 0 To points.Count - 2
-    '            Dim p1 = ToScreen(points(i), scale, ox, oy)
-    '            Dim p2 = ToScreen(points(i + 1), scale, ox, oy)
-    '            g.DrawLine(pen, p1.X, p1.Y, p2.X, p2.Y)
-    '        Next
+        Const PointSize As Single = 6.0F
 
-    '        ' Close the polyline if needed
-    '        If points.Count > 2 Then
-    '            Dim pFirst = ToScreen(points(0), scale, ox, oy)
-    '            Dim pLast = ToScreen(points(points.Count - 1), scale, ox, oy)
-    '            g.DrawLine(pen, pLast.X, pLast.Y, pFirst.X, pFirst.Y)
-    '        End If
-    '    End Using
+        Dim rect As New RectangleF(
+        screenPt.X - PointSize / 2.0F,
+        screenPt.Y - PointSize / 2.0F,
+        PointSize,
+        PointSize)
 
-    '    ' Draw default marker at midpoint if flagged
-    '    If isDefaultMapped Then
-    '        Dim midIndex As Integer = points.Count \ 2
-    '        Dim midPoint = ToScreen(points(midIndex), scale, ox, oy)
-    '        DrawDefaultMarker(g, midPoint, scale)
-    '    End If
+        Dim drawColor As System.Drawing.Color = pt.Color
+        Dim drawWidth As Single = 1.0F
+        Dim drawDashed As Boolean = False
+        If pt.Selected Then
 
-    'End Sub
+            drawColor = System.Drawing.Color.Red
+            drawWidth = 1.0F
 
+        ElseIf pt.IsHovered Then
 
+            drawColor = System.Drawing.Color.Red
+            drawWidth = 2.0F
+            drawDashed = True
+
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
+
+            If pt.Selected Then
+
+                pen.DashStyle = DashStyle.Dot
+
+            ElseIf drawDashed Then
+
+                pen.DashStyle = DashStyle.Dash
+
+            End If
+
+            g.DrawRectangle(
+        pen,
+        rect.X,
+        rect.Y,
+        rect.Width,
+        rect.Height)
+
+        End Using
+
+    End Sub
 
     ' Helper to draw the default marker (e.g., a "!") at a point
     Private Sub DrawDefaultMarker(g As Graphics, pt As PointF, scale As Double)
@@ -1280,25 +1358,6 @@ Public Class frmMain
         End Using
     End Sub
 
-    ''' <summary>
-    ''' Converts a point from DXF world coordinates to panel screen coordinates.
-    ''' Handles scaling, offset, and flipping of the Y-axis for correct display.
-    ''' </summary>
-    ''' <param name="worldPoint">The DXF point in world coordinates.</param>
-    ''' <param name="scale">Scale factor (screen pixels per DXF unit).</param>
-    ''' <param name="ox">X-axis offset in pixels.</param>
-    ''' <param name="oy">Y-axis offset in pixels.</param>
-    ''' <returns>PointF representing screen coordinates.</returns>
-    'Public Function ToScreen(worldPoint As DxfPoint, scale As Double, ox As Double, oy As Double) As PointF
-    '    ' Scale the coordinates
-    '    Dim x As Single = CSng(worldPoint.X * scale + ox)
-    '    Dim y As Single = CSng(worldPoint.Y * scale + oy)
-
-    '    ' Flip Y-axis to match GDI+ coordinate system
-    '    y = pnlPicmodeler.ClientRectangle.Height - y
-
-    '    Return New PointF(x, y)
-    'End Function
 
     Private Function DxfToPointF(p As IxMilia.Dxf.DxfPoint) As PointF
         Return New PointF(CSng(p.X), CSng(p.Y))
@@ -1619,84 +1678,7 @@ Public Class frmMain
         End Select
 
     End Function
-    ''------------------------------------------
-    '' Hit-testing function
-    ''------------------------------------------
-    'Private Function HitTestImported(mousePos As Point,
-    '                             pnl As Panel,
-    '                             hitTolerance As Single,
-    '                             ByRef hitDistance As Single) As ImportedEntity
 
-    '    hitDistance = Single.MaxValue
-
-    '    If _importedEntities Is Nothing OrElse _importedEntities.Count = 0 Then
-    '        Return Nothing
-    '    End If
-
-
-
-    '    Dim panelWidth = pnl.ClientSize.Width
-    '    Dim panelHeight = pnl.ClientSize.Height
-
-    '    Dim scaleX = panelWidth / (maxX - minX)
-    '    Dim scaleY = panelHeight / (maxY - minY)
-    '    Dim scale = Math.Min(scaleX, scaleY) * 0.9F
-
-    '    Dim offsetX = (panelWidth - (maxX - minX) * scale) / 2.0F
-    '    Dim offsetY = (panelHeight - (maxY - minY) * scale) / 2.0F
-
-    '    '-------------------------------------------------
-    '    ' Helpers
-    '    '-------------------------------------------------
-    '    Dim mouseF As New PointF(mousePos.X, mousePos.Y)
-
-    '    Dim bestEntity As ImportedEntity = Nothing
-
-    '    '-------------------------------------------------
-    '    ' Hit test each entity
-    '    '-------------------------------------------------
-    '    For Each ent In _importedEntities
-
-    '        Dim dist As Single = Single.MaxValue
-
-    '        Select Case ent.GeometryType
-
-    '            Case ImportedEntity.GeometryTypeEnum.Line
-    '                Dim p1 = worldToScreen(ent.Line.P1)
-    '                Dim p2 = worldToScreen(ent.Line.P2)
-
-    '                dist = DistancePointToLine(mouseF, p1, p2)
-
-    '            Case ImportedEntity.GeometryTypeEnum.Circle
-    '                Dim c = worldToScreen(ent.Circle.Center)
-    '                Dim r = CSng(ent.Circle.Radius * scale)
-
-    '                dist = Math.Abs(Distance(mouseF, c) - r)
-
-    '            Case ImportedEntity.GeometryTypeEnum.Arc
-    '                Dim c = worldToScreen(ent.Arc.Center)
-    '                Dim r = CSng(ent.Arc.Radius * scale)
-
-    '                dist = Math.Abs(Distance(mouseF, c) - r)
-
-    '        End Select
-
-    '        If dist < hitDistance Then
-    '            hitDistance = dist
-    '            bestEntity = ent
-    '        End If
-
-    '    Next
-
-    '    If hitDistance <= hitTolerance Then
-    '        Return bestEntity
-    '    End If
-
-
-
-    '    Return Nothing
-
-    'End Function
 
     Private Sub pnlPicmodeler_MouseMove(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseMove
 
@@ -1721,6 +1703,7 @@ Public Class frmMain
         ' 2) Update model coordinates display
         ' --------------------------
         Dim modelPt As PointF = ScreenToWorld(e.Location, myTransform, pnlPicmodeler.ClientSize.Height)
+        _hoverMouseWorld = modelPt
         statusLocation.Caption = $"Location: X={modelPt.X:0.###}, Y={modelPt.Y:0.###}"
 
         ' 3) ViewWindow rubber-band
@@ -1784,6 +1767,19 @@ Public Class frmMain
         Dim tolWorld As Single = HitTolerancePx / myTransform.Scale
 
         _selectionManager.UpdateHover(modelPt, tolWorld)
+
+        ' ---------------------------------
+        ' TEMPORARY NATIVE GEO HIT TEST
+        ' ---------------------------------
+
+        Dim nativeHit As Boolean =
+            _selectionManager.TestGeoHitAtPoint(modelPt, tolWorld)
+
+        If nativeHit Then
+            Debug.WriteLine("NATIVE GEO HIT = TRUE")
+        End If
+
+
 
     End Sub
 
@@ -2229,12 +2225,17 @@ Public Class frmMain
         Dim tolWorld As Single = HitTolerancePx / scale
         tolWorld = Math.Max(tolWorld, 0.1F)
 
+        ' Ctrl explicitly requests deselection.
+        Dim deselect As Boolean =
+    (Control.ModifierKeys And Keys.Control) = Keys.Control
+
         Dim hit As isSelectable =
     _selectionManager.SelectAtPoint(
         worldPt,
         tolWorld,
         _selectionMode,
-        _selectionFilter)
+        _selectionFilter,
+        deselect)
 
         Debug.Print("Profile Selection Enabled = " &
             _profileSelectionEnabled.ToString())
@@ -2298,22 +2299,22 @@ Public Class frmMain
             Dim minY As Single = Math.Min(w1.Y, w2.Y)
             Dim maxY As Single = Math.Max(w1.Y, w2.Y)
 
-            Dim worldRect As New RectangleF(
-        minX,
-        minY,
-        maxX - minX,
-        maxY - minY)
+            Dim worldRect As New RectangleF(minX, minY, maxX - minX, maxY - minY)
 
             ' Perform the actual selection.
-            _selectionManager.SelectByWindow(
-                                                                        worldRect,
-                                                                        Nothing,
-                                                                        _selectionFilter)
 
-            ' End the window operation.
-            _selectWindowActive = False
+            Dim isReverseWindow As Boolean = _selectWindowEnd.X < _selectWindowStart.X
 
-            pnlPicmodeler.Cursor = Cursors.Default
+            Debug.WriteLine($"Selection Window: Reverse={isReverseWindow}")
+
+            Dim deselect As Boolean = (Control.ModifierKeys And Keys.Control) = Keys.Control
+
+            _selectionManager.SelectGeoByWindow(worldRect, _selectionFilter, isReverseWindow, deselect)
+            ' Keep Window Selection active for the next operation.
+            _selectWindowStart = System.Drawing.Point.Empty
+            _selectWindowEnd = System.Drawing.Point.Empty
+
+            pnlPicmodeler.Cursor = Cursors.Cross
             pnlPicmodeler.Invalidate()
             Return
         End If
@@ -2417,7 +2418,7 @@ Public Class frmMain
     Private Sub pnlPicmodeler_MouseWheel(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseWheel
 
         ' Ctrl + Shift required
-      
+
         If (ModifierKeys And Keys.Control) = 0 OrElse
        (ModifierKeys And Keys.Shift) = 0 Then Exit Sub
 
@@ -3039,12 +3040,38 @@ Public Class frmMain
     Private Sub bbInquire_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbInquire.ItemClick
 
     End Sub
-
     Private Sub frmMain_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown
-        If e.KeyCode = Keys.Escape AndAlso _inquireMode Then
+
+        If e.KeyCode <> Keys.Escape Then Return
+
+        ' Preserve existing Inquire Mode behavior.
+        If _inquireMode Then
+
             ExitInquireMode()
             e.Handled = True
+            Return
+
         End If
+
+        ' Exit persistent Window Selection mode.
+        If _selectWindowActive AndAlso
+       _currentTool = "SelectWindow" Then
+
+            _selectWindowActive = False
+
+            _selectWindowStart = System.Drawing.Point.Empty
+            _selectWindowEnd = System.Drawing.Point.Empty
+
+            _currentTool = ""
+
+            pnlPicmodeler.Cursor = Cursors.Default
+            pnlPicmodeler.Invalidate()
+
+            e.Handled = True
+            Return
+
+        End If
+
     End Sub
 
     Private ReadOnly Property IsInquireMode As Boolean
@@ -3188,6 +3215,7 @@ Public Class frmMain
             g.DrawRectangle(Pens.Black, Rectangle.Round(r))
             g.DrawString(text, f, fg, r.Left + 3, r.Top + 2)
         End Using
+        DrawHoverLineArrow(g)
 
     End Sub
     Private Sub DrawSnapIndicator(
@@ -3499,13 +3527,13 @@ Public Class frmMain
     End Sub
 
 
-    Private Function GetHoverDrawable() As DxfDrawable
+    'Private Function GetHoverDrawable() As DxfDrawable
 
-        If _hoverEntity Is Nothing Then Return Nothing
+    '    If _hoverEntity Is Nothing Then Return Nothing
 
-        Return _hoverEntity.drawable
+    '    Return _hoverEntity.drawable
 
-    End Function
+    'End Function
 
     Private Sub tbSelect_Enable_Click(sender As Object, e As EventArgs) Handles tbSelect_Enable.Click
         _selectionEnabled = tbSelect_Enable.Checked
@@ -3615,24 +3643,16 @@ Public Class frmMain
         End Using
 
     End Sub
-
     Private Sub tbSelect_Points_Click(sender As Object, e As EventArgs) Handles tbSelect_Points.Click
 
         _selectionFilter = CType(
         CInt(_selectionFilter) Xor CInt(SelectionFilter.Point),
         SelectionFilter)
 
-        If (CInt(_selectionFilter) And CInt(SelectionFilter.Point)) <> 0 Then
-            _selectionMode = GeometryTypeEnum.Point
-        Else
-            _selectionMode = Nothing
-        End If
-
         UpdateSelectionIcons()
         pnlPicmodeler.Invalidate()
 
     End Sub
-
     Private Sub tbSelect_Profiles_Click(sender As Object, e As EventArgs) Handles tbSelect_Profiles.Click
 
         _profileSelectionEnabled = Not _profileSelectionEnabled
@@ -3818,7 +3838,113 @@ Public Class frmMain
 
     End Sub
 
+    Private Function GetHoverLineArrow(ByRef arrowPoint As PointF,
+                                  ByRef arrowDirection As PointF) As Boolean
 
+        Dim line As CadLine = TryCast(_hoverEntity, CadLine)
+
+        If line Is Nothing Then Return False
+
+        Dim dx As Double = line.EndPoint.X - line.StartPoint.X
+        Dim dy As Double = line.EndPoint.Y - line.StartPoint.Y
+
+        Dim lengthSquared As Double = dx * dx + dy * dy
+
+        If lengthSquared <= 0.000000000001 Then Return False
+
+        ' Project the mouse onto the line segment.
+        Dim mx As Double = _hoverMouseWorld.X - line.StartPoint.X
+        Dim my As Double = _hoverMouseWorld.Y - line.StartPoint.Y
+
+        Dim t As Double = (mx * dx + my * dy) / lengthSquared
+
+        ' Keep the arrow on the line segment.
+        t = Math.Max(0.0, Math.Min(1.0, t))
+
+        arrowPoint = New PointF(
+            CSng(line.StartPoint.X + t * dx),
+            CSng(line.StartPoint.Y + t * dy)
+        )
+
+        ' Normalize the direction vector.
+        Dim length As Double = Math.Sqrt(lengthSquared)
+
+        arrowDirection = New PointF(
+            CSng(dx / length),
+            CSng(dy / length)
+        )
+
+        Return True
+
+    End Function
+
+    Private Sub DrawHoverLineArrow(g As Graphics)
+
+        Dim arrowPoint As PointF
+        Dim arrowDirection As PointF
+
+        Debug.WriteLine("ENTERED DrawHoverLineArrow")
+        If _hoverEntity Is Nothing Then
+            Debug.WriteLine("ARROW: No hovered entity")
+        Else
+            Debug.WriteLine("ARROW: " & _hoverEntity.GetType().Name)
+        End If
+
+
+        If Not GetHoverLineArrow(arrowPoint, arrowDirection) Then Return
+
+        ' Convert arrow location to screen coordinates.
+        Dim screenPt As PointF = WorldToScreen(
+            arrowPoint.X,
+            arrowPoint.Y,
+            myTransform,
+            pnlPicmodeler.ClientSize.Height)
+
+        ' Convert world direction to screen direction.
+        ' Screen Y is inverted.
+        Dim dx As Single = arrowDirection.X
+        Dim dy As Single = -arrowDirection.Y
+
+        Dim arrowLength As Single = 14.0F
+        Dim headLength As Single = 5.0F
+        Dim headWidth As Single = 4.0F
+
+        Dim tip As New PointF(
+            screenPt.X + dx * arrowLength / 2,
+            screenPt.Y + dy * arrowLength / 2)
+
+        Dim tail As New PointF(
+            screenPt.X - dx * arrowLength / 2,
+            screenPt.Y - dy * arrowLength / 2)
+
+        Dim basePt As New PointF(
+            tip.X - dx * headLength,
+            tip.Y - dy * headLength)
+
+        Dim perpX As Single = -dy
+        Dim perpY As Single = dx
+
+        Dim wing1 As New PointF(
+            basePt.X + perpX * headWidth,
+            basePt.Y + perpY * headWidth)
+
+        Dim wing2 As New PointF(
+            basePt.X - perpX * headWidth,
+            basePt.Y - perpY * headWidth)
+
+        Using arrowPen As New Pen(System.Drawing.Color.Yellow, 2.0F)
+
+            g.DrawLine(arrowPen, tail, tip)
+            g.DrawLine(arrowPen, tip, wing1)
+            g.DrawLine(arrowPen, tip, wing2)
+
+        End Using
+
+    End Sub
+
+    Private Sub bbiMaterialList_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbiMaterialList.ItemClick
+
+    End Sub
 End Class
 
 

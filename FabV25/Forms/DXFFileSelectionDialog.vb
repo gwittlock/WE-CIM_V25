@@ -42,8 +42,15 @@ Public Class DXFFileSelectionDialog
     End Property
 
     Private Sub DXFFileSelectionDialog_Load(sender As Object, e As EventArgs) Handles Me.Load
+
+        Dim loadTimer As Stopwatch = Stopwatch.StartNew()
+
         InitializeFolderIcons()
         LoadRootFolders()
+
+        Debug.WriteLine("After LoadRootFolders: " &
+                loadTimer.ElapsedMilliseconds & " ms")
+
         nMyMaterialID = RegGetInt("Global", "MaterialID", 5)
         sMyMaterial = RegGetString("Global", "Material", "ALUM .250 X 96 X 48")
 
@@ -55,34 +62,38 @@ Public Class DXFFileSelectionDialog
 
         If Directory.Exists(_initialFolder) Then
             SelectFolderInTree(_initialFolder)
+            Debug.WriteLine("After SelectFolderInTree: " &
+                loadTimer.ElapsedMilliseconds & " ms")
         End If
 
         AddHandler pnlPreview.Paint, AddressOf pnlPreview_Paint
+
+        loadTimer.Stop()
+        Debug.WriteLine("DXF Dialog Load Time: " &
+                        loadTimer.ElapsedMilliseconds & " ms")
+
     End Sub
 
-    '-------------------------------
-    ' Load root folders
-    '-------------------------------
     Public Sub LoadRootFolders()
+
         tvFolders.Nodes.Clear()
 
         For Each drive As DriveInfo In DriveInfo.GetDrives()
-            Try
-                If drive.IsReady Then
-                    Dim driveNode As New TreeNode()
-                    Dim nodeText As String = If(String.IsNullOrEmpty(drive.VolumeLabel),
-                                                $"{drive.Name} ({drive.DriveType})",
-                                                $"{drive.VolumeLabel} ({drive.Name.Substring(0, 1)})")
-                    driveNode.Text = nodeText
-                    driveNode.Tag = drive.RootDirectory.FullName
-                    driveNode.ImageIndex = 0
-                    driveNode.SelectedImageIndex = 1
-                    tvFolders.Nodes.Add(driveNode)
-                    PopulateChildFolders(driveNode)
-                End If
-            Catch ex As Exception
-            End Try
+
+            Dim driveNode As New TreeNode() With {
+            .Text = drive.Name & " (" & drive.DriveType.ToString() & ")",
+            .Tag = drive.RootDirectory.FullName,
+            .ImageIndex = 0,
+            .SelectedImageIndex = 1
+        }
+
+            tvFolders.Nodes.Add(driveNode)
+
+            ' Load folders only when the drive is expanded.
+            driveNode.Nodes.Add("Loading...")
+
         Next
+
     End Sub
 
     '-------------------------------
@@ -362,14 +373,19 @@ Public Class DXFFileSelectionDialog
         Next
     End Sub
 
-    Private Sub tvFolders_BeforeExpand(sender As Object, e As TreeViewCancelEventArgs) Handles tvFolders.BeforeExpand
+    Private Sub tvFolders_BeforeExpand(
+    sender As Object,
+    e As TreeViewCancelEventArgs
+) Handles tvFolders.BeforeExpand
 
         Dim node As TreeNode = e.Node
 
-        ' Only populate if placeholder exists
-        If node.Nodes.Count = 1 AndAlso node.Nodes(0).Text = "Loading..." Then
+        If node.Nodes.Count = 1 AndAlso
+       node.Nodes(0).Text = "Loading..." Then
+
             node.Nodes.Clear()
             PopulateChildFolders(node)
+
         End If
 
     End Sub

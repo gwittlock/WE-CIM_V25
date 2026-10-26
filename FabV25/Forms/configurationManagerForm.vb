@@ -167,7 +167,7 @@ Public Class ConfigurationManagerForm
             .Multiline = True          ' sometimes needed
         End With
 
-        lstTools.BackColor = Color.LightGray
+        lstTools.BackColor = ColorTranslator.FromOle(RegGetString("Preferences\ViewOptions", "MaterialColor", System.Drawing.Color.Gray))
 
         'ExportTreeToFile(Path.Combine(dataFolder, "TreeView.txt"))
 
@@ -4515,11 +4515,6 @@ Public Class ConfigurationManagerForm
 
 
     End Sub
-
-    Private Sub propgrdLayer_Click(sender As Object, e As EventArgs) Handles propgrdLayer.Click
-
-    End Sub
-
     Private Sub btnSaveLayerSetp_Click(sender As Object, e As EventArgs) Handles btnSaveLayerSetp.Click
 
         Dim editedLayerSetup = TryCast(propgrdLayerSetup.SelectedObject, layersetup)
@@ -4597,6 +4592,7 @@ Public Class ConfigurationManagerForm
         existing.CADLayer = editedDirective.CADLayer
         existing.CAMLayer = editedDirective.CAMLayer
         existing.Color = editedDirective.Color
+        existing.DisplayColor = editedDirective.DisplayColor
         existing.Station = editedDirective.Station
         existing.ToolType = editedDirective.ToolType
         existing.ZLevel = editedDirective.ZLevel
