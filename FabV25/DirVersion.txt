@@ -1,0 +1,61 @@
+=============================================
+   File Version List - Current Folder
+=============================================
+
+File Name|Version
+--------------------
+WE_Eng_25.0.exe | 25.0.0.0  
+DevExpress.BonusSkins.v18.1.dll | 18.1.18.0  
+DevExpress.Charts.v18.1.Core.dll | 18.1.18.0  
+DevExpress.CodeParser.v18.1.dll | 18.1.18.0  
+DevExpress.Data.v18.1.dll | 18.1.18.0  
+DevExpress.DataAccess.v18.1.dll | 18.1.18.0  
+DevExpress.DataAccess.v18.1.UI.dll | 18.1.18.0  
+DevExpress.Diagram.v18.1.Core.dll | 18.1.18.0  
+DevExpress.Dialogs.v18.1.Core.dll | 18.1.18.0  
+DevExpress.Docs.v18.1.dll | 18.1.18.0  
+DevExpress.Images.v18.1.dll | 18.1.18.0  
+DevExpress.Office.v18.1.Core.dll | 18.1.18.0  
+DevExpress.Pdf.v18.1.Core.dll | 18.1.18.0  
+DevExpress.Pdf.v18.1.Drawing.dll | 18.1.18.0  
+DevExpress.PivotGrid.v18.1.Core.dll | 18.1.18.0  
+DevExpress.Printing.v18.1.Core.dll | 18.1.18.0  
+DevExpress.RichEdit.v18.1.Core.dll | 18.1.18.0  
+DevExpress.Snap.v18.1.Core.dll | 18.1.18.0  
+DevExpress.Sparkline.v18.1.Core.dll | 18.1.18.0  
+DevExpress.Spreadsheet.v18.1.Core.dll | 18.1.18.0  
+DevExpress.Utils.v18.1.dll | 18.1.18.0  
+DevExpress.Utils.v18.1.UI.dll | 18.1.18.0  
+DevExpress.Xpo.v18.1.dll | 18.1.18.0  
+DevExpress.XtraBars.v18.1.dll | 18.1.18.0  
+DevExpress.XtraCharts.v18.1.dll | 18.1.18.0  
+DevExpress.XtraCharts.v18.1.Extensions.dll | 18.1.18.0  
+DevExpress.XtraCharts.v18.1.Wizard.dll | 18.1.18.0  
+DevExpress.XtraDiagram.v18.1.dll | 18.1.18.0  
+DevExpress.XtraDialogs.v18.1.dll | 18.1.18.0  
+DevExpress.XtraEditors.v18.1.dll | 18.1.18.0  
+DevExpress.XtraGauges.v18.1.Core.dll | 18.1.18.0  
+DevExpress.XtraGrid.v18.1.dll | 18.1.18.0  
+DevExpress.XtraLayout.v18.1.dll | 18.1.18.0  
+DevExpress.XtraNavBar.v18.1.dll | 18.1.18.0  
+DevExpress.XtraPivotGrid.v18.1.dll | 18.1.18.0  
+DevExpress.XtraPrinting.v18.1.dll | 18.1.18.0  
+DevExpress.XtraReports.v18.1.dll | 18.1.18.0  
+DevExpress.XtraReports.v18.1.Extensions.dll | 18.1.18.0  
+DevExpress.XtraRichEdit.v18.1.dll | 18.1.18.0  
+DevExpress.XtraSpreadsheet.v18.1.dll | 18.1.18.0  
+DevExpress.XtraTreeList.v18.1.dll | 18.1.18.0  
+DevExpress.XtraVerticalGrid.v18.1.dll | 18.1.18.0  
+DevExpress.XtraWizard.v18.1.dll | 18.1.18.0  
+IxMilia.Dxf.dll | 0.8.4.0  
+Microsoft.Bcl.AsyncInterfaces.dll | 5.0.20.51904  
+Newtonsoft.Json.dll | 13.0.4.30916  
+System.Buffers.dll | 4.6.28619.1  
+System.Memory.dll | 4.6.28619.1  
+System.Numerics.Vectors.dll | 4.6.26515.6  
+System.Runtime.CompilerServices.Unsafe.dll | 5.0.20.51904  
+System.Text.Encoding.CodePages.dll | 5.0.20.51904  
+System.Text.Encodings.Web.dll | 5.0.421.11614  
+System.Text.Json.dll | 5.0.521.16609  
+System.Threading.Tasks.Extensions.dll | 4.6.28619.1  
+System.ValueTuple.dll | 4.6.26515.6  
