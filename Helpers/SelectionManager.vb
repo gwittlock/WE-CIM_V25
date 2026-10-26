@@ -744,7 +744,10 @@ Public Class SelectionManager
 
     Public Sub SelectGeoByWindow(
     worldRect As RectangleF,
-    selectionFilter As SelectionFilter)
+    selectionFilter As SelectionFilter,
+    Optional isReverseWindow As Boolean = False,
+    Optional deselect As Boolean = False)
+
 
         If worldRect.Width <= 0 OrElse
        worldRect.Height <= 0 Then
@@ -758,13 +761,53 @@ Public Class SelectionManager
 
             If ent Is Nothing Then Continue For
 
-            If Not IsGeoEntityFullyInsideWindow(
-            ent,
-            worldRect) Then
+            ' Respect the toolbar selection filter.
+            If Not IsEntityAllowedBySelectionFilter(ent, selectionFilter) Then
 
                 Continue For
 
             End If
+
+            ' Regular window requires full containment.
+            Dim isInside As Boolean =
+    IsGeoEntityFullyInsideWindow(ent, worldRect)
+
+            Dim isIntersecting As Boolean = False
+
+            If isReverseWindow Then
+
+                If TypeOf ent Is GeoLine Then
+
+                    isIntersecting = IsGeoLineIntersectingWindow(DirectCast(ent, GeoLine), worldRect)
+
+                ElseIf TypeOf ent Is GeoCircle Then
+
+                    isIntersecting = IsGeoCircleIntersectingWindow(DirectCast(ent, GeoCircle), worldRect)
+
+                ElseIf TypeOf ent Is GeoArc Then
+
+                    isIntersecting = IsGeoArcIntersectingWindow(
+                        DirectCast(ent, GeoArc),
+                        worldRect)
+
+                End If
+
+            End If
+
+            If Not isInside AndAlso Not isIntersecting Then
+                Continue For
+            End If
+            ' Select or deselect the native geometry.
+            If deselect Then
+
+                ApplyDeselection(ent)
+
+            Else
+
+                ApplySelection(ent)
+
+            End If
+
 
             ' Selection and filter handling
             ' will be added in the next step.
@@ -1444,6 +1487,69 @@ Public Class SelectionManager
 
     End Function
 
+    Private Function IsGeoLineIntersectingWindow(
+    line As GeoLine,
+    worldRect As RectangleF) As Boolean
+
+        If line Is Nothing OrElse
+       line.StartPoint Is Nothing OrElse
+       line.EndPoint Is Nothing Then
+
+            Return False
+        End If
+
+        Dim x1 As Double = line.StartPoint.X
+        Dim y1 As Double = line.StartPoint.Y
+        Dim x2 As Double = line.EndPoint.X
+        Dim y2 As Double = line.EndPoint.Y
+
+        Dim dx As Double = x2 - x1
+        Dim dy As Double = y2 - y1
+
+        Dim tMin As Double = 0.0
+        Dim tMax As Double = 1.0
+
+        Dim p() As Double = {-dx, dx, -dy, dy}
+
+        Dim q() As Double = {
+        x1 - worldRect.Left,
+        worldRect.Right - x1,
+        y1 - worldRect.Top,
+        worldRect.Bottom - y1
+    }
+
+        For i As Integer = 0 To 3
+
+            If Math.Abs(p(i)) < 0.000000000001 Then
+
+                If q(i) < 0 Then Return False
+
+            Else
+
+                Dim t As Double = q(i) / p(i)
+
+                If p(i) < 0 Then
+
+                    tMin = Math.Max(tMin, t)
+
+                Else
+
+                    tMax = Math.Min(tMax, t)
+
+                End If
+
+                If tMin > tMax Then Return False
+
+            End If
+
+        Next
+
+        Return True
+
+    End Function
+
+
+
     Private Function IsGeoPointFullyInsideWindow(
     pt As GeoPoint,
     worldRect As RectangleF) As Boolean
@@ -1479,6 +1585,64 @@ Public Class SelectionManager
                cx + r <= worldRect.Right AndAlso
                cy - r >= worldRect.Top AndAlso
                cy + r <= worldRect.Bottom
+
+    End Function
+
+    Private Function IsGeoCircleIntersectingWindow(
+    circle As GeoCircle,
+    worldRect As RectangleF) As Boolean
+
+        If circle Is Nothing OrElse
+       circle.Center Is Nothing Then
+
+            Return False
+        End If
+
+        Dim cx As Double = circle.Center.X
+        Dim cy As Double = circle.Center.Y
+        Dim r As Double = circle.Radius
+
+        If r < 0 Then Return False
+
+        ' Find the closest point on the rectangle
+        ' to the circle center.
+
+        Dim closestX As Double =
+        Math.Max(worldRect.Left,
+                 Math.Min(cx, worldRect.Right))
+
+        Dim closestY As Double =
+        Math.Max(worldRect.Top,
+                 Math.Min(cy, worldRect.Bottom))
+
+        Dim dx As Double = cx - closestX
+        Dim dy As Double = cy - closestY
+
+        Dim minDistSquared As Double =
+        dx * dx + dy * dy
+
+        ' Find the farthest rectangle corner
+        ' from the circle center.
+
+        Dim maxDx As Double =
+        Math.Max(Math.Abs(cx - worldRect.Left),
+                 Math.Abs(cx - worldRect.Right))
+
+        Dim maxDy As Double =
+        Math.Max(Math.Abs(cy - worldRect.Top),
+                 Math.Abs(cy - worldRect.Bottom))
+
+        Dim maxDistSquared As Double =
+        maxDx * maxDx + maxDy * maxDy
+
+        Dim radiusSquared As Double = r * r
+
+        ' The circumference intersects the rectangle
+        ' when its radius lies between the minimum
+        ' and maximum distances.
+
+        Return radiusSquared >= minDistSquared AndAlso
+           radiusSquared <= maxDistSquared
 
     End Function
 
@@ -1539,6 +1703,135 @@ Public Class SelectionManager
         Return True
 
     End Function
+
+
+
+    Private Function IsGeoArcIntersectingWindow(
+    arc As GeoArc,
+    worldRect As RectangleF) As Boolean
+
+        If arc Is Nothing OrElse
+       arc.Center Is Nothing Then Return False
+
+        If arc.Radius < 0 Then Return False
+
+        Dim cx As Double = arc.Center.X
+        Dim cy As Double = arc.Center.Y
+        Dim r As Double = arc.Radius
+
+        ' Check the arc endpoints.
+
+        Dim endpointAngles() As Double = {
+        arc.StartAngle,
+        arc.EndAngle
+    }
+
+        For Each angle As Double In endpointAngles
+
+            Dim radians As Double =
+            angle * Math.PI / 180.0
+
+            Dim x As Double = cx + r * Math.Cos(radians)
+            Dim y As Double = cy + r * Math.Sin(radians)
+
+            If worldRect.Contains(CSng(x), CSng(y)) Then
+                Return True
+            End If
+
+        Next
+
+        ' Check intersections with the vertical edges.
+
+        Dim verticalEdges() As Double = {
+        worldRect.Left,
+        worldRect.Right
+    }
+
+        For Each edgeX As Double In verticalEdges
+
+            Dim dx As Double = edgeX - cx
+            Dim discriminant As Double = r * r - dx * dx
+
+            If discriminant < 0 Then Continue For
+
+            Dim dy As Double = Math.Sqrt(discriminant)
+
+            Dim intersectionY() As Double = {
+            cy + dy,
+            cy - dy
+        }
+
+            For Each y As Double In intersectionY
+
+                If y < worldRect.Top OrElse
+               y > worldRect.Bottom Then Continue For
+
+                Dim angle As Double =
+                Math.Atan2(y - cy, edgeX - cx) *
+                180.0 / Math.PI
+
+                If IsGeoAngleOnArc(
+                angle,
+                arc.StartAngle,
+                arc.EndAngle,
+                arc.IsClockwise) Then
+
+                    Return True
+
+                End If
+
+            Next
+
+        Next
+
+        ' Check intersections with the horizontal edges.
+
+        Dim horizontalEdges() As Double = {
+        worldRect.Top,
+        worldRect.Bottom
+    }
+
+        For Each edgeY As Double In horizontalEdges
+
+            Dim dy As Double = edgeY - cy
+            Dim discriminant As Double = r * r - dy * dy
+
+            If discriminant < 0 Then Continue For
+
+            Dim dx As Double = Math.Sqrt(discriminant)
+
+            Dim intersectionX() As Double = {
+            cx + dx,
+            cx - dx
+        }
+
+            For Each x As Double In intersectionX
+
+                If x < worldRect.Left OrElse
+               x > worldRect.Right Then Continue For
+
+                Dim angle As Double =
+                Math.Atan2(edgeY - cy, x - cx) *
+                180.0 / Math.PI
+
+                If IsGeoAngleOnArc(
+                angle,
+                arc.StartAngle,
+                arc.EndAngle,
+                arc.IsClockwise) Then
+
+                    Return True
+
+                End If
+
+            Next
+
+        Next
+
+        Return False
+
+    End Function
+
 
     Private Function IsGeoEntityFullyInsideWindow(
     ent As GeoEntity,

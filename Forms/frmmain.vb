@@ -2299,22 +2299,22 @@ Public Class frmMain
             Dim minY As Single = Math.Min(w1.Y, w2.Y)
             Dim maxY As Single = Math.Max(w1.Y, w2.Y)
 
-            Dim worldRect As New RectangleF(
-        minX,
-        minY,
-        maxX - minX,
-        maxY - minY)
+            Dim worldRect As New RectangleF(minX, minY, maxX - minX, maxY - minY)
 
             ' Perform the actual selection.
-            _selectionManager.SelectByWindow(
-                                                                        worldRect,
-                                                                        Nothing,
-                                                                        _selectionFilter)
 
-            ' End the window operation.
-            _selectWindowActive = False
+            Dim isReverseWindow As Boolean = _selectWindowEnd.X < _selectWindowStart.X
 
-            pnlPicmodeler.Cursor = Cursors.Default
+            Debug.WriteLine($"Selection Window: Reverse={isReverseWindow}")
+
+            Dim deselect As Boolean = (Control.ModifierKeys And Keys.Control) = Keys.Control
+
+            _selectionManager.SelectGeoByWindow(worldRect, _selectionFilter, isReverseWindow, deselect)
+            ' Keep Window Selection active for the next operation.
+            _selectWindowStart = System.Drawing.Point.Empty
+            _selectWindowEnd = System.Drawing.Point.Empty
+
+            pnlPicmodeler.Cursor = Cursors.Cross
             pnlPicmodeler.Invalidate()
             Return
         End If
@@ -3040,12 +3040,38 @@ Public Class frmMain
     Private Sub bbInquire_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbInquire.ItemClick
 
     End Sub
-
     Private Sub frmMain_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown
-        If e.KeyCode = Keys.Escape AndAlso _inquireMode Then
+
+        If e.KeyCode <> Keys.Escape Then Return
+
+        ' Preserve existing Inquire Mode behavior.
+        If _inquireMode Then
+
             ExitInquireMode()
             e.Handled = True
+            Return
+
         End If
+
+        ' Exit persistent Window Selection mode.
+        If _selectWindowActive AndAlso
+       _currentTool = "SelectWindow" Then
+
+            _selectWindowActive = False
+
+            _selectWindowStart = System.Drawing.Point.Empty
+            _selectWindowEnd = System.Drawing.Point.Empty
+
+            _currentTool = ""
+
+            pnlPicmodeler.Cursor = Cursors.Default
+            pnlPicmodeler.Invalidate()
+
+            e.Handled = True
+            Return
+
+        End If
+
     End Sub
 
     Private ReadOnly Property IsInquireMode As Boolean
