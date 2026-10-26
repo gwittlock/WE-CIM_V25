@@ -222,6 +222,7 @@ Public Module DxfImport
         Next
     End Sub
 
+
     Private Sub DrawCadLine(
     l As CadLine,
     g As Graphics,
@@ -269,6 +270,76 @@ Public Module DxfImport
         pointSize)
 
     End Sub
+
+
+
+    Private Sub DrawGeoArc(
+    a As GeoArc,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If a Is Nothing OrElse a.Center Is Nothing Then
+            Exit Sub
+        End If
+
+        Dim centerScreen = WorldToScreen(
+        a.Center.X,
+        a.Center.Y,
+        vt,
+        panelHeight)
+
+        Dim r As Single = CSng(a.Radius * vt.Scale)
+
+        Dim p1 As New PointF(centerScreen.X - r, centerScreen.Y - r)
+        Dim p2 As New PointF(centerScreen.X + r, centerScreen.Y + r)
+
+        Dim rect As RectangleF = HelperFunctions.RectFromPoints(p1, p2)
+
+        Dim sweep As Single
+
+        If a.IsClockwise Then
+
+            sweep = CSng(a.StartAngle - a.EndAngle)
+
+            If sweep < 0 Then
+                sweep += 360
+            End If
+
+        Else
+
+            sweep = CSng(a.EndAngle - a.StartAngle)
+
+            If sweep < 0 Then
+                sweep += 360
+            End If
+
+        End If
+
+        Dim startAngle As Single = CSng(-a.StartAngle)
+
+        Dim sweepAngle As Single
+
+        If a.IsClockwise Then
+            sweepAngle = sweep
+        Else
+            sweepAngle = -sweep
+        End If
+
+        Dim drawColor As System.Drawing.Color = a.Color
+        Dim drawWidth As Single = 1.0F
+
+        If a.Selected Then
+            drawColor = System.Drawing.Color.Yellow
+            drawWidth = 3.0F
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
+            g.DrawArc(pen, rect, startAngle, sweepAngle)
+        End Using
+
+    End Sub
+
     Private Sub DrawCadArc(
     a As CadArc,
     g As Graphics,
@@ -326,6 +397,12 @@ Public Module DxfImport
         End Using
 
     End Sub
+
+
+
+
+
+
     Private Sub DrawCadCircle(
     c As CadCircle,
     g As Graphics,
@@ -393,6 +470,8 @@ Public Module DxfImport
 
 
     End Sub
+
+
 
 
     Private Function GetLayerColor(

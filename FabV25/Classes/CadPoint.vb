@@ -4,7 +4,6 @@ Imports FabV25_WIN8                      ' <-- adjust if DrawableTypeEnum lives 
 
 Public Class CadPoint
     Inherits CadEntity
-    Implements ISelectable
 
     ' =========================================================
     ' DATA
@@ -14,8 +13,8 @@ Public Class CadPoint
     ' =========================================================
     ' ISelectable STATE
     ' =========================================================
-    Public Property IsSelected As Boolean Implements ISelectable.IsSelected
-    Public Property IsHovered As Boolean Implements ISelectable.IsHovered
+    'Public Property IsSelected As Boolean Implements ISelectable.IsSelected
+    'Public Property IsHovered As Boolean Implements ISelectable.IsHovered
 
     ' =========================================================
     ' CONSTRUCTOR
@@ -35,19 +34,15 @@ Public Class CadPoint
     ' =========================================================
     ' ISelectable IMPLEMENTATION
     ' =========================================================
-    Public Function HitTest(pt As PointF, tolerance As Single) As Boolean Implements ISelectable.HitTest
+    Public Function HitTest(pt As PointF, tolerance As Single) As Boolean
         Return Distance(pt, Position) <= tolerance
     End Function
 
-    Public Function GetEntityType() As DxfDrawable.DrawableTypeEnum Implements ISelectable.GetEntityType
-        Return DxfGeometryHelpers.GeometryTypeEnum.Point
-    End Function
 
-    Public Function GetLayer() As String Implements ISelectable.GetLayer
+    Public Function GetLayer() As String
         Return Me.LayerName   ' <-- adjust based on your base class
     End Function
-    Public Function GetTool() As String Implements ISelectable.GetTool
-        Return ""
+    Public Function GetTool() As String
     End Function
 
     ' =========================================================
