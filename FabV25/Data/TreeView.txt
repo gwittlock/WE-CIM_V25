@@ -1,0 +1,251 @@
+﻿├── Machine Types
+│   ├── Punch
+│   │   ├── Trumpf_2020
+│   │   │   ├── Stations
+│   │   │   └── Tool Setups
+│   │   │       └── Punch-Global
+│   │   │           └── Layer Setups
+│   │   │               └── Punch-Global - Global
+│   │   │                   └── *default*
+│   │   ├── Wiedemann C3000
+│   │   │   ├── Stations
+│   │   │   └── Tool Setups
+│   │   │       ├── C3000
+│   │   │       │   └── Layer Setups
+│   │   │       │       └── C3000 - All_Layers
+│   │   │       │           └── *default*
+│   │   │       └── C3000a
+│   │   │           └── Layer Setups
+│   │   │               └── C3000a - All_Layers
+│   │   │                   └── *default*
+│   │   └── Amada EMK
+│   │       ├── Stations
+│   │       └── Tool Setups
+│   │           ├── Amada EMK
+│   │           │   └── Layer Setups
+│   │           │       └── Amada EMK - Global
+│   │           │           └── *default*
+│   │           ├── Amada EMK 01
+│   │           │   └── Layer Setups
+│   │           │       └── Amada EMK 01 - Global
+│   │           │           └── *default*
+│   │           ├── 01AmadaEMK
+│   │           │   └── Layer Setups
+│   │           │       └── 01AmadaEMK - Global
+│   │           │           └── *default*
+│   │           ├── Amada EMK-02
+│   │           │   └── Layer Setups
+│   │           │       └── Amada EMK-02 - Global
+│   │           │           └── *default*
+│   │           ├── 04-0703-00
+│   │           │   └── Layer Setups
+│   │           │       └── 04-0703-00 - Global
+│   │           │           └── *default*
+│   │           ├── Amada EMK-03
+│   │           │   └── Layer Setups
+│   │           │       └── Amada EMK-03 - Global
+│   │           │           └── *default*
+│   │           └── Amada EMK-04
+│   │               └── Layer Setups
+│   │                   └── Amada EMK-04 - Global
+│   │                       └── *default*
+│   ├── Punch/Plasma
+│   │   └── Trumpf 200
+│   │       ├── Stations
+│   │       └── Tool Setups
+│   │           └── Trumpf 200
+│   │               └── Layer Setups
+│   │                   ├── Trumpf 200 - Global
+│   │                   │   └── *default*
+│   │                   └── Trumpf 200 - Global2
+│   │                       └── *default*
+│   ├── Laser
+│   │   ├── Trumpf_3030
+│   │   │   ├── Stations
+│   │   │   └── Tool Setups
+│   │   │       ├── REI
+│   │   │       │   └── Layer Setups
+│   │   │       │       └── REI - REI
+│   │   │       │           └── *default*
+│   │   │       └── Global
+│   │   │           └── Layer Setups
+│   │   │               └── Global - REI
+│   │   │                   └── *default*
+│   │   └── AmadaLC-3015
+│   │       ├── Stations
+│   │       └── Tool Setups
+│   │           └── Amada LC 3015
+│   │               └── Layer Setups
+│   │                   ├── Amada LC 3015 - Global
+│   │                   │   └── *default*
+│   │                   └── Amada LC 3015 - Default
+│   │                       └── *DEFAULT*
+│   ├── Punch/Laser
+│   ├── Burner
+│   │   └── test
+│   │       ├── Stations
+│   │       └── Tool Setups
+│   ├── Waterjet
+│   ├── Router
+│   ├── Point-To-Point
+│   └── Mill
+└── Material Inventory
+    ├── CRS
+    │   ├── 16 GA CRS
+    │   ├── 16GA Crs 60 X 120
+    │   ├── 11 Gauge 96 x 48
+    │   ├── Spring Steel 0.010x9.25x48.0
+    │   ├── 12 GA 96 x 48
+    │   ├── 12 GA CRS 48 X 120
+    │   ├── 20 GA CRS 48 X 48
+    │   ├── 1/4 CRS 48x96
+    │   ├── 14 GA crs 48 X 120
+    │   ├── 20 GA CRS 48 x 120
+    │   ├── 2mm X 60 X 120 ROPS
+    │   ├── 24 GA CRS 48 x 120
+    │   ├── 12 GA 48 X 48
+    │   ├── 1/2 HRS Drop
+    │   ├── 18 Ga 48 x 48
+    │   ├── 20 Ga 60 x 48
+    │   ├── 20 Ga 96 x 48
+    │   ├── 12 GA CRS 48 x 20
+    │   ├── 12 Gage 48 x 30
+    │   ├── 12 Ga 48 x 60 HRS
+    │   ├── 12 Ga X 48 X 12 HR
+    │   ├── 14 Ga 48 x 48 crs
+    │   ├── 14 GA 48 X 96 CRS
+    │   ├── 14 GA 48 X 98 CRS
+    │   ├── 7 Gage 48 x 120
+    │   ├── 23 GA 84.4 x 35.5
+    │   ├── 18 GA CRS 48 x 120
+    │   ├── ST025O40
+    │   ├── A36 1/4 x 120 x 48
+    │   ├── 22 GA CRS
+    │   └── 12 GA HR 48 x 120
+    ├── SST
+    │   ├── 24 ga 48x96
+    │   ├── 24 ga 48x98
+    │   ├── 16 ga 48x120
+    │   ├── 20 ga 48x98
+    │   ├── 18 ga 48x96
+    │   ├── 22 ga 48x96
+    │   ├── 16 ga drop SST
+    │   ├── 20 ga sst 36x96
+    │   ├── 20 ga sst 36x98
+    │   ├── 18 ga sst 48x120
+    │   ├── 16 ga sst 48x96
+    │   ├── 20 ga sst 48x96
+    │   ├── 22 ga sst 48x120
+    │   ├── 20 ga sst 48x98
+    │   ├── 20 ga sst 48x60
+    │   ├── 24 ga sst 48x120
+    │   ├── 14 ga 48x120 SST
+    │   ├── 20 ga sst 48x48
+    │   ├── 18 ga sst 48x48
+    │   ├── 14 ga sst 48x48
+    │   ├── 12 ga SST 48x120
+    │   ├── 0.250 SST 48x120
+    │   ├── 10 gaSST 48x120
+    │   ├── 16 ga SST 48 x 98
+    │   ├── 20 ga sst 20x60
+    │   ├── 20 ga SST 20x40
+    │   ├── 16 GA SST 43 X 81
+    │   ├── 304 SST 0.125 x 48 x 120
+    │   ├── 20 ga sst 30 x 60
+    │   ├── 304 SST 0.062 X 48 X 120
+    │   ├── 20 ga 48 x 30
+    │   ├── 16 ga sst 48 x 120
+    │   ├── 22 ga SST 48 x 72
+    │   ├── 18 ga SST 30 x 48 
+    │   ├── 20 GA SST 30 X 70
+    │   ├── 10 ga 48 x 96
+    │   ├── 14 GA SST 60 X 120
+    │   ├── 22 GA 48 x 98
+    │   ├── 18 GA sst 48 x 25
+    │   ├── 20 ga 304 48 x 32
+    │   ├── 18 GA SST 48 X 40
+    │   ├── 20 GA SST 48 X 40
+    │   ├── 20 ga sst 48 x 30
+    │   ├── 11 Ga 30 x 30 SST
+    │   ├── 18 Ga SST 48 x 60
+    │   ├── 12 Ga SST 48 x 60
+    │   ├── 16 Ga SST 48 x 60
+    │   ├── 22 Ga SST 48 x 60
+    │   ├── 14 Ga SST 48 x 40
+    │   ├── 20 ga sst 48 x 120
+    │   ├── 16 ga SST 48 x 48
+    │   ├── 22 ga SST 48 x 48
+    │   ├── 22 Ga SST 20 X 20
+    │   ├── 14 Ga SST 10 x 48
+    │   ├── 20 ga sst 17 x 98
+    │   └── 20 GA SST 21 x 40
+    ├── GALV
+    │   ├── GALV 96X48X0.028
+    │   ├── 24 GA ZG X 48 X 120
+    │   ├── 18 GA ZG X 48 X 120
+    │   ├── 20 GA PG 48 X 120
+    │   ├── 24 GA GALV 48 X 60
+    │   ├── 24 GA GALV 48 X 30
+    │   ├── 18 GA GALV 48 X 60
+    │   ├── 14 GA GALV 48 X 60
+    │   ├── 14 GA GALV 48 X 30
+    │   ├── 22 GA GALV 48 X 60
+    │   ├── 20 GA GALV 36 X 40
+    │   ├── 24 GA GALV 48 X 48
+    │   ├── 20 GA GALV 48 X 60
+    │   ├── 12 GA 48 x 90
+    │   ├── 12 GA 48 X 126
+    │   ├── 12 GA 48 X 71
+    │   ├── 12 GA 48 X 48
+    │   ├── 12 GA 48 X 120 PG
+    │   ├── 14 GA 48 X 96 PG
+    │   ├── 22 ga x 48 x 120 PG
+    │   ├── 14 GA 48 X 120 PG
+    │   ├── 16 GA 48 X 120 PG
+    │   ├── 11GA GALV 48 x 103
+    │   ├── 11GA GALV 12 x 103
+    │   ├── 11GA GALV 48 X 106
+    │   ├── 11 GA GALV 12 X 106
+    │   ├── 11GA GALV 48 X 109
+    │   ├── 11GA GALV 12 X 109
+    │   ├── 24 Ga Galv 48 x 32
+    │   ├── 18 GA GALV 48 X 40
+    │   ├── 20 GA PG Too Size
+    │   ├── 18 GA PG Too Size
+    │   ├── 16 GA 48 X 60 PG
+    │   ├── 12 Ga 48 x 60 PG
+    │   ├── 12 Ga 48 X 60 Galv
+    │   ├── 20 GA 48 x 60 PG
+    │   ├── 24 GA 72 x 48
+    │   └── 16 GA 48 X 48
+    ├── ALUM
+    │   ├── ALUM 0.090  x 48 x 96
+    │   ├── ALUM 0.090 x 48 x 144
+    │   ├── ALUM 0.188 x 60 x 144
+    │   ├── ALUM 0.090 x 60 x 144
+    │   ├── 18 Ga Al 48 x 60
+    │   ├── ALUM 0.050 x 48 x 60
+    │   ├── ALUM 0.090 x 48 x 120
+    │   ├── ALUM 0.040 x 48 x 120
+    │   ├── ALUM 0.060 x 48 x 120
+    │   └── ALUM 0.060 x 60 x 120
+    └── Global
+        ├── 18GA PG
+        ├── 16GA PG
+        ├── 24GA GALV
+        ├── 20GA GALV
+        ├── 22GA SS (430)
+        ├── 18GA SS #3
+        ├── 20GA CRS
+        ├── 20GA SS #3 48X98
+        ├── 22GA SS #3 48X120
+        ├── 18GA SS #3 48X96
+        ├── 18GA SS #8
+        ├── 20GA SS #8
+        ├── 22GA PG
+        ├── 22GA GALV
+        ├── 24GA PG
+        ├── 14GA CRS
+        ├── Plastic 0.062 x 20 x 20
+        ├── 20GA PG 120 x 48
+        └── 18 GA GALV 48 x 48

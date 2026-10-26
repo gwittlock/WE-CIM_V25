@@ -1,77 +1,90 @@
-[
-  {
-    "ID": 85,
-    "Description": "REI",
-    "MachineID": 6
-  },
-  {
-    "ID": 86,
-    "Description": "Global",
-    "MachineID": 6
-  },
-  {
-    "ID": 88,
-    "Description": "Punch-Global",
-    "MachineID": 7
-  },
-  {
-    "ID": 89,
-    "Description": "Amada LC 3015",
-    "MachineID": 8
-  },
-  {
-    "ID": 90,
-    "Description": "C3000",
-    "MachineID": 9
-  },
-  {
-    "ID": 94,
-    "Description": "Amada EMK",
-    "MachineID": 11
-  },
-  {
-    "ID": 95,
-    "Description": "Trumpf 200",
-    "MachineID": 10
-  },
-  {
-    "ID": 96,
-    "Description": "C3000a",
-    "MachineID": 9
-  },
-  {
-    "ID": 97,
-    "Description": "Amada EMK 01",
-    "MachineID": 11
-  },
-  {
-    "ID": 98,
-    "Description": "01AmadaEMK",
-    "MachineID": 11
-  },
-  {
-    "ID": 99,
-    "Description": "Amada EMK-02",
-    "MachineID": 11
-  },
-  {
-    "ID": 100,
-    "Description": "04-0703-00",
-    "MachineID": 11
-  },
-  {
-    "ID": 101,
-    "Description": "Amada EMK-03",
-    "MachineID": 11
-  },
-  {
-    "ID": 102,
-    "Description": "Amada EMK-04",
-    "MachineID": 11
-  },
-  {
-    "ID": 103,
-    "Description": "Trumpf 200",
-    "MachineID": 13
-  }
-]
+{
+  "TableName": "Tool Setups",
+  "Columns": [
+    {
+      "Field": "ID",
+      "Header": "Id",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Description",
+      "Header": "Description",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "MachineID",
+      "Header": "Machine Id",
+      "Visible": true,
+      "DataType": 0
+    }
+  ],
+  "Rows": [
+    {
+      "ID": 85,
+      "Description": "REI",
+      "MachineID": 6
+    },
+    {
+      "ID": 86,
+      "Description": "Global",
+      "MachineID": 6
+    },
+    {
+      "ID": 88,
+      "Description": "Punch-Global",
+      "MachineID": 7
+    },
+    {
+      "ID": 89,
+      "Description": "Amada LC 3015",
+      "MachineID": 8
+    },
+    {
+      "ID": 90,
+      "Description": "C3000",
+      "MachineID": 9
+    },
+    {
+      "ID": 94,
+      "Description": "Amada EMK",
+      "MachineID": 11
+    },
+    {
+      "ID": 95,
+      "Description": "Trumpf 200",
+      "MachineID": 10
+    },
+    {
+      "ID": 96,
+      "Description": "C3000a",
+      "MachineID": 9
+    },
+    {
+      "ID": 97,
+      "Description": "Amada EMK 01",
+      "MachineID": 11
+    },
+    {
+      "ID": 98,
+      "Description": "01AmadaEMK",
+      "MachineID": 11
+    },
+    {
+      "ID": 99,
+      "Description": "Amada EMK-02",
+      "MachineID": 11
+    },
+    {
+      "ID": 100,
+      "Description": "04-0703-00",
+      "MachineID": 11
+    },
+    {
+      "ID": 101,
+      "Description": "Amada EMK-03",
+      "MachineID": 11
+    }
+  ]
+}

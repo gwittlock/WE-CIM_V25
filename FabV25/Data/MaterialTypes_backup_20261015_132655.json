@@ -1,0 +1,48 @@
+{
+  "TableName": "MaterialTypes",
+  "Columns": [],
+  "Rows": [
+    {
+      "ID": 2,
+      "Description": "CRS",
+      "Display": "CRS",
+      "IsActive": true
+    },
+    {
+      "ID": 3,
+      "Description": "SST",
+      "Display": "SST",
+      "IsActive": true
+    },
+    {
+      "ID": 5,
+      "Description": "GALV",
+      "Display": "GALV",
+      "IsActive": true
+    },
+    {
+      "ID": 6,
+      "Description": "ALUM",
+      "Display": "ALUM",
+      "IsActive": true
+    },
+    {
+      "ID": 7,
+      "Description": "Global",
+      "Display": "Global",
+      "IsActive": true
+    },
+    {
+      "ID": 8,
+      "Description": "test",
+      "Display": "test",
+      "IsActive": true
+    },
+    {
+      "ID": 9,
+      "Description": "bubba",
+      "Display": "bubba",
+      "IsActive": true
+    }
+  ]
+}

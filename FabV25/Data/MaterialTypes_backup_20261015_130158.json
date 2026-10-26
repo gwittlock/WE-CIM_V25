@@ -1,0 +1,35 @@
+{
+  "TableName": "MaterialTypes",
+  "Rows": [
+    {
+      "ID": 2,
+      "Description": "CRS",
+      "Display": "CRS",
+      "ShearStrength": 0.0
+    },
+    {
+      "ID": 3,
+      "Description": "SST",
+      "Display": "SST",
+      "ShearStrength": 0.0
+    },
+    {
+      "ID": 5,
+      "Description": "GALV",
+      "Display": "GALV",
+      "ShearStrength": 0.0
+    },
+    {
+      "ID": 6,
+      "Description": "ALUM",
+      "Display": "ALUM",
+      "ShearStrength": 0.0
+    },
+    {
+      "ID": 7,
+      "Description": "Global",
+      "Display": "Global",
+      "ShearStrength": 0.0
+    }
+  ]
+}

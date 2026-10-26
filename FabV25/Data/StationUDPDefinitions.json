@@ -1,0 +1,45 @@
+{
+  "TableName": "ToolSetupUDPDefinitions",
+  "Columns": [
+    
+    {
+      "Field": "Name",
+      "Header": "Name",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Display",
+      "Header": "Display",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Default",
+      "Header": "Default",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "DataType",
+      "Header": "Data Type",
+      "Visible": true,
+      "DataType": 0
+    },
+    {
+      "Field": "Visible",
+      "Header": "Visible",
+      "Visible": true,
+      "DataType": 1
+    }
+  ],
+  "Rows": [
+    {
+      "Name": "Holly_Holy",
+      "Display": "Holly Holy",
+      "Default": "this is a test",
+      "DataType": "String",
+      "Visible": true
+    }
+  ]
+}
