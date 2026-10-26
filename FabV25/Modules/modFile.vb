@@ -16,7 +16,6 @@ Imports FabV25_WIN8.CamBuilder
 Imports FabV25_WIN8.dxfImporter
 Imports FabV25_WIN8.DrawableEntity
 Imports FabV25_WIN8.DxfImporter_IxMilia
-Imports FabV25_WIN8.DxfDrawable
 Imports FabV25_WIN8.CamEntity
 Imports System.Runtime.CompilerServices
 Imports FabV25_WIN8.AutoPunchingEngine
@@ -49,7 +48,6 @@ Public Module modFile
     Public CurrentJob As JobContext
     Public CurrentProductionJob As Job
     Public _importedEntities As List(Of ImportedEntity)
-    Public _drawables As List(Of DxfDrawable)
 
     ' Store all loaded CAD entities
     Public _cadEntities As List(Of CadEntity)
@@ -215,13 +213,19 @@ Public Module modFile
         '============================================================
         ' TEST - Native Part Geometry Conversion
         '============================================================
-        Dim nativeGeometry As List(Of GeoEntity) =
+        Dim nativePart As PartGeometry =
     PartGeometryBuilder.CreatePartGeometry(
         _cadEntities,
         _selectedLayerSetup)
 
+
+        Dim nativeGeometry As List(Of GeoEntity) = nativePart.Entities
+
         Debug.WriteLine(
-    "Native Geometry Count: " & nativeGeometry.Count)
+    "Native Geometry Count: " & nativePart.Entities.Count)
+
+        Debug.WriteLine(
+    "Native Profile Count: " & nativePart.Profiles.Count)
 
         If nativeGeometry.Count = 2 AndAlso
    TypeOf nativeGeometry(0) Is GeoLine AndAlso
@@ -253,10 +257,10 @@ Public Module modFile
         '============================================================
         ' Convert CAD Entities to Imported Entities
         '============================================================
-        _importedEntities =
-        ConvertCadEntitiesToImportedEntities(
-            _cadEntities,
-            _selectedLayerSetup)
+        '_importedEntities =
+        'ConvertCadEntitiesToImportedEntities(
+        '    _cadEntities,
+        '    _selectedLayerSetup)
 
         If _selectedLayerSetup Is Nothing Then
             Exit Sub
@@ -275,10 +279,14 @@ Public Module modFile
         '============================================================
         ' Store CAD Geometry
         '============================================================
-        importedPart.CADGeometry.AddRange(
-        _cadEntities)
+        ' importedPart.CADGeometry.AddRange(_cadEntities)
 
         importedPart.Geometry.AddRange(nativeGeometry)
+
+        importedPart.GeoProfiles.AddRange(nativePart.Profiles)
+
+        Debug.WriteLine("PART GEO PROFILES COUNT = " &
+                importedPart.GeoProfiles.Count)
 
         productionSheet.Parts.Add(
         importedPart)
@@ -286,13 +294,13 @@ Public Module modFile
         '============================================================
         ' Build Profiles from Imported CAM Entities
         '============================================================
-        Dim profileResults As List(Of ProfileBuildResult) =
-        BuildProfilesFromEntities(
-            _importedEntities,
-            _selectedLayerSetup.GapTolerance)
+        'Dim profileResults As List(Of ProfileBuildResult) =
+        'BuildProfilesFromEntities(
+        '    _importedEntities,
+        '    _selectedLayerSetup.GapTolerance)
 
-        Debug.WriteLine(
-        $"PROFILE RESULTS COUNT = {profileResults.Count}")
+        ' Debug.WriteLine(
+        '$"PROFILE RESULTS COUNT = {profileResults.Count}")
 
         '============================================================
         ' Store CAD-derived Profiles
@@ -300,23 +308,23 @@ Public Module modFile
         ' Profiles are CAD geometry interpretation.
         ' They are NOT machining features.
         '============================================================
-        For Each profileResult As ProfileBuildResult In profileResults
+        'For Each profileResult As ProfileBuildResult In profileResults
 
-            If profileResult Is Nothing Then
-                Continue For
-            End If
+        '    If profileResult Is Nothing Then
+        '        Continue For
+        '    End If
 
-            If profileResult.Profile Is Nothing Then
-                Continue For
-            End If
+        '    If profileResult.Profile Is Nothing Then
+        '        Continue For
+        '    End If
 
-            importedPart.Profiles.Add(
-            profileResult.Profile)
+        '    importedPart.Profiles.Add(
+        '    profileResult.Profile)
 
-        Next
+        'Next
 
-        Debug.WriteLine(
-        $"PART PROFILES COUNT = {importedPart.Profiles.Count}")
+        'Debug.WriteLine(
+        '$"PART PROFILES COUNT = {importedPart.Profiles.Count}")
 
         '============================================================
         ' Create Imported Pattern
@@ -345,6 +353,8 @@ Public Module modFile
         frmMain.Cursor = Cursors.WaitCursor
 
         Try
+
+            Debug.WriteLine("Right before  New DXFFileSelectionDialog()")
 
             Using dlg As New DXFFileSelectionDialog()
 
@@ -385,6 +395,7 @@ Public Module modFile
                     ' Tell the UI that a new file needs preparation.
                     ' The Paint event performs PrePareUI().
                     '-------------------------------------------------
+                    Debug.WriteLine("Tell the UI that a new file needs preparation.")
 
                     _DoPrepareUI = True
                     _DoDrawUI = False
