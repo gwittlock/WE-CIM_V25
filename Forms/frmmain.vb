@@ -387,6 +387,12 @@ Public Class frmMain
         ' UI not ready yet (very early startup)
         If Not _uiInitialized Then Return
 
+        Debug.WriteLine(
+    "PAINT: DoPrepareUI=" & _DoPrepareUI.ToString() &
+    " Scale=" & myTransform.Scale.ToString() &
+    " OffsetX=" & myTransform.OffsetX.ToString() &
+    " OffsetY=" & myTransform.OffsetY.ToString())
+
         '' Scene not loaded yet → draw empty workspace
         'If Not _sceneReady OrElse CurrentJob Is Nothing Then
         '    DrawEmptyWorkspace(e.Graphics)
@@ -787,7 +793,7 @@ Public Class frmMain
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
 
-        If l.Selected Then
+        If l.Selected OrElse IsEntityInSelectedProfile(l) Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
@@ -866,11 +872,12 @@ Public Class frmMain
             sweepAngle = -sweep
         End If
 
+        Dim displaySelected As Boolean = a.Selected OrElse IsEntityInSelectedProfile(a)
         Dim drawColor As System.Drawing.Color = a.Color
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
 
-        If a.Selected Then
+        If displaySelected Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
@@ -886,13 +893,13 @@ Public Class frmMain
         Using pen As New Pen(drawColor, drawWidth)
 
 
-            If a.Selected Then
+            If displaySelected Then
 
-                    pen.DashStyle = DashStyle.Dot
+                pen.DashStyle = DashStyle.Dot
 
-                ElseIf drawDashed Then
+            ElseIf drawDashed Then
 
-                    pen.DashStyle = DashStyle.Dash
+                pen.DashStyle = DashStyle.Dash
 
                 End If
 
@@ -932,11 +939,15 @@ Public Class frmMain
 
         Dim rect = HelperFunctions.RectFromPoints(p1, p2)
 
+
+        Dim displaySelected As Boolean = c.Selected OrElse IsEntityInSelectedProfile(c)
+
+
         Dim drawColor As System.Drawing.Color = c.Color
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
 
-        If c.Selected Then
+        If displaySelected Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
@@ -951,7 +962,7 @@ Public Class frmMain
 
         Using pen As New Pen(drawColor, drawWidth)
 
-            If c.Selected Then
+            If displaySelected Then
 
                 pen.DashStyle = DashStyle.Dot
 
@@ -1020,6 +1031,20 @@ Public Class frmMain
                 g,
                 vt,
                 panelHeight)
+
+                For Each feature As MachiningFeature In part.Features
+
+                    If TypeOf feature Is HoleFeature Then
+
+                        DrawHoleFeature(
+                            DirectCast(feature, HoleFeature),
+                            g,
+                            vt,
+                            panelHeight)
+
+                    End If
+
+                Next
 
             Next
 
@@ -1192,6 +1217,7 @@ Public Class frmMain
         ' ---------------------------------
 
         Dim geoEntities As New List(Of GeoEntity)
+        Dim geoProfiles As New List(Of GeoProfile)
 
         If CurrentProductionJob IsNot Nothing Then
 
@@ -1200,6 +1226,7 @@ Public Class frmMain
                 For Each part In jobSheet.Parts
 
                     geoEntities.AddRange(part.Geometry)
+                    geoProfiles.AddRange(part.GeoProfiles)
 
                 Next
 
@@ -1208,6 +1235,7 @@ Public Class frmMain
         End If
 
         _selectionManager.SetGeoEntities(geoEntities)
+        _selectionManager.SetGeoProfiles(geoProfiles)
         _selectionManager.BuildGeoSpatialIndex()
 
         Debug.WriteLine(
@@ -2235,7 +2263,8 @@ Public Class frmMain
         tolWorld,
         _selectionMode,
         _selectionFilter,
-        deselect)
+        deselect,
+        _profileSelectionEnabled)
 
         Debug.Print("Profile Selection Enabled = " &
             _profileSelectionEnabled.ToString())
@@ -2309,7 +2338,7 @@ Public Class frmMain
 
             Dim deselect As Boolean = (Control.ModifierKeys And Keys.Control) = Keys.Control
 
-            _selectionManager.SelectGeoByWindow(worldRect, _selectionFilter, isReverseWindow, deselect)
+            _selectionManager.SelectGeoByWindow(worldRect, _selectionFilter, isReverseWindow, deselect, _profileSelectionEnabled)
             ' Keep Window Selection active for the next operation.
             _selectWindowStart = System.Drawing.Point.Empty
             _selectWindowEnd = System.Drawing.Point.Empty
@@ -3100,7 +3129,7 @@ Public Class frmMain
         AddHandler pnlPicmodeler.Resize, Sub() RedrawAll()
 
         ' Optional: force redraw when invalidated (e.g., uncovered)
-        AddHandler pnlPicmodeler.Invalidated, Sub() RedrawAll()
+        'AddHandler pnlPicmodeler.Invalidated, Sub() RedrawAll()
     End Sub
 
     Private Sub bbViewFull_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbViewFull.ItemClick
@@ -3108,29 +3137,7 @@ Public Class frmMain
 
     End Sub
 
-    Public Sub FitToPart()
-        If _cadEntities Is Nothing OrElse _cadEntities.Count = 0 Then Exit Sub
 
-        Dim bounds As RectangleF = HelperFunctions.GetCadBounds(_cadEntities)
-        If bounds.IsEmpty Then Exit Sub
-
-        Dim margin As Integer = 20
-
-        Dim scaleX = (panelWidth - 2 * margin) / bounds.Width
-        Dim scaleY = (panelHeight - 2 * margin) / bounds.Height
-        Dim scale = Math.Min(scaleX, scaleY)
-
-        Dim offsetX = panelWidth / 2 - (bounds.X + bounds.Width / 2) * scale
-        Dim offsetY = panelHeight / 2 - (bounds.Y + bounds.Height / 2) * scale
-
-        myTransform = New ViewTransform With {
-            .Scale = scale,
-            .OffsetX = offsetX,
-            .OffsetY = offsetY
-        }
-
-        RedrawAll()
-    End Sub
     Private Sub ApplyViewWindow(p1 As Point, p2 As Point)
 
         ' Convert screen points → world points
@@ -3546,20 +3553,24 @@ Public Class frmMain
         pnlPicmodeler.Invalidate()
 
     End Sub
-
     Private Sub tbSelect_Lines_Click(sender As Object, e As EventArgs) Handles tbSelect_Lines.Click
 
+        ' Disable Profile selection.
+        _profileSelectionEnabled = False
+
+        ' Toggle Line selection.
         _selectionFilter = CType(
-        CInt(_selectionFilter) Xor CInt(SelectionFilter.Line), SelectionFilter)
+        CInt(_selectionFilter) Xor CInt(SelectionFilter.Line),
+        SelectionFilter)
 
         UpdateSelectionIcons()
 
         pnlPicmodeler.Invalidate()
 
-
     End Sub
-
     Private Sub tbSelect_Arcs_Click(sender As Object, e As EventArgs) Handles tbSelect_Arcs.Click
+
+        _profileSelectionEnabled = False
 
         _selectionFilter = CType(CInt(_selectionFilter) Xor CInt(SelectionFilter.Arc), SelectionFilter)
 
@@ -3645,6 +3656,8 @@ Public Class frmMain
     End Sub
     Private Sub tbSelect_Points_Click(sender As Object, e As EventArgs) Handles tbSelect_Points.Click
 
+        _profileSelectionEnabled = False
+
         _selectionFilter = CType(
         CInt(_selectionFilter) Xor CInt(SelectionFilter.Point),
         SelectionFilter)
@@ -3656,6 +3669,15 @@ Public Class frmMain
     Private Sub tbSelect_Profiles_Click(sender As Object, e As EventArgs) Handles tbSelect_Profiles.Click
 
         _profileSelectionEnabled = Not _profileSelectionEnabled
+
+        If _profileSelectionEnabled Then
+
+            ' Disable individual geometry selection filters.
+            _selectionFilter = CType(
+            CInt(_selectionFilter) And Not CInt(SelectionFilter.AllGeometry),
+            SelectionFilter)
+
+        End If
 
         UpdateSelectionIcons()
 
@@ -3738,8 +3760,7 @@ Public Class frmMain
             tbSelect_Points.Image = FabV25_WIN8.My.Resources.Orange_Select_By_Point
         End If
 
-        Dim ProfileActive As Boolean =
-     (CInt(_selectionFilter) And CInt(SelectionFilter.Polyline)) <> 0
+        Dim ProfileActive As Boolean = _profileSelectionEnabled
 
         If ProfileActive Then
             tbSelect_Profiles.Image =
@@ -3753,6 +3774,9 @@ Public Class frmMain
     End Sub
 
     Private Sub tbSelect_Circle_Click(sender As Object, e As EventArgs) Handles tbSelect_Circle.Click
+
+        _profileSelectionEnabled = False
+
         _selectionFilter = CType(
               CInt(_selectionFilter) Xor CInt(SelectionFilter.Circle), SelectionFilter)
 
@@ -3762,41 +3786,15 @@ Public Class frmMain
 
     End Sub
 
-    Private Sub pnlPicmodeler_Resize(sender As Object, e As EventArgs) Handles pnlPicmodeler.Resize
+    Private Sub pnlPicmodeler_Resize(
+    sender As Object,
+    e As EventArgs) Handles pnlPicmodeler.Resize
 
-        ' Keep the legacy panel dimensions synchronized
-        ' with the actual current panel size.
+        ' Keep panel dimensions synchronized.
         panelWidth = pnlPicmodeler.ClientSize.Width
         panelHeight = pnlPicmodeler.ClientSize.Height
 
-        If Not _sceneReady Then Exit Sub
-
-        If matLength <= 0 OrElse matWidth <= 0 Then Exit Sub
-
-        Dim margin As Integer = 20
-
-        Dim scaleX As Double =
-        (panelWidth - 2 * margin) / matLength
-
-        Dim scaleY As Double =
-        (panelHeight - 2 * margin) / matWidth
-
-        Dim scale As Double = Math.Min(scaleX, scaleY)
-
-        If scale <= 0 Then Exit Sub
-
-        Dim offsetX As Double =
-        (panelWidth - matLength * scale) / 2
-
-        Dim offsetY As Double =
-        panelHeight -
-        (matWidth * scale) -
-        margin
-
-        myTransform.Scale = scale
-        myTransform.OffsetX = offsetX
-        myTransform.OffsetY = offsetY
-
+        ' Preserve the current zoom and pan.
         pnlPicmodeler.Invalidate()
 
     End Sub
@@ -3945,6 +3943,268 @@ Public Class frmMain
     Private Sub bbiMaterialList_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbiMaterialList.ItemClick
 
     End Sub
+
+
+
+    Private Function IsEntityInSelectedProfile(
+    entity As GeoEntity) As Boolean
+
+        If entity Is Nothing OrElse
+       CurrentProductionJob Is Nothing Then
+            Return False
+        End If
+
+        For Each sheet In CurrentProductionJob.JobSheets
+
+            For Each part In sheet.Parts
+
+                For Each profile As GeoProfile In part.GeoProfiles
+
+                    If Not profile.Selected Then
+                        Continue For
+                    End If
+
+                    For Each member As GeoEntity In profile.Entities
+
+                        If Object.ReferenceEquals(member, entity) Then
+                            Return True
+                        End If
+
+                    Next
+
+                Next
+
+            Next
+
+        Next
+
+        Return False
+
+    End Function
+
+    Private Sub tbViewSetTools_Click(
+    sender As Object,
+    e As EventArgs) Handles tbViewSetTools.Click
+
+
+        RemoveHandler frmSelectTool.ToolAssignmentRequested,
+                      AddressOf HandleToolAssignmentRequested
+
+        AddHandler frmSelectTool.ToolAssignmentRequested,
+                   AddressOf HandleToolAssignmentRequested
+
+        If frmSelectTool.Visible Then
+            frmSelectTool.Activate()
+            Return
+        End If
+
+        frmSelectTool.Show(Me)
+
+
+    End Sub
+
+
+
+    Private Sub TestSelectedCircles()
+
+        Dim circles As List(Of GeoCircle) =
+        _selectionManager.Selected.
+        OfType(Of GeoCircle)().
+        ToList()
+
+        Debug.WriteLine(
+        "Selected GeoCircles: " & circles.Count)
+
+        For Each circle As GeoCircle In circles
+
+            MessageBox.Show(
+                "Circle ID = " & circle.ID &
+                vbCrLf &
+                "X = " & circle.Center.X &
+                vbCrLf &
+                "Y = " & circle.Center.Y &
+                vbCrLf &
+                "Radius = " & circle.Radius,
+                "Selected Circle Test")
+
+        Next
+    End Sub
+
+
+    'Private Sub HandleToolAssignmentRequested(
+    'toolSetupMemberID As Integer)
+
+    '    Dim circles As List(Of GeoCircle) =
+    '    _selectionManager.Selected.
+    '    OfType(Of GeoCircle)().
+    '    ToList()
+
+    '    MessageBox.Show(
+    '    "ToolSetupMemberID: " & toolSetupMemberID &
+    '    vbCrLf &
+    '    "Selected circles: " & circles.Count,
+    '    "Assignment Event Test")
+
+    'End Sub
+
+
+    Private Sub HandleToolAssignmentRequested(
+    toolSetupMemberID As Integer)
+
+        Dim circles As List(Of GeoCircle) =
+        _selectionManager.Selected.
+        OfType(Of GeoCircle)().
+        ToList()
+
+        Dim createdCount As Integer = 0
+
+        For Each circle As GeoCircle In circles
+
+            Dim owningPart As Part =
+            FindPartForGeometry(circle)
+
+            If owningPart Is Nothing Then Continue For
+            If circle.Center Is Nothing Then Continue For
+
+            Dim existingHole As HoleFeature =
+    owningPart.Features.
+    OfType(Of HoleFeature)().
+    FirstOrDefault(
+        Function(h) h.SourceGeometryID = circle.ID)
+
+            If existingHole IsNot Nothing Then
+
+                existingHole.ToolSetupMemberID = toolSetupMemberID
+
+                Continue For
+
+            End If
+
+            Dim hole As New HoleFeature With {
+            .FeatureType = MachiningFeatureType.Hole,
+            .Description = "Punch Hole",
+            .X = circle.Center.X,
+            .Y = circle.Center.Y,
+            .Angle = 0,
+            .SourceGeometryID = circle.ID,
+            .ToolSetupMemberID = toolSetupMemberID
+        }
+
+            owningPart.Features.Add(hole)
+
+            MessageBox.Show(
+    "SourceGeometryID: " & hole.SourceGeometryID &
+    vbCrLf &
+    "ToolSetupMemberID: " & hole.ToolSetupMemberID &
+    vbCrLf &
+    "X: " & hole.X &
+    vbCrLf &
+    "Y: " & hole.Y &
+    vbCrLf &
+    "Part Feature Count: " & owningPart.Features.Count,
+    "HoleFeature Verification")
+
+            createdCount += 1
+
+
+        Next
+
+        pnlPicmodeler.Invalidate()
+
+        MessageBox.Show(
+        "HoleFeatures created: " & createdCount,
+        "Tool Assignment Test")
+
+    End Sub
+
+
+
+
+    Private Function FindPartForGeometry(
+    geometry As GeoEntity) As Part
+
+        If geometry Is Nothing OrElse
+       CurrentProductionJob Is Nothing Then
+
+            Return Nothing
+        End If
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            For Each part As Part In sheet.Parts
+
+                If part.Geometry.Any(
+                Function(ent) Object.ReferenceEquals(ent, geometry)) Then
+
+                    Return part
+
+                End If
+
+            Next
+
+        Next
+
+        Return Nothing
+
+    End Function
+
+    Private Sub PrintCrossData_ItemClick(sender As Object, e As ItemClickEventArgs) Handles PrintCrossData.ItemClick
+        TestSelectedCircles()
+    End Sub
+
+    Private Sub DrawHoleFeature(
+    hole As HoleFeature,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If hole Is Nothing Then Exit Sub
+
+        ' Find the installed tool.
+        Dim member = AppData.ToolSetupMembers.
+            FirstOrDefault(
+                Function(m) m.ID = hole.ToolSetupMemberID)
+
+        If member Is Nothing Then Exit Sub
+
+        ' Find the tool definition.
+        Dim tool = AppData.ToolCrib.
+            FirstOrDefault(
+                Function(t) t.ID = member.ToolID)
+
+        If tool Is Nothing OrElse tool.Attributes Is Nothing Then Exit Sub
+
+        ' First implementation: round punches only.
+        If tool.TypeID <> 15 Then Exit Sub
+
+        If Not tool.Attributes.ContainsKey("DIAMETER") Then Exit Sub
+
+        Dim diameter As Double =
+            Convert.ToDouble(tool.Attributes("DIAMETER"))
+
+        If diameter <= 0 Then Exit Sub
+
+        ' Convert punch center and radius to screen coordinates.
+        Dim center As PointF =
+            WorldToScreen(hole.X, hole.Y, vt, panelHeight)
+
+        Dim radius As Single =
+            CSng((diameter / 2.0) * vt.Scale)
+
+        Dim rect As New RectangleF(
+            center.X - radius,
+            center.Y - radius,
+            radius * 2.0F,
+            radius * 2.0F)
+
+        Using pen As New Pen(tool.Color, 2.0F)
+            g.DrawEllipse(pen, rect)
+        End Using
+
+    End Sub
+
+
+
 End Class
 
 

@@ -468,10 +468,10 @@
     <Compile Include="Forms\frmSelectLayer.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\frmSelectTools.designer.vb">
-      <DependentUpon>frmSelectTools.vb</DependentUpon>
+    <Compile Include="Forms\frmSelectTool.Designer.vb">
+      <DependentUpon>frmSelectTool.vb</DependentUpon>
     </Compile>
-    <Compile Include="Forms\frmSelectTools.vb">
+    <Compile Include="Forms\frmSelectTool.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\MaterialPickerPopUp.Designer.vb">
@@ -622,8 +622,8 @@
     <EmbeddedResource Include="Forms\frmSelectLayer.resx">
       <DependentUpon>frmSelectLayer.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\frmSelectTools.resx">
-      <DependentUpon>frmSelectTools.vb</DependentUpon>
+    <EmbeddedResource Include="Forms\frmSelectTool.resx">
+      <DependentUpon>frmSelectTool.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\ToolShapeTest.resx">
       <DependentUpon>ToolShapeTest.vb</DependentUpon>

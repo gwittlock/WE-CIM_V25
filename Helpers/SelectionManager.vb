@@ -17,6 +17,7 @@ Public Class SelectionManager
     Private _spatialIndex As QuadTree(Of CadEntity)
 
     Private _geoEntities As New List(Of GeoEntity)
+    Private _geoProfiles As New List(Of GeoProfile)
     Private _geoSpatialIndex As QuadTree(Of GeoEntity)
 
     Private ReadOnly _selected As New HashSet(Of isSelectable)
@@ -217,14 +218,38 @@ Public Class SelectionManager
     tolWorld As Single,
     selectionMode As GeometryTypeEnum?,
     selectionFilter As SelectionFilter,
-    Optional deselect As Boolean = False) As isSelectable
+    Optional deselect As Boolean = False,
+    Optional profileSelectionEnabled As Boolean = False) As isSelectable
 
-        Dim nativeHit As isSelectable =
-    HitTestGeoAtPoint(
+
+        Dim nativeHit As isSelectable = Nothing
+
+        If profileSelectionEnabled Then
+
+            ' Find the underlying geometric entity.
+            Dim geoHit As GeoEntity =
+        TryCast(
+            HitTestGeoAtPoint(
+                ptWorld,
+                tolWorld,
+                Nothing,
+                SelectionFilter.AllGeometry),
+            GeoEntity)
+
+            If geoHit IsNot Nothing Then
+                nativeHit = FindProfileForEntity(geoHit)
+            End If
+
+        Else
+
+            ' Preserve existing primitive selection behavior.
+            nativeHit = HitTestGeoAtPoint(
         ptWorld,
         tolWorld,
         selectionMode,
         selectionFilter)
+
+        End If
 
         If nativeHit IsNot Nothing Then
 
@@ -746,14 +771,104 @@ Public Class SelectionManager
     worldRect As RectangleF,
     selectionFilter As SelectionFilter,
     Optional isReverseWindow As Boolean = False,
-    Optional deselect As Boolean = False)
-
+    Optional deselect As Boolean = False,
+    Optional profileSelectionEnabled As Boolean = False)
 
         If worldRect.Width <= 0 OrElse
        worldRect.Height <= 0 Then
 
             Return
         End If
+
+
+        If profileSelectionEnabled Then
+
+            If _geoProfiles Is Nothing Then Return
+
+            For Each profile As GeoProfile In _geoProfiles
+
+                If profile Is Nothing OrElse
+           profile.Entities Is Nothing OrElse
+           profile.Entities.Count = 0 Then
+
+                    Continue For
+                End If
+
+                Dim profileMatches As Boolean = False
+
+                If isReverseWindow Then
+
+                    ' Right-to-left:
+                    ' Any member intersecting the window qualifies.
+                    For Each ent As GeoEntity In profile.Entities
+
+                        If ent Is Nothing Then Continue For
+
+                        Dim matches As Boolean =
+                    IsGeoEntityFullyInsideWindow(ent, worldRect)
+
+                        If TypeOf ent Is GeoLine Then
+
+                            matches = matches OrElse
+                        IsGeoLineIntersectingWindow(
+                            DirectCast(ent, GeoLine), worldRect)
+
+                        ElseIf TypeOf ent Is GeoCircle Then
+
+                            matches = matches OrElse
+                        IsGeoCircleIntersectingWindow(
+                            DirectCast(ent, GeoCircle), worldRect)
+
+                        ElseIf TypeOf ent Is GeoArc Then
+
+                            matches = matches OrElse
+                        IsGeoArcIntersectingWindow(
+                            DirectCast(ent, GeoArc), worldRect)
+
+                        End If
+
+                        If matches Then
+                            profileMatches = True
+                            Exit For
+                        End If
+
+                    Next
+
+                Else
+
+                    ' Left-to-right:
+                    ' Every member must be fully enclosed.
+                    profileMatches = True
+
+                    For Each ent As GeoEntity In profile.Entities
+
+                        If ent Is Nothing OrElse
+                   Not IsGeoEntityFullyInsideWindow(ent, worldRect) Then
+
+                            profileMatches = False
+                            Exit For
+
+                        End If
+
+                    Next
+
+                End If
+
+                If Not profileMatches Then Continue For
+
+                If deselect Then
+                    ApplyDeselection(profile)
+                Else
+                    ApplySelection(profile)
+                End If
+
+            Next
+
+            Return
+
+        End If
+
+
 
         If _geoEntities Is Nothing Then Return
 
@@ -1904,5 +2019,52 @@ Public Class SelectionManager
         End If
 
     End Function
+
+    Public Sub SetGeoProfiles(profiles As IEnumerable(Of GeoProfile))
+
+        If profiles Is Nothing Then
+            _geoProfiles = New List(Of GeoProfile)
+        Else
+            _geoProfiles = profiles.ToList()
+        End If
+
+    End Sub
+
+
+    Private Function FindProfileForEntity(
+    entity As GeoEntity) As GeoProfile
+
+        If entity Is Nothing Then
+            Return Nothing
+        End If
+
+        If _geoProfiles Is Nothing Then
+            Return Nothing
+        End If
+
+        For Each profile As GeoProfile In _geoProfiles
+
+            If profile Is Nothing Then
+                Continue For
+            End If
+
+            If profile.Entities Is Nothing Then
+                Continue For
+            End If
+
+            For Each member As GeoEntity In profile.Entities
+
+                If Object.ReferenceEquals(member, entity) Then
+                    Return profile
+                End If
+
+            Next
+
+        Next
+
+        Return Nothing
+
+    End Function
+
 
 End Class

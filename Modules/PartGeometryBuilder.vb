@@ -287,7 +287,9 @@
         ' Step 5 - Build closed circle profiles
         '-----------------------------------------
         Dim nextProfileID As Integer =
-    profiles.Max(Function(p) p.ID) + 1
+    If(profiles.Count > 0,
+       profiles.Max(Function(p) p.ID) + 1,
+       1)
 
         For Each entity As GeoEntity In geometry
 

@@ -250,17 +250,6 @@ Public Module modFile
 
         End If
 
-        '  importedPart.Geometry.AddRange(nativeGeometry)
-
-
-
-        '============================================================
-        ' Convert CAD Entities to Imported Entities
-        '============================================================
-        '_importedEntities =
-        'ConvertCadEntitiesToImportedEntities(
-        '    _cadEntities,
-        '    _selectedLayerSetup)
 
         If _selectedLayerSetup Is Nothing Then
             Exit Sub
@@ -276,11 +265,6 @@ Public Module modFile
                 _selectedDxfPath)
     }
 
-        '============================================================
-        ' Store CAD Geometry
-        '============================================================
-        ' importedPart.CADGeometry.AddRange(_cadEntities)
-
         importedPart.Geometry.AddRange(nativeGeometry)
 
         importedPart.GeoProfiles.AddRange(nativePart.Profiles)
@@ -290,41 +274,6 @@ Public Module modFile
 
         productionSheet.Parts.Add(
         importedPart)
-
-        '============================================================
-        ' Build Profiles from Imported CAM Entities
-        '============================================================
-        'Dim profileResults As List(Of ProfileBuildResult) =
-        'BuildProfilesFromEntities(
-        '    _importedEntities,
-        '    _selectedLayerSetup.GapTolerance)
-
-        ' Debug.WriteLine(
-        '$"PROFILE RESULTS COUNT = {profileResults.Count}")
-
-        '============================================================
-        ' Store CAD-derived Profiles
-        '
-        ' Profiles are CAD geometry interpretation.
-        ' They are NOT machining features.
-        '============================================================
-        'For Each profileResult As ProfileBuildResult In profileResults
-
-        '    If profileResult Is Nothing Then
-        '        Continue For
-        '    End If
-
-        '    If profileResult.Profile Is Nothing Then
-        '        Continue For
-        '    End If
-
-        '    importedPart.Profiles.Add(
-        '    profileResult.Profile)
-
-        'Next
-
-        'Debug.WriteLine(
-        '$"PART PROFILES COUNT = {importedPart.Profiles.Count}")
 
         '============================================================
         ' Create Imported Pattern
