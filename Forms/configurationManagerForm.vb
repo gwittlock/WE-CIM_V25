@@ -13,6 +13,7 @@ Imports System.Dynamic
 Imports System.Linq
 Imports System.Drawing
 Imports System.Text
+Imports System.Reflection
 
 Public Class ConfigurationManagerForm
     Inherits Form
@@ -65,6 +66,7 @@ Public Class ConfigurationManagerForm
 
     Private newToolBeingAdded As Tool = Nothing
     Private currentEditingTool As Tool = Nothing
+    Public Property MaterialDisplayColor As System.Drawing.Color
 
 
 
@@ -167,11 +169,24 @@ Public Class ConfigurationManagerForm
             .Multiline = True          ' sometimes needed
         End With
 
-        lstTools.BackColor = ColorTranslator.FromOle(RegGetString("Preferences\ViewOptions", "MaterialColor", System.Drawing.Color.Gray))
+        'lstTools.BackColor = ColorTranslator.FromOle(RegGetString("Preferences\ViewOptions", "MaterialColor", System.Drawing.Color.Gray))
+        lstTools.BackColor = _MaterialDisplayColor
+
 
         'ExportTreeToFile(Path.Combine(dataFolder, "TreeView.txt"))
 
     End Sub
+
+
+    Private Sub PropertyGridView_MouseWheel(
+    sender As Object,
+    e As MouseEventArgs)
+
+        Debug.WriteLine(
+        "PropertyGridView MouseWheel: " & e.Delta)
+
+    End Sub
+
 
     Private Sub LoadToolTypes()
         ' Ensure ToolTypes are loaded
@@ -246,7 +261,12 @@ Public Class ConfigurationManagerForm
 
                             ' Layer Setups under Tool Setup
                             'Dim lsForToolSetup = LayerSetups.Where(Function(ls) ls.MachineID = machine.ID AndAlso ls.ToolSetupID = ts.ID).ToList()
-                            Dim lsForToolSetup = LayerSetups.Where(Function(ls) ls.MachineID = machine.ID).ToList()
+                            ' Dim lsForToolSetup = LayerSetups.Where(Function(ls) ls.MachineID = machine.ID).ToList()
+
+                            Dim lsForToolSetup = LayerSetups.
+    Where(Function(ls) ls.MachineID = machine.ID AndAlso
+                       ls.ToolSetupID = ts.ID).
+    ToList()
 
                             Debug.WriteLine("Machine ID = " & machine.ID)
                             Debug.WriteLine("Tool Setup ID = " & ts.ID)
@@ -325,6 +345,7 @@ Public Class ConfigurationManagerForm
     '    typeNode.Expand()
     'End Sub
 
+
     Private Sub LoadSelectedToolSetup(toolSetupID As Integer, machineID As Integer)
 
         ' --- Load Stations for this machine if needed ---
@@ -348,23 +369,23 @@ Public Class ConfigurationManagerForm
                 ToObject(Of List(Of Tool))(),
             New List(Of Tool)())
         End If
+
         ' --- Use the shared ToolSetupMembers collection ---
         If AppData.ToolSetupMembers Is Nothing Then
-            AppData.ToolSetupMembers =
-        New List(Of ToolSetupMember)()
+            AppData.ToolSetupMembers = New List(Of ToolSetupMember)()
         End If
 
         Dim membersForSetup =
-    AppData.ToolSetupMembers.
-        Where(Function(m) m.ToolSetupID = toolSetupID).
-        ToList()
+        AppData.ToolSetupMembers.
+            Where(Function(m) m.ToolSetupID = toolSetupID).
+            ToList()
 
         ' --- Get ALL stations belonging to this machine ---
         Dim stationsForMachine =
-    AppData.Stations.
-        Where(Function(s) s.MachineID = machineID).
-        OrderBy(Function(s) s.NCCodeNumber).
-        ToList()
+        AppData.Stations.
+            Where(Function(s) s.MachineID = machineID).
+            OrderBy(Function(s) s.NCCodeNumber).
+            ToList()
 
         ' --- Build DataTable for the grid ---
         Dim dt As New DataTable()
@@ -373,10 +394,12 @@ Public Class ConfigurationManagerForm
         dt.Columns.Add("ToolDescription", GetType(String))
         dt.Columns.Add("IndexAngle", GetType(Double))
         dt.Columns.Add("FixedStation", GetType(Boolean))
-        dt.Columns.Add("PrimaryCode", GetType(String))
-        dt.Columns.Add("SecondaryCode", GetType(String))
-        dt.Columns.Add("StationID", GetType(Integer)) ' Hidden ID column
+        dt.Columns.Add("StationID", GetType(Integer))
         dt.Columns.Add("ToolSetupMemberID", GetType(Integer))
+
+        ' PrimaryCode and SecondaryCode are no longer
+        ' hard-coded Tool Setup columns.
+        ' They will be supplied by UDP definitions.
 
         ' --- Add global Tool Setup UDP columns ---
         If AppData.ToolSetupUDPDefinitions IsNot Nothing Then
@@ -395,6 +418,7 @@ Public Class ConfigurationManagerForm
                 Dim columnType As Type = GetType(String)
 
                 Select Case If(udp.DataType, "").Trim().ToLowerInvariant()
+
                     Case "integer", "int"
                         columnType = GetType(Integer)
 
@@ -406,9 +430,11 @@ Public Class ConfigurationManagerForm
 
                     Case Else
                         columnType = GetType(String)
+
                 End Select
 
                 dt.Columns.Add(udp.Name, columnType)
+
             Next
 
         End If
@@ -418,14 +444,12 @@ Public Class ConfigurationManagerForm
 
             ' A station may not have a ToolSetupMember yet.
             Dim member =
-        membersForSetup.FirstOrDefault(
-            Function(m) m.StationID = station.ID)
+            membersForSetup.FirstOrDefault(
+                Function(m) m.StationID = station.ID)
 
             Dim row = dt.NewRow()
 
             row("NCCodeNumber") = station.NCCodeNumber
-            row("PrimaryCode") = If(station.PrimaryCode, "")
-            row("SecondaryCode") = If(station.SecondaryCode, "")
             row("StationID") = station.ID
 
             Dim toolDesc As String = ""
@@ -434,19 +458,22 @@ Public Class ConfigurationManagerForm
 
                 ' --- Get ToolDescription from ToolCrib ---
                 Dim tool =
-            AppData.ToolCrib.FirstOrDefault(
-                Function(t) t.ID = member.ToolID)
+                AppData.ToolCrib.FirstOrDefault(
+                    Function(t) t.ID = member.ToolID)
 
                 If tool IsNot Nothing Then
+
                     toolDesc = If(tool.Description, "")
 
                     If String.IsNullOrWhiteSpace(toolDesc) AndAlso
-               tool.Attributes IsNot Nothing AndAlso
-               tool.Attributes.ContainsKey("Tool Crib.Description") Then
+                   tool.Attributes IsNot Nothing AndAlso
+                   tool.Attributes.ContainsKey("Tool Crib.Description") Then
 
                         toolDesc =
-                    If(tool.Attributes("Tool Crib.Description")?.ToString(), "")
+                        If(tool.Attributes("Tool Crib.Description")?.ToString(), "")
+
                     End If
+
                 End If
 
                 row("IndexAngle") = member.IndexAngle
@@ -454,10 +481,12 @@ Public Class ConfigurationManagerForm
                 row("ToolSetupMemberID") = member.ID
 
             Else
-                ' Empty station: display it without inventing a member.
+
+                ' Empty station: display without inventing a member.
                 row("IndexAngle") = 0.0
                 row("FixedStation") = False
                 row("ToolSetupMemberID") = DBNull.Value
+
             End If
 
             row("ToolDescription") = toolDesc
@@ -473,51 +502,65 @@ Public Class ConfigurationManagerForm
                     Dim savedValue As ToolSetupUDPValue = Nothing
 
                     If member IsNot Nothing AndAlso
-               AppData.ToolSetupUDPValues IsNot Nothing Then
+                   AppData.ToolSetupUDPValues IsNot Nothing Then
 
                         savedValue =
-                    AppData.ToolSetupUDPValues.FirstOrDefault(
-                        Function(v) v.ToolSetupMemberID = member.ID AndAlso
-                            v.ToolSetupID = toolSetupID AndAlso
-                            String.Equals(
-                                v.ParameterName,
-                                udp.Name,
-                                StringComparison.OrdinalIgnoreCase))
+                        AppData.ToolSetupUDPValues.FirstOrDefault(
+                            Function(v) v.ToolSetupMemberID = member.ID AndAlso
+                                v.ToolSetupID = toolSetupID AndAlso
+                                String.Equals(
+                                    v.ParameterName,
+                                    udp.Name,
+                                    StringComparison.OrdinalIgnoreCase))
                     End If
 
                     Dim valueToLoad As String =
-                If(savedValue IsNot Nothing,
-                   savedValue.Value,
-                   udp.Default)
+                    If(savedValue IsNot Nothing,
+                       savedValue.Value,
+                       udp.Default)
 
                     If String.IsNullOrWhiteSpace(valueToLoad) Then
+
                         row(udp.Name) = DBNull.Value
+
                     Else
+
                         Try
-                            Dim columnType As Type = dt.Columns(udp.Name).DataType
+
+                            Dim columnType As Type =
+                            dt.Columns(udp.Name).DataType
 
                             If columnType Is GetType(Integer) Then
+
                                 row(udp.Name) = Integer.Parse(valueToLoad)
 
                             ElseIf columnType Is GetType(Double) Then
+
                                 row(udp.Name) = Double.Parse(
-                            valueToLoad,
-                            Globalization.NumberStyles.Any,
-                            Globalization.CultureInfo.InvariantCulture)
+                                valueToLoad,
+                                Globalization.NumberStyles.Any,
+                                Globalization.CultureInfo.InvariantCulture)
 
                             ElseIf columnType Is GetType(Boolean) Then
+
                                 row(udp.Name) = Boolean.Parse(valueToLoad)
 
                             Else
+
                                 row(udp.Name) = valueToLoad
+
                             End If
 
                         Catch
+
                             row(udp.Name) = DBNull.Value
+
                         End Try
+
                     End If
 
                 Next
+
             End If
 
             dt.Rows.Add(row)
@@ -531,6 +574,7 @@ Public Class ConfigurationManagerForm
         ' --- Bind DataTable to grid ---
         dgvToolSetup.DataSource = dt
 
+        ' --- Hide internal ID columns ---
         If dgvToolSetup.Columns.Contains("ToolSetupMemberID") Then
             dgvToolSetup.Columns("ToolSetupMemberID").Visible = False
         End If
@@ -539,7 +583,7 @@ Public Class ConfigurationManagerForm
             dgvToolSetup.Columns("StationID").Visible = False
         End If
 
-        ' --- Use each UDP's Display value as the grid column caption ---
+        ' --- Apply UDP display names and visibility ---
         If AppData.ToolSetupUDPDefinitions IsNot Nothing Then
 
             For Each udp In AppData.ToolSetupUDPDefinitions
@@ -548,9 +592,14 @@ Public Class ConfigurationManagerForm
                 If Not dgvToolSetup.Columns.Contains(udp.Name) Then Continue For
 
                 With dgvToolSetup.Columns(udp.Name)
-                    .HeaderText = If(String.IsNullOrWhiteSpace(udp.Display),
-                              udp.Name, udp.Display)
+
+                    .HeaderText =
+                    If(String.IsNullOrWhiteSpace(udp.Display),
+                       udp.Name,
+                       udp.Display)
+
                     .Visible = udp.Visible
+
                 End With
 
             Next
@@ -559,6 +608,71 @@ Public Class ConfigurationManagerForm
 
     End Sub
 
+    Private Sub dgvToolSetup_CellFormatting(
+    sender As Object,
+    e As DataGridViewCellFormattingEventArgs
+) Handles dgvToolSetup.CellFormatting
+
+
+
+        Debug.WriteLine(
+    "CELL FORMATTING | Column=" &
+    dgvToolSetup.Columns(e.ColumnIndex).Name &
+    " | Row=" & e.RowIndex)
+
+
+        If e.RowIndex < 0 Then Return
+
+        If dgvToolSetup.Columns(e.ColumnIndex).Name <> "ToolDescription" Then
+            Return
+        End If
+
+        Dim row As DataGridViewRow = dgvToolSetup.Rows(e.RowIndex)
+
+        Dim memberValue As Object =
+        row.Cells("ToolSetupMemberID").Value
+
+        If memberValue Is Nothing OrElse
+       memberValue Is DBNull.Value Then
+            Return
+        End If
+
+        Dim memberID As Integer = Convert.ToInt32(memberValue)
+
+        Dim member = AppData.ToolSetupMembers.FirstOrDefault(
+        Function(m) m.ID = memberID)
+
+        If member Is Nothing Then Return
+
+        Dim tool = AppData.ToolCrib.FirstOrDefault(
+        Function(t) t.ID = member.ToolID)
+
+        If tool Is Nothing Then Return
+
+        Dim toolColor As Color = tool.Color
+
+        Debug.WriteLine(
+    "TOOL CELL COLOR | MemberID=" & memberID &
+    " | ToolID=" & tool.ID &
+    " | Description=" & tool.Description &
+    " | Color=" & toolColor.ToString())
+
+        e.CellStyle.ForeColor = toolColor
+
+        ' Choose readable text based on background brightness.
+        Dim brightness As Double =
+        (toolColor.R * 299 +
+         toolColor.G * 587 +
+         toolColor.B * 114) / 1000.0
+
+        e.CellStyle.ForeColor =
+        If(brightness < 128, Color.White, Color.Black)
+
+        ' Preserve colors when the row is selected.
+        e.CellStyle.SelectionBackColor = toolColor
+        e.CellStyle.SelectionForeColor = e.CellStyle.ForeColor
+
+    End Sub
 
     Private Sub TreeViewMachines_AfterSelect(sender As Object, e As TreeViewEventArgs) Handles TreeViewMachines.AfterSelect
         'Try
@@ -709,6 +823,7 @@ Public Class ConfigurationManagerForm
         Dim machine = AppData.Machines.FirstOrDefault(Function(m) m.ID = machineID)
         If machine Is Nothing Then
             propgrdMachine.SelectedObject = Nothing
+            currentAttributeMap = Nothing
             Return
         End If
 
@@ -735,7 +850,8 @@ Public Class ConfigurationManagerForm
 
         ' Create the dynamic property bag
         propgrdMachine.SelectedObject = Nothing
-        propgrdMachine.SelectedObject = New DynamicMachinePropertyBag(attrs, types)
+        propgrdMachine.SelectedObject =
+    New DynamicMachinePropertyBag(machine, attrs, types)
 
 
         propgrdMachine.Refresh()
@@ -760,6 +876,83 @@ Public Class ConfigurationManagerForm
         ' Bind to grid
         dgvStations.DataSource = stationsForMachine
 
+        ' Hide internal and unused station fields
+        Dim hiddenColumns As String() = {
+            "ID",
+            "MachineID",
+            "WorkplaneID",
+            "Description",
+            "Position",
+            "Properties"
+        }
+
+        ' Display AutoIndex as a checkbox
+        If dgvStations.Columns.Contains("AutoIndex") Then
+
+            Dim oldColumn As DataGridViewColumn =
+        dgvStations.Columns("AutoIndex")
+
+            Dim displayPosition As Integer = oldColumn.DisplayIndex
+
+            dgvStations.Columns.Remove(oldColumn)
+
+            Dim checkColumn As New DataGridViewCheckBoxColumn With {
+        .Name = "AutoIndex",
+        .DataPropertyName = "AutoIndex",
+        .HeaderText = "Auto Index",
+        .ThreeState = False,
+        .TrueValue = True,
+        .FalseValue = False,
+        .IndeterminateValue = Nothing
+    }
+
+            dgvStations.Columns.Add(checkColumn)
+            checkColumn.DisplayIndex = displayPosition
+
+        End If
+        For Each columnName As String In hiddenColumns
+
+            If dgvStations.Columns.Contains(columnName) Then
+                dgvStations.Columns(columnName).Visible = False
+            End If
+
+        Next
+
+        ' Set programmer-friendly headings and column order
+        Dim columnNames As String() = {
+            "NCCodeNumber",
+            "StationLocationX",
+            "StationLocationY",
+            "AutoIndex",
+            "StationSize",
+            "PrimaryCode",
+            "SecondaryCode"
+        }
+
+        Dim headers As String() = {
+            "NC Code Number",
+            "X Loc.",
+            "Y Loc.",
+            "Auto Index",
+            "Size",
+            "Primary Code",
+            "Secondary Code"
+        }
+
+        For i As Integer = 0 To columnNames.Length - 1
+
+            If dgvStations.Columns.Contains(columnNames(i)) Then
+
+                With dgvStations.Columns(columnNames(i))
+                    .HeaderText = headers(i)
+                    .DisplayIndex = i
+                End With
+
+            End If
+
+        Next
+
+
         'Catch ex As Exception
         '    MessageBox.Show($"Error populating stations: {ex.Message}")
         'End Try
@@ -769,6 +962,49 @@ Public Class ConfigurationManagerForm
 
 
     Private Sub propgrdMachine_PropertyValueChanged(s As Object, e As PropertyValueChangedEventArgs) Handles propgrdMachine.PropertyValueChanged
+
+        ' --- Handle core Machine properties ---
+        Dim corePropertyNames As String() = {
+    "WorkplaneTypeID",
+    "Units",
+    "CodePartProfile",
+    "CNC_Folder",
+    "HoldDown_CTG",
+    "Clamp_CTG",
+    "Table_CTG",
+    "CodeGenerationFile"
+}
+
+        Dim selectedBag =
+    TryCast(propgrdMachine.SelectedObject, DynamicMachinePropertyBag)
+
+        If selectedBag IsNot Nothing AndAlso
+   selectedBag.MachineRecord IsNot Nothing Then
+
+            Dim changedProperty = selectedBag.GetProperties().
+        Cast(Of PropertyDescriptor)().
+        FirstOrDefault(Function(p) p.DisplayName = e.ChangedItem.Label)
+
+            If changedProperty IsNot Nothing AndAlso
+       corePropertyNames.Contains(changedProperty.Name) Then
+
+                Try
+                    JsonSaver.SaveObjectToJsonFile(
+                AppData.MachinesTable,
+                Path.Combine(dataFolder, "Machines.json"))
+
+                Catch ex As Exception
+                    MessageBox.Show(
+                "Error saving Machines.json:" & vbCrLf & ex.Message,
+                "Save Machine",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error)
+                End Try
+
+                Return
+            End If
+
+        End If
         ' Safety check
         If currentMachineID < 0 OrElse currentAttributeMap Is Nothing Then Exit Sub
 
@@ -832,48 +1068,10 @@ Public Class ConfigurationManagerForm
             editMethod.Invoke(grid, Nothing)
         End If
     End Sub
-
-
     Private Sub RefreshPropertyGridForMachine(machineID As Integer)
-        ' Find the machine
-        Dim machine = AppData.Machines.FirstOrDefault(
-        Function(m) m.ID = machineID)
 
-        If machine Is Nothing Then
-            propgrdMachine.SelectedObject = Nothing
-            currentAttributeMap = Nothing
-            Return
-        End If
+        PopulatePropertyGridForMachine(machineID)
 
-        ' Get the machine's current attribute rows
-        Dim attrs As List(Of MachineAttribute) =
-        AppData.MachineAttributes.
-        Where(Function(a) a.MachineID = machine.ID).ToList()
-
-        ' Get the attribute type definitions
-        Dim types As List(Of MachineAttributeType) =
-        AppData.MachineAttributeTypes
-
-        ' Rebuild the display-name to attribute-type-ID mapping
-        currentAttributeMap = attrs.
-        Join(
-            types,
-            Function(a) a.AttributeTypeID,
-            Function(t) t.ID,
-            Function(a, t) New With {
-                .Display = t.Display,
-                .AttributeTypeID = a.AttributeTypeID
-            }).
-        ToDictionary(
-            Function(x) x.Display,
-            Function(x) x.AttributeTypeID)
-
-        ' Rebuild the PropertyGrid using the same model as initial population
-        propgrdMachine.SelectedObject = Nothing
-        propgrdMachine.SelectedObject =
-        New DynamicMachinePropertyBag(attrs, types)
-
-        propgrdMachine.Refresh()
     End Sub
 
 
@@ -946,6 +1144,22 @@ Public Class ConfigurationManagerForm
         Function(r) r("ID").Value(Of String)() = stationID)
 
         If jObj Is Nothing OrElse jObj(colField) Is Nothing Then Return
+
+
+        ' StationSize is a machine-dependent designation.
+        ' It may be alphabetic or numeric.
+        If colField = "StationSize" Then
+
+            jObj(colField) = If(
+        newValue Is Nothing,
+        "",
+        newValue.ToString())
+
+            SaveStationsJson()
+            Return
+
+        End If
+
 
         ' Preserve the existing JSON value type.
         Dim originalType = jObj(colField).Type
@@ -1065,7 +1279,7 @@ Public Class ConfigurationManagerForm
 
         If dgvRow IsNot Nothing Then
             dgvRow.Selected = True
-            dgvStations.CurrentCell = dgvRow.Cells(0)
+            dgvStations.CurrentCell = dgvRow.Cells("NCCodeNumber")
         End If
 
     End Sub
@@ -1284,7 +1498,7 @@ Public Class ConfigurationManagerForm
 
         If firstRow IsNot Nothing Then
             firstRow.Selected = True
-            dgvStations.CurrentCell = firstRow.Cells(0)
+            dgvStations.CurrentCell = firstRow.Cells("NCCodeNumber")
         End If
 
         MessageBox.Show(
@@ -1294,31 +1508,40 @@ Public Class ConfigurationManagerForm
 
     End Sub
 
-
-
     Private Function GetDefaultValueForStationColumn(columnName As String) As Object
+
         Select Case columnName
+
             Case "NCCodeNumber"
-                ' Normally assigned dynamically, so skip here
                 Return 1
+
             Case "MachineID"
                 Return currentMachineID
-            Case "StationName"
-                Return "New Station"
-            Case "SomeBooleanColumn"
-                Return False
-            Case "SomeIntegerColumn"
-                Return 0
-            Case "SomeDoubleColumn"
-                Return 0.0
-            Case "SomeStringColumn"
-                Return ""
-            Case Else
-                ' Fallback: empty string
-                Return ""
-        End Select
-    End Function
 
+            Case "WorkplaneID"
+                Return 1
+
+            Case "StationLocationX", "StationLocationY"
+                Return 0.0
+
+            Case "AutoIndex"
+                Return False
+
+            Case "StationSize"
+                Return 0
+
+            Case "PrimaryCode", "SecondaryCode"
+                Return "0"
+
+            Case "Description", "Position"
+                Return ""
+
+            Case Else
+                Return Nothing
+
+        End Select
+
+    End Function
 
     Public Function EncodeConfigTreeTag(MachineType_ID As Integer,
                                  Machine_ID As Integer,
@@ -1719,6 +1942,11 @@ Public Class ConfigurationManagerForm
         .Description = newToolDescription,
         .Attributes = defaultProps
     }
+        defaultProps("Tool Crib.ID") = newToolBeingAdded.ID
+        defaultProps("Type ID") = newToolBeingAdded.TypeID
+
+        propgrdToolProps.Refresh()
+
 
         ' Update labels
         lblCurrentMachine.Text = currentMachine
@@ -1859,56 +2087,44 @@ Public Class ConfigurationManagerForm
         .TypeID = nTypeId
     }
         AppData.MachinesTable.Rows.Add(newMachine)
+        ' --- 6. Create default attributes for selected Machine Type ---
 
-        ' --- 6. Create default attributes ---
+        Dim allowedAttributeIDs As New HashSet(Of Integer)(
+    AppData.MachineTypeAttributesTable.Rows.
+        Where(Function(a) a.MachineTypeID = nTypeId).
+        Select(Function(a) a.AttributeTypeID)
+)
+
+        Dim nextAttrID As Integer =
+    If(AppData.MachineAttributesTable.Rows.Count = 0,
+       1,
+       AppData.MachineAttributesTable.Rows.Max(Function(a) a.ID) + 1)
+
         For Each attrType In AppData.MachineAttributeTypesTable.Rows
-            Dim nextAttrID As Integer = If(AppData.MachineAttributesTable.Rows.Count = 0, 1, AppData.MachineAttributesTable.Rows.Max(Function(a) a.ID) + 1)
-            Dim defaultVal As Object = GetDefaultValueForDataType(attrType.DataType)
+
+            If Not allowedAttributeIDs.Contains(attrType.ID) Then
+                Continue For
+            End If
+
+            Dim defaultVal As Object =
+        GetDefaultValueForDataType(attrType.DataType)
 
             Dim newAttr As New MachineAttribute With {
-            .ID = nextAttrID,
-            .MachineID = newMachine.ID,
-            .AttributeTypeID = attrType.ID,
-            .Value = CStr(defaultVal)
-        }
+        .ID = nextAttrID,
+        .MachineID = newMachine.ID,
+        .AttributeTypeID = attrType.ID,
+        .Value = CStr(defaultVal)
+    }
+
             AppData.MachineAttributesTable.Rows.Add(newAttr)
+
+            nextAttrID += 1
         Next
-
-
-        If AppData.StationsTable Is Nothing Then
-            MessageBox.Show("AppData.StationsTable has not been initialized.")
-            Return
-        End If
-
-        ' --- 7. Create a default station ---
-        Dim stations = AppData.StationsTable
-
-        Dim defaultStationID As Integer =
-    If(stations.Rows.Count = 0, 1,
-       stations.Rows.Max(Function(r) r("ID").Value(Of Integer)()) + 1)
-
-        Dim defaultStation As New JObject()
-
-        For Each col In stations.Columns
-            Select Case col.Field
-                Case "ID"
-                    defaultStation(col.Field) = defaultStationID
-                Case "MachineID"
-                    defaultStation(col.Field) = newMachine.ID
-                Case "NCCodeNumber"
-                    defaultStation(col.Field) = 1
-                Case "WorkplaneID"
-                    defaultStation(col.Field) = 1
-                Case Else
-                    defaultStation(col.Field) =
-                JToken.FromObject(GetDefaultValueForStationColumn(col.Field))
-            End Select
-        Next
-
-        stations.Rows.Add(defaultStation)
 
         ' --- 8. Save JSON files ---
-        JsonSaver.SaveObjectToJsonFile(AppData.MachinesTable, Path.Combine(dataFolder, "Machines.json"))
+        JsonSaver.SaveObjectToJsonFile(
+    AppData.MachinesTable,
+    Path.Combine(dataFolder, "Machines.json"))
         JsonSaver.SaveObjectToJsonFile(AppData.MachineAttributesTable, Path.Combine(dataFolder, "MachineAttributes.json"))
         SaveStationsJson()
 
@@ -3565,8 +3781,6 @@ Public Class ConfigurationManagerForm
         ' Save changes
         SaveAllMaterialData(dataFolder, materialTypesTable, materialInventoryTable)
     End Sub
-
-
     Private Sub DeleteMaterialSizeTSM_Click(
     sender As Object,
     e As EventArgs
@@ -3575,51 +3789,22 @@ Public Class ConfigurationManagerForm
         Dim selectedNode As TreeNode = TreeViewMachines.SelectedNode
         If selectedNode Is Nothing Then Return
 
-        ' Determine whether the selected node represents a Material Sheet.
+        ' Get the Material Sheet directly from the node.
         Dim selectedSheet As MaterialSheet =
         TryCast(selectedNode.Tag, MaterialSheet)
 
-        Dim sheetID As Integer = -1
-
-        If selectedSheet IsNot Nothing Then
-            ' Current implementation: the node stores the MaterialSheet object.
-            sheetID = selectedSheet.ID
-
-        ElseIf TypeOf selectedNode.Tag Is String Then
-            ' Legacy implementation: the node stores an encoded tag.
-            Dim nodeType As Integer =
-            CInt(GetValueFromDelimitedData(
-                CStr(selectedNode.Tag), "NodeType", "-1"))
-
-            If nodeType <> 102 Then
-                MessageBox.Show(
-                "Please select a Material Sheet node to delete.",
-                "Delete Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning)
-                Return
-            End If
-
-            ' Legacy encoded tags store the sheet ID in Machine_ID.
-            sheetID = CInt(GetValueFromDelimitedData(
-            CStr(selectedNode.Tag), "Machine_ID", "-1"))
-        Else
+        If selectedSheet Is Nothing Then
             MessageBox.Show(
-            "Please select a Material Sheet node to delete.",
-            "Delete Error",
+            "Please select a Material Sheet to delete.",
+            "Delete Material Sheet",
             MessageBoxButtons.OK,
-            MessageBoxIcon.Warning)
+            MessageBoxIcon.Information)
             Return
         End If
 
-        If sheetID < 0 Then
-            MessageBox.Show(
-            "Unable to determine the Material Sheet ID.",
-            "Delete Error",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Warning)
-            Return
-        End If
+        ' Capture IDs before removing the sheet.
+        Dim sheetID As Integer = selectedSheet.ID
+        Dim typeID As Integer = selectedSheet.TypeID
 
         ' Confirm deletion.
         If MessageBox.Show(
@@ -3630,49 +3815,50 @@ Public Class ConfigurationManagerForm
             Return
         End If
 
-        ' Remove the sheet from the configuration manager inventory.
+        ' Remove the sheet.
         materialInventoryTable.Rows.RemoveAll(
         Function(s) s.ID = sheetID)
 
-        ' Synchronize the application inventory.
+        ' Synchronize application data.
         AppData.MaterialSheets = materialInventoryTable.Rows
 
-        ' Persist the updated inventory.
+        ' Save changes.
         SaveMaterialInventoryJson(dataFolder, materialInventoryTable)
 
-        Dim typeID As Integer = selectedSheet.TypeID
-
-        ' Rebuild the tree from the updated inventory.
+        ' Rebuild the TreeView.
         PopulateTreeView()
 
         ' Find the Material Inventory root.
         Dim materialRoot As TreeNode =
-    TreeViewMachines.Nodes.Cast(Of TreeNode)().
-    FirstOrDefault(Function(n) GetNodeType(n.Tag) = 100)
+        TreeViewMachines.Nodes.Cast(Of TreeNode)().
+        FirstOrDefault(Function(n) GetNodeType(n.Tag) = 100)
 
         If materialRoot IsNot Nothing Then
+
             ' Find the Material Type that contained the deleted sheet.
             Dim typeNode As TreeNode =
-        materialRoot.Nodes.Cast(Of TreeNode)().
-        FirstOrDefault(
-            Function(n)
-                Return GetNodeType(n.Tag) = 101 AndAlso
-                    CInt(GetValueFromDelimitedData(
-                        CStr(n.Tag), "MachineType_ID", "-1")) = typeID
-            End Function)
+            materialRoot.Nodes.Cast(Of TreeNode)().
+            FirstOrDefault(
+                Function(n)
+                    Return GetNodeType(n.Tag) = 101 AndAlso
+                        CInt(GetValueFromDelimitedData(
+                            CStr(n.Tag),
+                            "MachineType_ID",
+                            "-1")) = typeID
+                End Function)
 
             If typeNode IsNot Nothing Then
                 materialRoot.Expand()
                 typeNode.Expand()
                 TreeViewMachines.SelectedNode = typeNode
             End If
+
         End If
 
-        ' Clear the property grid because the sheet no longer exists.
+        ' Clear the PropertyGrid.
         propgridMaterial.SelectedObject = Nothing
 
     End Sub
-
 
     Private Function GetNodeType(tag As Object) As Integer
         If tag Is Nothing Then Return -1
@@ -4510,6 +4696,9 @@ Public Class ConfigurationManagerForm
         ' Bind properties to PropertyGrid
         propgrdToolProps.SelectedObject = New DynamicToolAttributes(selectedTool.Attributes)
 
+        selectedTool.Attributes("Tool Crib.ID") = selectedTool.ID
+        selectedTool.Attributes("Type ID") = selectedTool.TypeID
+
         ' Switch to properties tab
         tabControlMain.SelectedTab = tabToolProperties
 
@@ -4627,20 +4816,56 @@ Public Class ConfigurationManagerForm
 
         Return -1
     End Function
+
     ' --- Add new Layer Setup ---
     Private Sub AddLayerSetupTSM_Click(sender As Object, e As EventArgs) Handles AddLayerSetupTSM.Click
+
         Try
-            Dim selectedToolSetupNode = TreeViewMachines.SelectedNode.Parent
-            If selectedToolSetupNode Is Nothing Then Exit Sub
+            ' The selected node must be the Layer Setups container.
+            Dim layerSetupsNode As TreeNode = TreeViewMachines.SelectedNode
 
-            ' Get MachineID from the parent Tool Setup node
-            Dim machineID = GetValueFromDelimitedData(selectedToolSetupNode.Tag, "Machine_ID", 0)
+            If layerSetupsNode Is Nothing Then Return
 
-            ' Create new LayerSetup
+            ' Parent is the actual Tool Setup node.
+            Dim selectedToolSetupNode As TreeNode = layerSetupsNode.Parent
+
+            If selectedToolSetupNode Is Nothing Then Return
+
+            ' Get IDs from the Tool Setup node.
+            Dim machineID As Integer =
+            GetValueFromDelimitedData(
+                selectedToolSetupNode.Tag,
+                "Machine_ID", 0)
+
+            Dim toolSetupID As Integer =
+            GetValueFromDelimitedData(
+                selectedToolSetupNode.Tag,
+                "ToolSetup_ID", 0)
+
+            Dim machineTypeID As Integer =
+            GetValueFromDelimitedData(
+                selectedToolSetupNode.Tag,
+                "MachineType_ID", 0)
+
+            ' Do not create an unassociated Layer Setup.
+            If machineID <= 0 OrElse toolSetupID <= 0 Then
+
+                MessageBox.Show(
+                "Unable to identify the Machine or Tool Setup.",
+                "Add Layer Setup",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+                Return
+
+            End If
+
+            ' Create new Layer Setup.
             Dim newLS As New layersetup With {
             .ID = GetNextLayerSetupID(),
             .Description = "New Layer Setup",
             .MachineID = machineID,
+            .ToolSetupID = toolSetupID,
             .ZLevelMode = 0,
             .GapTolerance = 0,
             .CleanTolerance = 0,
@@ -4651,29 +4876,39 @@ Public Class ConfigurationManagerForm
             .Layers = New List(Of Directive)()
         }
 
-            ' Add to AppData
+            ' Add to AppData.
             AppData.LayerSetups.Add(newLS)
-            Dim MachineTyeID As Integer = GetValueFromDelimitedData(TreeViewMachines.SelectedNode.Parent.Parent.Parent.Tag, "MachineType_ID", 0)
-            Dim ToolSetup_ID As Integer = GetValueFromDelimitedData(TreeViewMachines.SelectedNode.Parent.Tag, "MachineType_ID", 0)
-            ' Create tree node
+
+            ' Create tree node under Layer Setups.
             Dim lsNode As New TreeNode(newLS.Description) With {
-                .Tag = EncodeConfigTreeTag(MachineTyeID, machineID, ToolSetup_ID, newLS.ID, 0, 15)
+            .Tag = EncodeConfigTreeTag(
+                machineTypeID,
+                machineID,
+                toolSetupID,
+                newLS.ID,
+                0,
+                15)
         }
 
-            selectedToolSetupNode.Nodes.Add(lsNode)
-            selectedToolSetupNode.Expand()
+            layerSetupsNode.Nodes.Add(lsNode)
+            layerSetupsNode.Expand()
 
-            ' Auto-select the new node
+            ' Auto-select the new node.
             TreeViewMachines.SelectedNode = lsNode
             TreeViewMachines.Focus()
 
-            ' Populate property grid
+            ' Populate PropertyGrid.
             propgrdLayerSetup.SelectedObject = newLS
 
         Catch ex As Exception
-            MessageBox.Show($"Error adding Layer Setup: {ex.Message}")
+
+            MessageBox.Show(
+            $"Error adding Layer Setup: {ex.Message}")
+
         End Try
+
     End Sub
+
 
     Private Sub AddLayerTSM_Click(sender As Object, e As EventArgs) Handles AddLayerTSM.Click
 
@@ -4701,6 +4936,16 @@ Public Class ConfigurationManagerForm
     }
         selectedLSNode.Nodes.Add(layerNode)
         selectedLSNode.Expand()
+
+        ' Select the newly created directive
+        TreeViewMachines.SelectedNode = layerNode
+        TreeViewMachines.Focus()
+
+        MessageBox.Show(
+    "Selected Node: " &
+    If(TreeViewMachines.SelectedNode IsNot Nothing,
+       TreeViewMachines.SelectedNode.Text,
+       "NOTHING"))
 
     End Sub
 
@@ -4764,12 +5009,79 @@ Public Class ConfigurationManagerForm
 
         Dim grid = dgvToolSetup
         Dim columnName As String = grid.Columns(e.ColumnIndex).Name
+        ' Save FixedStation changes.
+        If columnName = "FixedStation" Then
+
+            Dim fixedRow As DataGridViewRow = grid.Rows(e.RowIndex)
+
+            If fixedRow.IsNewRow Then Return
+
+            Dim fixedMemberID As Integer
+
+            If Not Integer.TryParse(
+        Convert.ToString(fixedRow.Cells("ToolSetupMemberID").Value),
+        fixedMemberID) Then Return
+
+            Dim member = AppData.ToolSetupMembers.FirstOrDefault(
+        Function(m) m.ID = fixedMemberID AndAlso
+                    m.ToolSetupID = currenttoolSetupID)
+
+            If member Is Nothing Then Return
+
+            member.FixedStation =
+        Convert.ToBoolean(fixedRow.Cells("FixedStation").Value)
+
+            SaveToolSetupMembers()
+
+            Return
+
+        End If
+
+
+        ' Save IndexAngle changes.
+        If columnName = "IndexAngle" Then
+
+            Dim angleRow As DataGridViewRow = grid.Rows(e.RowIndex)
+
+            If angleRow.IsNewRow Then Return
+
+            Dim angleMemberID As Integer
+
+            If Not Integer.TryParse(
+        Convert.ToString(angleRow.Cells("ToolSetupMemberID").Value),
+        angleMemberID) Then Return
+
+            Dim angleMember = AppData.ToolSetupMembers.FirstOrDefault(
+        Function(m) m.ID = angleMemberID AndAlso
+                    m.ToolSetupID = currenttoolSetupID)
+
+            If angleMember Is Nothing Then Return
+
+            Dim newAngle As Double
+
+            If Not Double.TryParse(
+        Convert.ToString(angleRow.Cells("IndexAngle").Value),
+        Globalization.NumberStyles.Float,
+        Globalization.CultureInfo.CurrentCulture,
+        newAngle) Then
+
+                MessageBox.Show("Invalid Index Angle.")
+                Return
+
+            End If
+
+            angleMember.IndexAngle = newAngle
+
+            SaveToolSetupMembers()
+
+            Return
+
+        End If
 
         ' Ignore standard and internal columns.
         Select Case columnName
             Case "NCCodeNumber", "ToolDescription", "IndexAngle",
-             "FixedStation", "PrimaryCode", "SecondaryCode",
-             "StationID", "ToolSetupMemberID"
+       "FixedStation", "StationID", "ToolSetupMemberID"
                 Return
         End Select
 
@@ -5049,5 +5361,36 @@ Public Class ConfigurationManagerForm
 
     End Sub
 
+    Private Sub ConfigurationManagerForm_ResizeEnd(sender As Object, e As EventArgs) Handles Me.ResizeEnd
+        TreeViewMachines.Height = Me.Height - 100
+    End Sub
 
+    Private Sub propgrdLayer_Click(sender As Object, e As EventArgs) Handles propgrdLayer.Click
+
+    End Sub
+
+    Private Sub propgrdLayer_PropertyValueChanged(
+    s As Object,
+    e As PropertyValueChangedEventArgs
+) Handles propgrdLayer.PropertyValueChanged
+
+        Dim directive = TryCast(propgrdLayer.SelectedObject, Directive)
+        If directive Is Nothing Then Return
+
+        Dim selectedNode As TreeNode = TreeViewMachines.SelectedNode
+        If selectedNode Is Nothing Then Return
+
+        ' Update the tree caption when CAD Layer changes.
+        If e.ChangedItem.PropertyDescriptor.Name = "CADLayer" Then
+            selectedNode.Text = directive.CADLayer
+        End If
+
+        ' Persist directive changes.
+        SaveDirectives()
+
+    End Sub
+
+    Private Sub dgvToolSetup_CellContextMenuStripChanged(sender As Object, e As DataGridViewCellEventArgs) Handles dgvToolSetup.CellContextMenuStripChanged
+
+    End Sub
 End Class

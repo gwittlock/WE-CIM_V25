@@ -1,14 +1,24 @@
 ﻿Imports FabV25_WIN8.CadEntity
 Public Enum SelectionFilter
     None = 0
+
+    ' Part Geometry
     Line = 1 << 0
     Circle = 1 << 1
     Arc = 1 << 2
     Polyline = 1 << 3
     Rectangle = 1 << 4
     Point = 1 << 5
-    AllGeometry = Line Or Circle Or Arc Or Polyline Or Rectangle Or Point
+
+    ' Manufacturing Model
+    Hole = 1 << 6
+
+    ' Part Geometry only
+    AllGeometry = Line Or Circle Or Arc Or
+                  Polyline Or Rectangle Or Point
+
 End Enum
+
 Public Class SelectionManager
 
 #Region "State"
@@ -17,10 +27,23 @@ Public Class SelectionManager
     Private _spatialIndex As QuadTree(Of CadEntity)
 
     Private _geoEntities As New List(Of GeoEntity)
+    Private _machiningFeatures As New List(Of MachiningFeature)
+    Public ReadOnly Property GeoEntities As IEnumerable(Of GeoEntity)
+        Get
+            Return _geoEntities
+        End Get
+    End Property
     Private _geoProfiles As New List(Of GeoProfile)
     Private _geoSpatialIndex As QuadTree(Of GeoEntity)
 
     Private ReadOnly _selected As New HashSet(Of isSelectable)
+
+    Public ReadOnly Property SelectedObjects As IReadOnlyCollection(Of isSelectable)
+        Get
+            Return _selected.ToList().AsReadOnly()
+        End Get
+    End Property
+
     Private _hovered As isSelectable
     Private _nativeHovered As isSelectable
 
@@ -65,6 +88,13 @@ Public Class SelectionManager
     Public ReadOnly Property Hovered As isSelectable
         Get
             Return _hovered
+        End Get
+    End Property
+
+
+    Public ReadOnly Property NativeHovered As isSelectable
+        Get
+            Return _nativeHovered
         End Get
     End Property
 
@@ -210,6 +240,76 @@ Public Class SelectionManager
         Debug.WriteLine(
     "NATIVE GEO SPATIAL INDEX BUILT")
     End Sub
+
+    Public Sub SetMachiningFeatures(features As IEnumerable(Of MachiningFeature))
+
+        If features Is Nothing Then
+            _machiningFeatures = New List(Of MachiningFeature)
+        Else
+            _machiningFeatures = features.ToList()
+        End If
+
+    End Sub
+    Public Sub RegisterMachiningFeature(feature As MachiningFeature)
+
+        If feature Is Nothing Then Return
+
+        If Not _machiningFeatures.Contains(feature) Then
+
+            _machiningFeatures.Add(feature)
+
+            DiagnosticLogger.Write(
+            "REGISTER FEATURE" &
+            " | Type=" & feature.GetType().Name &
+            " | ID=" & feature.ID &
+            " | Total=" & _machiningFeatures.Count)
+
+            Dim hole As HoleFeature = TryCast(feature, HoleFeature)
+
+            If hole IsNot Nothing Then
+
+                DiagnosticLogger.Write(
+                "HOLE DATA" &
+                " | X=" & hole.X.ToString("F4") &
+                " | Y=" & hole.Y.ToString("F4") &
+                " | SourceGeometryID=" & hole.SourceGeometryID &
+                " | ToolSetupMemberID=" & hole.ToolSetupMemberID)
+
+            End If
+
+            Debug.WriteLine(
+            "MM FEATURE REGISTERED: " &
+            feature.FeatureType.ToString() &
+            " | TOTAL = " &
+            _machiningFeatures.Count)
+
+        End If
+
+    End Sub
+
+    Public Sub UnregisterMachiningFeature(feature As MachiningFeature)
+
+        If feature Is Nothing Then Return
+
+        _machiningFeatures.Remove(feature)
+
+        ' Remove stale selection state.
+        _selected.Remove(feature)
+        feature.IsSelected = False
+        feature.IsHovered = False
+
+        If Object.ReferenceEquals(_hovered, feature) Then
+            _hovered = Nothing
+        End If
+
+        If Object.ReferenceEquals(_nativeHovered, feature) Then
+            _nativeHovered = Nothing
+        End If
+
+    End Sub
+
+
+
 #End Region
 
 #Region "Selection Entry Point (PRIMARY API)"
@@ -223,6 +323,35 @@ Public Class SelectionManager
 
 
         Dim nativeHit As isSelectable = Nothing
+
+        ' Manufacturing Model Hole selection.
+        If (selectionFilter And SelectionFilter.Hole) <> SelectionFilter.None Then
+
+            Dim holeHit As HoleFeature =
+        HitTestHoleAtPoint(ptWorld, tolWorld)
+
+            If holeHit IsNot Nothing Then
+
+                If deselect Then
+                    ApplyDeselection(holeHit)
+                Else
+                    ApplySelection(holeHit)
+
+                    DiagnosticLogger.Write(
+    "HOLE SELECTED" &
+    " | SourceGeometryID=" & holeHit.SourceGeometryID &
+    " | X=" & holeHit.X.ToString("F4") &
+    " | Y=" & holeHit.Y.ToString("F4") &
+    " | IsSelected=" & holeHit.IsSelected.ToString())
+
+                End If
+
+
+                Return holeHit
+
+            End If
+
+        End If
 
         If profileSelectionEnabled Then
 
@@ -269,65 +398,6 @@ Public Class SelectionManager
        " Selected=" & nativeHit.IsSelected.ToString()))
         Return nativeHit
 
-        Dim best As HitResult = Nothing
-        Dim candidates As List(Of CadEntity)
-
-        If _spatialIndex IsNot Nothing Then
-
-            candidates = _spatialIndex.Query(
-            New RectangleF(
-                ptWorld.X - tolWorld,
-                ptWorld.Y - tolWorld,
-                tolWorld * 2,
-                tolWorld * 2))
-
-        Else
-
-            candidates = _entities
-
-        End If
-
-        For Each ent In candidates
-
-            If selectionMode.HasValue AndAlso ent.GeometryType <> selectionMode.Value Then
-                Continue For
-            End If
-
-            If Not IsEntityAllowedBySelectionFilter(ent, selectionFilter) Then
-                Continue For
-            End If
-
-            Dim d = EvaluateDistance(ent, ptWorld)
-
-            If d > tolWorld Then Continue For
-
-            Dim candidate As New HitResult With {
-            .Entity = ent,
-            .Distance = d,
-            .Priority = GetPriority(ent)
-        }
-
-
-            If best Is Nothing OrElse IsBetter(candidate, best) Then
-                best = candidate
-
-            End If
-
-        Next
-        If best Is Nothing Then
-            Return Nothing
-        End If
-
-        Dim result As isSelectable =
-            TryCast(best.Entity, isSelectable)
-
-        If result Is Nothing Then
-            Return Nothing
-        End If
-
-        ApplySelection(result)
-
-        Return result
     End Function
 
 #End Region
@@ -473,6 +543,51 @@ Public Class SelectionManager
         Return hit IsNot Nothing
 
     End Function
+    Private Function HitTestHoleAtPoint(
+    ptWorld As PointF,
+    tolWorld As Single) As HoleFeature
+
+        Dim bestHole As HoleFeature = Nothing
+        Dim bestDistance As Double = Double.MaxValue
+
+        For Each hole As HoleFeature In
+        _machiningFeatures.OfType(Of HoleFeature)()
+
+            Dim diameter As Double = 0
+
+            If Not AutoPunchingEngine.TryGetRoundPunchDiameter(
+            hole, diameter) Then
+
+                Continue For
+
+            End If
+
+            Dim radius As Double = diameter / 2.0
+
+            Dim dx As Double = hole.X - ptWorld.X
+            Dim dy As Double = hole.Y - ptWorld.Y
+
+            Dim distanceFromCenter As Double =
+            Math.Sqrt(dx * dx + dy * dy)
+
+            ' Distance from cursor to actual punch circumference.
+            Dim distanceFromEdge As Double =
+            Math.Abs(distanceFromCenter - radius)
+
+            If distanceFromEdge <= tolWorld AndAlso
+           distanceFromEdge < bestDistance Then
+
+                bestDistance = distanceFromEdge
+                bestHole = hole
+
+            End If
+
+        Next
+
+        Return bestHole
+
+    End Function
+
 
 #End Region
 
@@ -495,6 +610,15 @@ Public Class SelectionManager
 
         Dim nativeType As String =
         If(nativeHit Is Nothing, "None", nativeHit.GetType().Name)
+
+        ' Include Manufacturing Model holes in hover detection.
+        Dim holeHit As HoleFeature =
+    HitTestHoleAtPoint(ptWorld, tolWorld)
+
+        If holeHit IsNot Nothing Then
+            nativeHit = holeHit
+        End If
+
 
         If (hit Is Nothing) <> (nativeHit Is Nothing) OrElse
        (hit IsNot Nothing AndAlso
@@ -587,23 +711,22 @@ Public Class SelectionManager
 
     Public Sub SelectAll()
 
-        If _entities Is Nothing OrElse _entities.Count = 0 Then
+        If _geoEntities Is Nothing OrElse
+       _geoEntities.Count = 0 Then
             Return
         End If
 
-        For Each ent As CadEntity In _entities
+        For Each ent As GeoEntity In _geoEntities
 
-            Dim selectable As isSelectable = TryCast(ent, isSelectable)
-
-            If selectable Is Nothing Then
+            If ent Is Nothing Then
                 Continue For
             End If
 
-            If Not _selected.Contains(selectable) Then
-                _selected.Add(selectable)
+            If Not _selected.Contains(ent) Then
+                _selected.Add(ent)
             End If
 
-            selectable.IsSelected = True
+            ent.IsSelected = True
 
         Next
 
@@ -613,43 +736,171 @@ Public Class SelectionManager
 
     Public Sub SelectAllByFilter(
     selectionMode As GeometryTypeEnum?,
-    selectionFilter As SelectionFilter)
+    selectionFilter As SelectionFilter,
+    profileSelectionEnabled As Boolean)
 
-        If _entities Is Nothing OrElse _entities.Count = 0 Then
-            Return
+        Debug.WriteLine("ENTERED SelectionManager.SelectAllByFilter")
+
+        Debug.WriteLine(
+        $"ProfileSelectionEnabled={profileSelectionEnabled}, " &
+        $"SelectionFilter={selectionFilter}")
+
+        '-----------------------------------------
+        ' Native profile selection
+        '-----------------------------------------
+        If profileSelectionEnabled Then
+
+            Dim profileCount As Integer =
+            If(_geoProfiles Is Nothing, 0, _geoProfiles.Count)
+
+            Debug.WriteLine(
+            $"SelectionManager Profile Count={profileCount}")
+
+            If _geoProfiles IsNot Nothing Then
+
+                For Each profile As GeoProfile In _geoProfiles
+
+                    If profile Is Nothing Then Continue For
+
+                    _selected.Add(profile)
+                    profile.IsSelected = True
+
+                Next
+
+            End If
+
+        Else
+
+            '-----------------------------------------
+            ' Native primitive geometry selection
+            '-----------------------------------------
+            If _geoEntities IsNot Nothing Then
+
+                For Each ent As GeoEntity In _geoEntities
+
+                    If ent Is Nothing Then Continue For
+
+                    If selectionMode.HasValue Then
+
+                        Dim typeMatches As Boolean = False
+
+                        Select Case selectionMode.Value
+
+                            Case GeometryTypeEnum.Line
+                                typeMatches = TypeOf ent Is GeoLine
+
+                            Case GeometryTypeEnum.Circle
+                                typeMatches = TypeOf ent Is GeoCircle
+
+                            Case GeometryTypeEnum.Arc
+                                typeMatches = TypeOf ent Is GeoArc
+
+                            Case GeometryTypeEnum.Point
+                                typeMatches = TypeOf ent Is GeoPoint
+
+                        End Select
+
+                        If Not typeMatches Then Continue For
+
+                    End If
+
+                    If Not IsEntityAllowedBySelectionFilter(
+                    ent, selectionFilter) Then
+
+                        Continue For
+
+                    End If
+
+                    _selected.Add(ent)
+                    ent.IsSelected = True
+
+                Next
+
+            End If
+
         End If
 
-        For Each ent As CadEntity In _entities
 
-            If selectionMode.HasValue AndAlso
-           ent.GeometryType <> selectionMode.Value Then
-                Continue For
+
+        '-----------------------------------------
+        ' Manufacturing Model hole selection
+        '-----------------------------------------
+        If Not profileSelectionEnabled AndAlso
+   (selectionFilter And SelectionFilter.Hole) <> SelectionFilter.None Then
+
+            If _machiningFeatures IsNot Nothing Then
+
+                For Each hole As HoleFeature In
+            _machiningFeatures.OfType(Of HoleFeature)()
+
+                    ApplySelection(hole)
+
+                Next
+
             End If
 
-            If Not IsEntityAllowedBySelectionFilter(
-            ent,
-            selectionFilter) Then
+        End If
 
-                Continue For
-            End If
 
-            Dim selectable As isSelectable = TryCast(ent, isSelectable)
-
-            If selectable Is Nothing Then
-                Continue For
-            End If
-
-            If Not _selected.Contains(selectable) Then
-                _selected.Add(selectable)
-            End If
-
-            selectable.IsSelected = True
-
-        Next
+        '-----------------------------------------
+        ' Report selection results
+        '-----------------------------------------
+        Debug.WriteLine(
+        $"SelectionManager Selected Count={_selected.Count}")
 
         RaiseEvent SelectionChanged(_selected)
 
     End Sub
+
+
+    'Public Sub SelectByLayer(layerName As String)
+
+    '    If String.IsNullOrWhiteSpace(layerName) Then
+    '        Return
+    '    End If
+
+    '    If _entities Is Nothing OrElse _entities.Count = 0 Then
+    '        Return
+    '    End If
+
+    '    Dim selectionChanged As Boolean = False
+
+    '    For Each ent As CadEntity In _entities
+
+    '        If ent Is Nothing Then
+    '            Continue For
+    '        End If
+
+    '        If Not String.Equals(
+    '        ent.LayerName,
+    '        layerName,
+    '        StringComparison.OrdinalIgnoreCase) Then
+
+    '            Continue For
+    '        End If
+
+    '        Dim selectable As isSelectable =
+    '        TryCast(ent, isSelectable)
+
+    '        If selectable Is Nothing Then
+    '            Continue For
+    '        End If
+
+    '        If Not _selected.Contains(selectable) Then
+    '            _selected.Add(selectable)
+    '            selectionChanged = True
+    '        End If
+
+    '        selectable.IsSelected = True
+
+    '    Next
+
+    '    If selectionChanged Then
+    '        RaiseEvent selectionChanged(_selected)
+    '    End If
+
+    'End Sub
+
 
     Public Sub SelectByLayer(layerName As String)
 
@@ -657,39 +908,36 @@ Public Class SelectionManager
             Return
         End If
 
-        If _entities Is Nothing OrElse _entities.Count = 0 Then
+        If _geoEntities Is Nothing OrElse
+       _geoEntities.Count = 0 Then
             Return
         End If
 
         Dim selectionChanged As Boolean = False
 
-        For Each ent As CadEntity In _entities
+        For Each ent As GeoEntity In _geoEntities
 
-            If ent Is Nothing Then
-                Continue For
-            End If
+            If ent Is Nothing Then Continue For
+
+            Dim layer As Layer =
+            TryCast(ent.Association, Layer)
+
+            If layer Is Nothing Then Continue For
 
             If Not String.Equals(
-            ent.LayerName,
+            layer.Name,
             layerName,
             StringComparison.OrdinalIgnoreCase) Then
 
                 Continue For
             End If
 
-            Dim selectable As isSelectable =
-            TryCast(ent, isSelectable)
-
-            If selectable Is Nothing Then
-                Continue For
-            End If
-
-            If Not _selected.Contains(selectable) Then
-                _selected.Add(selectable)
+            If Not _selected.Contains(ent) Then
+                _selected.Add(ent)
                 selectionChanged = True
             End If
 
-            selectable.IsSelected = True
+            ent.IsSelected = True
 
         Next
 
@@ -699,72 +947,71 @@ Public Class SelectionManager
 
     End Sub
 
+    'Public Sub SelectByWindow(
+    'worldRect As RectangleF,
+    'selectionMode As GeometryTypeEnum?,
+    'selectionFilter As SelectionFilter)
 
-    Public Sub SelectByWindow(
-    worldRect As RectangleF,
-    selectionMode As GeometryTypeEnum?,
-    selectionFilter As SelectionFilter)
+    '    If worldRect.Width <= 0 OrElse worldRect.Height <= 0 Then
+    '        Return
+    '    End If
 
-        If worldRect.Width <= 0 OrElse worldRect.Height <= 0 Then
-            Return
-        End If
+    '    Dim candidates As List(Of CadEntity)
 
-        Dim candidates As List(Of CadEntity)
+    '    ' Use the spatial index when available.
+    '    If _spatialIndex IsNot Nothing Then
+    '        candidates = _spatialIndex.Query(worldRect)
+    '    Else
+    '        candidates = _entities
+    '    End If
 
-        ' Use the spatial index when available.
-        If _spatialIndex IsNot Nothing Then
-            candidates = _spatialIndex.Query(worldRect)
-        Else
-            candidates = _entities
-        End If
+    '    Dim selectionChanged As Boolean = False
 
-        Dim selectionChanged As Boolean = False
+    '    For Each ent As CadEntity In candidates
 
-        For Each ent As CadEntity In candidates
+    '        If ent Is Nothing Then Continue For
 
-            If ent Is Nothing Then Continue For
+    '        ' Respect the current geometry mode.
+    '        If selectionMode.HasValue AndAlso
+    '       ent.GeometryType <> selectionMode.Value Then
+    '            Continue For
+    '        End If
 
-            ' Respect the current geometry mode.
-            If selectionMode.HasValue AndAlso
-           ent.GeometryType <> selectionMode.Value Then
-                Continue For
-            End If
+    '        ' Respect the toolbar selection filter.
+    '        If Not IsEntityAllowedBySelectionFilter(
+    '        ent,
+    '        selectionFilter) Then
+    '            Continue For
+    '        End If
 
-            ' Respect the toolbar selection filter.
-            If Not IsEntityAllowedBySelectionFilter(
-            ent,
-            selectionFilter) Then
-                Continue For
-            End If
+    '        ' Entity must be completely contained by the window.
+    '        If Not IsEntityFullyInsideWindow(ent, worldRect) Then
+    '            Continue For
+    '        End If
 
-            ' Entity must be completely contained by the window.
-            If Not IsEntityFullyInsideWindow(ent, worldRect) Then
-                Continue For
-            End If
+    '        Dim selectable As isSelectable =
+    '        TryCast(ent, isSelectable)
 
-            Dim selectable As isSelectable =
-            TryCast(ent, isSelectable)
+    '        If selectable Is Nothing Then
+    '            Continue For
+    '        End If
 
-            If selectable Is Nothing Then
-                Continue For
-            End If
+    '        If Not _selected.Contains(selectable) Then
+    '            _selected.Add(selectable)
+    '            selectable.IsSelected = True
+    '            selectionChanged = True
+    '        Else
+    '            ' Make sure the entity remains visually selected.
+    '            selectable.IsSelected = True
+    '        End If
 
-            If Not _selected.Contains(selectable) Then
-                _selected.Add(selectable)
-                selectable.IsSelected = True
-                selectionChanged = True
-            Else
-                ' Make sure the entity remains visually selected.
-                selectable.IsSelected = True
-            End If
+    '    Next
 
-        Next
+    '    If selectionChanged Then
+    '        RaiseEvent selectionChanged(_selected)
+    '    End If
 
-        If selectionChanged Then
-            RaiseEvent selectionChanged(_selected)
-        End If
-
-    End Sub
+    'End Sub
 
 
     Public Sub SelectGeoByWindow(
@@ -1062,50 +1309,110 @@ Public Class SelectionManager
 
     End Function
 
-
-
     Public Sub RemoveAllByFilter(
     selectionMode As GeometryTypeEnum?,
-    selectionFilter As SelectionFilter)
+    selectionFilter As SelectionFilter,
+    profileSelectionEnabled As Boolean)
 
-        If _selected.Count = 0 Then
-            Return
-        End If
+        Debug.WriteLine("ENTERED SelectionManager.RemoveAllByFilter")
+
+        Debug.WriteLine(
+        $"ProfileSelectionEnabled={profileSelectionEnabled}, " &
+        $"SelectionFilter={selectionFilter}")
+
+        If _selected.Count = 0 Then Return
 
         Dim toRemove As New List(Of isSelectable)
 
         For Each selectable As isSelectable In _selected
 
-            Dim ent As CadEntity = TryCast(selectable, CadEntity)
+            '-----------------------------------------
+            ' Native profile selection
+            '-----------------------------------------
+            If profileSelectionEnabled Then
 
-            If ent Is Nothing Then
+                If TypeOf selectable Is GeoProfile Then
+                    toRemove.Add(selectable)
+                End If
+
                 Continue For
+
             End If
 
-            If selectionMode.HasValue AndAlso
-           ent.GeometryType <> selectionMode.Value Then
-                Continue For
+
+            '-----------------------------------------
+            ' Manufacturing Model hole deselection
+            '-----------------------------------------
+            If (selectionFilter And SelectionFilter.Hole) <> SelectionFilter.None Then
+
+                If TypeOf selectable Is HoleFeature Then
+
+                    toRemove.Add(selectable)
+                    Continue For
+
+                End If
+
+            End If
+
+            '-----------------------------------------
+            ' Native primitive geometry selection
+            '-----------------------------------------
+            Dim ent As GeoEntity = TryCast(selectable, GeoEntity)
+
+            If ent Is Nothing Then Continue For
+
+            If selectionMode.HasValue Then
+
+                Dim typeMatches As Boolean = False
+
+                Select Case selectionMode.Value
+
+                    Case GeometryTypeEnum.Line
+                        typeMatches = TypeOf ent Is GeoLine
+
+                    Case GeometryTypeEnum.Circle
+                        typeMatches = TypeOf ent Is GeoCircle
+
+                    Case GeometryTypeEnum.Arc
+                        typeMatches = TypeOf ent Is GeoArc
+
+                    Case GeometryTypeEnum.Point
+                        typeMatches = TypeOf ent Is GeoPoint
+
+                End Select
+
+                If Not typeMatches Then Continue For
+
             End If
 
             If Not IsEntityAllowedBySelectionFilter(
-            ent,
-            selectionFilter) Then
+            ent, selectionFilter) Then
 
                 Continue For
+
             End If
 
             toRemove.Add(selectable)
 
         Next
 
+        '-----------------------------------------
+        ' Remove matching selected objects
+        '-----------------------------------------
         For Each selectable As isSelectable In toRemove
+
             selectable.IsSelected = False
             _selected.Remove(selectable)
+
         Next
+
+        Debug.WriteLine(
+        $"Removed={toRemove.Count}, Remaining={_selected.Count}")
 
         RaiseEvent SelectionChanged(_selected)
 
     End Sub
+
 #End Region
 
 #Region "Hit Testing"
@@ -1477,7 +1784,7 @@ Public Class SelectionManager
 
         If ent Is Nothing Then Return False
 
-        If selectionFilter = selectionFilter.None Then
+        If selectionFilter = SelectionFilter.None Then
             Return False
         End If
 
@@ -1485,27 +1792,27 @@ Public Class SelectionManager
 
             Case GeometryTypeEnum.Line
                 Return (CInt(selectionFilter) And
-                        CInt(selectionFilter.Line)) <> 0
+                        CInt(SelectionFilter.Line)) <> 0
 
             Case GeometryTypeEnum.Circle
                 Return (CInt(selectionFilter) And
-                        CInt(selectionFilter.Circle)) <> 0
+                        CInt(SelectionFilter.Circle)) <> 0
 
             Case GeometryTypeEnum.Arc
                 Return (CInt(selectionFilter) And
-                        CInt(selectionFilter.Arc)) <> 0
+                        CInt(SelectionFilter.Arc)) <> 0
 
             Case GeometryTypeEnum.Point
                 Return (CInt(selectionFilter) And
-                        CInt(selectionFilter.Point)) <> 0
+                        CInt(SelectionFilter.Point)) <> 0
 
             Case GeometryTypeEnum.PolyLine
                 Return (CInt(selectionFilter) And
-                        CInt(selectionFilter.Polyline)) <> 0
+                        CInt(SelectionFilter.Polyline)) <> 0
 
             Case GeometryTypeEnum.Rectangle
                 Return (CInt(selectionFilter) And
-                        CInt(selectionFilter.Rectangle)) <> 0
+                        CInt(SelectionFilter.Rectangle)) <> 0
 
             Case Else
                 Return False

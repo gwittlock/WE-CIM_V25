@@ -141,8 +141,8 @@ Partial Class ConfigurationManagerForm
         'SplitContainer1.Panel2
         '
         Me.SplitContainer1.Panel2.Controls.Add(Me.tabControlMain)
-        Me.SplitContainer1.Size = New System.Drawing.Size(976, 531)
-        Me.SplitContainer1.SplitterDistance = 236
+        Me.SplitContainer1.Size = New System.Drawing.Size(1306, 531)
+        Me.SplitContainer1.SplitterDistance = 337
         Me.SplitContainer1.SplitterWidth = 3
         Me.SplitContainer1.TabIndex = 0
         '
@@ -150,9 +150,9 @@ Partial Class ConfigurationManagerForm
         '
         Me.Panel4.Controls.Add(Me.btnConvertCMDB)
         Me.Panel4.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.Panel4.Location = New System.Drawing.Point(0, 476)
+        Me.Panel4.Location = New System.Drawing.Point(0, 470)
         Me.Panel4.Name = "Panel4"
-        Me.Panel4.Size = New System.Drawing.Size(236, 55)
+        Me.Panel4.Size = New System.Drawing.Size(353, 55)
         Me.Panel4.TabIndex = 2
         '
         'btnConvertCMDB
@@ -171,7 +171,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.TreeViewMachines.Location = New System.Drawing.Point(12, 3)
         Me.TreeViewMachines.Name = "TreeViewMachines"
-        Me.TreeViewMachines.Size = New System.Drawing.Size(221, 467)
+        Me.TreeViewMachines.Size = New System.Drawing.Size(341, 467)
         Me.TreeViewMachines.TabIndex = 1
         '
         'tabControlMain
@@ -189,7 +189,7 @@ Partial Class ConfigurationManagerForm
         Me.tabControlMain.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabControlMain.Name = "tabControlMain"
         Me.tabControlMain.SelectedIndex = 0
-        Me.tabControlMain.Size = New System.Drawing.Size(737, 531)
+        Me.tabControlMain.Size = New System.Drawing.Size(966, 531)
         Me.tabControlMain.TabIndex = 2
         '
         'tabMachine
@@ -201,7 +201,7 @@ Partial Class ConfigurationManagerForm
         Me.tabMachine.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabMachine.Name = "tabMachine"
         Me.tabMachine.Padding = New System.Windows.Forms.Padding(3, 2, 3, 2)
-        Me.tabMachine.Size = New System.Drawing.Size(729, 505)
+        Me.tabMachine.Size = New System.Drawing.Size(609, 505)
         Me.tabMachine.TabIndex = 0
         Me.tabMachine.Text = "Machine"
         Me.tabMachine.UseVisualStyleBackColor = True
@@ -237,8 +237,9 @@ Partial Class ConfigurationManagerForm
         Me.propgrdMachine.Location = New System.Drawing.Point(3, 2)
         Me.propgrdMachine.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.propgrdMachine.Name = "propgrdMachine"
-        Me.propgrdMachine.Size = New System.Drawing.Size(723, 450)
+        Me.propgrdMachine.Size = New System.Drawing.Size(603, 450)
         Me.propgrdMachine.TabIndex = 0
+        Me.propgrdMachine.TabStop = False
         '
         'tabStations
         '
@@ -250,7 +251,7 @@ Partial Class ConfigurationManagerForm
         Me.tabStations.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabStations.Name = "tabStations"
         Me.tabStations.Padding = New System.Windows.Forms.Padding(3, 2, 3, 2)
-        Me.tabStations.Size = New System.Drawing.Size(729, 505)
+        Me.tabStations.Size = New System.Drawing.Size(609, 505)
         Me.tabStations.TabIndex = 1
         Me.tabStations.Text = "Stations"
         Me.tabStations.UseVisualStyleBackColor = True
@@ -271,7 +272,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.btnRemoveStation.AutoSize = True
         Me.btnRemoveStation.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.btnRemoveStation.Location = New System.Drawing.Point(543, 454)
+        Me.btnRemoveStation.Location = New System.Drawing.Point(435, 454)
         Me.btnRemoveStation.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.btnRemoveStation.Name = "btnRemoveStation"
         Me.btnRemoveStation.Size = New System.Drawing.Size(118, 27)
@@ -283,7 +284,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.bbtnAddStation.AutoSize = True
         Me.bbtnAddStation.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.bbtnAddStation.Location = New System.Drawing.Point(432, 454)
+        Me.bbtnAddStation.Location = New System.Drawing.Point(324, 454)
         Me.bbtnAddStation.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.bbtnAddStation.Name = "bbtnAddStation"
         Me.bbtnAddStation.Size = New System.Drawing.Size(105, 27)
@@ -299,7 +300,7 @@ Partial Class ConfigurationManagerForm
         Me.dgvStations.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.dgvStations.Name = "dgvStations"
         Me.dgvStations.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
-        Me.dgvStations.Size = New System.Drawing.Size(723, 398)
+        Me.dgvStations.Size = New System.Drawing.Size(603, 398)
         Me.dgvStations.TabIndex = 0
         '
         'tabToolSetup
@@ -308,7 +309,7 @@ Partial Class ConfigurationManagerForm
         Me.tabToolSetup.Location = New System.Drawing.Point(4, 22)
         Me.tabToolSetup.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabToolSetup.Name = "tabToolSetup"
-        Me.tabToolSetup.Size = New System.Drawing.Size(729, 505)
+        Me.tabToolSetup.Size = New System.Drawing.Size(958, 505)
         Me.tabToolSetup.TabIndex = 2
         Me.tabToolSetup.Text = "ToolSetups"
         Me.tabToolSetup.UseVisualStyleBackColor = True
@@ -328,8 +329,8 @@ Partial Class ConfigurationManagerForm
         'SplitContainer2.Panel2
         '
         Me.SplitContainer2.Panel2.Controls.Add(Me.grpboxToolInventory)
-        Me.SplitContainer2.Size = New System.Drawing.Size(729, 505)
-        Me.SplitContainer2.SplitterDistance = 410
+        Me.SplitContainer2.Size = New System.Drawing.Size(958, 505)
+        Me.SplitContainer2.SplitterDistance = 639
         Me.SplitContainer2.SplitterWidth = 3
         Me.SplitContainer2.TabIndex = 6
         '
@@ -342,7 +343,7 @@ Partial Class ConfigurationManagerForm
         Me.Panel1.Location = New System.Drawing.Point(0, 434)
         Me.Panel1.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.Panel1.Name = "Panel1"
-        Me.Panel1.Size = New System.Drawing.Size(410, 71)
+        Me.Panel1.Size = New System.Drawing.Size(639, 71)
         Me.Panel1.TabIndex = 4
         '
         'btnRemFromStation
@@ -389,7 +390,7 @@ Partial Class ConfigurationManagerForm
         Me.dgvToolSetup.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.dgvToolSetup.Name = "dgvToolSetup"
         Me.dgvToolSetup.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
-        Me.dgvToolSetup.Size = New System.Drawing.Size(410, 460)
+        Me.dgvToolSetup.Size = New System.Drawing.Size(639, 460)
         Me.dgvToolSetup.TabIndex = 3
         '
         'grpboxToolInventory
@@ -484,7 +485,7 @@ Partial Class ConfigurationManagerForm
         Me.tabDefinition.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabDefinition.Name = "tabDefinition"
         Me.tabDefinition.Padding = New System.Windows.Forms.Padding(3, 2, 3, 2)
-        Me.tabDefinition.Size = New System.Drawing.Size(729, 505)
+        Me.tabDefinition.Size = New System.Drawing.Size(609, 505)
         Me.tabDefinition.TabIndex = 3
         Me.tabDefinition.Text = "Definition"
         Me.tabDefinition.UseVisualStyleBackColor = True
@@ -496,7 +497,7 @@ Partial Class ConfigurationManagerForm
         Me.txtPreamble.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.txtPreamble.Multiline = True
         Me.txtPreamble.Name = "txtPreamble"
-        Me.txtPreamble.Size = New System.Drawing.Size(723, 501)
+        Me.txtPreamble.Size = New System.Drawing.Size(603, 501)
         Me.txtPreamble.TabIndex = 0
         Me.txtPreamble.Text = "This is where we would put some guidance for the user. this text will change base" &
     "d on with node is highlighted."
@@ -510,7 +511,7 @@ Partial Class ConfigurationManagerForm
         Me.tabToolProperties.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabToolProperties.Name = "tabToolProperties"
         Me.tabToolProperties.Padding = New System.Windows.Forms.Padding(3, 2, 3, 2)
-        Me.tabToolProperties.Size = New System.Drawing.Size(729, 505)
+        Me.tabToolProperties.Size = New System.Drawing.Size(609, 505)
         Me.tabToolProperties.TabIndex = 4
         Me.tabToolProperties.Text = "Tool Properties"
         Me.tabToolProperties.UseVisualStyleBackColor = True
@@ -523,7 +524,7 @@ Partial Class ConfigurationManagerForm
         Me.PanelBtnsToolProps.Location = New System.Drawing.Point(222, 427)
         Me.PanelBtnsToolProps.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.PanelBtnsToolProps.Name = "PanelBtnsToolProps"
-        Me.PanelBtnsToolProps.Size = New System.Drawing.Size(504, 76)
+        Me.PanelBtnsToolProps.Size = New System.Drawing.Size(384, 76)
         Me.PanelBtnsToolProps.TabIndex = 4
         '
         'btnCancelToolProps
@@ -559,7 +560,7 @@ Partial Class ConfigurationManagerForm
         Me.panelToolProps.Location = New System.Drawing.Point(222, 2)
         Me.panelToolProps.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.panelToolProps.Name = "panelToolProps"
-        Me.panelToolProps.Size = New System.Drawing.Size(504, 98)
+        Me.panelToolProps.Size = New System.Drawing.Size(384, 98)
         Me.panelToolProps.TabIndex = 1
         '
         'lblCurrentDescription
@@ -606,7 +607,7 @@ Partial Class ConfigurationManagerForm
         Me.tabMaterialInventory.Location = New System.Drawing.Point(4, 22)
         Me.tabMaterialInventory.Name = "tabMaterialInventory"
         Me.tabMaterialInventory.Padding = New System.Windows.Forms.Padding(3)
-        Me.tabMaterialInventory.Size = New System.Drawing.Size(729, 505)
+        Me.tabMaterialInventory.Size = New System.Drawing.Size(609, 505)
         Me.tabMaterialInventory.TabIndex = 5
         Me.tabMaterialInventory.Text = "Material Inventory"
         Me.tabMaterialInventory.UseVisualStyleBackColor = True
@@ -617,7 +618,7 @@ Partial Class ConfigurationManagerForm
         Me.Panel3.Dock = System.Windows.Forms.DockStyle.Fill
         Me.Panel3.Location = New System.Drawing.Point(3, 3)
         Me.Panel3.Name = "Panel3"
-        Me.Panel3.Size = New System.Drawing.Size(723, 449)
+        Me.Panel3.Size = New System.Drawing.Size(603, 449)
         Me.Panel3.TabIndex = 1
         '
         'propgridMaterial
@@ -637,7 +638,7 @@ Partial Class ConfigurationManagerForm
         Me.Panel2.Dock = System.Windows.Forms.DockStyle.Bottom
         Me.Panel2.Location = New System.Drawing.Point(3, 452)
         Me.Panel2.Name = "Panel2"
-        Me.Panel2.Size = New System.Drawing.Size(723, 50)
+        Me.Panel2.Size = New System.Drawing.Size(603, 50)
         Me.Panel2.TabIndex = 0
         '
         'btnRemoveMaterialUDP
@@ -690,7 +691,7 @@ Partial Class ConfigurationManagerForm
         Me.tabLayerSetup.Location = New System.Drawing.Point(4, 22)
         Me.tabLayerSetup.Name = "tabLayerSetup"
         Me.tabLayerSetup.Padding = New System.Windows.Forms.Padding(3)
-        Me.tabLayerSetup.Size = New System.Drawing.Size(729, 505)
+        Me.tabLayerSetup.Size = New System.Drawing.Size(958, 505)
         Me.tabLayerSetup.TabIndex = 6
         Me.tabLayerSetup.Text = "Layer Setup"
         Me.tabLayerSetup.UseVisualStyleBackColor = True
@@ -701,7 +702,7 @@ Partial Class ConfigurationManagerForm
         Me.pnlLayerSetSaveCancel.Dock = System.Windows.Forms.DockStyle.Bottom
         Me.pnlLayerSetSaveCancel.Location = New System.Drawing.Point(3, 447)
         Me.pnlLayerSetSaveCancel.Name = "pnlLayerSetSaveCancel"
-        Me.pnlLayerSetSaveCancel.Size = New System.Drawing.Size(723, 55)
+        Me.pnlLayerSetSaveCancel.Size = New System.Drawing.Size(952, 55)
         Me.pnlLayerSetSaveCancel.TabIndex = 1
         '
         'btnSaveLayerSetp
@@ -718,7 +719,7 @@ Partial Class ConfigurationManagerForm
         Me.propgrdLayerSetup.Dock = System.Windows.Forms.DockStyle.Top
         Me.propgrdLayerSetup.Location = New System.Drawing.Point(3, 3)
         Me.propgrdLayerSetup.Name = "propgrdLayerSetup"
-        Me.propgrdLayerSetup.Size = New System.Drawing.Size(723, 438)
+        Me.propgrdLayerSetup.Size = New System.Drawing.Size(952, 438)
         Me.propgrdLayerSetup.TabIndex = 0
         '
         'tabLayer
@@ -728,7 +729,7 @@ Partial Class ConfigurationManagerForm
         Me.tabLayer.Location = New System.Drawing.Point(4, 22)
         Me.tabLayer.Name = "tabLayer"
         Me.tabLayer.Padding = New System.Windows.Forms.Padding(3)
-        Me.tabLayer.Size = New System.Drawing.Size(729, 505)
+        Me.tabLayer.Size = New System.Drawing.Size(609, 505)
         Me.tabLayer.TabIndex = 7
         Me.tabLayer.Text = "Layer Map"
         Me.tabLayer.UseVisualStyleBackColor = True
@@ -739,7 +740,7 @@ Partial Class ConfigurationManagerForm
         Me.pnlLayerMapSave.Dock = System.Windows.Forms.DockStyle.Bottom
         Me.pnlLayerMapSave.Location = New System.Drawing.Point(3, 451)
         Me.pnlLayerMapSave.Name = "pnlLayerMapSave"
-        Me.pnlLayerMapSave.Size = New System.Drawing.Size(723, 51)
+        Me.pnlLayerMapSave.Size = New System.Drawing.Size(603, 51)
         Me.pnlLayerMapSave.TabIndex = 1
         '
         'btnLayerMapSave
@@ -846,7 +847,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(976, 531)
+        Me.ClientSize = New System.Drawing.Size(1306, 531)
         Me.Controls.Add(Me.SplitContainer1)
         Me.Icon = CType(resources.GetObject("$this.Icon"), System.Drawing.Icon)
         Me.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)

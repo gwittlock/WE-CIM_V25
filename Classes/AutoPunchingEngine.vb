@@ -83,4 +83,162 @@ Public Class AutoPunchingEngine
         Return results
     End Function
 
+    Public Shared Function FindExactRoundPunch(
+    circle As GeoCircle,
+    toolSetupID As Integer,
+    machineDef As MachineDefinition) As Integer
+
+        If circle Is Nothing Then Return 0
+
+        If machineDef Is Nothing Then Return 0
+
+        Dim circleDiameter As Double = circle.Radius * 2.0
+
+        Const diameterTolerance As Double = 0.000001
+
+        ' Machine-specific allowable hole tolerances.
+        Dim plusTolerance As Double =
+    Math.Max(0, machineDef.Hole_Plus_Tolerance)
+
+        Dim minusTolerance As Double =
+    Math.Max(0, machineDef.Hole_Minus_Tolerance)
+
+        Dim minimumDiameter As Double =
+    circleDiameter - minusTolerance
+
+        Dim maximumDiameter As Double =
+    circleDiameter + plusTolerance
+
+        ' Remember the closest acceptable tolerance match.
+        Dim bestToleranceMemberID As Integer = 0
+        Dim bestToleranceDifference As Double = Double.MaxValue
+
+        For Each member As ToolSetupMember In AppData.ToolSetupMembers
+
+            If member.ToolSetupID <> toolSetupID Then
+                Continue For
+            End If
+
+            Dim tool = AppData.ToolCrib.FirstOrDefault(
+            Function(t) t.ID = member.ToolID)
+
+            If tool Is Nothing Then Continue For
+
+            Debug.WriteLine(
+    "ROUND PUNCH CANDIDATE | MemberID=" & member.ID &
+    " | ToolID=" & tool.ID &
+    " | TypeID=" & tool.TypeID &
+    " | Description=" & tool.Description)
+
+            ' Round punch only
+            If tool.TypeID <> 15 Then Continue For
+
+            If tool.ID = 144 Then
+
+                Debug.WriteLine("TOOL 144 ATTRIBUTES:")
+
+                If tool.Attributes Is Nothing Then
+                    Debug.WriteLine("Attributes = Nothing")
+                Else
+                    For Each attribute In tool.Attributes
+                        Debug.WriteLine(
+                "Key=[" & attribute.Key &
+                "] Value=[" & Convert.ToString(attribute.Value) & "]")
+                    Next
+                End If
+
+            End If
+
+            If tool.Attributes Is Nothing OrElse
+           Not tool.Attributes.ContainsKey("DIAMETER") Then
+                Continue For
+            End If
+
+            Dim toolDiameter As Double
+
+            Try
+                toolDiameter = Convert.ToDouble(
+                tool.Attributes("DIAMETER"),
+                Globalization.CultureInfo.InvariantCulture)
+            Catch
+                Continue For
+            End Try
+
+            Dim diameterDifference As Double =
+    Math.Abs(circleDiameter - toolDiameter)
+
+            ' Exact matches always take priority.
+            If diameterDifference <= diameterTolerance Then
+                Return member.ID
+            End If
+
+            ' Check the machine's allowable hole tolerance.
+            If toolDiameter >= minimumDiameter AndAlso
+   toolDiameter <= maximumDiameter Then
+
+                If diameterDifference < bestToleranceDifference Then
+
+                    bestToleranceDifference = diameterDifference
+                    bestToleranceMemberID = member.ID
+
+                End If
+
+            End If
+
+        Next
+
+        Return bestToleranceMemberID
+
+    End Function
+
+    Public Shared Function TryGetRoundPunchDiameter(
+        hole As HoleFeature,
+        ByRef diameter As Double) As Boolean
+
+        diameter = 0
+
+        If hole Is Nothing Then Return False
+
+        Dim member = AppData.ToolSetupMembers.
+            FirstOrDefault(
+                Function(m) m.ID = hole.ToolSetupMemberID)
+
+        If member Is Nothing Then Return False
+
+        Dim tool = AppData.ToolCrib.
+            FirstOrDefault(
+                Function(t) t.ID = member.ToolID)
+
+        If tool Is Nothing OrElse
+           tool.TypeID <> 15 OrElse
+           tool.Attributes Is Nothing Then
+
+            Return False
+        End If
+
+        If Not tool.Attributes.ContainsKey("DIAMETER") Then
+            Return False
+        End If
+
+        Try
+            diameter = Convert.ToDouble(
+                tool.Attributes("DIAMETER"),
+                Globalization.CultureInfo.InvariantCulture)
+
+        Catch
+            diameter = 0
+            Return False
+        End Try
+
+        If Double.IsNaN(diameter) OrElse
+           Double.IsInfinity(diameter) OrElse
+           diameter <= 0 Then
+
+            diameter = 0
+            Return False
+        End If
+
+        Return True
+
+    End Function
 End Class

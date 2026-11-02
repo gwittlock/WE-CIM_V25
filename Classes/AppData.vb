@@ -45,10 +45,13 @@ Public Class AppData
     Public Shared MachinesTable As JsonTable(Of Machine)
     Public Shared MachineAttributeTypesTable As JsonTable(Of MachineAttributeType)
     Public Shared MachineAttributesTable As JsonTable(Of MachineAttribute)
+    Public Shared MachineTypeAttributesTable As JsonTable(Of MachineTypeAttribute)
+
 
     Public Shared Machines As List(Of Machine)
     Public Shared MachineAttributeTypes As List(Of MachineAttributeType)
     Public Shared MachineAttributes As List(Of MachineAttribute)
+    Public Shared MachineTypeAttributes As List(Of MachineTypeAttribute)
     Public Shared MachineToolTypes As List(Of MachineToolType)
 
 
@@ -119,6 +122,12 @@ Public Class AppData
     LoadJsonTableWrapped(Of MachineAttribute)(
         "MachineAttributes.json")
         MachineAttributes = MachineAttributesTable.Rows
+
+        MachineTypeAttributesTable =
+    LoadJsonTableWrapped(Of MachineTypeAttribute)(
+        "MachineTypeAttributes.json")
+
+        MachineTypeAttributes = MachineTypeAttributesTable.Rows
 
         StationsTable = LoadJsonTableWrapped(Of JObject)("Stations.json")
 
@@ -463,6 +472,9 @@ Public Class AppData
         Public Property ID As Integer
         Public Property MachineID As Integer
         Public Property WorkplaneID As Integer  ' <-- added
+        Public Property StationLocationX As Double?
+        Public Property StationLocationY As Double?
+        Public Property AutoIndex As Boolean?
         Public Property Description As String
         Public Property Position As String
 
@@ -470,7 +482,7 @@ Public Class AppData
         Public Property NCCodeNumber As Integer
         Public Property PrimaryCode As String
         Public Property SecondaryCode As String
-        Public Property StationSize As Integer?
+        Public Property StationSize As String
 
         ' User-defined properties (UDPs)
         Public Property Properties As Dictionary(Of String, Object)
@@ -815,11 +827,14 @@ Public Class AppData
             [AsSpecified] = 3
         End Enum
 
+
         Public Enum CutSideEnum
             Right = -1
             None = 0
             Left = 1
+            Auto = 2
         End Enum
+
 
         <DisplayName("Z Level")>
         Public Property ZLevel As Double

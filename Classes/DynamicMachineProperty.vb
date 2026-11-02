@@ -141,9 +141,30 @@ Public Class DynamicMachinePropertyDescriptor
     Public Overrides ReadOnly Property Attributes As AttributeCollection
         Get
             Dim attrs As New List(Of Attribute)
-            If _prop?.TypeDef?.DataType = 9 AndAlso _prop.TypeDef.Options IsNot Nothing Then
-                attrs.Add(New TypeConverterAttribute(GetType(DropDownListConverter)))
+
+            ' PropertyGrid category
+            Dim categoryName As String = "Machine Attributes"
+
+            If _prop IsNot Nothing AndAlso
+           _prop.TypeDef IsNot Nothing AndAlso
+           Not String.IsNullOrWhiteSpace(_prop.TypeDef.Category) Then
+
+                categoryName = _prop.TypeDef.Category
+
             End If
+
+            attrs.Add(New CategoryAttribute(categoryName))
+
+            ' Preserve existing dropdown behavior
+            If _prop?.TypeDef?.DataType = 9 AndAlso
+           _prop.TypeDef.Options IsNot Nothing Then
+
+                attrs.Add(
+                New TypeConverterAttribute(
+                    GetType(DropDownListConverter)))
+
+            End If
+
             Return New AttributeCollection(attrs.ToArray())
         End Get
     End Property

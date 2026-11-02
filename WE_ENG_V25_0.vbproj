@@ -42,16 +42,16 @@
     <BootstrapperComponentsUrl>C:\3RD\.net Framework 4.6</BootstrapperComponentsUrl>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <DefineDebug>true</DefineDebug>
     <DefineTrace>true</DefineTrace>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\..\Program Files %28x86%29\WE-CIM\25.0\</OutputPath>
     <DocumentationFile>
     </DocumentationFile>
     <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
-    <Prefer32Bit>false</Prefer32Bit>
+    <Prefer32Bit>true</Prefer32Bit>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningsAsErrors>
     </WarningsAsErrors>
@@ -60,17 +60,17 @@
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x86</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <DefineDebug>false</DefineDebug>
     <DefineTrace>true</DefineTrace>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\..\Program Files %28x86%29\WE-CIM\25.0\</OutputPath>
     <DocumentationFile>
     </DocumentationFile>
     <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
     <UseVSHostingProcess>false</UseVSHostingProcess>
-    <Prefer32Bit>false</Prefer32Bit>
+    <Prefer32Bit>true</Prefer32Bit>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningsAsErrors>
     </WarningsAsErrors>
@@ -325,6 +325,7 @@
     <Compile Include="Classes\CadPoint.vb" />
     <Compile Include="Classes\CamEntity.vb" />
     <Compile Include="Classes\CamOperation.vb" />
+    <Compile Include="Classes\ClaDiagnosticLogger.vb" />
     <Compile Include="Classes\clamp.vb" />
     <Compile Include="Classes\clsMatList.vb" />
     <Compile Include="Classes\CommandFeature.vb" />
@@ -333,6 +334,7 @@
     <Compile Include="Classes\ConvexHullOffsetter.vb" />
     <Compile Include="Classes\ConvexPartProfile.vb" />
     <Compile Include="Classes\ConvexToolProfile.vb" />
+    <Compile Include="Classes\CoreMachinePropertyDescriptor,vb.vb" />
     <Compile Include="Classes\CornerRadiusToolShape.vb" />
     <Compile Include="Classes\CreateGeo.vb" />
     <Compile Include="Classes\CustomToolShape.vb" />
@@ -378,6 +380,7 @@
     <Compile Include="Classes\MachineEnvelope.vb" />
     <Compile Include="Classes\MachineLoader.vb" />
     <Compile Include="Classes\MachineMapAttribute.vb" />
+    <Compile Include="Classes\MachineTypeAttribute.vb" />
     <Compile Include="Classes\MachiningFeature.vb" />
     <Compile Include="Classes\Material.vb" />
     <Compile Include="Classes\MaterialParameterDescriptor.vb" />
@@ -390,18 +393,15 @@
     <Compile Include="Classes\MaterialSheet.vb" />
     <Compile Include="Classes\MaterialSheetPropertyDescriptor.vb" />
     <Compile Include="Classes\Part.vb" />
-    <Compile Include="Classes\PartGeometry.vb" />
     <Compile Include="Classes\Pattern.vb" />
     <Compile Include="Classes\PierceHoleFeature.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
     <Compile Include="Classes\Profile.vb" />
-    <Compile Include="Classes\ProfileFeature,vb.vb" />
     <Compile Include="Classes\PuncfResult.vb" />
     <Compile Include="Classes\QuadTree.vb" />
     <Compile Include="Classes\RapidPointFeature.vb" />
     <Compile Include="Classes\RawOffsetChain.vb" />
     <Compile Include="Classes\SingleDToolShape.vb" />
-    <Compile Include="Classes\TooledProfile.vb" />
     <Compile Include="Classes\ToolPathGenerator.vb" />
     <Compile Include="Classes\ToolpathOffsetter,vb.vb" />
     <Compile Include="Classes\ToolSelection.vb" />
@@ -444,10 +444,28 @@
     <Compile Include="Forms\DXFFileSelectionDialog.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\frmAssignLayerToolSetups.Designer.vb">
+      <DependentUpon>frmAssignLayerToolSetups.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmAssignLayerToolSetups.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\frmConvertCMDB.designer.vb">
       <DependentUpon>frmConvertCMDB.vb</DependentUpon>
     </Compile>
     <Compile Include="Forms\frmConvertCMDB.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmEntityProperties.Designer.vb">
+      <DependentUpon>frmEntityProperties.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmEntityProperties.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmLayers.designer.vb">
+      <DependentUpon>frmLayers.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmLayers.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\frmMain.designer.vb">
@@ -609,8 +627,17 @@
     <EmbeddedResource Include="Forms\DXFFileSelectionDialog.resx">
       <DependentUpon>DXFFileSelectionDialog.vb</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmAssignLayerToolSetups.resx">
+      <DependentUpon>frmAssignLayerToolSetups.vb</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmConvertCMDB.resx">
       <DependentUpon>frmConvertCMDB.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmEntityProperties.resx">
+      <DependentUpon>frmEntityProperties.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmLayers.resx">
+      <DependentUpon>frmLayers.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmMain.resx">
       <DependentUpon>frmMain.vb</DependentUpon>

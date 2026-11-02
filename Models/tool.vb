@@ -11,15 +11,33 @@ Namespace WE_ENG_V25_0.Core.Models
         Public Property Attributes As Dictionary(Of String, Object)
 
 
+        <Newtonsoft.Json.JsonIgnore>
         Public ReadOnly Property Color As System.Drawing.Color
             Get
-                If Attributes Is Nothing OrElse Not Attributes.ContainsKey("COLOR") Then
+                If Attributes Is Nothing Then
+                    Return System.Drawing.Color.White
+                End If
+
+                Dim colorValue As Object = Nothing
+
+                For Each attribute In Attributes
+                    If String.Equals(
+                attribute.Key,
+                "Color",
+                StringComparison.OrdinalIgnoreCase) Then
+
+                        colorValue = attribute.Value
+                        Exit For
+                    End If
+                Next
+
+                If colorValue Is Nothing Then
                     Return System.Drawing.Color.White
                 End If
 
                 Try
                     Return System.Drawing.ColorTranslator.FromOle(
-                Convert.ToInt32(Attributes("COLOR")))
+                Convert.ToInt32(colorValue))
                 Catch
                     Return System.Drawing.Color.White
                 End Try

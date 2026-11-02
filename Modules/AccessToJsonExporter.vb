@@ -1265,7 +1265,10 @@ Public Module AccessToJsonExporter
                 row.Add("PrimaryCode", JToken.FromObject(s.PrimaryCode))
                 row.Add("SecondaryCode", JToken.FromObject(s.SecondaryCode))
                 row.Add("NCCodeNumber", JToken.FromObject(s.NCCodeNumber))
-                row.Add("StationSize", If(s.StationSize.HasValue, JToken.FromObject(s.StationSize.Value), JValue.CreateNull()))
+                row.Add("StationSize",
+        If(s.StationSize IsNot Nothing,
+           JToken.FromObject(s.StationSize),
+           JValue.CreateNull()))
 
                 rows.Add(row)
             Next
@@ -1306,6 +1309,21 @@ Public Module AccessToJsonExporter
             Using cn As New OleDb.OleDbConnection(connString)
                 cn.Open()
 
+                ' Get valid Machine Attribute Type IDs.
+                Dim validAttributeIDs As New HashSet(Of Integer)
+
+                Using cmdValid As New OleDb.OleDbCommand(
+    "SELECT [ID] FROM [Machine Attribute Types]", cn)
+
+                    Using drValid = cmdValid.ExecuteReader()
+                        While drValid.Read()
+                            If Not IsDBNull(drValid("ID")) Then
+                                validAttributeIDs.Add(CInt(drValid("ID")))
+                            End If
+                        End While
+                    End Using
+                End Using
+
                 ' SQL alias to match JSON keys
                 Dim sql As String = "SELECT [ID], [Machine Type  ID] AS MachineTypeID, [Attribute Type ID] AS AttributeTypeID FROM [Machine Type Attributes]"
 
@@ -1317,6 +1335,14 @@ Public Module AccessToJsonExporter
                         Next
 
                         While dr.Read()
+
+                            ' Ignore references to nonexistent attribute definitions.
+                            If IsDBNull(dr("AttributeTypeID")) OrElse
+       Not validAttributeIDs.Contains(CInt(dr("AttributeTypeID"))) Then
+
+                                Continue While
+                            End If
+
                             Dim row As New JObject()
                             For Each jsonField In fieldMap.Keys
                                 Dim colName = fieldMap(jsonField)
@@ -2247,6 +2273,8 @@ Public Module AccessToJsonExporter
 
 
         End Using
+
+        Return Not exportFailed
 
     End Function
 

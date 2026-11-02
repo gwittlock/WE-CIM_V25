@@ -361,3 +361,18 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/We_CIM_V25_SRC.zip
+# WE-CIM V25 - Large files and backup archives
+*.zip
+*.avi
+
+# Old Visual Studio build folders
+old.vs/
+oldobj/
+# Accidentally copied source folders under Resources
+/Resources/Classes/
+/Resources/Forms/
+/Resources/Helpers/
+/Resources/Models/
+/Resources/Modules/
+/Resources/Reports/

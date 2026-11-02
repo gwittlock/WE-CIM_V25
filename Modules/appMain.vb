@@ -341,6 +341,7 @@ Public Module appMain
     Public Class Machine
         Public Property ID As Integer
         Public Property Description As String
+        Public Property Category As String
         Public Property TypeID As Integer
         Public Property WorkplaneTypeID As Integer
         Public Property Units As Integer
@@ -349,6 +350,7 @@ Public Module appMain
         Public Property Clamp_CTG As String
         Public Property Table_CTG As String
         Public Property CNC_Folder As String
+        Public Property CodeGenerationFile As String
     End Class
 
     Public Class MachineAttribute
@@ -363,6 +365,7 @@ Public Module appMain
         Public Property DataType As Integer        ' 0=String, 1=Integer, 7=Double, 8=Boolean, 9=Dropdown, 10=File, 11=Folder, 12=Color, etc.
         Public Property Display As String
         Public Property Description As String
+        Public Property Category As String
         ' For dropdowns only
         Public Property Options As List(Of String)
 

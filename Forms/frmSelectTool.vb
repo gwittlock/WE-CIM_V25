@@ -1,9 +1,13 @@
-﻿Public Class frmSelectTool
+﻿Imports DevExpress.XtraGrid.Views.Base
+
+Public Class frmSelectTool
     Private Sub frmSelectTool_Load(
     sender As Object,
     e As EventArgs) Handles MyBase.Load
 
         LoadInstalledTools()
+
+
 
     End Sub
 
@@ -65,7 +69,7 @@
             e.HighPriority = True
 
         End If
-
+        e.Appearance.BackColor = frmMain.pnlPicmodeler.BackColor    'ColorTranslator.FromOle(RegGetString("Preferences\ViewOptions", "MaterialColor", System.Drawing.Color.Gray))
     End Sub
 
     Private Sub SetAllToolVisibility(visible As Boolean)
@@ -127,6 +131,10 @@
         MessageBoxIcon.Information)
 
         RaiseEvent ToolAssignmentRequested(selectedMemberID)
+
+    End Sub
+
+    Private Sub gViewToolLayer_RowCellDefaultAlignment(sender As Object, e As RowCellAlignmentEventArgs) Handles gViewToolLayer.RowCellDefaultAlignment
 
     End Sub
 End Class

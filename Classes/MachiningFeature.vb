@@ -27,19 +27,17 @@ Public Enum MachiningFeatureType
     AreaClear
 
 End Enum
-
-
 Public Class MachiningFeature
+    Implements isSelectable
 
-    '------------------------------------------------------------
-    ' Feature identification
-    '------------------------------------------------------------
     Public Property ID As Integer
     Public Property Description As String
-
-    '------------------------------------------------------------
-    ' Feature type
-    '------------------------------------------------------------
     Public Property FeatureType As MachiningFeatureType
+
+    Public Property IsSelected As Boolean _
+        Implements isSelectable.IsSelected
+
+    Public Property IsHovered As Boolean _
+        Implements isSelectable.IsHovered
 
 End Class
