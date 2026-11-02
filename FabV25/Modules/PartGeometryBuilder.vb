@@ -2,7 +2,7 @@
 
     Public Function CreatePartGeometry(
     cadEntities As List(Of CadEntity),
-    layerSetup As AppData.layersetup) As PartGeometry
+   layerSetup As AppData.layersetup) As Part
 
         Dim geometry As New List(Of GeoEntity)()
 
@@ -93,10 +93,10 @@
         Debug.WriteLine(
         "Native GeoProfile Count: " & geoProfiles.Count)
 
-        Dim part As New PartGeometry()
+        Dim part As New Part()
 
-        part.Entities = geometry
-        part.Profiles = geoProfiles
+        part.Geometry = geometry
+        part.GeoProfiles = geoProfiles
 
         Return part
 
@@ -287,7 +287,9 @@
         ' Step 5 - Build closed circle profiles
         '-----------------------------------------
         Dim nextProfileID As Integer =
-    profiles.Max(Function(p) p.ID) + 1
+    If(profiles.Count > 0,
+       profiles.Max(Function(p) p.ID) + 1,
+       1)
 
         For Each entity As GeoEntity In geometry
 
@@ -537,6 +539,25 @@
                 StringComparison.OrdinalIgnoreCase))
 
     End Function
+
+
+    Public Function FindDirectiveByCAMLayer(
+    camLayerName As String,
+    layerSetup As AppData.layersetup) As AppData.Directive
+
+        If layerSetup Is Nothing OrElse
+       layerSetup.Layers Is Nothing Then
+            Return Nothing
+        End If
+
+        Return layerSetup.Layers.FirstOrDefault(
+        Function(d) String.Equals(
+            d.CAMLayer,
+            camLayerName,
+            StringComparison.OrdinalIgnoreCase))
+
+    End Function
+
 
 
     Private Function GetOrCreateLayer(

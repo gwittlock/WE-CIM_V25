@@ -116,38 +116,23 @@ Public Module modFile
         '============================================================
         ' Create Production Job
         '============================================================
-        CurrentProductionJob = New Job With {
-        .MachineID = SelectedMachineID,
-        .ToolSetupID = SelectedToolSetupID,
-        .LayerSetupID = SelectedLayerSetupID,
-        .MaterialTypeID = _selectedMaterial.TypeID
-    }
+        CurrentProductionJob = New Job With {.MachineID = SelectedMachineID, .ToolSetupID = SelectedToolSetupID, .LayerSetupID = SelectedLayerSetupID, .MaterialTypeID = _selectedMaterial.TypeID}
 
         '============================================================
         ' Create Production Sheet
         '============================================================
-        Dim productionSheet As New JobSheet With {
-        .MaterialSheetID = _SelectedMaterialID,
-        .Length = matLength,
-        .Width = matWidth
-    }
+        Dim productionSheet As New JobSheet With {.MaterialSheetID = _SelectedMaterialID, .Length = matLength, .Width = matWidth}
 
         CurrentProductionJob.JobSheets.Add(productionSheet)
 
         '============================================================
         ' Load Machine Definition
-        '============================================================
-        Dim machineDef As MachineDefinition =
-        MachineLoader.LoadMachineDefinition(
-            CurrentProductionJob.MachineID)
+        '===========================================================
+        Dim machineDef As MachineDefinition = MachineLoader.LoadMachineDefinition(CurrentProductionJob.MachineID)
 
         If machineDef Is Nothing Then
 
-            MessageBox.Show(
-            "Unable to load the selected machine definition.",
-            "Machine Definition",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Warning)
+            MessageBox.Show("Unable to load the selected machine definition.", "Machine Definition", MessageBoxButtons.OK, MessageBoxIcon.Warning)
 
             Return
 
@@ -170,14 +155,11 @@ Public Module modFile
         '============================================================
         ' Set Selected Machine Configuration
         '============================================================
-        machineDef.SelectedToolSetupID =
-        SelectedToolSetupID
+        machineDef.SelectedToolSetupID = SelectedToolSetupID
 
-        machineDef.SelectedLayerSetupID =
-        SelectedLayerSetupID
+        machineDef.SelectedLayerSetupID = SelectedLayerSetupID
 
-        machineDef.SelectedMaterialID =
-        SelectedMaterialID
+        machineDef.SelectedMaterialID = SelectedMaterialID
 
         '============================================================
         ' Import DXF
@@ -187,45 +169,176 @@ Public Module modFile
         '============================================================
         ' Initialize Hot Spot Manager
         '============================================================
-        _hotSpotManager =
-        New HotSpotManager(_cadEntities)
+        _hotSpotManager = New HotSpotManager(_cadEntities)
 
-        _visibleEntities =
-        _cadEntities.ToList()
+        _visibleEntities = _cadEntities.ToList()
 
         _sceneReady = True
 
         '============================================================
         ' Get CAD Bounds
         '============================================================
-        Dim bounds =
-        HelperFunctions.GetCadBounds(_cadEntities)
+        Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
 
         '============================================================
         ' Normalize CAD Geometry to Sheet
         '============================================================
-        NormalizeCadToSheet(
-        _cadEntities,
-        matLength,
-        matWidth)
+        NormalizeCadToSheet(_cadEntities, matLength, matWidth)
 
 
         '============================================================
         ' TEST - Native Part Geometry Conversion
         '============================================================
-        Dim nativePart As PartGeometry =
-    PartGeometryBuilder.CreatePartGeometry(
-        _cadEntities,
-        _selectedLayerSetup)
+        Dim importedPart As Part =
+    PartGeometryBuilder.CreatePartGeometry(_cadEntities, _selectedLayerSetup)
 
 
-        Dim nativeGeometry As List(Of GeoEntity) = nativePart.Entities
+        '============================================================
+        ' TEST - Automatic Exact Round Punch Tooling
+        '============================================================
+        For Each circle As GeoCircle In importedPart.Geometry.OfType(Of GeoCircle)()
+
+
+            Dim camLayer As Layer = TryCast(circle.Association, Layer)
+
+            If camLayer Is Nothing Then Continue For
+
+            Dim directive = PartGeometryBuilder.FindDirectiveByCAMLayer(camLayer.Name, _selectedLayerSetup)
+
+            If directive Is Nothing Then Continue For
+            Debug.WriteLine("AUTO TOOL DIRECTIVE | CAMLayer=" & camLayer.Name & " | Station=" & directive.Station)
+
+            Debug.WriteLine("AUTO PUNCH CHECK | Diameter=" & (circle.Radius * 2.0).ToString("F4") & " | ToolSetupID=" & CurrentJob.ToolSetupID)
+
+            'testtttttt
+            Dim selectedStation As String = directive.Station.Trim()
+
+            Dim memberID As Integer = 0
+
+            If String.Equals(selectedStation, "None", StringComparison.OrdinalIgnoreCase) Then
+
+                Continue For
+
+            End If
+
+            If Not String.Equals(selectedStation, "**Auto**", StringComparison.OrdinalIgnoreCase) Then
+
+                Debug.WriteLine(
+        "SPECIFIC STATION REQUESTED | Station=" &
+        selectedStation)
+
+                Dim ncNumber As Integer
+
+                If Not Integer.TryParse(selectedStation, ncNumber) Then
+                    Continue For
+                End If
+
+                Dim stationRecord = AppData.StationsTable.Rows.
+                    FirstOrDefault(
+                        Function(s) CInt(s("MachineID")) = machineDef.ID AndAlso
+                                    CInt(s("NCCodeNumber")) = ncNumber)
+
+                If stationRecord Is Nothing Then
+                    Continue For
+                End If
+
+                Dim stationID As Integer = CInt(stationRecord("ID"))
+
+                Dim assignedMember = AppData.ToolSetupMembers.
+                    FirstOrDefault(
+                        Function(m) m.ToolSetupID = CurrentJob.ToolSetupID AndAlso
+                                    m.StationID = stationID)
+
+                If assignedMember Is Nothing Then
+                    Continue For
+                End If
+
+                Debug.WriteLine(
+                    "SPECIFIC STATION RESOLVED | Station=" &
+                    ncNumber &
+                    " | StationID=" & stationID &
+                    " | MemberID=" & assignedMember.ID &
+                    " | ToolID=" & assignedMember.ToolID)
+
+                memberID = assignedMember.ID
+
+            End If
+
+
+
+
+
+            If String.Equals(
+    selectedStation,
+    "**Auto**",
+    StringComparison.OrdinalIgnoreCase) Then
+
+                memberID = AutoPunchingEngine.FindExactRoundPunch(
+        circle,
+        CurrentJob.ToolSetupID,
+        machineDef)
+
+                Debug.WriteLine("AUTO PUNCH MATCH | MemberID=" & memberID)
+
+            End If
+
+
+            ' Temporary safeguard for the specific-station test.
+            ' Station 104 has a 1.000-inch round punch.
+            ' Only create single-hit holes for matching circles.
+
+            If Not String.Equals(
+    selectedStation,
+    "**Auto**",
+    StringComparison.OrdinalIgnoreCase) Then
+
+                If Math.Abs((circle.Radius * 2.0) - 1.0) > 0.0001 Then
+
+                    Debug.WriteLine(
+            "SPECIFIC STATION | Requires machining strategy | Diameter=" &
+            (circle.Radius * 2.0).ToString("F4"))
+
+                    Continue For
+
+                End If
+
+            End If
+
+
+            If memberID = 0 Then Continue For
+            If circle.Center Is Nothing Then Continue For
+
+            Dim hole As New HoleFeature With {
+        .ID = importedPart.GetNextFeatureID(),
+        .FeatureType = MachiningFeatureType.Hole,
+        .Description = "Punch Hole",
+        .X = circle.Center.X,
+        .Y = circle.Center.Y,
+        .Angle = 0,
+        .SourceGeometryID = circle.ID,
+        .ToolSetupMemberID = memberID
+    }
+
+            importedPart.Features.Add(hole)
+
+            Debug.WriteLine(
+        "AUTO PUNCH CREATED | SourceGeometryID: " &
+        hole.SourceGeometryID &
+        " | ToolSetupMemberID: " &
+        hole.ToolSetupMemberID)
+
+        Next
+
+
+
+
+        Dim nativeGeometry As List(Of GeoEntity) = importedPart.Geometry
 
         Debug.WriteLine(
-    "Native Geometry Count: " & nativePart.Entities.Count)
+    "Native Geometry Count: " & importedPart.Geometry.Count)
 
         Debug.WriteLine(
-    "Native Profile Count: " & nativePart.Profiles.Count)
+    "Native Profile Count: " & importedPart.GeoProfiles.Count)
 
         If nativeGeometry.Count = 2 AndAlso
    TypeOf nativeGeometry(0) Is GeoLine AndAlso
@@ -250,17 +363,6 @@ Public Module modFile
 
         End If
 
-        '  importedPart.Geometry.AddRange(nativeGeometry)
-
-
-
-        '============================================================
-        ' Convert CAD Entities to Imported Entities
-        '============================================================
-        '_importedEntities =
-        'ConvertCadEntitiesToImportedEntities(
-        '    _cadEntities,
-        '    _selectedLayerSetup)
 
         If _selectedLayerSetup Is Nothing Then
             Exit Sub
@@ -269,62 +371,22 @@ Public Module modFile
         '============================================================
         ' Create Part
         '============================================================
-        Dim importedPart As New Part With {
-        .ID = 0,
-        .Description =
-            Path.GetFileNameWithoutExtension(
-                _selectedDxfPath)
-    }
+        importedPart.ID = 0
 
-        '============================================================
-        ' Store CAD Geometry
-        '============================================================
-        ' importedPart.CADGeometry.AddRange(_cadEntities)
+        importedPart.Description =
+    Path.GetFileNameWithoutExtension(
+        _selectedDxfPath)
 
-        importedPart.Geometry.AddRange(nativeGeometry)
 
-        importedPart.GeoProfiles.AddRange(nativePart.Profiles)
+        'importedPart.Geometry.AddRange(nativeGeometry)
+
+        'mportedPart.GeoProfiles.AddRange(nativePart.Profiles)
 
         Debug.WriteLine("PART GEO PROFILES COUNT = " &
                 importedPart.GeoProfiles.Count)
 
         productionSheet.Parts.Add(
         importedPart)
-
-        '============================================================
-        ' Build Profiles from Imported CAM Entities
-        '============================================================
-        'Dim profileResults As List(Of ProfileBuildResult) =
-        'BuildProfilesFromEntities(
-        '    _importedEntities,
-        '    _selectedLayerSetup.GapTolerance)
-
-        ' Debug.WriteLine(
-        '$"PROFILE RESULTS COUNT = {profileResults.Count}")
-
-        '============================================================
-        ' Store CAD-derived Profiles
-        '
-        ' Profiles are CAD geometry interpretation.
-        ' They are NOT machining features.
-        '============================================================
-        'For Each profileResult As ProfileBuildResult In profileResults
-
-        '    If profileResult Is Nothing Then
-        '        Continue For
-        '    End If
-
-        '    If profileResult.Profile Is Nothing Then
-        '        Continue For
-        '    End If
-
-        '    importedPart.Profiles.Add(
-        '    profileResult.Profile)
-
-        'Next
-
-        'Debug.WriteLine(
-        '$"PART PROFILES COUNT = {importedPart.Profiles.Count}")
 
         '============================================================
         ' Create Imported Pattern
@@ -1342,120 +1404,120 @@ Public Module modFile
     End Function
 
 
-    '-----------------------------------------
-    ' Order the entities in a connected profile
-    '-----------------------------------------
+    ''-----------------------------------------
+    '' Order the entities in a connected profile
+    ''-----------------------------------------
 
-    Public Function OrderProfileEntities(
-        profileEntities As List(Of ImportedEntity),
-        tolerance As Double) _
-        As List(Of ImportedEntity)
+    'Public Function OrderProfileEntities(
+    '    profileEntities As List(Of ImportedEntity),
+    '    tolerance As Double) _
+    '    As List(Of ImportedEntity)
 
-        Dim ordered As New List(Of ImportedEntity)()
+    '    Dim ordered As New List(Of ImportedEntity)()
 
-        If profileEntities Is Nothing OrElse
-           profileEntities.Count = 0 Then
+    '    If profileEntities Is Nothing OrElse
+    '       profileEntities.Count = 0 Then
 
-            Return ordered
+    '        Return ordered
 
-        End If
-
-
-        Dim remaining As New List(Of ImportedEntity)(
-            profileEntities)
+    '    End If
 
 
-        ' Start with the first entity.
-
-        Dim current As ImportedEntity =
-            remaining(0)
-
-        remaining.RemoveAt(0)
-
-        ordered.Add(current)
+    '    Dim remaining As New List(Of ImportedEntity)(
+    '        profileEntities)
 
 
-        Dim currentEnd As PointF =
-            GetImportedEntityEndPoint(current)
+    '    ' Start with the first entity.
+
+    '    Dim current As ImportedEntity =
+    '        remaining(0)
+
+    '    remaining.RemoveAt(0)
+
+    '    ordered.Add(current)
 
 
-        While remaining.Count > 0
-
-            Dim foundIndex As Integer = -1
-            Dim reverse As Boolean = False
+    '    Dim currentEnd As PointF =
+    '        GetImportedEntityEndPoint(current)
 
 
-            For i As Integer = 0 To remaining.Count - 1
+    '    While remaining.Count > 0
 
-                Dim candidate As ImportedEntity =
-                    remaining(i)
-
-                Dim candidateStart As PointF =
-                    GetImportedEntityStartPoint(candidate)
-
-                Dim candidateEnd As PointF =
-                    GetImportedEntityEndPoint(candidate)
+    '        Dim foundIndex As Integer = -1
+    '        Dim reverse As Boolean = False
 
 
-                If DistanceBetweenPoints(
-                    currentEnd,
-                    candidateStart) <= tolerance Then
+    '        For i As Integer = 0 To remaining.Count - 1
 
-                    foundIndex = i
-                    reverse = False
+    '            Dim candidate As ImportedEntity =
+    '                remaining(i)
 
-                    Exit For
+    '            Dim candidateStart As PointF =
+    '                GetImportedEntityStartPoint(candidate)
 
-                End If
-
-
-                If DistanceBetweenPoints(
-                    currentEnd,
-                    candidateEnd) <= tolerance Then
-
-                    foundIndex = i
-                    reverse = True
-
-                    Exit For
-
-                End If
-
-            Next
+    '            Dim candidateEnd As PointF =
+    '                GetImportedEntityEndPoint(candidate)
 
 
-            If foundIndex < 0 Then
-                Exit While
-            End If
+    '            If DistanceBetweenPoints(
+    '                currentEnd,
+    '                candidateStart) <= tolerance Then
+
+    '                foundIndex = i
+    '                reverse = False
+
+    '                Exit For
+
+    '            End If
 
 
-            Dim nextEntity As ImportedEntity =
-                remaining(foundIndex)
+    '            If DistanceBetweenPoints(
+    '                currentEnd,
+    '                candidateEnd) <= tolerance Then
 
-            remaining.RemoveAt(foundIndex)
+    '                foundIndex = i
+    '                reverse = True
 
+    '                Exit For
 
-            If reverse Then
+    '            End If
 
-                nextEntity =
-                    ReverseImportedEntity(
-                        nextEntity)
-
-            End If
-
-
-            ordered.Add(nextEntity)
+    '        Next
 
 
-            currentEnd =
-                GetImportedEntityEndPoint(
-                    nextEntity)
-
-        End While
+    '        If foundIndex < 0 Then
+    '            Exit While
+    '        End If
 
 
-        Return ordered
+    '        Dim nextEntity As ImportedEntity =
+    '            remaining(foundIndex)
 
-    End Function
+    '        remaining.RemoveAt(foundIndex)
+
+
+    '        If reverse Then
+
+    '            nextEntity =
+    '                ReverseImportedEntity(
+    '                    nextEntity)
+
+    '        End If
+
+
+    '        ordered.Add(nextEntity)
+
+
+    '        currentEnd =
+    '            GetImportedEntityEndPoint(
+    '                nextEntity)
+
+    '    End While
+
+
+    '    Return ordered
+
+    'End Function
 
 
     '-----------------------------------------
@@ -1598,92 +1660,92 @@ Public Module modFile
     '-----------------------------------------
     ' Convert an ordered imported profile into
     ' the nominal Path2D representation.
-    '-----------------------------------------
+    ''-----------------------------------------
 
-    Public Function BuildProfilePath(
-        orderedEntities As List(Of ImportedEntity)) _
-        As IPath2D
+    'Public Function BuildProfilePath(
+    '    orderedEntities As List(Of ImportedEntity)) _
+    '    As IPath2D
 
-        Dim path As New Path2D()
-
-
-        If orderedEntities Is Nothing OrElse
-           orderedEntities.Count = 0 Then
-
-            Return path
-
-        End If
+    '    Dim path As New Path2D()
 
 
-        For Each entity As ImportedEntity _
-            In orderedEntities
+    '    If orderedEntities Is Nothing OrElse
+    '       orderedEntities.Count = 0 Then
 
-            If entity Is Nothing Then
-                Continue For
-            End If
+    '        Return path
 
-
-            Select Case entity.GeometryType
-
-                Case DxfGeometryHelpers.GeometryTypeEnum.Line
-
-                    If entity.Line Is Nothing Then
-                        Continue For
-                    End If
+    '    End If
 
 
-                    Dim startPoint As New PointF(
-                        CSng(entity.Line.P1.X),
-                        CSng(entity.Line.P1.Y))
+    '    For Each entity As ImportedEntity _
+    '        In orderedEntities
 
-                    Dim endPoint As New PointF(
-                        CSng(entity.Line.P2.X),
-                        CSng(entity.Line.P2.Y))
-
-
-                    path.Add(
-                        New LineSegment2D(
-                            startPoint,
-                            endPoint))
+    '        If entity Is Nothing Then
+    '            Continue For
+    '        End If
 
 
-                Case DxfGeometryHelpers.GeometryTypeEnum.Arc
+    '        Select Case entity.GeometryType
 
-                    If entity.Arc Is Nothing Then
-                        Continue For
-                    End If
+    '            Case DxfGeometryHelpers.GeometryTypeEnum.Line
 
-
-                    Dim center As New PointF(
-                        CSng(entity.Arc.Center.X),
-                        CSng(entity.Arc.Center.Y))
+    '                If entity.Line Is Nothing Then
+    '                    Continue For
+    '                End If
 
 
-                    Dim startAngle As Double =
-                        DegreesToRadians(
-                            entity.Arc.StartAngle)
+    '                Dim startPoint As New PointF(
+    '                    CSng(entity.Line.P1.X),
+    '                    CSng(entity.Line.P1.Y))
 
-                    Dim endAngle As Double =
-                        DegreesToRadians(
-                            entity.Arc.EndAngle)
-
-
-                    path.Add(
-                        New ArcSegment2D(
-                            center,
-                            entity.Arc.Radius,
-                            startAngle,
-                            endAngle,
-                            GetArcClockwise(entity)))
-
-            End Select
-
-        Next
+    '                Dim endPoint As New PointF(
+    '                    CSng(entity.Line.P2.X),
+    '                    CSng(entity.Line.P2.Y))
 
 
-        Return path
+    '                path.Add(
+    '                    New LineSegment2D(
+    '                        startPoint,
+    '                        endPoint))
 
-    End Function
+
+    '            Case DxfGeometryHelpers.GeometryTypeEnum.Arc
+
+    '                If entity.Arc Is Nothing Then
+    '                    Continue For
+    '                End If
+
+
+    '                Dim center As New PointF(
+    '                    CSng(entity.Arc.Center.X),
+    '                    CSng(entity.Arc.Center.Y))
+
+
+    '                Dim startAngle As Double =
+    '                    DegreesToRadians(
+    '                        entity.Arc.StartAngle)
+
+    '                Dim endAngle As Double =
+    '                    DegreesToRadians(
+    '                        entity.Arc.EndAngle)
+
+
+    '                path.Add(
+    '                    New ArcSegment2D(
+    '                        center,
+    '                        entity.Arc.Radius,
+    '                        startAngle,
+    '                        endAngle,
+    '                        GetArcClockwise(entity)))
+
+    '        End Select
+
+    '    Next
+
+
+    '    Return path
+
+    'End Function
 
 
     Private Function GetImportedArcClockwise(
@@ -1760,378 +1822,378 @@ Public Module modFile
     End Function
 
 
-    '-----------------------------------------
-    ' Create a nominal Profile from an ordered
-    ' imported entity group.
-    '-----------------------------------------
+    ''-----------------------------------------
+    '' Create a nominal Profile from an ordered
+    '' imported entity group.
+    ''-----------------------------------------
 
-    Public Function CreateProfileFromEntities(
-        profileEntities As List(Of ImportedEntity),
-        tolerance As Double,
-        side As ProfileSide) As Profile
+    'Public Function CreateProfileFromEntities(
+    '    profileEntities As List(Of ImportedEntity),
+    '    tolerance As Double,
+    '    side As ProfileSide) As Profile
 
-        If profileEntities Is Nothing OrElse
-           profileEntities.Count = 0 Then
+    '    If profileEntities Is Nothing OrElse
+    '       profileEntities.Count = 0 Then
 
-            Return Nothing
+    '        Return Nothing
 
-        End If
+    '    End If
 
 
-        Dim orderedEntities As List(Of ImportedEntity) =
-            OrderProfileEntities(
-                profileEntities,
-                tolerance)
+    '    Dim orderedEntities As List(Of ImportedEntity) =
+    '        OrderProfileEntities(
+    '            profileEntities,
+    '            tolerance)
 
-        If orderedEntities.Count = 0 Then
-            Return Nothing
-        End If
+    '    If orderedEntities.Count = 0 Then
+    '        Return Nothing
+    '    End If
 
 
-        Dim path As IPath2D =
-            BuildProfilePath(
-                orderedEntities)
+    '    Dim path As IPath2D =
+    '        BuildProfilePath(
+    '            orderedEntities)
 
-        If path Is Nothing OrElse
-           path.Segments Is Nothing Then
+    '    If path Is Nothing OrElse
+    '       path.Segments Is Nothing Then
 
-            Return Nothing
+    '        Return Nothing
 
-        End If
+    '    End If
 
 
-        Return New Profile(path, side, Nothing)
+    '    Return New Profile(path, side, Nothing)
 
-    End Function
+    'End Function
 
 
-    Public Function BuildProfilesFromEntities(
-        entities As List(Of ImportedEntity),
-        gapTolerance As Double) _
-        As List(Of ProfileBuildResult)
+    'Public Function BuildProfilesFromEntities(
+    '    entities As List(Of ImportedEntity),
+    '    gapTolerance As Double) _
+    '    As List(Of ProfileBuildResult)
 
-        Dim profiles As New List(Of ProfileBuildResult)()
+    '    Dim profiles As New List(Of ProfileBuildResult)()
 
 
-        If entities Is Nothing OrElse
-           entities.Count = 0 Then
+    '    If entities Is Nothing OrElse
+    '       entities.Count = 0 Then
 
-            Return profiles
+    '        Return profiles
 
-        End If
+    '    End If
 
 
-        Dim profileGroups As List(Of List(Of ImportedEntity)) =
-            BuildProfiles(
-                entities,
-                gapTolerance)
+    '    Dim profileGroups As List(Of List(Of ImportedEntity)) =
+    '        BuildProfiles(
+    '            entities,
+    '            gapTolerance)
 
 
-        ' Item1 = CAD layer
-        ' Item2 = Profile path
-        ' Item3 = DirectiveID
+    '    ' Item1 = CAD layer
+    '    ' Item2 = Profile path
+    '    ' Item3 = DirectiveID
 
-        Dim profileData As New List(
-    Of Tuple(Of String, IPath2D, Integer, List(Of ImportedEntity)))()
+    '    Dim profileData As New List(
+    'Of Tuple(Of String, IPath2D, Integer, List(Of ImportedEntity)))()
 
 
-        ' Build all profile paths and retain the CAD layer
-        ' and DirectiveID for later feature creation.
+    '    ' Build all profile paths and retain the CAD layer
+    '    ' and DirectiveID for later feature creation.
 
-        For Each profileEntities As List(Of ImportedEntity) _
-            In profileGroups
+    '    For Each profileEntities As List(Of ImportedEntity) _
+    '        In profileGroups
 
-            If profileEntities Is Nothing OrElse
-               profileEntities.Count = 0 Then
+    '        If profileEntities Is Nothing OrElse
+    '           profileEntities.Count = 0 Then
 
-                Continue For
+    '            Continue For
 
-            End If
+    '        End If
 
 
-            Dim orderedEntities As List(Of ImportedEntity) =
-                OrderProfileEntities(
-                    profileEntities,
-                    gapTolerance)
+    '        Dim orderedEntities As List(Of ImportedEntity) =
+    '            OrderProfileEntities(
+    '                profileEntities,
+    '                gapTolerance)
 
-            If orderedEntities.Count = 0 Then
-                Continue For
-            End If
+    '        If orderedEntities.Count = 0 Then
+    '            Continue For
+    '        End If
 
 
-            Dim path As IPath2D =
-                BuildProfilePath(
-                    orderedEntities)
+    '        Dim path As IPath2D =
+    '            BuildProfilePath(
+    '                orderedEntities)
 
-            If path Is Nothing OrElse
-               path.Segments Is Nothing Then
+    '        If path Is Nothing OrElse
+    '           path.Segments Is Nothing Then
 
-                Continue For
+    '            Continue For
 
-            End If
+    '        End If
 
 
-            Dim cadLayer As String = Nothing
-            Dim directiveID As Integer = 0
+    '        Dim cadLayer As String = Nothing
+    '        Dim directiveID As Integer = 0
 
 
-            For Each entity As ImportedEntity _
-                In orderedEntities
+    '        For Each entity As ImportedEntity _
+    '            In orderedEntities
 
-                If entity IsNot Nothing Then
+    '            If entity IsNot Nothing Then
 
-                    If entity.CadEntity IsNot Nothing AndAlso
-                       cadLayer Is Nothing Then
+    '                If entity.CadEntity IsNot Nothing AndAlso
+    '                   cadLayer Is Nothing Then
 
-                        cadLayer =
-                            entity.CadEntity.LayerName
+    '                    cadLayer =
+    '                        entity.CadEntity.LayerName
 
-                    End If
+    '                End If
 
 
-                    directiveID =
-                        entity.DirectiveID
+    '                directiveID =
+    '                    entity.DirectiveID
 
-                    Exit For
+    '                Exit For
 
-                End If
+    '            End If
 
-            Next
+    '        Next
 
 
-            profileData.Add(
-    Tuple.Create(
-        cadLayer,
-        path,
-        directiveID,
-        orderedEntities))
+    '        profileData.Add(
+    'Tuple.Create(
+    '    cadLayer,
+    '    path,
+    '    directiveID,
+    '    orderedEntities))
 
-        Next
+    '    Next
 
 
-        ' Create the final profiles. Containment is evaluated
-        ' only against profiles on the same CAD layer.
+    '    ' Create the final profiles. Containment is evaluated
+    '    ' only against profiles on the same CAD layer.
 
-        For Each item In profileData
+    '    For Each item In profileData
 
-            Dim currentLayer As String =
-                item.Item1
+    '        Dim currentLayer As String =
+    '            item.Item1
 
-            Dim currentPath As IPath2D =
-                item.Item2
+    '        Dim currentPath As IPath2D =
+    '            item.Item2
 
-            Dim directiveID As Integer =
-                item.Item3
-            Dim sourceEntities As List(Of ImportedEntity) =
-                item.Item4
+    '        Dim directiveID As Integer =
+    '            item.Item3
+    '        Dim sourceEntities As List(Of ImportedEntity) =
+    '            item.Item4
 
-            Debug.Print(
-    "PROFILE SOURCE COUNT = " &
-    If(sourceEntities Is Nothing, 0, sourceEntities.Count))
+    '        Debug.Print(
+    '"PROFILE SOURCE COUNT = " &
+    'If(sourceEntities Is Nothing, 0, sourceEntities.Count))
 
-            If sourceEntities IsNot Nothing Then
+    '        If sourceEntities IsNot Nothing Then
 
-                For Each sourceEntity As ImportedEntity In sourceEntities
+    '            For Each sourceEntity As ImportedEntity In sourceEntities
 
-                    If sourceEntity Is Nothing Then Continue For
+    '                If sourceEntity Is Nothing Then Continue For
 
-                    Debug.Print(
-            "  Geometry=" &
-            sourceEntity.GeometryType.ToString() &
-            ", CadEntity=" &
-            If(sourceEntity.CadEntity Is Nothing,
-               "Nothing",
-               sourceEntity.CadEntity.GetType().Name))
+    '                Debug.Print(
+    '        "  Geometry=" &
+    '        sourceEntity.GeometryType.ToString() &
+    '        ", CadEntity=" &
+    '        If(sourceEntity.CadEntity Is Nothing,
+    '           "Nothing",
+    '           sourceEntity.CadEntity.GetType().Name))
 
-                Next
+    '            Next
 
-            End If
+    '        End If
 
-            Dim sameLayerPaths As New List(Of IPath2D)()
+    '        Dim sameLayerPaths As New List(Of IPath2D)()
 
 
-            For Each candidate In profileData
+    '        For Each candidate In profileData
 
-                If String.Equals(
-                    currentLayer,
-                    candidate.Item1,
-                    StringComparison.OrdinalIgnoreCase) Then
+    '            If String.Equals(
+    '                currentLayer,
+    '                candidate.Item1,
+    '                StringComparison.OrdinalIgnoreCase) Then
 
-                    sameLayerPaths.Add(
-                        candidate.Item2)
+    '                sameLayerPaths.Add(
+    '                    candidate.Item2)
 
-                End If
+    '            End If
 
-            Next
+    '        Next
 
 
-            Dim side As ProfileSide =
-                DetermineProfileSide(
-                    currentPath,
-                    sameLayerPaths)
+    '        Dim side As ProfileSide =
+    '            DetermineProfileSide(
+    '                currentPath,
+    '                sameLayerPaths)
 
 
-            profiles.Add(
-                New ProfileBuildResult With {
-                    .Profile =
-                       New Profile(
-                        currentPath,
-                        side,
-                        sourceEntities),
-                    .DirectiveID =
-                        directiveID
-                })
-        Next
+    '        profiles.Add(
+    '            New ProfileBuildResult With {
+    '                .Profile =
+    '                   New Profile(
+    '                    currentPath,
+    '                    side,
+    '                    sourceEntities),
+    '                .DirectiveID =
+    '                    directiveID
+    '            })
+    '    Next
 
 
-        Return profiles
+    '    Return profiles
 
-    End Function
+    'End Function
 
 
-    Private Function DetermineProfileSide(
-        profilePath As IPath2D,
-        otherPaths As List(Of IPath2D)) _
-        As ProfileSide
+    'Private Function DetermineProfileSide(
+    '    profilePath As IPath2D,
+    '    otherPaths As List(Of IPath2D)) _
+    '    As ProfileSide
 
-        If profilePath Is Nothing OrElse
-           otherPaths Is Nothing Then
+    '    If profilePath Is Nothing OrElse
+    '       otherPaths Is Nothing Then
 
-            Return ProfileSide.Outside
+    '        Return ProfileSide.Outside
 
-        End If
+    '    End If
 
 
-        If Not profilePath.IsClosed Then
-            Return ProfileSide.Outside
-        End If
+    '    If Not profilePath.IsClosed Then
+    '        Return ProfileSide.Outside
+    '    End If
 
 
-        Dim containmentDepth As Integer = 0
+    '    Dim containmentDepth As Integer = 0
 
 
-        For Each otherPath As IPath2D _
-            In otherPaths
+    '    For Each otherPath As IPath2D _
+    '        In otherPaths
 
-            If otherPath Is Nothing Then
-                Continue For
-            End If
+    '        If otherPath Is Nothing Then
+    '            Continue For
+    '        End If
 
 
-            If Object.ReferenceEquals(
-                profilePath,
-                otherPath) Then
+    '        If Object.ReferenceEquals(
+    '            profilePath,
+    '            otherPath) Then
 
-                Continue For
+    '            Continue For
 
-            End If
+    '        End If
 
 
-            If Not otherPath.IsClosed Then
-                Continue For
-            End If
+    '        If Not otherPath.IsClosed Then
+    '            Continue For
+    '        End If
 
 
-            If Geometry2D.IsPathInsidePath(
-                profilePath,
-                otherPath) Then
+    '        If Geometry2D.IsPathInsidePath(
+    '            profilePath,
+    '            otherPath) Then
 
-                containmentDepth += 1
+    '            containmentDepth += 1
 
-            End If
+    '        End If
 
-        Next
+    '    Next
 
 
-        If (containmentDepth Mod 2) = 0 Then
+    '    If (containmentDepth Mod 2) = 0 Then
 
-            Return ProfileSide.Outside
+    '        Return ProfileSide.Outside
 
-        Else
+    '    Else
 
-            Return ProfileSide.Inside
+    '        Return ProfileSide.Inside
 
-        End If
+    '    End If
 
-    End Function
+    'End Function
 
 
-    Public Function BuildProfiles(
-        entities As List(Of ImportedEntity),
-        gapTol As Double) _
-        As List(Of List(Of ImportedEntity))
+    'Public Function BuildProfiles(
+    '    entities As List(Of ImportedEntity),
+    '    gapTol As Double) _
+    '    As List(Of List(Of ImportedEntity))
 
-        Dim profiles As New List(Of List(Of ImportedEntity))()
+    '    Dim profiles As New List(Of List(Of ImportedEntity))()
 
-        Dim visited As New HashSet(Of ImportedEntity)()
+    '    Dim visited As New HashSet(Of ImportedEntity)()
 
 
-        Dim gapPairs As List(Of Tuple(Of ImportedEntity, ImportedEntity)) =
-            ComputeGapPairs(
-                entities,
-                gapTol)
+    '    Dim gapPairs As List(Of Tuple(Of ImportedEntity, ImportedEntity)) =
+    '        ComputeGapPairs(
+    '            entities,
+    '            gapTol)
 
 
-        For Each entity As ImportedEntity _
-            In entities
+    '    For Each entity As ImportedEntity _
+    '        In entities
 
-            If visited.Contains(entity) Then
-                Continue For
-            End If
+    '        If visited.Contains(entity) Then
+    '            Continue For
+    '        End If
 
 
-            Dim profile As New List(Of ImportedEntity)()
+    '        Dim profile As New List(Of ImportedEntity)()
 
-            Dim stack As New Stack(Of ImportedEntity)()
+    '        Dim stack As New Stack(Of ImportedEntity)()
 
-            stack.Push(entity)
+    '        stack.Push(entity)
 
 
-            While stack.Count > 0
+    '        While stack.Count > 0
 
-                Dim current As ImportedEntity =
-                    stack.Pop()
+    '            Dim current As ImportedEntity =
+    '                stack.Pop()
 
 
-                If visited.Contains(current) Then
-                    Continue While
-                End If
+    '            If visited.Contains(current) Then
+    '                Continue While
+    '            End If
 
 
-                visited.Add(current)
+    '            visited.Add(current)
 
-                profile.Add(current)
+    '            profile.Add(current)
 
 
-                For Each pair As Tuple(Of ImportedEntity, ImportedEntity) _
-                    In gapPairs
+    '            For Each pair As Tuple(Of ImportedEntity, ImportedEntity) _
+    '                In gapPairs
 
-                    If pair.Item1 Is current AndAlso
-                       Not visited.Contains(pair.Item2) Then
+    '                If pair.Item1 Is current AndAlso
+    '                   Not visited.Contains(pair.Item2) Then
 
-                        stack.Push(pair.Item2)
+    '                    stack.Push(pair.Item2)
 
 
-                    ElseIf pair.Item2 Is current AndAlso
-                           Not visited.Contains(pair.Item1) Then
+    '                ElseIf pair.Item2 Is current AndAlso
+    '                       Not visited.Contains(pair.Item1) Then
 
-                        stack.Push(pair.Item1)
+    '                    stack.Push(pair.Item1)
 
-                    End If
+    '                End If
 
-                Next
+    '            Next
 
-            End While
+    '        End While
 
 
-            profiles.Add(profile)
+    '        profiles.Add(profile)
 
-        Next
+    '    Next
 
 
-        Return profiles
+    '    Return profiles
 
-    End Function
+    'End Function
 
 
 End Module
