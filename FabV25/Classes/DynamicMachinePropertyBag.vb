@@ -4,6 +4,34 @@ Public Class DynamicMachinePropertyBag
     Implements ICustomTypeDescriptor
 
     Private _properties As List(Of DynamicMachineProperty)
+    Private ReadOnly _machine As Machine
+    Public ReadOnly Property MachineRecord As Machine
+        Get
+            Return _machine
+        End Get
+    End Property
+
+    Public Sub New(machine As Machine,
+               attrs As List(Of MachineAttribute),
+               types As List(Of MachineAttributeType))
+
+        _machine = machine
+
+        _properties = New List(Of DynamicMachineProperty)()
+
+        For Each attr In attrs
+            Dim typeDef = types.FirstOrDefault(
+            Function(t) t.ID = attr.AttributeTypeID)
+
+            If typeDef IsNot Nothing Then
+                _properties.Add(
+                New DynamicMachineProperty(attr, typeDef))
+            End If
+        Next
+
+    End Sub
+
+
 
     Public Sub New(attrs As List(Of MachineAttribute), types As List(Of MachineAttributeType))
         _properties = New List(Of DynamicMachineProperty)()
@@ -28,16 +56,70 @@ Public Class DynamicMachinePropertyBag
         End Set
     End Property
 
-    ' --- ICustomTypeDescriptor overrides ---
     Public Function GetProperties() As PropertyDescriptorCollection Implements ICustomTypeDescriptor.GetProperties
-        Dim descriptors = _properties.Select(Function(p) New DynamicMachinePropertyDescriptor(p)).ToArray()
-        Return New PropertyDescriptorCollection(descriptors)
-    End Function
 
+        Dim descriptors As New List(Of PropertyDescriptor)
+
+        If _machine IsNot Nothing Then
+
+            descriptors.Add(
+        New CoreMachinePropertyDescriptor(
+            "WorkplaneTypeID",
+            "Quadrant"))
+
+            descriptors.Add(
+        New CoreMachinePropertyDescriptor(
+            "Units",
+            "Units"))
+
+            descriptors.Add(
+    New CoreMachinePropertyDescriptor(
+        "CodePartProfile",
+        "Code Part Profile"))
+
+            descriptors.Add(
+    New CoreMachinePropertyDescriptor(
+        "CNC_Folder",
+        "Default CNC Path"))
+
+
+            descriptors.Add(
+    New CoreMachinePropertyDescriptor(
+        "CodeGenerationFile",
+        "Code Generation File"))
+        descriptors.Add(
+    New CoreMachinePropertyDescriptor(
+        "HoldDown_CTG",
+        "HoldDown CTG"))
+
+        descriptors.Add(
+    New CoreMachinePropertyDescriptor(
+        "Clamp_CTG",
+        "Clamp CTG"))
+
+        descriptors.Add(
+    New CoreMachinePropertyDescriptor(
+        "Table_CTG",
+        "Table CTG"))
+
+
+        End If
+
+
+        ' Existing dynamic machine attributes
+        For Each prop In _properties
+            descriptors.Add(
+            New DynamicMachinePropertyDescriptor(prop))
+        Next
+
+        Return New PropertyDescriptorCollection(descriptors.ToArray())
+
+    End Function
     Public Function GetProperties(attributes() As Attribute) As PropertyDescriptorCollection Implements ICustomTypeDescriptor.GetProperties
-        Return GetProperties()
-    End Function
 
+        Return GetProperties()
+
+    End Function
     Public Function GetAttributes() As AttributeCollection Implements ICustomTypeDescriptor.GetAttributes
         Return AttributeCollection.Empty
     End Function

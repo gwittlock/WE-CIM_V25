@@ -13,4 +13,8 @@ Public Class HoleFeature
 
     Public Property Parameters As New HolePatternParameters
 
+    Public Property SourceGeometryID As Integer
+
+    Public Property ToolSetupMemberID As Integer
+
 End Class

@@ -14,6 +14,13 @@
         End Set
     End Property
 
+
+    Private Shared _nextID As Integer = 0
+
+    Protected Sub New()
+        ID = System.Threading.Interlocked.Increment(_nextID)
+    End Sub
+
     Public Property IsHovered As Boolean Implements isSelectable.IsHovered
 
     Public ReadOnly Property Color As System.Drawing.Color
