@@ -28,1106 +28,855 @@
   ],
   "Rows": [
     {
-      "ID": 1395,
-      "MachineID": 7,
-      "AttributeTypeID": 1,
-      "Value": "-2.008"
-    },
-    {
-      "ID": 1396,
-      "MachineID": 7,
-      "AttributeTypeID": 2,
-      "Value": "100.433"
-    },
-    {
-      "ID": 1397,
-      "MachineID": 7,
-      "AttributeTypeID": 3,
-      "Value": "-.276"
-    },
-    {
-      "ID": 1398,
-      "MachineID": 7,
-      "AttributeTypeID": 4,
-      "Value": "50.394"
-    },
-    {
-      "ID": 1399,
-      "MachineID": 7,
-      "AttributeTypeID": 7,
-      "Value": "150"
-    },
-    {
-      "ID": 1400,
-      "MachineID": 7,
-      "AttributeTypeID": 8,
-      "Value": "50"
-    },
-    {
-      "ID": 1401,
-      "MachineID": 7,
-      "AttributeTypeID": 9,
-      "Value": ".25"
-    },
-    {
-      "ID": 1402,
-      "MachineID": 7,
-      "AttributeTypeID": 10,
-      "Value": "330"
-    },
-    {
-      "ID": 1403,
-      "MachineID": 7,
-      "AttributeTypeID": 11,
-      "Value": "2"
-    },
-    {
-      "ID": 1404,
-      "MachineID": 7,
-      "AttributeTypeID": 12,
-      "Value": "7.686"
-    },
-    {
-      "ID": 1405,
-      "MachineID": 7,
-      "AttributeTypeID": 13,
-      "Value": "2.834"
-    },
-    {
-      "ID": 1406,
-      "MachineID": 7,
-      "AttributeTypeID": 14,
-      "Value": "0"
-    },
-    {
-      "ID": 1407,
-      "MachineID": 7,
-      "AttributeTypeID": 20,
-      "Value": "0"
-    },
-    {
-      "ID": 1408,
-      "MachineID": 7,
-      "AttributeTypeID": 21,
-      "Value": "0"
-    },
-    {
-      "ID": 1409,
-      "MachineID": 7,
-      "AttributeTypeID": 29,
-      "Value": "20"
-    },
-    {
-      "ID": 1410,
-      "MachineID": 7,
-      "AttributeTypeID": 31,
-      "Value": "0"
-    },
-    {
-      "ID": 1411,
-      "MachineID": 7,
-      "AttributeTypeID": 32,
-      "Value": "0"
-    },
-    {
-      "ID": 1412,
-      "MachineID": 7,
-      "AttributeTypeID": 33,
-      "Value": "0"
-    },
-    {
-      "ID": 1413,
-      "MachineID": 7,
-      "AttributeTypeID": 34,
-      "Value": "0"
-    },
-    {
-      "ID": 1414,
-      "MachineID": 7,
-      "AttributeTypeID": 35,
-      "Value": "3"
-    },
-    {
-      "ID": 1415,
-      "MachineID": 7,
-      "AttributeTypeID": 37,
-      "Value": "2.5"
-    },
-    {
-      "ID": 1416,
-      "MachineID": 7,
-      "AttributeTypeID": 38,
-      "Value": "7.874"
-    },
-    {
-      "ID": 1417,
-      "MachineID": 7,
-      "AttributeTypeID": 39,
-      "Value": "2.5"
-    },
-    {
-      "ID": 1418,
-      "MachineID": 7,
-      "AttributeTypeID": 40,
-      "Value": "7.874"
-    },
-    {
-      "ID": 1419,
-      "MachineID": 7,
-      "AttributeTypeID": 45,
-      "Value": ".005"
-    },
-    {
-      "ID": 1420,
-      "MachineID": 7,
-      "AttributeTypeID": 46,
-      "Value": ".005"
-    },
-    {
-      "ID": 1421,
-      "MachineID": 7,
-      "AttributeTypeID": 47,
-      "Value": "0"
-    },
-    {
-      "ID": 1422,
-      "MachineID": 7,
-      "AttributeTypeID": 48,
-      "Value": ".01"
-    },
-    {
-      "ID": 1423,
-      "MachineID": 7,
-      "AttributeTypeID": 49,
-      "Value": "7.87"
-    },
-    {
-      "ID": 1424,
-      "MachineID": 7,
-      "AttributeTypeID": 50,
-      "Value": "7.87"
-    },
-    {
-      "ID": 1425,
-      "MachineID": 7,
-      "AttributeTypeID": 51,
-      "Value": "0"
-    },
-    {
-      "ID": 652,
-      "MachineID": 6,
-      "AttributeTypeID": 1,
-      "Value": "-.5"
-    },
-    {
-      "ID": 653,
-      "MachineID": 6,
-      "AttributeTypeID": 2,
-      "Value": "120"
-    },
-    {
-      "ID": 654,
-      "MachineID": 6,
-      "AttributeTypeID": 3,
-      "Value": "-.5"
-    },
-    {
-      "ID": 655,
-      "MachineID": 6,
-      "AttributeTypeID": 4,
-      "Value": "60"
-    },
-    {
-      "ID": 656,
-      "MachineID": 6,
-      "AttributeTypeID": 7,
-      "Value": "120"
-    },
-    {
-      "ID": 657,
-      "MachineID": 6,
-      "AttributeTypeID": 8,
-      "Value": "60"
-    },
-    {
-      "ID": 658,
-      "MachineID": 6,
-      "AttributeTypeID": 9,
-      "Value": ".5"
-    },
-    {
-      "ID": 659,
-      "MachineID": 6,
-      "AttributeTypeID": 10,
-      "Value": "600"
-    },
-    {
-      "ID": 660,
-      "MachineID": 6,
-      "AttributeTypeID": 11,
-      "Value": "0"
-    },
-    {
-      "ID": 661,
-      "MachineID": 6,
-      "AttributeTypeID": 15,
-      "Value": "0"
-    },
-    {
-      "ID": 662,
-      "MachineID": 6,
-      "AttributeTypeID": 16,
-      "Value": "0"
-    },
-    {
-      "ID": 663,
-      "MachineID": 6,
-      "AttributeTypeID": 17,
-      "Value": "0"
-    },
-    {
-      "ID": 664,
-      "MachineID": 6,
-      "AttributeTypeID": 24,
-      "Value": "0"
-    },
-    {
-      "ID": 665,
-      "MachineID": 6,
-      "AttributeTypeID": 25,
-      "Value": "0"
-    },
-    {
-      "ID": 666,
-      "MachineID": 6,
-      "AttributeTypeID": 29,
-      "Value": "0"
-    },
-    {
-      "ID": 667,
-      "MachineID": 6,
-      "AttributeTypeID": 31,
-      "Value": "0"
-    },
-    {
-      "ID": 668,
-      "MachineID": 6,
-      "AttributeTypeID": 32,
-      "Value": "0"
-    },
-    {
-      "ID": 669,
-      "MachineID": 6,
-      "AttributeTypeID": 33,
-      "Value": "0"
-    },
-    {
-      "ID": 670,
-      "MachineID": 6,
-      "AttributeTypeID": 34,
-      "Value": "0"
-    },
-    {
-      "ID": 671,
-      "MachineID": 6,
-      "AttributeTypeID": 35,
-      "Value": "0"
-    },
-    {
-      "ID": 672,
-      "MachineID": 6,
-      "AttributeTypeID": 41,
-      "Value": "0"
-    },
-    {
-      "ID": 673,
-      "MachineID": 6,
-      "AttributeTypeID": 42,
-      "Value": "0"
-    },
-    {
-      "ID": 674,
-      "MachineID": 6,
-      "AttributeTypeID": 43,
-      "Value": "0"
-    },
-    {
-      "ID": 675,
-      "MachineID": 6,
-      "AttributeTypeID": 44,
-      "Value": "0"
-    },
-    {
-      "ID": 676,
-      "MachineID": 6,
-      "AttributeTypeID": 45,
-      "Value": "0"
-    },
-    {
-      "ID": 677,
-      "MachineID": 6,
-      "AttributeTypeID": 46,
-      "Value": "0"
-    },
-    {
-      "ID": 678,
-      "MachineID": 6,
-      "AttributeTypeID": 47,
-      "Value": "0"
-    },
-    {
-      "ID": 679,
-      "MachineID": 6,
-      "AttributeTypeID": 48,
-      "Value": "0"
-    },
-    {
-      "ID": 680,
-      "MachineID": 6,
-      "AttributeTypeID": 49,
-      "Value": "0"
-    },
-    {
-      "ID": 681,
-      "MachineID": 6,
-      "AttributeTypeID": 50,
-      "Value": "0"
-    },
-    {
-      "ID": 1636,
-      "MachineID": 8,
+      "ID": 199,
+      "MachineID": 2,
       "AttributeTypeID": 1,
       "Value": "0"
     },
     {
-      "ID": 1637,
-      "MachineID": 8,
+      "ID": 200,
+      "MachineID": 2,
       "AttributeTypeID": 2,
-      "Value": "120"
+      "Value": "50.0"
     },
     {
-      "ID": 1638,
-      "MachineID": 8,
+      "ID": 201,
+      "MachineID": 2,
       "AttributeTypeID": 3,
       "Value": "0"
     },
     {
-      "ID": 1639,
-      "MachineID": 8,
+      "ID": 202,
+      "MachineID": 2,
       "AttributeTypeID": 4,
-      "Value": "60"
+      "Value": "39.37"
     },
     {
-      "ID": 1640,
-      "MachineID": 8,
+      "ID": 203,
+      "MachineID": 2,
       "AttributeTypeID": 7,
-      "Value": "120"
+      "Value": "120.0"
     },
     {
-      "ID": 1641,
-      "MachineID": 8,
+      "ID": 204,
+      "MachineID": 2,
       "AttributeTypeID": 8,
-      "Value": "60"
+      "Value": "40.0"
     },
     {
-      "ID": 1642,
-      "MachineID": 8,
-      "AttributeTypeID": 9,
-      "Value": ".375"
-    },
-    {
-      "ID": 1643,
-      "MachineID": 8,
-      "AttributeTypeID": 10,
-      "Value": "0"
-    },
-    {
-      "ID": 1644,
-      "MachineID": 8,
-      "AttributeTypeID": 11,
-      "Value": "0"
-    },
-    {
-      "ID": 1645,
-      "MachineID": 8,
-      "AttributeTypeID": 15,
-      "Value": "0"
-    },
-    {
-      "ID": 1646,
-      "MachineID": 8,
-      "AttributeTypeID": 16,
-      "Value": "0"
-    },
-    {
-      "ID": 1647,
-      "MachineID": 8,
-      "AttributeTypeID": 17,
-      "Value": "0"
-    },
-    {
-      "ID": 1648,
-      "MachineID": 8,
-      "AttributeTypeID": 24,
-      "Value": "0"
-    },
-    {
-      "ID": 1649,
-      "MachineID": 8,
-      "AttributeTypeID": 25,
-      "Value": "0"
-    },
-    {
-      "ID": 1650,
-      "MachineID": 8,
-      "AttributeTypeID": 29,
-      "Value": "0"
-    },
-    {
-      "ID": 1651,
-      "MachineID": 8,
-      "AttributeTypeID": 31,
-      "Value": "0"
-    },
-    {
-      "ID": 1652,
-      "MachineID": 8,
-      "AttributeTypeID": 32,
-      "Value": "0"
-    },
-    {
-      "ID": 1653,
-      "MachineID": 8,
-      "AttributeTypeID": 33,
-      "Value": "0"
-    },
-    {
-      "ID": 1654,
-      "MachineID": 8,
-      "AttributeTypeID": 34,
-      "Value": "0"
-    },
-    {
-      "ID": 1655,
-      "MachineID": 8,
-      "AttributeTypeID": 35,
-      "Value": "0"
-    },
-    {
-      "ID": 1656,
-      "MachineID": 8,
-      "AttributeTypeID": 41,
-      "Value": "0"
-    },
-    {
-      "ID": 1657,
-      "MachineID": 8,
-      "AttributeTypeID": 42,
-      "Value": "0"
-    },
-    {
-      "ID": 1658,
-      "MachineID": 8,
-      "AttributeTypeID": 43,
-      "Value": "0"
-    },
-    {
-      "ID": 1659,
-      "MachineID": 8,
-      "AttributeTypeID": 44,
-      "Value": "0"
-    },
-    {
-      "ID": 1660,
-      "MachineID": 8,
-      "AttributeTypeID": 45,
-      "Value": "0"
-    },
-    {
-      "ID": 1661,
-      "MachineID": 8,
-      "AttributeTypeID": 46,
-      "Value": "0"
-    },
-    {
-      "ID": 1662,
-      "MachineID": 8,
-      "AttributeTypeID": 47,
-      "Value": "0"
-    },
-    {
-      "ID": 1663,
-      "MachineID": 8,
-      "AttributeTypeID": 48,
-      "Value": "0"
-    },
-    {
-      "ID": 1664,
-      "MachineID": 8,
-      "AttributeTypeID": 49,
-      "Value": "0"
-    },
-    {
-      "ID": 1665,
-      "MachineID": 8,
-      "AttributeTypeID": 50,
-      "Value": "0"
-    },
-    {
-      "ID": 2131,
-      "MachineID": 9,
-      "AttributeTypeID": 1,
-      "Value": "-.1"
-    },
-    {
-      "ID": 2132,
-      "MachineID": 9,
-      "AttributeTypeID": 2,
-      "Value": "80.0"
-    },
-    {
-      "ID": 2133,
-      "MachineID": 9,
-      "AttributeTypeID": 3,
-      "Value": "-.1"
-    },
-    {
-      "ID": 2134,
-      "MachineID": 9,
-      "AttributeTypeID": 4,
-      "Value": "60.0"
-    },
-    {
-      "ID": 2135,
-      "MachineID": 9,
-      "AttributeTypeID": 7,
-      "Value": "120"
-    },
-    {
-      "ID": 2136,
-      "MachineID": 9,
-      "AttributeTypeID": 8,
-      "Value": "60"
-    },
-    {
-      "ID": 2137,
-      "MachineID": 9,
-      "AttributeTypeID": 9,
-      "Value": ".25"
-    },
-    {
-      "ID": 2138,
-      "MachineID": 9,
-      "AttributeTypeID": 10,
-      "Value": "250"
-    },
-    {
-      "ID": 2139,
-      "MachineID": 9,
-      "AttributeTypeID": 11,
-      "Value": "2"
-    },
-    {
-      "ID": 2140,
-      "MachineID": 9,
-      "AttributeTypeID": 12,
-      "Value": "5.512"
-    },
-    {
-      "ID": 2141,
-      "MachineID": 9,
-      "AttributeTypeID": 13,
-      "Value": "1.575"
-    },
-    {
-      "ID": 2142,
-      "MachineID": 9,
-      "AttributeTypeID": 14,
-      "Value": "0"
-    },
-    {
-      "ID": 2143,
-      "MachineID": 9,
-      "AttributeTypeID": 20,
-      "Value": "0"
-    },
-    {
-      "ID": 2144,
-      "MachineID": 9,
-      "AttributeTypeID": 21,
-      "Value": "0"
-    },
-    {
-      "ID": 2145,
-      "MachineID": 9,
-      "AttributeTypeID": 29,
-      "Value": "25"
-    },
-    {
-      "ID": 2146,
-      "MachineID": 9,
-      "AttributeTypeID": 31,
-      "Value": ".001"
-    },
-    {
-      "ID": 2147,
-      "MachineID": 9,
-      "AttributeTypeID": 32,
-      "Value": "12.2"
-    },
-    {
-      "ID": 2148,
-      "MachineID": 9,
-      "AttributeTypeID": 33,
-      "Value": "-12.2"
-    },
-    {
-      "ID": 2149,
-      "MachineID": 9,
-      "AttributeTypeID": 34,
-      "Value": "1.574"
-    },
-    {
-      "ID": 2150,
-      "MachineID": 9,
-      "AttributeTypeID": 35,
-      "Value": "1.574"
-    },
-    {
-      "ID": 2151,
-      "MachineID": 9,
-      "AttributeTypeID": 37,
-      "Value": "0"
-    },
-    {
-      "ID": 2152,
-      "MachineID": 9,
-      "AttributeTypeID": 38,
-      "Value": "0"
-    },
-    {
-      "ID": 2153,
-      "MachineID": 9,
-      "AttributeTypeID": 39,
-      "Value": "0"
-    },
-    {
-      "ID": 2154,
-      "MachineID": 9,
-      "AttributeTypeID": 40,
-      "Value": "0"
-    },
-    {
-      "ID": 2155,
-      "MachineID": 9,
-      "AttributeTypeID": 45,
-      "Value": ".002"
-    },
-    {
-      "ID": 2156,
-      "MachineID": 9,
-      "AttributeTypeID": 46,
-      "Value": ".003"
-    },
-    {
-      "ID": 2157,
-      "MachineID": 9,
-      "AttributeTypeID": 47,
-      "Value": "0"
-    },
-    {
-      "ID": 2158,
-      "MachineID": 9,
-      "AttributeTypeID": 48,
-      "Value": "0"
-    },
-    {
-      "ID": 2159,
-      "MachineID": 9,
-      "AttributeTypeID": 49,
-      "Value": "0"
-    },
-    {
-      "ID": 2160,
-      "MachineID": 9,
-      "AttributeTypeID": 50,
-      "Value": "0"
-    },
-    {
-      "ID": 2161,
-      "MachineID": 9,
-      "AttributeTypeID": 51,
-      "Value": "0"
-    },
-    {
-      "ID": 2162,
-      "MachineID": 10,
-      "AttributeTypeID": 1,
-      "Value": "-0.7874"
-    },
-    {
-      "ID": 2163,
-      "MachineID": 10,
-      "AttributeTypeID": 2,
-      "Value": "81.1023"
-    },
-    {
-      "ID": 2164,
-      "MachineID": 10,
-      "AttributeTypeID": 3,
-      "Value": "-2.756"
-    },
-    {
-      "ID": 2165,
-      "MachineID": 10,
-      "AttributeTypeID": 4,
-      "Value": "50"
-    },
-    {
-      "ID": 2166,
-      "MachineID": 10,
-      "AttributeTypeID": 7,
-      "Value": "120"
-    },
-    {
-      "ID": 2167,
-      "MachineID": 10,
-      "AttributeTypeID": 8,
-      "Value": "60"
-    },
-    {
-      "ID": 2168,
-      "MachineID": 10,
-      "AttributeTypeID": 9,
-      "Value": "0.2"
-    },
-    {
-      "ID": 2169,
-      "MachineID": 10,
-      "AttributeTypeID": 10,
-      "Value": "250"
-    },
-    {
-      "ID": 2170,
-      "MachineID": 10,
-      "AttributeTypeID": 11,
-      "Value": "2"
-    },
-    {
-      "ID": 2171,
-      "MachineID": 10,
-      "AttributeTypeID": 12,
-      "Value": "7.6378"
-    },
-    {
-      "ID": 2172,
-      "MachineID": 10,
-      "AttributeTypeID": 13,
-      "Value": "2.8346"
-    },
-    {
-      "ID": 2173,
-      "MachineID": 10,
-      "AttributeTypeID": 14,
-      "Value": "0"
-    },
-    {
-      "ID": 2174,
-      "MachineID": 10,
-      "AttributeTypeID": 20,
-      "Value": "0"
-    },
-    {
-      "ID": 2175,
-      "MachineID": 10,
-      "AttributeTypeID": 21,
-      "Value": "-9.8425"
-    },
-    {
-      "ID": 2176,
-      "MachineID": 10,
-      "AttributeTypeID": 29,
-      "Value": "35"
-    },
-    {
-      "ID": 2177,
-      "MachineID": 10,
-      "AttributeTypeID": 31,
-      "Value": "0"
-    },
-    {
-      "ID": 2178,
-      "MachineID": 10,
-      "AttributeTypeID": 32,
-      "Value": "0"
-    },
-    {
-      "ID": 2179,
-      "MachineID": 10,
-      "AttributeTypeID": 33,
-      "Value": "0"
-    },
-    {
-      "ID": 2180,
-      "MachineID": 10,
-      "AttributeTypeID": 34,
-      "Value": "0"
-    },
-    {
-      "ID": 2181,
-      "MachineID": 10,
-      "AttributeTypeID": 35,
-      "Value": "3.937"
-    },
-    {
-      "ID": 2182,
-      "MachineID": 10,
-      "AttributeTypeID": 37,
-      "Value": "0"
-    },
-    {
-      "ID": 2183,
-      "MachineID": 10,
-      "AttributeTypeID": 38,
-      "Value": "0"
-    },
-    {
-      "ID": 2184,
-      "MachineID": 10,
-      "AttributeTypeID": 39,
-      "Value": "0"
-    },
-    {
-      "ID": 2185,
-      "MachineID": 10,
-      "AttributeTypeID": 40,
-      "Value": "0"
-    },
-    {
-      "ID": 2186,
-      "MachineID": 10,
-      "AttributeTypeID": 45,
-      "Value": "0.002"
-    },
-    {
-      "ID": 2187,
-      "MachineID": 10,
-      "AttributeTypeID": 46,
-      "Value": "0.002"
-    },
-    {
-      "ID": 2188,
-      "MachineID": 10,
-      "AttributeTypeID": 47,
-      "Value": "0"
-    },
-    {
-      "ID": 2189,
-      "MachineID": 10,
-      "AttributeTypeID": 48,
-      "Value": "0"
-    },
-    {
-      "ID": 2190,
-      "MachineID": 10,
-      "AttributeTypeID": 49,
-      "Value": "0"
-    },
-    {
-      "ID": 2191,
-      "MachineID": 10,
-      "AttributeTypeID": 50,
-      "Value": "0"
-    },
-    {
-      "ID": 2192,
-      "MachineID": 10,
-      "AttributeTypeID": 51,
-      "Value": "0"
-    },
-    {
-      "ID": 2193,
-      "MachineID": 11,
-      "AttributeTypeID": 1,
-      "Value": "0"
-    },
-    {
-      "ID": 2194,
-      "MachineID": 11,
-      "AttributeTypeID": 2,
-      "Value": "98.425"
-    },
-    {
-      "ID": 2195,
-      "MachineID": 11,
-      "AttributeTypeID": 3,
-      "Value": "0"
-    },
-    {
-      "ID": 2196,
-      "MachineID": 11,
-      "AttributeTypeID": 4,
-      "Value": "60.039"
-    },
-    {
-      "ID": 2197,
-      "MachineID": 11,
-      "AttributeTypeID": 7,
-      "Value": "120"
-    },
-    {
-      "ID": 2198,
-      "MachineID": 11,
-      "AttributeTypeID": 8,
-      "Value": "60"
-    },
-    {
-      "ID": 2199,
-      "MachineID": 11,
+      "ID": 205,
+      "MachineID": 2,
       "AttributeTypeID": 9,
       "Value": "0.625"
     },
     {
-      "ID": 2200,
-      "MachineID": 11,
+      "ID": 206,
+      "MachineID": 2,
       "AttributeTypeID": 10,
-      "Value": "1200"
+      "Value": "1200.0"
     },
     {
-      "ID": 2201,
-      "MachineID": 11,
+      "ID": 207,
+      "MachineID": 2,
       "AttributeTypeID": 11,
-      "Value": "3"
+      "Value": "2"
     },
     {
-      "ID": 2202,
-      "MachineID": 11,
+      "ID": 208,
+      "MachineID": 2,
       "AttributeTypeID": 12,
-      "Value": "5"
+      "Value": "5.0"
     },
     {
-      "ID": 2203,
-      "MachineID": 11,
+      "ID": 209,
+      "MachineID": 2,
       "AttributeTypeID": 13,
       "Value": "1.5"
     },
     {
-      "ID": 2204,
-      "MachineID": 11,
+      "ID": 210,
+      "MachineID": 2,
       "AttributeTypeID": 14,
       "Value": "2.5"
     },
     {
-      "ID": 2205,
-      "MachineID": 11,
+      "ID": 211,
+      "MachineID": 2,
       "AttributeTypeID": 20,
       "Value": "0"
     },
     {
-      "ID": 2206,
-      "MachineID": 11,
+      "ID": 212,
+      "MachineID": 2,
       "AttributeTypeID": 21,
-      "Value": "-4"
+      "Value": "-4.0"
     },
     {
-      "ID": 2207,
-      "MachineID": 11,
+      "ID": 213,
+      "MachineID": 2,
       "AttributeTypeID": 29,
-      "Value": "30"
+      "Value": "30.0"
     },
     {
-      "ID": 2208,
-      "MachineID": 11,
+      "ID": 214,
+      "MachineID": 2,
       "AttributeTypeID": 31,
       "Value": "0.005"
     },
     {
-      "ID": 2209,
-      "MachineID": 11,
+      "ID": 215,
+      "MachineID": 2,
       "AttributeTypeID": 32,
       "Value": "-14.625"
     },
     {
-      "ID": 2210,
-      "MachineID": 11,
+      "ID": 216,
+      "MachineID": 2,
       "AttributeTypeID": 33,
       "Value": "14.625"
     },
     {
-      "ID": 2211,
-      "MachineID": 11,
+      "ID": 217,
+      "MachineID": 2,
       "AttributeTypeID": 34,
       "Value": "0"
     },
     {
-      "ID": 2212,
-      "MachineID": 11,
+      "ID": 218,
+      "MachineID": 2,
       "AttributeTypeID": 35,
       "Value": "1.5"
     },
     {
-      "ID": 2213,
-      "MachineID": 11,
+      "ID": 219,
+      "MachineID": 2,
       "AttributeTypeID": 37,
-      "Value": "3"
+      "Value": "3.0"
     },
     {
-      "ID": 2214,
-      "MachineID": 11,
+      "ID": 220,
+      "MachineID": 2,
       "AttributeTypeID": 38,
-      "Value": "8"
+      "Value": "8.0"
     },
     {
-      "ID": 2215,
-      "MachineID": 11,
+      "ID": 221,
+      "MachineID": 2,
       "AttributeTypeID": 39,
-      "Value": "3"
+      "Value": "3.0"
     },
     {
-      "ID": 2216,
-      "MachineID": 11,
+      "ID": 222,
+      "MachineID": 2,
       "AttributeTypeID": 40,
-      "Value": "8"
+      "Value": "8.0"
     },
     {
-      "ID": 2217,
-      "MachineID": 11,
+      "ID": 223,
+      "MachineID": 2,
       "AttributeTypeID": 45,
-      "Value": "0.003"
+      "Value": "0.01"
     },
     {
-      "ID": 2218,
-      "MachineID": 11,
+      "ID": 224,
+      "MachineID": 2,
       "AttributeTypeID": 46,
-      "Value": "0.003"
+      "Value": "0.01"
     },
     {
-      "ID": 2219,
-      "MachineID": 11,
+      "ID": 225,
+      "MachineID": 2,
       "AttributeTypeID": 47,
       "Value": "0"
     },
     {
-      "ID": 2220,
-      "MachineID": 11,
+      "ID": 226,
+      "MachineID": 2,
       "AttributeTypeID": 48,
-      "Value": "0.005"
+      "Value": "0.5"
     },
     {
-      "ID": 2221,
-      "MachineID": 11,
+      "ID": 227,
+      "MachineID": 2,
       "AttributeTypeID": 49,
       "Value": "0"
     },
     {
-      "ID": 2222,
-      "MachineID": 11,
+      "ID": 228,
+      "MachineID": 2,
       "AttributeTypeID": 50,
       "Value": "0"
     },
     {
-      "ID": 2223,
-      "MachineID": 11,
+      "ID": 259,
+      "MachineID": 4,
+      "AttributeTypeID": 1,
+      "Value": "0"
+    },
+    {
+      "ID": 260,
+      "MachineID": 4,
+      "AttributeTypeID": 2,
+      "Value": "160.0"
+    },
+    {
+      "ID": 261,
+      "MachineID": 4,
+      "AttributeTypeID": 3,
+      "Value": "0"
+    },
+    {
+      "ID": 262,
+      "MachineID": 4,
+      "AttributeTypeID": 4,
+      "Value": "80.0"
+    },
+    {
+      "ID": 263,
+      "MachineID": 4,
+      "AttributeTypeID": 7,
+      "Value": "144.0"
+    },
+    {
+      "ID": 264,
+      "MachineID": 4,
+      "AttributeTypeID": 8,
+      "Value": "72.0"
+    },
+    {
+      "ID": 265,
+      "MachineID": 4,
+      "AttributeTypeID": 9,
+      "Value": "1.25"
+    },
+    {
+      "ID": 266,
+      "MachineID": 4,
+      "AttributeTypeID": 10,
+      "Value": "4600.0"
+    },
+    {
+      "ID": 267,
+      "MachineID": 4,
+      "AttributeTypeID": 11,
+      "Value": "0"
+    },
+    {
+      "ID": 268,
+      "MachineID": 4,
+      "AttributeTypeID": 15,
+      "Value": "0"
+    },
+    {
+      "ID": 269,
+      "MachineID": 4,
+      "AttributeTypeID": 16,
+      "Value": "0"
+    },
+    {
+      "ID": 270,
+      "MachineID": 4,
+      "AttributeTypeID": 17,
+      "Value": "0"
+    },
+    {
+      "ID": 271,
+      "MachineID": 4,
+      "AttributeTypeID": 24,
+      "Value": "0"
+    },
+    {
+      "ID": 272,
+      "MachineID": 4,
+      "AttributeTypeID": 25,
+      "Value": "0"
+    },
+    {
+      "ID": 273,
+      "MachineID": 4,
+      "AttributeTypeID": 29,
+      "Value": "0"
+    },
+    {
+      "ID": 274,
+      "MachineID": 4,
+      "AttributeTypeID": 31,
+      "Value": "0.5"
+    },
+    {
+      "ID": 275,
+      "MachineID": 4,
+      "AttributeTypeID": 32,
+      "Value": "0"
+    },
+    {
+      "ID": 276,
+      "MachineID": 4,
+      "AttributeTypeID": 33,
+      "Value": "0"
+    },
+    {
+      "ID": 277,
+      "MachineID": 4,
+      "AttributeTypeID": 34,
+      "Value": "0"
+    },
+    {
+      "ID": 278,
+      "MachineID": 4,
+      "AttributeTypeID": 35,
+      "Value": "0"
+    },
+    {
+      "ID": 279,
+      "MachineID": 4,
+      "AttributeTypeID": 41,
+      "Value": "0"
+    },
+    {
+      "ID": 280,
+      "MachineID": 4,
+      "AttributeTypeID": 42,
+      "Value": "0"
+    },
+    {
+      "ID": 281,
+      "MachineID": 4,
+      "AttributeTypeID": 43,
+      "Value": "0"
+    },
+    {
+      "ID": 282,
+      "MachineID": 4,
+      "AttributeTypeID": 44,
+      "Value": "0"
+    },
+    {
+      "ID": 283,
+      "MachineID": 4,
+      "AttributeTypeID": 45,
+      "Value": "0.005"
+    },
+    {
+      "ID": 284,
+      "MachineID": 4,
+      "AttributeTypeID": 46,
+      "Value": "0.005"
+    },
+    {
+      "ID": 285,
+      "MachineID": 4,
+      "AttributeTypeID": 47,
+      "Value": "0"
+    },
+    {
+      "ID": 286,
+      "MachineID": 4,
+      "AttributeTypeID": 48,
+      "Value": "0"
+    },
+    {
+      "ID": 287,
+      "MachineID": 4,
+      "AttributeTypeID": 49,
+      "Value": "0"
+    },
+    {
+      "ID": 288,
+      "MachineID": 4,
+      "AttributeTypeID": 50,
+      "Value": "0"
+    },
+    {
+      "ID": 370,
+      "MachineID": 3,
+      "AttributeTypeID": 1,
+      "Value": "0"
+    },
+    {
+      "ID": 371,
+      "MachineID": 3,
+      "AttributeTypeID": 2,
+      "Value": "110.5"
+    },
+    {
+      "ID": 372,
+      "MachineID": 3,
+      "AttributeTypeID": 3,
+      "Value": "0"
+    },
+    {
+      "ID": 373,
+      "MachineID": 3,
+      "AttributeTypeID": 4,
+      "Value": "65.0"
+    },
+    {
+      "ID": 374,
+      "MachineID": 3,
+      "AttributeTypeID": 7,
+      "Value": "240.0"
+    },
+    {
+      "ID": 375,
+      "MachineID": 3,
+      "AttributeTypeID": 8,
+      "Value": "60.0"
+    },
+    {
+      "ID": 376,
+      "MachineID": 3,
+      "AttributeTypeID": 9,
+      "Value": "0.75"
+    },
+    {
+      "ID": 377,
+      "MachineID": 3,
+      "AttributeTypeID": 10,
+      "Value": "1000.0"
+    },
+    {
+      "ID": 378,
+      "MachineID": 3,
+      "AttributeTypeID": 11,
+      "Value": "2"
+    },
+    {
+      "ID": 379,
+      "MachineID": 3,
+      "AttributeTypeID": 12,
+      "Value": "15.6"
+    },
+    {
+      "ID": 380,
+      "MachineID": 3,
+      "AttributeTypeID": 13,
+      "Value": "5.75"
+    },
+    {
+      "ID": 381,
+      "MachineID": 3,
+      "AttributeTypeID": 14,
+      "Value": "0"
+    },
+    {
+      "ID": 382,
+      "MachineID": 3,
+      "AttributeTypeID": 15,
+      "Value": "12.14"
+    },
+    {
+      "ID": 383,
+      "MachineID": 3,
+      "AttributeTypeID": 16,
+      "Value": "4.5"
+    },
+    {
+      "ID": 384,
+      "MachineID": 3,
+      "AttributeTypeID": 17,
+      "Value": "0"
+    },
+    {
+      "ID": 385,
+      "MachineID": 3,
+      "AttributeTypeID": 20,
+      "Value": "0"
+    },
+    {
+      "ID": 386,
+      "MachineID": 3,
+      "AttributeTypeID": 21,
+      "Value": "0"
+    },
+    {
+      "ID": 387,
+      "MachineID": 3,
+      "AttributeTypeID": 24,
+      "Value": "0"
+    },
+    {
+      "ID": 388,
+      "MachineID": 3,
+      "AttributeTypeID": 25,
+      "Value": "0"
+    },
+    {
+      "ID": 389,
+      "MachineID": 3,
+      "AttributeTypeID": 29,
+      "Value": "40.0"
+    },
+    {
+      "ID": 390,
+      "MachineID": 3,
+      "AttributeTypeID": 31,
+      "Value": "0"
+    },
+    {
+      "ID": 391,
+      "MachineID": 3,
+      "AttributeTypeID": 32,
+      "Value": "-9.29"
+    },
+    {
+      "ID": 392,
+      "MachineID": 3,
+      "AttributeTypeID": 33,
+      "Value": "14.37"
+    },
+    {
+      "ID": 393,
+      "MachineID": 3,
+      "AttributeTypeID": 34,
+      "Value": "-5.62"
+    },
+    {
+      "ID": 394,
+      "MachineID": 3,
+      "AttributeTypeID": 35,
+      "Value": "3.0"
+    },
+    {
+      "ID": 395,
+      "MachineID": 3,
+      "AttributeTypeID": 37,
+      "Value": "0"
+    },
+    {
+      "ID": 396,
+      "MachineID": 3,
+      "AttributeTypeID": 38,
+      "Value": "0"
+    },
+    {
+      "ID": 397,
+      "MachineID": 3,
+      "AttributeTypeID": 39,
+      "Value": "0"
+    },
+    {
+      "ID": 398,
+      "MachineID": 3,
+      "AttributeTypeID": 40,
+      "Value": "0"
+    },
+    {
+      "ID": 399,
+      "MachineID": 3,
+      "AttributeTypeID": 41,
+      "Value": "0"
+    },
+    {
+      "ID": 400,
+      "MachineID": 3,
+      "AttributeTypeID": 42,
+      "Value": "16.0"
+    },
+    {
+      "ID": 401,
+      "MachineID": 3,
+      "AttributeTypeID": 43,
+      "Value": "0"
+    },
+    {
+      "ID": 402,
+      "MachineID": 3,
+      "AttributeTypeID": 44,
+      "Value": "22.0"
+    },
+    {
+      "ID": 403,
+      "MachineID": 3,
+      "AttributeTypeID": 45,
+      "Value": "0.005"
+    },
+    {
+      "ID": 404,
+      "MachineID": 3,
+      "AttributeTypeID": 46,
+      "Value": "0.005"
+    },
+    {
+      "ID": 405,
+      "MachineID": 3,
+      "AttributeTypeID": 47,
+      "Value": "0"
+    },
+    {
+      "ID": 406,
+      "MachineID": 3,
+      "AttributeTypeID": 48,
+      "Value": "0.5"
+    },
+    {
+      "ID": 407,
+      "MachineID": 3,
+      "AttributeTypeID": 49,
+      "Value": "0"
+    },
+    {
+      "ID": 408,
+      "MachineID": 3,
+      "AttributeTypeID": 50,
+      "Value": "0"
+    },
+    {
+      "ID": 409,
+      "MachineID": 3,
+      "AttributeTypeID": 51,
+      "Value": "0"
+    },
+    {
+      "ID": 410,
+      "MachineID": 3,
+      "AttributeTypeID": 52,
+      "Value": "0"
+    },
+    {
+      "ID": 411,
+      "MachineID": 3,
+      "AttributeTypeID": 53,
+      "Value": "0"
+    },
+    {
+      "ID": 412,
+      "MachineID": 5,
+      "AttributeTypeID": 1,
+      "Value": "0"
+    },
+    {
+      "ID": 413,
+      "MachineID": 5,
+      "AttributeTypeID": 2,
+      "Value": "0"
+    },
+    {
+      "ID": 414,
+      "MachineID": 5,
+      "AttributeTypeID": 3,
+      "Value": "0"
+    },
+    {
+      "ID": 415,
+      "MachineID": 5,
+      "AttributeTypeID": 4,
+      "Value": "0"
+    },
+   
+    {
+      "ID": 418,
+      "MachineID": 5,
+      "AttributeTypeID": 7,
+      "Value": "0"
+    },
+    {
+      "ID": 419,
+      "MachineID": 5,
+      "AttributeTypeID": 8,
+      "Value": "0"
+    },
+    {
+      "ID": 420,
+      "MachineID": 5,
+      "AttributeTypeID": 9,
+      "Value": "0"
+    },
+    {
+      "ID": 421,
+      "MachineID": 5,
+      "AttributeTypeID": 10,
+      "Value": "0"
+    },
+    {
+      "ID": 423,
+      "MachineID": 5,
+      "AttributeTypeID": 45,
+      "Value": "0"
+    },
+    {
+      "ID": 424,
+      "MachineID": 5,
+      "AttributeTypeID": 46,
+      "Value": "0"
+    },
+    {
+      "ID": 425,
+      "MachineID": 6,
+      "AttributeTypeID": 1,
+      "Value": "0"
+    },
+    {
+      "ID": 426,
+      "MachineID": 6,
+      "AttributeTypeID": 2,
+      "Value": "50"
+    },
+    {
+      "ID": 427,
+      "MachineID": 6,
+      "AttributeTypeID": 3,
+      "Value": "0"
+    },
+    {
+      "ID": 428,
+      "MachineID": 6,
+      "AttributeTypeID": 4,
+      "Value": "50"
+    },
+    {
+      "ID": 429,
+      "MachineID": 6,
+      "AttributeTypeID": 7,
+      "Value": "96"
+    },
+    {
+      "ID": 430,
+      "MachineID": 6,
+      "AttributeTypeID": 8,
+      "Value": "48"
+    },
+    {
+      "ID": 431,
+      "MachineID": 6,
+      "AttributeTypeID": 9,
+      "Value": "0.125"
+    },
+    {
+      "ID": 432,
+      "MachineID": 6,
+      "AttributeTypeID": 10,
+      "Value": "165"
+    },
+    {
+      "ID": 433,
+      "MachineID": 6,
+      "AttributeTypeID": 11,
+      "Value": "2"
+    },
+    {
+      "ID": 434,
+      "MachineID": 6,
+      "AttributeTypeID": 12,
+      "Value": "5"
+    },
+    {
+      "ID": 435,
+      "MachineID": 6,
+      "AttributeTypeID": 13,
+      "Value": "1.5"
+    },
+    {
+      "ID": 436,
+      "MachineID": 6,
+      "AttributeTypeID": 14,
+      "Value": "2.5"
+    },
+    {
+      "ID": 437,
+      "MachineID": 6,
+      "AttributeTypeID": 20,
+      "Value": "0"
+    },
+    {
+      "ID": 438,
+      "MachineID": 6,
+      "AttributeTypeID": 21,
+      "Value": "0"
+    },
+    {
+      "ID": 439,
+      "MachineID": 6,
+      "AttributeTypeID": 29,
+      "Value": "30"
+    },
+    {
+      "ID": 441,
+      "MachineID": 6,
+      "AttributeTypeID": 32,
+      "Value": "-14.625"
+    },
+    {
+      "ID": 442,
+      "MachineID": 6,
+      "AttributeTypeID": 33,
+      "Value": "0"
+    },
+    {
+      "ID": 443,
+      "MachineID": 6,
+      "AttributeTypeID": 34,
+      "Value": "-4"
+    },
+    {
+      "ID": 444,
+      "MachineID": 6,
+      "AttributeTypeID": 35,
+      "Value": "2"
+    },
+    {
+      "ID": 445,
+      "MachineID": 6,
+      "AttributeTypeID": 37,
+      "Value": "0"
+    },
+    {
+      "ID": 446,
+      "MachineID": 6,
+      "AttributeTypeID": 38,
+      "Value": "0"
+    },
+    {
+      "ID": 447,
+      "MachineID": 6,
+      "AttributeTypeID": 39,
+      "Value": "0"
+    },
+    {
+      "ID": 448,
+      "MachineID": 6,
+      "AttributeTypeID": 40,
+      "Value": "0"
+    },
+    {
+      "ID": 449,
+      "MachineID": 6,
+      "AttributeTypeID": 45,
+      "Value": "0.005"
+    },
+    {
+      "ID": 450,
+      "MachineID": 6,
+      "AttributeTypeID": 46,
+      "Value": "0.005"
+    },
+    {
+      "ID": 451,
+      "MachineID": 6,
+      "AttributeTypeID": 47,
+      "Value": "0"
+    },
+    {
+      "ID": 452,
+      "MachineID": 6,
+      "AttributeTypeID": 48,
+      "Value": "0.5"
+    },
+    {
+      "ID": 453,
+      "MachineID": 6,
+      "AttributeTypeID": 49,
+      "Value": "8"
+    },
+    {
+      "ID": 454,
+      "MachineID": 6,
+      "AttributeTypeID": 50,
+      "Value": "6"
+    },
+    {
+      "ID": 455,
+      "MachineID": 6,
       "AttributeTypeID": 51,
       "Value": "0"
     }

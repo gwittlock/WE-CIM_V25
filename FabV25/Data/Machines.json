@@ -60,24 +60,18 @@
       "Header": "CNC_Folder",
       "Visible": true,
       "DataType": 0
+    },
+    {
+      "Field": "CodeGenerationFile",
+      "Header": "Code Generation File",
+      "Visible": true,
+      "DataType": 0
     }
   ],
   "Rows": [
     {
-      "ID": 6,
-      "Description": "Trumpf_3030",
-      "TypeID": 3,
-      "WorkplaneTypeID": 1,
-      "Units": 0,
-      "CodePartProfile": false,
-      "HoldDown_CTG": null,
-      "Clamp_CTG": null,
-      "Table_CTG": null,
-      "CNC_Folder": null
-    },
-    {
-      "ID": 7,
-      "Description": "Trumpf_2020",
+      "ID": 2,
+      "Description": "Amada Pega",
       "TypeID": 1,
       "WorkplaneTypeID": 1,
       "Units": 0,
@@ -85,55 +79,60 @@
       "HoldDown_CTG": null,
       "Clamp_CTG": null,
       "Table_CTG": null,
-      "CNC_Folder": null
+      "CNC_Folder": null,
+      "CodeGenerationFile": null
     },
     {
-      "ID": 8,
-      "Description": "AmadaLC-3015",
-      "TypeID": 3,
-      "WorkplaneTypeID": 1,
-      "Units": 0,
-      "CodePartProfile": false,
-      "HoldDown_CTG": null,
-      "Clamp_CTG": null,
-      "Table_CTG": null,
-      "CNC_Folder": null
-    },
-    {
-      "ID": 9,
-      "Description": "Wiedemann C3000",
-      "TypeID": 1,
-      "WorkplaneTypeID": 1,
+      "ID": 3,
+      "Description": "3700 ATC 42",
+      "TypeID": 2,
+      "WorkplaneTypeID": 2,
       "Units": 0,
       "CodePartProfile": false,
       "HoldDown_CTG": "",
-      "Clamp_CTG": "C:\\Customers\\CTG\\Clamp3000.ctg",
+      "Clamp_CTG": "C:\\Program Files (x86)\\WE-CIM\\19.0\\CAD\\DXFDemo\\clamp.ctg",
       "Table_CTG": "",
-      "CNC_Folder": null
+      "CNC_Folder": null,
+      "CodeGenerationFile": null
     },
     {
-      "ID": 10,
-      "Description": "Trumpf 200",
-      "TypeID": 2,
-      "WorkplaneTypeID": 1,
-      "Units": 0,
-      "CodePartProfile": false,
-      "HoldDown_CTG": "C:\\Customers\\CTG\\HoldDown200.ctg",
-      "Clamp_CTG": null,
-      "Table_CTG": null,
-      "CNC_Folder": null
-    },
-    {
-      "ID": 11,
-      "Description": "Amada EMK",
-      "TypeID": 1,
+      "ID": 4,
+      "Description": "LaserDemo",
+      "TypeID": 3,
       "WorkplaneTypeID": 1,
       "Units": 0,
       "CodePartProfile": false,
       "HoldDown_CTG": null,
-      "Clamp_CTG": "C:\\CTG\\Clamp357.ctg",
+      "Clamp_CTG": null,
       "Table_CTG": null,
-      "CNC_Folder": null
+      "CNC_Folder": null,
+      "CodeGenerationFile": null
+    },
+    {
+      "ID": 5,
+      "Description": "Mill",
+      "TypeID": 9,
+      "WorkplaneTypeID": 1,
+      "Units": 0,
+      "CodePartProfile": false,
+      "HoldDown_CTG": null,
+      "Clamp_CTG": null,
+      "Table_CTG": null,
+      "CNC_Folder": null,
+      "CodeGenerationFile": null
+    },
+    {
+      "ID": 6,
+      "Description": "WE=CIM 355",
+      "TypeID": 1,
+      "WorkplaneTypeID": 0,
+      "Units": 0,
+      "CodePartProfile": false,
+      "HoldDown_CTG": "C:\\Program Files (x86)\\WE-CIM\\25.0\\CTG",
+      "Clamp_CTG": "C:\\Program Files (x86)\\WE-CIM\\25.0\\CTG",
+      "Table_CTG": null,
+      "CNC_Folder": "C:\\Program Files (x86)\\WE-CIM\\25.0\\CodeGen",
+      "CodeGenerationFile": "C:\\Program Files (x86)\\WE-CIM\\25.0\\CodeGen"
     }
   ]
 }

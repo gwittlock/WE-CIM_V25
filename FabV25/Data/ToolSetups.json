@@ -1,90 +1,97 @@
-{
-  "TableName": "Tool Setups",
-  "Columns": [
-    {
-      "Field": "ID",
-      "Header": "Id",
-      "Visible": true,
-      "DataType": 0
-    },
-    {
-      "Field": "Description",
-      "Header": "Description",
-      "Visible": true,
-      "DataType": 0
-    },
-    {
-      "Field": "MachineID",
-      "Header": "Machine Id",
-      "Visible": true,
-      "DataType": 0
-    }
-  ],
-  "Rows": [
-    {
-      "ID": 85,
-      "Description": "REI",
-      "MachineID": 6
-    },
-    {
-      "ID": 86,
-      "Description": "Global",
-      "MachineID": 6
-    },
-    {
-      "ID": 88,
-      "Description": "Punch-Global",
-      "MachineID": 7
-    },
-    {
-      "ID": 89,
-      "Description": "Amada LC 3015",
-      "MachineID": 8
-    },
-    {
-      "ID": 90,
-      "Description": "C3000",
-      "MachineID": 9
-    },
-    {
-      "ID": 94,
-      "Description": "Amada EMK",
-      "MachineID": 11
-    },
-    {
-      "ID": 95,
-      "Description": "Trumpf 200",
-      "MachineID": 10
-    },
-    {
-      "ID": 96,
-      "Description": "C3000a",
-      "MachineID": 9
-    },
-    {
-      "ID": 97,
-      "Description": "Amada EMK 01",
-      "MachineID": 11
-    },
-    {
-      "ID": 98,
-      "Description": "01AmadaEMK",
-      "MachineID": 11
-    },
-    {
-      "ID": 99,
-      "Description": "Amada EMK-02",
-      "MachineID": 11
-    },
-    {
-      "ID": 100,
-      "Description": "04-0703-00",
-      "MachineID": 11
-    },
-    {
-      "ID": 101,
-      "Description": "Amada EMK-03",
-      "MachineID": 11
-    }
-  ]
-}
+[
+  {
+    "ID": 49,
+    "Description": "PunchDemo1",
+    "MachineID": 2
+  },
+  {
+    "ID": 50,
+    "Description": "PunchDemo2",
+    "MachineID": 2
+  },
+  {
+    "ID": 53,
+    "Description": "PunchDemo4",
+    "MachineID": 2
+  },
+  {
+    "ID": 54,
+    "Description": "PunchDemo5",
+    "MachineID": 2
+  },
+  {
+    "ID": 55,
+    "Description": "PunchDemo6",
+    "MachineID": 2
+  },
+  {
+    "ID": 69,
+    "Description": "PunchPlasmaDemo1",
+    "MachineID": 3
+  },
+  {
+    "ID": 70,
+    "Description": "PunchPlasmaDemo2",
+    "MachineID": 3
+  },
+  {
+    "ID": 71,
+    "Description": "PunchPlasmaDemo3",
+    "MachineID": 3
+  },
+  {
+    "ID": 72,
+    "Description": "PunchPlasmaDemo4",
+    "MachineID": 3
+  },
+  {
+    "ID": 73,
+    "Description": "PunchPlasmaDemo5",
+    "MachineID": 3
+  },
+  {
+    "ID": 74,
+    "Description": "PunchPlasmaDemo6",
+    "MachineID": 3
+  },
+  {
+    "ID": 75,
+    "Description": "LaserDemo1",
+    "MachineID": 4
+  },
+  {
+    "ID": 76,
+    "Description": "LaserDemo2",
+    "MachineID": 4
+  },
+  {
+    "ID": 77,
+    "Description": "LaserDemo3",
+    "MachineID": 4
+  },
+  {
+    "ID": 78,
+    "Description": "LaserDemo4",
+    "MachineID": 4
+  },
+  {
+    "ID": 79,
+    "Description": "LaserDemo5",
+    "MachineID": 4
+  },
+  {
+    "ID": 80,
+    "Description": "LaserDemo6",
+    "MachineID": 4
+  },
+  {
+    "ID": 81,
+    "Description": "Mill",
+    "MachineID": 5
+  },
+  {
+    "ID": 82,
+    "Description": "Master Tool Setup",
+    "MachineID": 6
+  }
+]

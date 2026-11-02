@@ -35,26 +35,10 @@
   "Rows": [
     {
       "MachineID": 0,
-      "Name": "DBL_Test",
-      "Display": "DBLTest",
-      "Default": "1765",
-      "DataType": "Double",
-      "Visible": true
-    },
-    {
-      "MachineID": 0,
-      "Name": "INTTest",
-      "Display": "INT TEST",
-      "Default": "6",
-      "DataType": "Integer",
-      "Visible": true
-    },
-    {
-      "MachineID": 0,
-      "Name": "StationRem",
-      "Display": "Station Remove",
-      "Default": "0.0",
-      "DataType": "Double",
+      "Name": "PrimaryCode",
+      "Display": "Primary Codse",
+      "Default": "o",
+      "DataType": "String",
       "Visible": true
     }
   ]

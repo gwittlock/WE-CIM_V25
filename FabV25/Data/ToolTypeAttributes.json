@@ -2647,16 +2647,6 @@
       "ID": 528,
       "ToolTypeID": 29,
       "AttributeTypeID": 31
-    },
-    {
-      "ID": 529,
-      "ToolTypeID": 13,
-      "AttributeTypeID": 4
-    },
-    {
-      "ID": 530,
-      "ToolTypeID": 10,
-      "AttributeTypeID": 4
     }
   ]
 }

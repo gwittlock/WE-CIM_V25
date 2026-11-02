@@ -208,6 +208,12 @@
       "Description": "Reqd_Auto_Index",
       "Field": "Reqd Auto Index",
       "DataType": 1
+    },
+    {
+      "ID": 32,
+      "Description": "Die_Clearance",
+      "Field": "Die_Clearance",
+      "DataType": 10
     }
   ]
 }
