@@ -145,6 +145,8 @@ Public Class frmMain
     Public OffsetY As Single = 0
     Private _profileSelectionEnabled As Boolean = False
 
+    Private _entityPropertiesForm As frmEntityProperties
+
     Private Declare Function LockWindowUpdate Lib "user32.dll" (ByVal hWndLock As IntPtr) As Boolean
 
     Public Sub New()
@@ -202,11 +204,19 @@ Public Class frmMain
             MessageBox.Show("InitSkinGallery: " & ex.Message)
         End Try
     End Sub
-    Private Sub OnSelectionChanged()
 
+    Private Sub OnSelectionChanged(
+    selectedItems As IEnumerable(Of isSelectable))
+
+        ' Update the selection count.
+        statusSelection.Caption =
+        "Selection: " & selectedItems.Count().ToString()
+
+        ' Refresh the drawing.
         pnlPicmodeler.Invalidate()
 
     End Sub
+
 
     Private Sub rgbiSkins_GalleryInitDropDownGallery(ByVal sender As Object, ByVal e As DevExpress.XtraBars.Ribbon.InplaceGalleryEventArgs) Handles rgbiSkins.GalleryInitDropDownGallery
 
@@ -251,7 +261,7 @@ Public Class frmMain
 
             _materialDisplayColor = System.Drawing.Color.FromArgb(savedMaterialColor)
             bbiMaterialColor.EditValue = _materialDisplayColor
-
+            ConfigurationManagerForm.MaterialDisplayColor = _materialDisplayColor
 
 
             Logging.Log("AppState loaded successfully.")
@@ -264,7 +274,7 @@ Public Class frmMain
     End Sub
 
     Private Sub bbConfigMan_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbConfigMan.ItemClick
-
+        ConfigurationManagerForm.MaterialDisplayColor = _materialDisplayColor
         ConfigurationManagerForm.Show(Me)
     End Sub
     Private Sub iOpen_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iOpen.ItemClick
@@ -387,6 +397,12 @@ Public Class frmMain
         ' UI not ready yet (very early startup)
         If Not _uiInitialized Then Return
 
+        Debug.WriteLine(
+    "PAINT: DoPrepareUI=" & _DoPrepareUI.ToString() &
+    " Scale=" & myTransform.Scale.ToString() &
+    " OffsetX=" & myTransform.OffsetX.ToString() &
+    " OffsetY=" & myTransform.OffsetY.ToString())
+
         '' Scene not loaded yet → draw empty workspace
         'If Not _sceneReady OrElse CurrentJob Is Nothing Then
         '    DrawEmptyWorkspace(e.Graphics)
@@ -501,16 +517,15 @@ Public Class frmMain
         ' -------------------------------------------------
         ' 1) BASE SCENE
         ' -------------------------------------------------
-        RestoreAndDrawJob()
         DrawSheetAndWorkzones(g, matLength, matWidth)
         DrawProductionGeometry(g, myTransform, panelHeight)
 
         ' -------------------------------------------------
         ' 2) HOVER HIGHLIGHT (still View-owned for now)
         ' -------------------------------------------------
-        If _hoverEntity IsNot Nothing Then
-            DrawEntityHighlight(g, _hoverEntity)
-        End If
+        'If _hoverEntity IsNot Nothing Then
+        '    DrawEntityHighlight(g, _hoverEntity)
+        'End If
 
         ' -------------------------------------------------
         ' 3) SELECTION HIGHLIGHT (SelectionManager-owned)
@@ -759,6 +774,47 @@ Public Class frmMain
     End Sub
 
 
+    Private Sub DrawGeoEntities(
+    entities As IEnumerable(Of GeoEntity),
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If entities Is Nothing Then Return
+
+        Dim layer As Layer
+
+
+        For Each entity As GeoEntity In entities
+
+            If entity Is Nothing Then Continue For
+
+            layer = TryCast(entity.Association, Layer)
+
+            If layer IsNot Nothing AndAlso Not layer.Visible Then
+                Continue For
+            End If
+
+
+            If TypeOf entity Is GeoLine Then
+                DrawGeoLine(DirectCast(entity, GeoLine), g, vt, panelHeight)
+
+            ElseIf TypeOf entity Is GeoArc Then
+                DrawGeoArc(DirectCast(entity, GeoArc), g, vt, panelHeight)
+
+            ElseIf TypeOf entity Is GeoCircle Then
+                DrawGeoCircle(DirectCast(entity, GeoCircle), g, vt, panelHeight)
+
+            ElseIf TypeOf entity Is GeoPoint Then
+                DrawGeoPoint(DirectCast(entity, GeoPoint), g, vt, panelHeight)
+
+            End If
+
+        Next
+
+    End Sub
+
+
     Private Sub DrawGeoLine(
     l As GeoLine,
     g As Graphics,
@@ -787,7 +843,10 @@ Public Class frmMain
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
 
-        If l.Selected Then
+        If l.Selected OrElse IsEntityInSelectedProfile(l) Then
+            Debug.WriteLine(
+    $"DrawGeoLine: Selected={l.Selected}, " &
+    $"ProfileSelected={IsEntityInSelectedProfile(l)}")
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
@@ -866,11 +925,12 @@ Public Class frmMain
             sweepAngle = -sweep
         End If
 
+        Dim displaySelected As Boolean = a.Selected OrElse IsEntityInSelectedProfile(a)
         Dim drawColor As System.Drawing.Color = a.Color
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
 
-        If a.Selected Then
+        If displaySelected Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
@@ -886,13 +946,13 @@ Public Class frmMain
         Using pen As New Pen(drawColor, drawWidth)
 
 
-            If a.Selected Then
+            If displaySelected Then
 
-                    pen.DashStyle = DashStyle.Dot
+                pen.DashStyle = DashStyle.Dot
 
-                ElseIf drawDashed Then
+            ElseIf drawDashed Then
 
-                    pen.DashStyle = DashStyle.Dash
+                pen.DashStyle = DashStyle.Dash
 
                 End If
 
@@ -932,11 +992,15 @@ Public Class frmMain
 
         Dim rect = HelperFunctions.RectFromPoints(p1, p2)
 
+
+        Dim displaySelected As Boolean = c.Selected OrElse IsEntityInSelectedProfile(c)
+
+
         Dim drawColor As System.Drawing.Color = c.Color
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
 
-        If c.Selected Then
+        If displaySelected Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
@@ -951,7 +1015,7 @@ Public Class frmMain
 
         Using pen As New Pen(drawColor, drawWidth)
 
-            If c.Selected Then
+            If displaySelected Then
 
                 pen.DashStyle = DashStyle.Dot
 
@@ -1021,53 +1085,26 @@ Public Class frmMain
                 vt,
                 panelHeight)
 
+                For Each feature As MachiningFeature In part.Features
+
+                    If TypeOf feature Is HoleFeature Then
+
+                        DrawHoleFeature(
+                            DirectCast(feature, HoleFeature),
+                            g,
+                            vt,
+                            panelHeight)
+
+                    End If
+
+                Next
+
             Next
 
         Next
 
     End Sub
 
-    Public Sub DrawGeoEntities(
-    entities As IEnumerable(Of GeoEntity),
-    g As Graphics,
-    vt As ViewTransform,
-    panelHeight As Integer)
-
-        If entities Is Nothing Then Exit Sub
-
-        For Each ge As GeoEntity In entities
-
-            '        Debug.WriteLine(
-            '"NATIVE DRAW TYPE: " & ge.GetType().Name)
-            If ge Is Nothing Then Continue For
-
-            Select Case True
-
-                Case TypeOf ge Is GeoLine
-                    DrawGeoLine(
-                    DirectCast(ge, GeoLine),
-                    g, vt, panelHeight)
-
-                Case TypeOf ge Is GeoArc
-                    DrawGeoArc(
-                    DirectCast(ge, GeoArc),
-                    g, vt, panelHeight)
-
-                Case TypeOf ge Is GeoCircle
-                    DrawGeoCircle(
-                    DirectCast(ge, GeoCircle),
-                    g, vt, panelHeight)
-
-                Case TypeOf ge Is GeoPoint
-                    DrawGeoPoint(
-                    DirectCast(ge, GeoPoint),
-                    g, vt, panelHeight)
-
-            End Select
-
-        Next
-
-    End Sub
 
 
     Public Sub DrawSheetAndWorkzones(g As Graphics, sheetWidth As Double, sheetHeight As Double)
@@ -1192,6 +1229,8 @@ Public Class frmMain
         ' ---------------------------------
 
         Dim geoEntities As New List(Of GeoEntity)
+        Dim geoProfiles As New List(Of GeoProfile)
+        Dim machiningFeatures As New List(Of MachiningFeature)
 
         If CurrentProductionJob IsNot Nothing Then
 
@@ -1200,6 +1239,8 @@ Public Class frmMain
                 For Each part In jobSheet.Parts
 
                     geoEntities.AddRange(part.Geometry)
+                    geoProfiles.AddRange(part.GeoProfiles)
+                    machiningFeatures.AddRange(part.Features)
 
                 Next
 
@@ -1208,11 +1249,23 @@ Public Class frmMain
         End If
 
         _selectionManager.SetGeoEntities(geoEntities)
+        _selectionManager.SetGeoProfiles(geoProfiles)
+        _selectionManager.SetMachiningFeatures(machiningFeatures)
         _selectionManager.BuildGeoSpatialIndex()
 
         Debug.WriteLine(
     "NATIVE GEO ENTITIES REGISTERED = " &
     geoEntities.Count)
+
+
+        Debug.WriteLine(
+    "MACHINING FEATURES REGISTERED = " &
+    machiningFeatures.Count)
+
+        Debug.WriteLine(
+            "HOLE FEATURES REGISTERED = " &
+            machiningFeatures.OfType(Of HoleFeature)().Count())
+
 
     End Sub
 
@@ -2223,22 +2276,45 @@ Public Class frmMain
 
         ' Keep selection tolerance consistent with HitTestCadEntity.
         Dim tolWorld As Single = HitTolerancePx / scale
+        'tolWorld = Math.Max(tolWorld, 0.1F)
         tolWorld = Math.Max(tolWorld, 0.1F)
 
         ' Ctrl explicitly requests deselection.
         Dim deselect As Boolean =
     (Control.ModifierKeys And Keys.Control) = Keys.Control
 
+
+        ' MessageBox.Show("TEST: SelectAtPoint is about to execute")
+        Debug.WriteLine("TEST: Selection Filter = " & _selectionFilter.ToString())
+        Debug.WriteLine("TEST: Profile Selection = " & _profileSelectionEnabled.ToString())
+        '    MessageBox.Show(
+        '"Selection Filter = " & _selectionFilter.ToString() &
+        'vbCrLf &
+        '"Profile Selection = " & _profileSelectionEnabled.ToString(),
+        '"Selection Diagnostics")
         Dim hit As isSelectable =
     _selectionManager.SelectAtPoint(
         worldPt,
         tolWorld,
         _selectionMode,
         _selectionFilter,
-        deselect)
+        deselect,
+        _profileSelectionEnabled)
+
+        Debug.Print(
+    "POINT SELECTION RESULT: " &
+    If(hit Is Nothing,
+       "NO HIT",
+       hit.GetType().Name) &
+    " | Tolerance=" & tolWorld.ToString("F4") &
+    " | Filter=" & _selectionFilter.ToString())
+
+
 
         Debug.Print("Profile Selection Enabled = " &
-            _profileSelectionEnabled.ToString())
+    _profileSelectionEnabled.ToString())
+
+        UpdateEntityProperties()
 
         pnlPicmodeler.Invalidate()
 
@@ -2309,7 +2385,7 @@ Public Class frmMain
 
             Dim deselect As Boolean = (Control.ModifierKeys And Keys.Control) = Keys.Control
 
-            _selectionManager.SelectGeoByWindow(worldRect, _selectionFilter, isReverseWindow, deselect)
+            _selectionManager.SelectGeoByWindow(worldRect, _selectionFilter, isReverseWindow, deselect, _profileSelectionEnabled)
             ' Keep Window Selection active for the next operation.
             _selectWindowStart = System.Drawing.Point.Empty
             _selectWindowEnd = System.Drawing.Point.Empty
@@ -3038,6 +3114,7 @@ Public Class frmMain
     End Sub
 
     Private Sub bbInquire_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbInquire.ItemClick
+        ShowEntityPropertiesForm()
 
     End Sub
     Private Sub frmMain_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown
@@ -3100,7 +3177,7 @@ Public Class frmMain
         AddHandler pnlPicmodeler.Resize, Sub() RedrawAll()
 
         ' Optional: force redraw when invalidated (e.g., uncovered)
-        AddHandler pnlPicmodeler.Invalidated, Sub() RedrawAll()
+        'AddHandler pnlPicmodeler.Invalidated, Sub() RedrawAll()
     End Sub
 
     Private Sub bbViewFull_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbViewFull.ItemClick
@@ -3108,29 +3185,7 @@ Public Class frmMain
 
     End Sub
 
-    Public Sub FitToPart()
-        If _cadEntities Is Nothing OrElse _cadEntities.Count = 0 Then Exit Sub
 
-        Dim bounds As RectangleF = HelperFunctions.GetCadBounds(_cadEntities)
-        If bounds.IsEmpty Then Exit Sub
-
-        Dim margin As Integer = 20
-
-        Dim scaleX = (panelWidth - 2 * margin) / bounds.Width
-        Dim scaleY = (panelHeight - 2 * margin) / bounds.Height
-        Dim scale = Math.Min(scaleX, scaleY)
-
-        Dim offsetX = panelWidth / 2 - (bounds.X + bounds.Width / 2) * scale
-        Dim offsetY = panelHeight / 2 - (bounds.Y + bounds.Height / 2) * scale
-
-        myTransform = New ViewTransform With {
-            .Scale = scale,
-            .OffsetX = offsetX,
-            .OffsetY = offsetY
-        }
-
-        RedrawAll()
-    End Sub
     Private Sub ApplyViewWindow(p1 As Point, p2 As Point)
 
         ' Convert screen points → world points
@@ -3546,20 +3601,24 @@ Public Class frmMain
         pnlPicmodeler.Invalidate()
 
     End Sub
-
     Private Sub tbSelect_Lines_Click(sender As Object, e As EventArgs) Handles tbSelect_Lines.Click
 
+        ' Disable Profile selection.
+        _profileSelectionEnabled = False
+
+        ' Toggle Line selection.
         _selectionFilter = CType(
-        CInt(_selectionFilter) Xor CInt(SelectionFilter.Line), SelectionFilter)
+        CInt(_selectionFilter) Xor CInt(SelectionFilter.Line),
+        SelectionFilter)
 
         UpdateSelectionIcons()
 
         pnlPicmodeler.Invalidate()
 
-
     End Sub
-
     Private Sub tbSelect_Arcs_Click(sender As Object, e As EventArgs) Handles tbSelect_Arcs.Click
+
+        _profileSelectionEnabled = False
 
         _selectionFilter = CType(CInt(_selectionFilter) Xor CInt(SelectionFilter.Arc), SelectionFilter)
 
@@ -3579,20 +3638,103 @@ Public Class frmMain
 
     End Sub
 
-    Private Sub tbSelect_AddAllByFilter_Click(sender As Object, e As EventArgs) Handles tbSelect_AddAllByFilter.Click
 
-        _selectionManager.SelectAllByFilter(
-        Nothing,
-        _selectionFilter)
+    'Public Sub SelectAllByFilter(
+    ' selectionMode As GeometryTypeEnum?,
+    ' selectionFilter As SelectionFilter,
+    ' profileSelectionEnabled As Boolean)
 
-        pnlPicmodeler.Invalidate()
+    '    '-----------------------------------------
+    '    ' Native profile selection
+    '    '-----------------------------------------
+    '    If profileSelectionEnabled Then
 
-    End Sub
+    '        If _geoProfiles IsNot Nothing Then
 
-    Private Sub tbSelect_All_Click(sender As Object, e As EventArgs) Handles tbSelect_All.Click
-        _selectionManager.SelectAll()
-        pnlPicmodeler.Invalidate()
-    End Sub
+    '            For Each profile As GeoProfile In _geoProfiles
+
+    '                If profile Is Nothing Then
+    '                    Continue For
+    '                End If
+
+    '                _selected.Add(profile)
+    '                profile.IsSelected = True
+
+    '            Next
+
+    '        End If
+
+    '    Else
+
+    '        '-----------------------------------------
+    '        ' Native primitive selection
+    '        '-----------------------------------------
+    '        If _geoEntities IsNot Nothing Then
+
+    '            For Each ent As GeoEntity In _geoEntities
+
+    '                If ent Is Nothing Then
+    '                    Continue For
+    '                End If
+
+    '                '-----------------------------------------
+    '                ' Filter by requested geometry type
+    '                '-----------------------------------------
+    '                If selectionMode.HasValue Then
+
+    '                    Dim typeMatches As Boolean = False
+
+    '                    Select Case selectionMode.Value
+
+    '                        Case GeometryTypeEnum.Line
+    '                            typeMatches = TypeOf ent Is GeoLine
+
+    '                        Case GeometryTypeEnum.Circle
+    '                            typeMatches = TypeOf ent Is GeoCircle
+
+    '                        Case GeometryTypeEnum.Arc
+    '                            typeMatches = TypeOf ent Is GeoArc
+
+    '                        Case GeometryTypeEnum.Point
+    '                            typeMatches = TypeOf ent Is GeoPoint
+
+    '                    End Select
+
+    '                    If Not typeMatches Then
+    '                        Continue For
+    '                    End If
+
+    '                End If
+
+    '                '-----------------------------------------
+    '                ' Apply native selection filter
+    '                '-----------------------------------------
+    '                If Not IsEntityAllowedBySelectionFilter(
+    '                    ent,
+    '                    selectionFilter) Then
+
+    '                    Continue For
+
+    '                End If
+
+    '                '-----------------------------------------
+    '                ' Add entity to selection
+    '                '-----------------------------------------
+    '                _selected.Add(ent)
+    '                ent.IsSelected = True
+
+    '            Next
+
+    '        End If
+
+    '    End If
+
+    '    '-----------------------------------------
+    '    ' Notify selection listeners
+    '    '-----------------------------------------
+    '    RaiseEvent SelectionChanged(_selected)
+
+    'End Sub
 
     Private Sub tbSelect_RemoveAll_Click(sender As Object, e As EventArgs) Handles tbSelect_RemoveAll.Click
         _selectionManager.Clear()
@@ -3624,13 +3766,26 @@ Public Class frmMain
     End Sub
 
     Private Sub tbSelect_Holes_Click(sender As Object, e As EventArgs) Handles tbSelect_Holes.Click
+        ' Disable Profile selection.
+        _profileSelectionEnabled = False
 
+        ' Toggle Line selection.
+        _selectionFilter = CType(
+        CInt(_selectionFilter) Xor CInt(SelectionFilter.Hole),
+        SelectionFilter)
+
+        UpdateSelectionIcons()
+
+        pnlPicmodeler.Invalidate()
     End Sub
-
-    Private Sub tbSelect_Layers_Click(sender As Object, e As EventArgs) Handles tbSelect_Layers.Click
-
+    Private Sub tbSelect_Layers_Click(
+    sender As Object,
+    e As EventArgs) Handles tbSelect_Layers.Click
 
         Using dlg As New frmSelectLayer()
+
+            dlg.GeoEntities = _selectionManager.GeoEntities
+            dlg.MaterialDisplayColor = _materialDisplayColor
 
             If dlg.ShowDialog(Me) = DialogResult.OK Then
 
@@ -3645,6 +3800,8 @@ Public Class frmMain
     End Sub
     Private Sub tbSelect_Points_Click(sender As Object, e As EventArgs) Handles tbSelect_Points.Click
 
+        _profileSelectionEnabled = False
+
         _selectionFilter = CType(
         CInt(_selectionFilter) Xor CInt(SelectionFilter.Point),
         SelectionFilter)
@@ -3657,16 +3814,31 @@ Public Class frmMain
 
         _profileSelectionEnabled = Not _profileSelectionEnabled
 
+        If _profileSelectionEnabled Then
+
+            ' Disable individual geometry selection filters.
+            _selectionFilter = CType(
+            CInt(_selectionFilter) And Not CInt(SelectionFilter.AllGeometry),
+            SelectionFilter)
+
+        End If
+
         UpdateSelectionIcons()
 
         pnlPicmodeler.Invalidate()
 
     End Sub
-    Private Sub tbSelect_RemoveAllByFilter_Click(sender As Object, e As EventArgs) Handles tbSelect_RemoveAllByFilter.Click
+
+    Private Sub tbSelect_RemoveAllByFilter_Click(
+    sender As Object,
+    e As EventArgs) Handles tbSelect_RemoveAllByFilter.Click
+
+        Debug.WriteLine("ENTERED tbSelect_RemoveAllByFilter_Click")
 
         _selectionManager.RemoveAllByFilter(
         Nothing,
-        _selectionFilter)
+        CType(_selectionFilter, SelectionFilter),
+        _profileSelectionEnabled)
 
         pnlPicmodeler.Invalidate()
 
@@ -3729,6 +3901,15 @@ Public Class frmMain
 
         'Point
 
+        Dim HoleActive As Boolean =
+     (CInt(_selectionFilter) And CInt(SelectionFilter.Hole)) <> 0
+
+        If HoleActive Then
+            tbSelect_Holes.Image = FabV25_WIN8.My.Resources.Blue_Select_By_Hole
+        Else
+            tbSelect_Holes.Image = FabV25_WIN8.My.Resources.Orange_Select_BY_Hole
+        End If
+
         Dim PointActive As Boolean =
      (CInt(_selectionFilter) And CInt(SelectionFilter.Point)) <> 0
 
@@ -3738,8 +3919,7 @@ Public Class frmMain
             tbSelect_Points.Image = FabV25_WIN8.My.Resources.Orange_Select_By_Point
         End If
 
-        Dim ProfileActive As Boolean =
-     (CInt(_selectionFilter) And CInt(SelectionFilter.Polyline)) <> 0
+        Dim ProfileActive As Boolean = _profileSelectionEnabled
 
         If ProfileActive Then
             tbSelect_Profiles.Image =
@@ -3753,6 +3933,9 @@ Public Class frmMain
     End Sub
 
     Private Sub tbSelect_Circle_Click(sender As Object, e As EventArgs) Handles tbSelect_Circle.Click
+
+        _profileSelectionEnabled = False
+
         _selectionFilter = CType(
               CInt(_selectionFilter) Xor CInt(SelectionFilter.Circle), SelectionFilter)
 
@@ -3762,41 +3945,15 @@ Public Class frmMain
 
     End Sub
 
-    Private Sub pnlPicmodeler_Resize(sender As Object, e As EventArgs) Handles pnlPicmodeler.Resize
+    Private Sub pnlPicmodeler_Resize(
+    sender As Object,
+    e As EventArgs) Handles pnlPicmodeler.Resize
 
-        ' Keep the legacy panel dimensions synchronized
-        ' with the actual current panel size.
+        ' Keep panel dimensions synchronized.
         panelWidth = pnlPicmodeler.ClientSize.Width
         panelHeight = pnlPicmodeler.ClientSize.Height
 
-        If Not _sceneReady Then Exit Sub
-
-        If matLength <= 0 OrElse matWidth <= 0 Then Exit Sub
-
-        Dim margin As Integer = 20
-
-        Dim scaleX As Double =
-        (panelWidth - 2 * margin) / matLength
-
-        Dim scaleY As Double =
-        (panelHeight - 2 * margin) / matWidth
-
-        Dim scale As Double = Math.Min(scaleX, scaleY)
-
-        If scale <= 0 Then Exit Sub
-
-        Dim offsetX As Double =
-        (panelWidth - matLength * scale) / 2
-
-        Dim offsetY As Double =
-        panelHeight -
-        (matWidth * scale) -
-        margin
-
-        myTransform.Scale = scale
-        myTransform.OffsetX = offsetX
-        myTransform.OffsetY = offsetY
-
+        ' Preserve the current zoom and pan.
         pnlPicmodeler.Invalidate()
 
     End Sub
@@ -3841,7 +3998,8 @@ Public Class frmMain
     Private Function GetHoverLineArrow(ByRef arrowPoint As PointF,
                                   ByRef arrowDirection As PointF) As Boolean
 
-        Dim line As CadLine = TryCast(_hoverEntity, CadLine)
+        Dim line As GeoLine =
+    TryCast(_selectionManager.NativeHovered, GeoLine)
 
         If line Is Nothing Then Return False
 
@@ -3944,6 +4102,361 @@ Public Class frmMain
 
     Private Sub bbiMaterialList_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbiMaterialList.ItemClick
 
+    End Sub
+
+
+
+    Private Function IsEntityInSelectedProfile(
+    entity As GeoEntity) As Boolean
+
+        If entity Is Nothing OrElse
+       CurrentProductionJob Is Nothing Then
+            Return False
+        End If
+
+        For Each sheet In CurrentProductionJob.JobSheets
+
+            For Each part In sheet.Parts
+
+                For Each profile As GeoProfile In part.GeoProfiles
+
+                    If Not profile.Selected Then
+                        Continue For
+                    End If
+
+                    For Each member As GeoEntity In profile.Entities
+
+                        If Object.ReferenceEquals(member, entity) Then
+                            Return True
+                        End If
+
+                    Next
+
+                Next
+
+            Next
+
+        Next
+
+        Return False
+
+    End Function
+
+    Private Sub tbViewSetTools_Click(
+    sender As Object,
+    e As EventArgs) Handles tbViewSetTools.Click
+
+
+        RemoveHandler frmSelectTool.ToolAssignmentRequested,
+                      AddressOf HandleToolAssignmentRequested
+
+        AddHandler frmSelectTool.ToolAssignmentRequested,
+                   AddressOf HandleToolAssignmentRequested
+
+        If frmSelectTool.Visible Then
+            frmSelectTool.Activate()
+            Return
+        End If
+
+        frmSelectTool.Show(Me)
+
+
+    End Sub
+
+
+
+    Private Sub TestSelectedCircles()
+
+        Dim circles As List(Of GeoCircle) =
+        _selectionManager.Selected.
+        OfType(Of GeoCircle)().
+        ToList()
+
+        Debug.WriteLine(
+        "Selected GeoCircles: " & circles.Count)
+
+        For Each circle As GeoCircle In circles
+
+            MessageBox.Show(
+                "Circle ID = " & circle.ID &
+                vbCrLf &
+                "X = " & circle.Center.X &
+                vbCrLf &
+                "Y = " & circle.Center.Y &
+                vbCrLf &
+                "Radius = " & circle.Radius,
+                "Selected Circle Test")
+
+        Next
+    End Sub
+
+
+    'Private Sub HandleToolAssignmentRequested(
+    'toolSetupMemberID As Integer)
+
+    '    Dim circles As List(Of GeoCircle) =
+    '    _selectionManager.Selected.
+    '    OfType(Of GeoCircle)().
+    '    ToList()
+
+    '    MessageBox.Show(
+    '    "ToolSetupMemberID: " & toolSetupMemberID &
+    '    vbCrLf &
+    '    "Selected circles: " & circles.Count,
+    '    "Assignment Event Test")
+
+    'End Sub
+
+
+    Private Sub HandleToolAssignmentRequested(
+    toolSetupMemberID As Integer)
+
+        Dim circles As List(Of GeoCircle) =
+        _selectionManager.Selected.
+        OfType(Of GeoCircle)().
+        ToList()
+
+        Dim createdCount As Integer = 0
+
+        For Each circle As GeoCircle In circles
+
+            Dim owningPart As Part =
+            FindPartForGeometry(circle)
+
+            If owningPart Is Nothing Then Continue For
+            If circle.Center Is Nothing Then Continue For
+
+            Dim existingHole As HoleFeature =
+    owningPart.Features.
+    OfType(Of HoleFeature)().
+    FirstOrDefault(
+        Function(h) h.SourceGeometryID = circle.ID)
+
+            If existingHole IsNot Nothing Then
+
+                existingHole.ToolSetupMemberID = toolSetupMemberID
+
+                Continue For
+
+            End If
+
+            Dim hole As New HoleFeature With {
+            .FeatureType = MachiningFeatureType.Hole,
+            .Description = "Punch Hole",
+            .X = circle.Center.X,
+            .Y = circle.Center.Y,
+            .Angle = 0,
+            .SourceGeometryID = circle.ID,
+            .ID = owningPart.GetNextFeatureID(),
+            .ToolSetupMemberID = toolSetupMemberID
+        }
+
+            owningPart.Features.Add(hole)
+            _selectionManager.RegisterMachiningFeature(hole)
+
+            MessageBox.Show(
+    "SourceGeometryID: " & hole.SourceGeometryID &
+    vbCrLf &
+    "ToolSetupMemberID: " & hole.ToolSetupMemberID &
+    vbCrLf &
+    "X: " & hole.X &
+    vbCrLf &
+    "Y: " & hole.Y &
+    vbCrLf &
+    "Part Feature Count: " & owningPart.Features.Count,
+    "HoleFeature Verification")
+
+            createdCount += 1
+
+
+        Next
+
+        pnlPicmodeler.Invalidate()
+
+
+    End Sub
+
+
+
+
+    Private Function FindPartForGeometry(
+    geometry As GeoEntity) As Part
+
+        If geometry Is Nothing OrElse
+       CurrentProductionJob Is Nothing Then
+
+            Return Nothing
+        End If
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            For Each part As Part In sheet.Parts
+
+                If part.Geometry.Any(
+                Function(ent) Object.ReferenceEquals(ent, geometry)) Then
+
+                    Return part
+
+                End If
+
+            Next
+
+        Next
+
+        Return Nothing
+
+    End Function
+
+    Private Sub PrintCrossData_ItemClick(sender As Object, e As ItemClickEventArgs) Handles PrintCrossData.ItemClick
+        TestSelectedCircles()
+    End Sub
+
+    Private Sub DrawHoleFeature(
+    hole As HoleFeature,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If hole Is Nothing Then Exit Sub
+
+        ' Resolve the actual round punch diameter.
+        Dim diameter As Double
+
+        If Not AutoPunchingEngine.TryGetRoundPunchDiameter(
+    hole, diameter) Then
+
+            Exit Sub
+
+        End If
+
+        ' Resolve the installed tool for its display color.
+        Dim member = AppData.ToolSetupMembers.
+    FirstOrDefault(
+        Function(m) m.ID = hole.ToolSetupMemberID)
+
+        If member Is Nothing Then Exit Sub
+
+        Dim tool = AppData.ToolCrib.
+    FirstOrDefault(
+        Function(t) t.ID = member.ToolID)
+
+        If tool Is Nothing Then Exit Sub
+
+        ' Convert punch center and radius to screen coordinates.
+        Dim center As PointF =
+            WorldToScreen(hole.X, hole.Y, vt, panelHeight)
+
+        Dim radius As Single =
+            CSng((diameter / 2.0) * vt.Scale)
+
+        Dim rect As New RectangleF(
+            center.X - radius,
+            center.Y - radius,
+            radius * 2.0F,
+            radius * 2.0F)
+
+        Dim drawColor As Color = tool.Color
+        Dim drawStyle As Drawing2D.DashStyle =
+    Drawing2D.DashStyle.Dash
+
+        If hole.IsSelected Then
+
+            drawColor = Color.Red
+
+        ElseIf hole.IsHovered Then
+
+            drawColor = Color.Red
+            drawStyle = Drawing2D.DashStyle.Dash
+
+        End If
+
+        ' Draw the actual round punch outline.
+        ' Dashed line distinguishes Manufacturing Geometry
+        ' from the solid Part Geometry.
+
+        Using pen As New Pen(drawColor, 2.0F)
+
+            pen.DashStyle = drawStyle
+
+            g.DrawEllipse(pen, rect)
+
+        End Using
+
+
+    End Sub
+
+    Private Sub tbSelect_AddAllByFilter_Click(
+    sender As Object,
+    e As EventArgs) Handles tbSelect_AddAllByFilter.Click
+
+        '-----------------------------------------
+        ' Debug selection state
+        '-----------------------------------------
+        Debug.WriteLine("ENTERED tbSelect_AddAllByFilter_Click")
+
+        Debug.WriteLine(
+        $"ProfileSelectionEnabled={_profileSelectionEnabled}, " &
+        $"SelectionFilter={_selectionFilter}")
+
+        '-----------------------------------------
+        ' Select all native geometry by filter
+        '-----------------------------------------
+        _selectionManager.SelectAllByFilter(
+        Nothing,
+        CType(_selectionFilter, SelectionFilter),
+        _profileSelectionEnabled)
+
+        '-----------------------------------------
+        ' Refresh drawing
+        '-----------------------------------------
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Private Sub UpdateEntityProperties()
+
+        If _entityPropertiesForm Is Nothing OrElse
+           _entityPropertiesForm.IsDisposed Then
+            Return
+        End If
+
+        Dim selected = _selectionManager.SelectedObjects
+
+        If selected.Count = 1 Then
+            _entityPropertiesForm.ShowSelectedObject(selected.First())
+        Else
+            _entityPropertiesForm.ShowSelectedObject(Nothing)
+        End If
+
+    End Sub
+
+    Private Sub ShowEntityPropertiesForm()
+
+        If _entityPropertiesForm Is Nothing OrElse
+           _entityPropertiesForm.IsDisposed Then
+
+            _entityPropertiesForm = New frmEntityProperties()
+
+        End If
+
+        _entityPropertiesForm.Show(Me)
+        _entityPropertiesForm.BringToFront()
+
+        UpdateEntityProperties()
+
+    End Sub
+
+    Private Sub BarButtonItem17_ItemClick(sender As Object, e As ItemClickEventArgs) Handles BarButtonItem17.ItemClick
+
+
+    End Sub
+
+    Private Sub tbViewSetLayers_Click(sender As Object, e As EventArgs) Handles tbViewSetLayers.Click
+
+        If CurrentProductionJob Is Nothing Then Return
+
+        frmLayers.ProductionJob = CurrentProductionJob
+        frmLayers.Show(Me)
     End Sub
 End Class
 

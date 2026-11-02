@@ -5,6 +5,19 @@ Imports DevExpress.XtraGrid.Views.Grid.ViewInfo
 
 Public Class frmSelectLayer
     Private edit As RepositoryItemCheckEdit
+    Public Property GeoEntities As IEnumerable(Of GeoEntity)
+    Public Property MaterialDisplayColor As System.Drawing.Color
+
+
+    Public Sub New()
+
+        ' This call is required by the designer.
+        InitializeComponent()
+
+        ' Add any initialization after the InitializeComponent() call.
+
+    End Sub
+
     Public Property SelectedLayerName As String
 
     Private Sub frmSelectLayer_Load(sender As Object, e As EventArgs) Handles Me.Load
@@ -19,31 +32,37 @@ Public Class frmSelectLayer
 
         Dim lst As New List(Of TheTools)
 
-        If modFile._cadEntities Is Nothing Then
+        If GeoEntities Is Nothing Then
             Return
         End If
 
-        For Each ent As CadEntity In modFile._cadEntities
+        For Each ent As GeoEntity In GeoEntities
 
             If ent Is Nothing Then
                 Continue For
             End If
 
-            If String.IsNullOrWhiteSpace(ent.LayerName) Then
+            Dim layer As Layer = TryCast(ent.Association, Layer)
+
+            If layer Is Nothing Then
+                Continue For
+            End If
+
+            If String.IsNullOrWhiteSpace(layer.Name) Then
                 Continue For
             End If
 
             If lst.Any(Function(x) String.Equals(
-                       x.ToolName,
-                       ent.LayerName,
-                       StringComparison.OrdinalIgnoreCase)) Then
+               x.ToolName,
+               layer.Name,
+               StringComparison.OrdinalIgnoreCase)) Then
                 Continue For
             End If
 
             lst.Add(New TheTools With {
-            .ToolName = ent.LayerName,
-            .ToolColor = ent.Color
-        })
+        .ToolName = layer.Name,
+        .ToolColor = layer.Color
+    })
 
         Next
 
@@ -57,6 +76,12 @@ Public Class frmSelectLayer
         grdToolLayer.RepositoryItems.Add(edit)
 
         grdToolLayer.DataSource = lst
+
+        gViewToolLayer.Appearance.Row.BackColor = MaterialDisplayColor
+        gViewToolLayer.Appearance.Row.Options.UseBackColor = True
+
+        gViewToolLayer.Appearance.Empty.BackColor = MaterialDisplayColor
+        gViewToolLayer.Appearance.Empty.Options.UseBackColor = True
 
         gViewToolLayer.Columns.Clear()
 
@@ -78,7 +103,7 @@ Public Class frmSelectLayer
         Dim item As TheTools = lst(e.RowHandle)
 
         e.Appearance.ForeColor = item.ToolColor
-        e.Appearance.BackColor = Color.White
+        e.Appearance.BackColor = MaterialDisplayColor
 
 
     End Sub

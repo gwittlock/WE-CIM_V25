@@ -23,15 +23,30 @@ Public Class frmConvertCMDB
         End If
     End Sub
 
+
     Private Sub BtnConvertCMDB_Click(sender As Object, e As EventArgs) Handles btnConvertCMDB.Click
 
-        If Not ExportAllTables(txtCMDBFile.Text, txtDataFolder.Text) Then
+        Dim conversionFolder As String =
+        GetNextConversionFolder(txtDataFolder.Text)
+
+        If Not ExportAllTables(txtCMDBFile.Text, conversionFolder) Then
             Return
         End If
 
-        AppData.LoadAllJson()
-        '  ExportMaterialJson(txtCMDBFile.Text, txtDataFolder.Text)
+        ' Open the Layer Setup / Tool Setup assignment form.
+        Using frm As New frmAssignLayerToolSetups()
+
+            frm.InitializeConversion(conversionFolder)
+            frm.ShowDialog(Me)
+
+        End Using
+
+        ' Do not load converted JSON into AppData yet.
+        ' Associations must be validated and saved first.
+
     End Sub
+
+
 
 
     ' Helper: Convert OleDb data type number to readable name
@@ -197,6 +212,22 @@ Public Class frmConvertCMDB
     End Sub
 
     Private Sub frmConvertCMDB_Load(sender As Object, e As EventArgs) Handles Me.Load
-        txtDataFolder.Text = "C:\Program Files (x86)\WE-CIM\25.0\Data"
+        'txtDataFolder.Text = "C:\Program Files (x86)\WE-CIM\25.0\Data"
     End Sub
+
+    Private Function GetNextConversionFolder(dataFolder As String) As String
+
+        Dim folderPath As String = Path.Combine(dataFolder, "Convert")
+        Dim counter As Integer = 1
+
+        While Directory.Exists(folderPath)
+            folderPath = Path.Combine(dataFolder, $"Convert({counter})")
+            counter += 1
+        End While
+
+        Directory.CreateDirectory(folderPath)
+
+        Return folderPath
+
+    End Function
 End Class
