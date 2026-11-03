@@ -127,7 +127,7 @@ Public Class frmMain
     '------------------------------------------
     Private WithEvents entityTip As New System.Windows.Forms.ToolTip()
     Private lastHoverEntity As CadEntity = Nothing
-    Private _hoverEntity As CadEntity = Nothing
+
     Private _hoverMouseWorld As PointF
     Private _modelerToolTip As New System.Windows.Forms.ToolTip() With {
     .ShowAlways = False,
@@ -1214,15 +1214,7 @@ Public Class frmMain
         Next
 
         Debug.WriteLine("CAD POINT COUNT = " & cadPointCount)
-        ' ---------------------------------
-        ' SYNC SELECTION MANAGER
-        ' ---------------------------------
-        _selectionManager.SetEntities(_cadEntities)
 
-        ' ---------------------------------
-        ' BUILD SPATIAL INDEX
-        ' ---------------------------------
-        _selectionManager.BuildSpatialIndex()
 
         ' ---------------------------------
         ' BUILD NATIVE GEO SPATIAL INDEX
@@ -3096,15 +3088,6 @@ Public Class frmMain
         Return v.ToString("0.###")
     End Function
 
-    Private Sub pnlPicmodeler_MouseHover(sender As Object, e As EventArgs) Handles pnlPicmodeler.MouseHover
-        If _hoverEntity IsNot Nothing Then
-            pnlPicmodeler.Cursor = Cursors.Help
-        Else
-            pnlPicmodeler.Cursor = Cursors.Default
-        End If
-
-    End Sub
-
     Private Sub pnlPicmodeler_MouseLeave(sender As Object, e As EventArgs) Handles pnlPicmodeler.MouseLeave
         If _inquireMode Then
             entityTip.Hide(pnlPicmodeler)
@@ -3159,7 +3142,7 @@ Public Class frmMain
 
     Private Sub ExitInquireMode()
         _inquireMode = False
-        _hoverEntity = Nothing
+
         entityTip.Hide(pnlPicmodeler)
         pnlPicmodeler.Cursor = Cursors.Default
         pnlPicmodeler.Invalidate()
@@ -3632,8 +3615,6 @@ Public Class frmMain
 
     Private Sub OnHoverChanged(ent As isSelectable)
 
-        _hoverEntity = TryCast(ent, CadEntity)
-
         pnlPicmodeler.Invalidate()
 
     End Sub
@@ -4040,14 +4021,6 @@ Public Class frmMain
 
         Dim arrowPoint As PointF
         Dim arrowDirection As PointF
-
-        Debug.WriteLine("ENTERED DrawHoverLineArrow")
-        If _hoverEntity Is Nothing Then
-            Debug.WriteLine("ARROW: No hovered entity")
-        Else
-            Debug.WriteLine("ARROW: " & _hoverEntity.GetType().Name)
-        End If
-
 
         If Not GetHoverLineArrow(arrowPoint, arrowDirection) Then Return
 

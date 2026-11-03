@@ -65,8 +65,6 @@ Public Module modFile
 
     Public Sub PrePareUI(sFilename As String)
 
-        Dim numericWidth As Double
-        Dim numericLength As Double
 
         '============================================================
         ' Material Dimensions
@@ -78,14 +76,6 @@ Public Module modFile
         matLength = GetMaterialLength(
         MaterialSheets,
         _SelectedMaterialID)
-
-        If matWidth > 0 Then
-            numericWidth = Convert.ToDouble(matWidth)
-        End If
-
-        If matLength > 0 Then
-            numericLength = Convert.ToDouble(matLength)
-        End If
 
         '============================================================
         ' Calculate Initial View
@@ -175,10 +165,10 @@ Public Module modFile
 
         _sceneReady = True
 
-        '============================================================
-        ' Get CAD Bounds
-        '============================================================
-        Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
+        ''============================================================
+        '' Get CAD Bounds
+        ''============================================================
+        'Dim bounds = HelperFunctions.GetCadBounds(_cadEntities)
 
         '============================================================
         ' Normalize CAD Geometry to Sheet
@@ -279,8 +269,6 @@ Public Module modFile
         CurrentJob.ToolSetupID,
         machineDef)
 
-                Debug.WriteLine("AUTO PUNCH MATCH | MemberID=" & memberID)
-
             End If
 
 
@@ -294,10 +282,6 @@ Public Module modFile
     StringComparison.OrdinalIgnoreCase) Then
 
                 If Math.Abs((circle.Radius * 2.0) - toolDiameter) > 0.0001 Then
-
-                    Debug.WriteLine(
-            "SPECIFIC STATION | Requires machining strategy | Diameter=" &
-            (circle.Radius * 2.0).ToString("F4"))
 
                     Continue For
 
@@ -317,52 +301,11 @@ Public Module modFile
         .Y = circle.Center.Y,
         .Angle = 0,
         .SourceGeometryID = circle.ID,
-        .ToolSetupMemberID = memberID
-    }
+        .ToolSetupMemberID = memberID}
 
             importedPart.Features.Add(hole)
 
-            Debug.WriteLine(
-        "AUTO PUNCH CREATED | SourceGeometryID: " &
-        hole.SourceGeometryID &
-        " | ToolSetupMemberID: " &
-        hole.ToolSetupMemberID)
-
         Next
-
-
-
-
-        Dim nativeGeometry As List(Of GeoEntity) = importedPart.Geometry
-
-        Debug.WriteLine(
-    "Native Geometry Count: " & importedPart.Geometry.Count)
-
-        Debug.WriteLine(
-    "Native Profile Count: " & importedPart.GeoProfiles.Count)
-
-        If nativeGeometry.Count = 2 AndAlso
-   TypeOf nativeGeometry(0) Is GeoLine AndAlso
-   TypeOf nativeGeometry(1) Is GeoLine Then
-
-            Dim line1 As GeoLine = DirectCast(nativeGeometry(0), GeoLine)
-            Dim line2 As GeoLine = DirectCast(nativeGeometry(1), GeoLine)
-
-            Dim sharedPoint As Boolean =
-        Object.ReferenceEquals(line1.StartPoint, line2.StartPoint) OrElse
-        Object.ReferenceEquals(line1.StartPoint, line2.EndPoint) OrElse
-        Object.ReferenceEquals(line1.EndPoint, line2.StartPoint) OrElse
-        Object.ReferenceEquals(line1.EndPoint, line2.EndPoint)
-
-            Debug.WriteLine("Shared GeoPoint: " & sharedPoint)
-
-            Debug.WriteLine(
-    "Shared Layer: " &
-    Object.ReferenceEquals(
-        line1.Association,
-        line2.Association))
-
-        End If
 
 
         If _selectedLayerSetup Is Nothing Then
@@ -377,14 +320,6 @@ Public Module modFile
         importedPart.Description =
     Path.GetFileNameWithoutExtension(
         _selectedDxfPath)
-
-
-        'importedPart.Geometry.AddRange(nativeGeometry)
-
-        'mportedPart.GeoProfiles.AddRange(nativePart.Profiles)
-
-        Debug.WriteLine("PART GEO PROFILES COUNT = " &
-                importedPart.GeoProfiles.Count)
 
         productionSheet.Parts.Add(
         importedPart)
