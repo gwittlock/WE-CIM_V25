@@ -239,6 +239,9 @@ Public Class frmLayers
 
         gViewToolLayer.RefreshData()
 
+        frmMain.pnlPicmodeler.Invalidate()
+
+
     End Sub
     'Try
 

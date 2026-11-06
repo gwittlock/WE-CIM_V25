@@ -403,6 +403,7 @@
     <Compile Include="Classes\QuadTree.vb" />
     <Compile Include="Classes\RapidPointFeature.vb" />
     <Compile Include="Classes\RawOffsetChain.vb" />
+    <Compile Include="Classes\RoundPunchProperties.vb" />
     <Compile Include="Classes\SingleDToolShape.vb" />
     <Compile Include="Classes\ToolPathGenerator.vb" />
     <Compile Include="Classes\ToolpathOffsetter,vb.vb" />

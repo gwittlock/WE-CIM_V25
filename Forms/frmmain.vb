@@ -4428,20 +4428,35 @@ Public Class frmMain
         pnlPicmodeler.Invalidate()
 
     End Sub
-
     Private Sub UpdateEntityProperties()
 
         If _entityPropertiesForm Is Nothing OrElse
-           _entityPropertiesForm.IsDisposed Then
+       _entityPropertiesForm.IsDisposed Then
             Return
         End If
 
         Dim selected = _selectionManager.SelectedObjects
 
         If selected.Count = 1 Then
-            _entityPropertiesForm.ShowSelectedObject(selected.First())
+
+            Dim selectedObject = selected.First()
+
+            If TypeOf selectedObject Is HoleFeature Then
+
+                _entityPropertiesForm.ShowSelectedObject(
+                New RoundPunchProperties(
+                    DirectCast(selectedObject, HoleFeature)))
+
+            Else
+
+                _entityPropertiesForm.ShowSelectedObject(selectedObject)
+
+            End If
+
         Else
+
             _entityPropertiesForm.ShowSelectedObject(Nothing)
+
         End If
 
     End Sub
