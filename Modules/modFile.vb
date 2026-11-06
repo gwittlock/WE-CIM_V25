@@ -335,44 +335,55 @@ Public Module modFile
         .Y = 0,
         .Angle = 0
     }
+        '============================================================
+        ' Register Part and Manufacturing Geometry in MM3
+        '============================================================
+        productionSheet.ManufacturingModel.PartGeometry.AddRange(importedPart.Geometry)
 
+        productionSheet.ManufacturingModel.ManufacturingGeometry.AddRange(importedPart.Features)
+
+        '============================================================
+        ' Assign Imported Pattern and Geometry to WorkZone
+        '============================================================
         If productionSheet.WorkZones.Count > 0 Then
 
             productionSheet.WorkZones(0).Patterns.Add(importedPattern)
 
-            productionSheet.ManufacturingModel.PartGeometry.AddRange(importedPart.Geometry)
-
             If productionSheet.ManufacturingModel.WorkZones.Count > 0 Then
 
-                Dim firstZoneIndex As Integer = productionSheet.ManufacturingModel.WorkZones(0).Index
+                Dim firstZoneIndex As Integer =
+                    productionSheet.ManufacturingModel.WorkZones(0).Index
 
                 For Each entity As GeoEntity In importedPart.Geometry
 
-                    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(New MM3WorkZoneAssignment With {.WorkZoneIndex = firstZoneIndex, .Entity = entity})
+                    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(
+                        New MM3WorkZoneAssignment With {
+                            .WorkZoneIndex = firstZoneIndex,
+                            .Entity = entity
+                        })
 
                 Next
 
             End If
-
 
             If productionSheet.ManufacturingModel.WorkZones.Count > 0 Then
 
-                Dim firstZoneIndex As Integer = productionSheet.ManufacturingModel.WorkZones(0).Index
+                Dim firstZoneIndex As Integer =
+                    productionSheet.ManufacturingModel.WorkZones(0).Index
 
                 For Each feature As MachiningFeature In importedPart.Features
 
-                    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(New MM3WorkZoneAssignment With {.WorkZoneIndex = firstZoneIndex, .Entity = feature})
+                    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(
+                        New MM3WorkZoneAssignment With {
+                            .WorkZoneIndex = firstZoneIndex,
+                            .Entity = feature
+                        })
 
                 Next
 
             End If
 
-            productionSheet.ManufacturingModel.ManufacturingGeometry.AddRange(importedPart.Features)
-
-
         End If
-
-
 
     End Sub
 

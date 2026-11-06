@@ -748,6 +748,9 @@ Public Class SelectionManager
             Return
         End If
 
+        '====================================================
+        ' 1. PROFILE WINDOW SELECTION
+        '====================================================
 
         If profileSelectionEnabled Then
 
@@ -756,8 +759,8 @@ Public Class SelectionManager
             For Each profile As GeoProfile In _geoProfiles
 
                 If profile Is Nothing OrElse
-           profile.Entities Is Nothing OrElse
-           profile.Entities.Count = 0 Then
+               profile.Entities Is Nothing OrElse
+               profile.Entities.Count = 0 Then
 
                     Continue For
                 End If
@@ -768,30 +771,35 @@ Public Class SelectionManager
 
                     ' Right-to-left:
                     ' Any member intersecting the window qualifies.
+
                     For Each ent As GeoEntity In profile.Entities
 
                         If ent Is Nothing Then Continue For
 
                         Dim matches As Boolean =
-                    IsGeoEntityFullyInsideWindow(ent, worldRect)
+                        IsGeoEntityFullyInsideWindow(
+                            ent, worldRect)
 
                         If TypeOf ent Is GeoLine Then
 
                             matches = matches OrElse
-                        IsGeoLineIntersectingWindow(
-                            DirectCast(ent, GeoLine), worldRect)
+                            IsGeoLineIntersectingWindow(
+                                DirectCast(ent, GeoLine),
+                                worldRect)
 
                         ElseIf TypeOf ent Is GeoCircle Then
 
                             matches = matches OrElse
-                        IsGeoCircleIntersectingWindow(
-                            DirectCast(ent, GeoCircle), worldRect)
+                            IsGeoCircleIntersectingWindow(
+                                DirectCast(ent, GeoCircle),
+                                worldRect)
 
                         ElseIf TypeOf ent Is GeoArc Then
 
                             matches = matches OrElse
-                        IsGeoArcIntersectingWindow(
-                            DirectCast(ent, GeoArc), worldRect)
+                            IsGeoArcIntersectingWindow(
+                                DirectCast(ent, GeoArc),
+                                worldRect)
 
                         End If
 
@@ -806,12 +814,14 @@ Public Class SelectionManager
 
                     ' Left-to-right:
                     ' Every member must be fully enclosed.
+
                     profileMatches = True
 
                     For Each ent As GeoEntity In profile.Entities
 
                         If ent Is Nothing OrElse
-                   Not IsGeoEntityFullyInsideWindow(ent, worldRect) Then
+                       Not IsGeoEntityFullyInsideWindow(
+                           ent, worldRect) Then
 
                             profileMatches = False
                             Exit For
@@ -837,68 +847,129 @@ Public Class SelectionManager
         End If
 
 
+        '====================================================
+        ' 2. NATIVE PART GEOMETRY WINDOW SELECTION
+        '====================================================
 
-        If _geoEntities Is Nothing Then Return
+        If _geoEntities IsNot Nothing Then
 
-        For Each ent As GeoEntity In _geoEntities
+            For Each ent As GeoEntity In _geoEntities
 
-            If ent Is Nothing Then Continue For
+                If ent Is Nothing Then Continue For
 
-            ' Respect the toolbar selection filter.
-            If Not IsEntityAllowedBySelectionFilter(ent, selectionFilter) Then
+                ' Respect the toolbar selection filter.
 
-                Continue For
+                If Not IsEntityAllowedBySelectionFilter(
+                ent, selectionFilter) Then
 
-            End If
-
-            ' Regular window requires full containment.
-            Dim isInside As Boolean =
-    IsGeoEntityFullyInsideWindow(ent, worldRect)
-
-            Dim isIntersecting As Boolean = False
-
-            If isReverseWindow Then
-
-                If TypeOf ent Is GeoLine Then
-
-                    isIntersecting = IsGeoLineIntersectingWindow(DirectCast(ent, GeoLine), worldRect)
-
-                ElseIf TypeOf ent Is GeoCircle Then
-
-                    isIntersecting = IsGeoCircleIntersectingWindow(DirectCast(ent, GeoCircle), worldRect)
-
-                ElseIf TypeOf ent Is GeoArc Then
-
-                    isIntersecting = IsGeoArcIntersectingWindow(
-                        DirectCast(ent, GeoArc),
-                        worldRect)
+                    Continue For
 
                 End If
 
+                ' Regular window requires full containment.
+
+                Dim isInside As Boolean =
+                IsGeoEntityFullyInsideWindow(
+                    ent, worldRect)
+
+                Dim isIntersecting As Boolean = False
+
+                If isReverseWindow Then
+
+                    If TypeOf ent Is GeoLine Then
+
+                        isIntersecting =
+                        IsGeoLineIntersectingWindow(
+                            DirectCast(ent, GeoLine),
+                            worldRect)
+
+                    ElseIf TypeOf ent Is GeoCircle Then
+
+                        isIntersecting =
+                        IsGeoCircleIntersectingWindow(
+                            DirectCast(ent, GeoCircle),
+                            worldRect)
+
+                    ElseIf TypeOf ent Is GeoArc Then
+
+                        isIntersecting =
+                        IsGeoArcIntersectingWindow(
+                            DirectCast(ent, GeoArc),
+                            worldRect)
+
+                    End If
+
+                End If
+
+                If Not isInside AndAlso
+               Not isIntersecting Then
+
+                    Continue For
+
+                End If
+
+                If deselect Then
+                    ApplyDeselection(ent)
+                Else
+                    ApplySelection(ent)
+                End If
+
+            Next
+
+        End If
+
+
+        '====================================================
+        ' 3. MANUFACTURING MODEL HOLE WINDOW SELECTION
+        '====================================================
+
+        If (selectionFilter And SelectionFilter.Hole) <>
+        SelectionFilter.None Then
+
+            If _machiningFeatures IsNot Nothing Then
+
+                For Each hole As HoleFeature In
+                _machiningFeatures.OfType(Of HoleFeature)()
+
+                    Dim matches As Boolean = False
+
+                    If isReverseWindow Then
+
+                        ' Right-to-left:
+                        ' Any portion of the round punch
+                        ' intersecting the window qualifies.
+
+                        matches =
+                        IsRoundHoleIntersectingWindow(
+                            hole, worldRect)
+
+                    Else
+
+                        ' Left-to-right:
+                        ' The entire round punch must
+                        ' be enclosed by the window.
+
+                        matches =
+                        IsRoundHoleFullyInsideWindow(
+                            hole, worldRect)
+
+                    End If
+
+                    If Not matches Then Continue For
+
+                    If deselect Then
+                        ApplyDeselection(hole)
+                    Else
+                        ApplySelection(hole)
+                    End If
+
+                Next
+
             End If
 
-            If Not isInside AndAlso Not isIntersecting Then
-                Continue For
-            End If
-            ' Select or deselect the native geometry.
-            If deselect Then
-
-                ApplyDeselection(ent)
-
-            Else
-
-                ApplySelection(ent)
-
-            End If
-
-
-            ' Selection and filter handling
-            ' will be added in the next step.
-
-        Next
+        End If
 
     End Sub
-
 
     Public Sub RemoveAllByFilter(
     selectionMode As GeometryTypeEnum?,
@@ -1250,6 +1321,71 @@ Public Class SelectionManager
 #End Region
 
 
+    Private Function IsRoundHoleIntersectingWindow(
+    hole As HoleFeature,
+    worldRect As RectangleF) As Boolean
+
+        If hole Is Nothing Then Return False
+
+        Dim diameter As Double = 0
+
+        If Not AutoPunchingEngine.TryGetRoundPunchDiameter(
+        hole, diameter) Then
+
+            Return False
+
+        End If
+
+        Dim radius As Double = diameter / 2.0
+
+        ' Find the closest point on the window
+        ' rectangle to the punch center.
+
+        Dim closestX As Double =
+        Math.Max(worldRect.Left,
+                 Math.Min(hole.X, worldRect.Right))
+
+        Dim closestY As Double =
+        Math.Max(worldRect.Top,
+                 Math.Min(hole.Y, worldRect.Bottom))
+
+        ' Calculate squared distance from the
+        ' punch center to the closest point.
+
+        Dim dx As Double = hole.X - closestX
+        Dim dy As Double = hole.Y - closestY
+
+        Dim distanceSquared As Double =
+        dx * dx + dy * dy
+
+        Return distanceSquared <= radius * radius
+
+    End Function
+
+    Private Function IsRoundHoleFullyInsideWindow(
+    hole As HoleFeature,
+    worldRect As RectangleF) As Boolean
+
+        If hole Is Nothing Then Return False
+
+        Dim diameter As Double = 0
+
+        If Not AutoPunchingEngine.TryGetRoundPunchDiameter(
+        hole, diameter) Then
+
+            Return False
+
+        End If
+
+        Dim radius As Double = diameter / 2.0
+
+        ' The entire punch must be inside the window.
+        Return (hole.X - radius >= worldRect.Left) AndAlso
+           (hole.X + radius <= worldRect.Right) AndAlso
+           (hole.Y - radius >= worldRect.Top) AndAlso
+           (hole.Y + radius <= worldRect.Bottom)
+
+    End Function
 
     Private Function IsEntityAllowedBySelectionFilter(
     ent As GeoEntity,

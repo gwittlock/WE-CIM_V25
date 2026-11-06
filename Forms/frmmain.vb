@@ -1199,13 +1199,25 @@ Public Class frmMain
 
         If CurrentProductionJob IsNot Nothing Then
 
-            For Each jobSheet In CurrentProductionJob.JobSheets
+            For Each jobSheet As JobSheet In CurrentProductionJob.JobSheets
 
-                For Each part In jobSheet.Parts
+                If jobSheet Is Nothing Then Continue For
 
-                    geoEntities.AddRange(part.Geometry)
+                Dim mm As MM3 = jobSheet.ManufacturingModel
+
+                If mm IsNot Nothing Then
+
+                    geoEntities.AddRange(mm.PartGeometry)
+                    machiningFeatures.AddRange(mm.ManufacturingGeometry)
+
+                End If
+
+                ' Profiles remain associated with their Parts.
+                For Each part As Part In jobSheet.Parts
+
+                    If part Is Nothing Then Continue For
+
                     geoProfiles.AddRange(part.GeoProfiles)
-                    machiningFeatures.AddRange(part.Features)
 
                 Next
 
@@ -4465,6 +4477,13 @@ Public Class frmMain
 
     Private Sub BarButtonItem20_ItemClick(sender As Object, e As ItemClickEventArgs) Handles BarButtonItem20.ItemClick
         frmSelectLayer.Show(Me)
+    End Sub
+    Private Sub tbSelect_All_Click(sender As Object, e As EventArgs) Handles tbSelect_All.Click
+
+        _selectionManager.SelectAll()
+
+        pnlPicmodeler.Invalidate()
+
     End Sub
 End Class
 
