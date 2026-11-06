@@ -96,7 +96,7 @@ Module MachineLoader
         End If
 
         ' 2. Initialize clamps
-        InitializeClamps(CurrentJob, 2)
+        'InitializeClamps(CurrentJob, 2)
 
         ' 3. Redraw
         'frmMain.pnlPicmodeler.Invalidate()

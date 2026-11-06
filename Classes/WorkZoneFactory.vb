@@ -36,8 +36,7 @@ Public Class WorkZoneFactory
         ' First WorkZone always starts at sheet X = 0.
         ' -----------------------------------------------------
         Dim xMin As Double = 0
-        Dim xMax As Double =
-            Math.Min(machineTravelX, sheetLength)
+        Dim xMax As Double = machineTravelX
 
         Dim firstZone As New WorkZone With {
             .Index = 0,
@@ -97,8 +96,7 @@ Public Class WorkZoneFactory
             Return Nothing
         End If
 
-        Dim xMax As Double =
-            Math.Min(xMin + machineTravelX, sheetLength)
+        Dim xMax As Double = xMin + machineTravelX
 
         Dim zone As New WorkZone With {
             .Index = zoneIndex,
@@ -106,7 +104,7 @@ Public Class WorkZoneFactory
             .XMax = xMax,
             .YMin = 0,
             .YMax = sheetWidth,
-            .RepositionOffsetX = xMin,
+           .RepositionOffsetX = 0,
             .IsActive = False
         }
 

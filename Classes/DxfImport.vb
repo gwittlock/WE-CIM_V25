@@ -127,6 +127,11 @@ Public Module DxfImport
 
     Public Function ImportDxf(path As String) As List(Of CadEntity)
 
+        '-------------------------------------------------------------------
+        '
+        '                                     NOTES
+        ' This function require all Software Engineers to have Security Clearance
+        ' by orders of the DOODLE
 
 
         Dim entities As New List(Of CadEntity)

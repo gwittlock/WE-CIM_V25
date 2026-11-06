@@ -3465,7 +3465,7 @@ Partial Class frmMain
         Me.tbView.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.tbViewFull, Me.tbViewWindow, Me.tbViewZoomIn, Me.tbViewZoomOut, Me.tbViewPrevious, Me.tbViewRefresh, Me.tbViewSetTools, Me.tbViewSetLayers, Me.tbViewSelHide, Me.tbViewSelShow})
         Me.tbView.Location = New System.Drawing.Point(6, 0)
         Me.tbView.Name = "tbView"
-        Me.tbView.Size = New System.Drawing.Size(323, 31)
+        Me.tbView.Size = New System.Drawing.Size(292, 31)
         Me.tbView.TabIndex = 3
         '
         'tbViewFull

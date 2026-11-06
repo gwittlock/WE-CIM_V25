@@ -12,7 +12,6 @@ Imports FabV25_WIN8.MateriaWrapper
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Helpers
 Imports FabV25_WIN8.MaterialWrapper
 Imports FabV25_WIN8.MachineDefinition
-
 '========================================================
 ' frmOpenProject.vb
 ' Fully rewritten version using frmMain global JSON collections
@@ -69,7 +68,7 @@ Public Class frmOpenProject
 
     ' Material picker control
     Private matPicker As MaterialPickerTree
-    Dim importer As IDxfImporter = New DxfImporter_IxMilia()
+    'Dim importer As IDxfImporter = New DxfImporter_IxMilia()
 
 
 

@@ -5,8 +5,6 @@ Public Class Part
     Public Property ID As Integer
     Public Property Description As String
 
-    Public Property CADGeometry As New List(Of CadEntity)
-
     Public Property Geometry As New List(Of GeoEntity)
 
     Public Property GeoProfiles As New List(Of GeoProfile)

@@ -15,7 +15,7 @@ Imports FabV25_WIN8.ImportedEntity
 Imports FabV25_WIN8.CamBuilder
 Imports FabV25_WIN8.dxfImporter
 Imports FabV25_WIN8.DrawableEntity
-Imports FabV25_WIN8.DxfImporter_IxMilia
+
 Imports FabV25_WIN8.CamEntity
 Imports System.Runtime.CompilerServices
 Imports FabV25_WIN8.AutoPunchingEngine
@@ -142,6 +142,8 @@ Public Module modFile
 
         productionSheet.WorkZones = CurrentJob.WorkZones
 
+        productionSheet.ManufacturingModel.WorkZones = productionSheet.WorkZones
+
         '============================================================
         ' Set Selected Machine Configuration
         '============================================================
@@ -150,7 +152,7 @@ Public Module modFile
         machineDef.SelectedLayerSetupID = SelectedLayerSetupID
 
         machineDef.SelectedMaterialID = SelectedMaterialID
-
+        'IDxfImporter
         '============================================================
         ' Import DXF
         '============================================================
@@ -336,17 +338,46 @@ Public Module modFile
 
         If productionSheet.WorkZones.Count > 0 Then
 
-            productionSheet.WorkZones(0).Patterns.Add(
-            importedPattern)
+            productionSheet.WorkZones(0).Patterns.Add(importedPattern)
+
+            productionSheet.ManufacturingModel.PartGeometry.AddRange(importedPart.Geometry)
+
+            If productionSheet.ManufacturingModel.WorkZones.Count > 0 Then
+
+                Dim firstZoneIndex As Integer = productionSheet.ManufacturingModel.WorkZones(0).Index
+
+                For Each entity As GeoEntity In importedPart.Geometry
+
+                    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(New MM3WorkZoneAssignment With {.WorkZoneIndex = firstZoneIndex, .Entity = entity})
+
+                Next
+
+            End If
+
+
+            If productionSheet.ManufacturingModel.WorkZones.Count > 0 Then
+
+                Dim firstZoneIndex As Integer = productionSheet.ManufacturingModel.WorkZones(0).Index
+
+                For Each feature As MachiningFeature In importedPart.Features
+
+                    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(New MM3WorkZoneAssignment With {.WorkZoneIndex = firstZoneIndex, .Entity = feature})
+
+                Next
+
+            End If
+
+            productionSheet.ManufacturingModel.ManufacturingGeometry.AddRange(importedPart.Features)
+
 
         End If
+
+
 
     End Sub
 
 
     Public Function FileOpen()
-
-        Dim importer As New DxfImporter_IxMilia()
 
         frmMain.Cursor = Cursors.WaitCursor
 

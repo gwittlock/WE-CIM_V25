@@ -359,4 +359,7 @@ Public Class frmLayers
         'End Try
     End Sub
 
+    Private Sub btnAddLayer_Click(sender As Object, e As EventArgs) Handles btnAddLayer.Click
+
+    End Sub
 End Class

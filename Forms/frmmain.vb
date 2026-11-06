@@ -79,8 +79,7 @@ Public Class frmMain
     'Private _importedProfiles As List(Of CamProfile)
 
     Private _inquireMode As Boolean = False
-    Private _dxfImporter As IDxfImporter = New DxfImporter_IxMilia()
-
+   
 
     ' View history stacks
     Private _viewHistory As New Stack(Of ViewTransform)
@@ -1032,7 +1031,6 @@ Public Class frmMain
 
     End Sub
 
-
     Private Sub DrawProductionGeometry(
     g As Graphics,
     vt As ViewTransform,
@@ -1040,64 +1038,39 @@ Public Class frmMain
 
         If CurrentProductionJob Is Nothing Then Exit Sub
 
-        Debug.WriteLine(
-    "RENDER PRODUCTION JOB: Sheets=" &
-    CurrentProductionJob.JobSheets.Count)
-
-        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
-
-            Debug.WriteLine(
-        "RENDER SHEET: Parts=" & sheet.Parts.Count)
-
-            For Each part As Part In sheet.Parts
-
-                Debug.WriteLine(
-            "RENDER PART: Native Entities=" & part.Geometry.Count)
-
-                Dim pointCount As Integer = 0
-
-                For Each ge As GeoEntity In part.Geometry
-
-                    If TypeOf ge Is GeoPoint Then
-                        pointCount += 1
-                    End If
-
-                Next
-
-                Debug.WriteLine(
-                "RENDER PART: GeoPoints=" & pointCount)
-
-            Next
-
-        Next
-
         For Each sheet As JobSheet In CurrentProductionJob.JobSheets
 
             If sheet Is Nothing Then Continue For
 
-            For Each part As Part In sheet.Parts
+            Dim mm As MM3 = sheet.ManufacturingModel
 
-                If part Is Nothing Then Continue For
+            If mm Is Nothing Then Continue For
 
-                DrawGeoEntities(
-                part.Geometry,
-                g,
-                vt,
-                panelHeight)
+            '---------------------------------------------
+            ' Draw nominal Part Geometry from MM3
+            '---------------------------------------------
+            DrawGeoEntities(
+            mm.PartGeometry,
+            g,
+            vt,
+            panelHeight)
 
-                For Each feature As MachiningFeature In part.Features
+            '---------------------------------------------
+            ' Draw Manufacturing Geometry from MM3
+            '---------------------------------------------
+            For Each feature As MachiningFeature In mm.ManufacturingGeometry
 
-                    If TypeOf feature Is HoleFeature Then
+                If feature Is Nothing Then Continue For
 
-                        DrawHoleFeature(
-                            DirectCast(feature, HoleFeature),
-                            g,
-                            vt,
-                            panelHeight)
+                If TypeOf feature Is HoleFeature Then
 
-                    End If
+                    DrawHoleFeature(
+                    DirectCast(feature, HoleFeature),
+                    g,
+                    vt,
+                    panelHeight)
 
-                Next
+                End If
 
             Next
 
@@ -4199,6 +4172,11 @@ Public Class frmMain
             If owningPart Is Nothing Then Continue For
             If circle.Center Is Nothing Then Continue For
 
+            Dim owningSheet As JobSheet =
+    FindJobSheetForPart(owningPart)
+
+            If owningSheet Is Nothing Then Continue For
+
             Dim existingHole As HoleFeature =
     owningPart.Features.
     OfType(Of HoleFeature)().
@@ -4227,6 +4205,33 @@ Public Class frmMain
             owningPart.Features.Add(hole)
             _selectionManager.RegisterMachiningFeature(hole)
 
+            owningSheet.ManufacturingModel.ManufacturingGeometry.Add(hole)
+
+            Dim sourceAssignment As MM3WorkZoneAssignment = Nothing
+
+            For Each assignment As MM3WorkZoneAssignment In
+    owningSheet.ManufacturingModel.WorkZoneAssignments
+
+                If Object.ReferenceEquals(assignment.Entity, circle) Then
+                    sourceAssignment = assignment
+                    Exit For
+                End If
+
+            Next
+
+            owningSheet.ManufacturingModel.WorkZoneAssignments.Add(
+    New MM3WorkZoneAssignment With {
+        .WorkZoneIndex = If(sourceAssignment Is Nothing,
+                            CType(Nothing, Integer?),
+                            sourceAssignment.WorkZoneIndex),
+        .Entity = hole
+    })
+
+            Dim holeAssignment As MM3WorkZoneAssignment =
+    owningSheet.ManufacturingModel.WorkZoneAssignments.
+    FirstOrDefault(Function(a) Object.ReferenceEquals(a.Entity, hole))
+
+
             MessageBox.Show(
     "SourceGeometryID: " & hole.SourceGeometryID &
     vbCrLf &
@@ -4248,9 +4253,6 @@ Public Class frmMain
 
 
     End Sub
-
-
-
 
     Private Function FindPartForGeometry(
     geometry As GeoEntity) As Part
@@ -4279,6 +4281,35 @@ Public Class frmMain
         Return Nothing
 
     End Function
+
+    Private Function FindJobSheetForPart(
+    targetPart As Part) As JobSheet
+
+        If targetPart Is Nothing OrElse
+       CurrentProductionJob Is Nothing Then
+
+            Return Nothing
+
+        End If
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            For Each part As Part In sheet.Parts
+
+                If Object.ReferenceEquals(part, targetPart) Then
+                    Return sheet
+                End If
+
+            Next
+
+        Next
+
+        Return Nothing
+
+    End Function
+
+
+
 
     Private Sub PrintCrossData_ItemClick(sender As Object, e As ItemClickEventArgs) Handles PrintCrossData.ItemClick
         TestSelectedCircles()
@@ -4430,6 +4461,10 @@ Public Class frmMain
 
         frmLayers.ProductionJob = CurrentProductionJob
         frmLayers.Show(Me)
+    End Sub
+
+    Private Sub BarButtonItem20_ItemClick(sender As Object, e As ItemClickEventArgs) Handles BarButtonItem20.ItemClick
+        frmSelectLayer.Show(Me)
     End Sub
 End Class
 
