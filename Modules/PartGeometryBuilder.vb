@@ -160,41 +160,87 @@
         '-----------------------------------------
         ' Step 2 - Merge compatible profiles.
         '
-        ' TryMergeGeoProfiles validates:
-        '   - Same Layer/Tool association
-        '   - Shared free endpoint
-        '   - No branching
+        ' Continue until no further merges occur.
         '-----------------------------------------
 
-        Dim i As Integer = 0
+        Dim merged As Boolean
 
-        While i < profiles.Count
+        Do
 
-            Dim j As Integer = i + 1
+            merged = False
 
-            While j < profiles.Count
+            Dim i As Integer = 0
 
-                If TryMergeGeoProfiles(
-                        profiles(i),
-                        profiles(j),
-                        gapTolerance) Then
+            While i < profiles.Count
 
-                    profiles(i).Entities.AddRange(
+                Dim j As Integer = i + 1
+
+                While j < profiles.Count
+
+                    If profiles(i).Entities.Count = 7 AndAlso
+                     profiles(j).Entities.Count = 1 Then
+
+                        Debug.WriteLine(
+        "FINAL MERGE CHECK: " &
+        "Profile " & profiles(i).ID &
+        " + Profile " & profiles(j).ID &
+        " | SameAssociation=" &
+        SameGeoAssociation(
+            profiles(i).Entities(0),
+            profiles(j).Entities(0)).ToString())
+
+                    End If
+
+                    Dim ends1 As List(Of GeoPoint) =
+    GetProfileEndpoints(profiles(i), gapTolerance)
+
+                    Dim ends2 As List(Of GeoPoint) =
+    GetProfileEndpoints(profiles(j), gapTolerance)
+
+                    Debug.WriteLine(
+    "GapTolerance=" &
+    gapTolerance.ToString("G17"))
+
+                    For Each p1 As GeoPoint In ends1
+                        For Each p2 As GeoPoint In ends2
+
+                            Dim dx As Double = p1.X - p2.X
+                            Dim dy As Double = p1.Y - p2.Y
+                            Dim distance As Double = Math.Sqrt(dx * dx + dy * dy)
+
+                            Debug.WriteLine(
+            "ENDPOINT DISTANCE=" &
+            distance.ToString("G17") &
+            " | WithinGap=" &
+            PointsWithinGap(p1, p2, gapTolerance).ToString())
+
+                        Next
+                    Next
+                    If TryMergeGeoProfiles(
+                profiles(i),
+                profiles(j),
+                gapTolerance) Then
+
+                        profiles(i).Entities.AddRange(
                     profiles(j).Entities)
 
-                    profiles.RemoveAt(j)
+                        profiles.RemoveAt(j)
 
-                    Continue While
+                        merged = True
 
-                End If
+                        Continue While
 
-                j += 1
+                    End If
+
+                    j += 1
+
+                End While
+
+                i += 1
 
             End While
 
-            i += 1
-
-        End While
+        Loop While merged
 
 
         '-----------------------------------------
@@ -225,6 +271,10 @@
             If ordered Then
                 valid = ValidateGeoProfileSegments(profile, gapTolerance)
             End If
+
+            profile.IsClosed = profile.IsClosed AndAlso ordered AndAlso valid
+
+
 
             '    Debug.WriteLine(
             '"GeoProfile " & profile.ID &
@@ -280,6 +330,30 @@
             '" | Free Endpoints: " & endpoints.Count &
             '" | IsClosed: " & profile.IsClosed)
 
+            Debug.WriteLine(
+    "PROFILE " & profile.ID &
+    " | Entities=" & profile.Entities.Count &
+    " | Free Endpoints=" & endpoints.Count &
+    " | IsClosed=" & profile.IsClosed)
+
+            For Each entity As GeoEntity In profile.Entities
+
+                Dim p1 As GeoPoint = Nothing
+                Dim p2 As GeoPoint = Nothing
+
+                If GetGeoEntityEndpoints(entity, p1, p2) Then
+
+                    Debug.WriteLine(
+                        "  Entity=" & entity.ID &
+                        " | Type=" & entity.GetType().Name &
+                        " | Start=(" & p1.X.ToString("F6") &
+                        ", " & p1.Y.ToString("F6") & ")" &
+                        " | End=(" & p2.X.ToString("F6") &
+                        ", " & p2.Y.ToString("F6") & ")")
+
+                End If
+
+            Next
         Next
 
 
@@ -1134,8 +1208,11 @@
         Dim distanceSquared As Double =
             dx * dx + dy * dy
 
+        Dim effectiveTolerance As Double =
+    Math.Max(gapTolerance, 0.000001R)
+
         Return distanceSquared <=
-            gapTolerance * gapTolerance
+    effectiveTolerance * effectiveTolerance
 
     End Function
 

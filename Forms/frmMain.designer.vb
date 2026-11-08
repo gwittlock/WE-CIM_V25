@@ -32,20 +32,20 @@ Partial Class frmMain
     Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(frmMain))
-        Dim SuperToolTip1 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem1 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem1 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip2 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem2 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem2 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip3 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem3 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem3 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip4 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipItem4 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip5 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem4 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem5 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip6 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem5 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem6 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip7 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem6 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem7 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip8 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem7 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem8 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip9 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipItem9 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip10 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem8 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem10 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
         Me.navbarImageListLarge = New System.Windows.Forms.ImageList(Me.components)
         Me.navbarImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.RibbonControl = New DevExpress.XtraBars.Ribbon.RibbonControl()
@@ -402,6 +402,9 @@ Partial Class frmMain
         Me.tbSelect_RemoveAll = New System.Windows.Forms.ToolStripButton()
         Me.tbSelect_HotDot = New System.Windows.Forms.ToolStripButton()
         Me.picPattern = New DevExpress.XtraEditors.PanelControl()
+        Me.DockPanel1_Container = New DevExpress.XtraBars.Docking.ControlContainer()
+        Me.tlEntityList = New DevExpress.XtraTreeList.TreeList()
+        Me.colEntityName = New DevExpress.XtraTreeList.Columns.TreeListColumn()
         Me.rgbSkins = New DevExpress.Utils.ImageCollection(Me.components)
         Me.imgCursors = New DevExpress.Utils.ImageCollection(Me.components)
         Me.dlgFileOpenDialog = New System.Windows.Forms.OpenFileDialog()
@@ -421,6 +424,9 @@ Partial Class frmMain
         Me.CodeViewPageGroup = New DevExpress.XtraBars.Ribbon.RibbonPageGroup()
         Me.BehaviorManager1 = New DevExpress.Utils.Behaviors.BehaviorManager(Me.components)
         Me.PopupMenu3 = New DevExpress.XtraBars.PopupMenu(Me.components)
+        Me.dockManagerMain = New DevExpress.XtraBars.Docking.DockManager(Me.components)
+        Me.dockPanelEntityList = New DevExpress.XtraBars.Docking.DockPanel()
+        Me.toolTipControllerEntityList = New DevExpress.Utils.ToolTipController(Me.components)
         CType(Me.RibbonControl, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.appMenu, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.ribbonImageCollection, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -469,6 +475,8 @@ Partial Class frmMain
         Me.tbUndo.SuspendLayout()
         Me.tbSelect.SuspendLayout()
         CType(Me.picPattern, System.ComponentModel.ISupportInitialize).BeginInit()
+        Me.DockPanel1_Container.SuspendLayout()
+        CType(Me.tlEntityList, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.rgbSkins, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.imgCursors, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.PopupMenu1, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -477,6 +485,8 @@ Partial Class frmMain
         CType(Me.galleryDropDown1, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.BehaviorManager1, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.PopupMenu3, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.dockManagerMain, System.ComponentModel.ISupportInitialize).BeginInit()
+        Me.dockPanelEntityList.SuspendLayout()
         Me.SuspendLayout()
         '
         'navbarImageListLarge
@@ -1750,11 +1760,11 @@ Partial Class frmMain
         Me.bbConfigMan.Id = 211
         Me.bbConfigMan.ImageOptions.LargeImageIndex = 176
         Me.bbConfigMan.Name = "bbConfigMan"
-        ToolTipTitleItem1.Text = "Configuration Manager"
-        ToolTipItem1.LeftIndent = 6
-        SuperToolTip1.Items.Add(ToolTipTitleItem1)
-        SuperToolTip1.Items.Add(ToolTipItem1)
-        Me.bbConfigMan.SuperTip = SuperToolTip1
+        ToolTipTitleItem5.Text = "Configuration Manager"
+        ToolTipItem6.LeftIndent = 6
+        SuperToolTip6.Items.Add(ToolTipTitleItem5)
+        SuperToolTip6.Items.Add(ToolTipItem6)
+        Me.bbConfigMan.SuperTip = SuperToolTip6
         '
         'bbNesting
         '
@@ -2243,13 +2253,13 @@ Partial Class frmMain
         Me.bbShowWelcome.Id = 385
         Me.bbShowWelcome.ImageOptions.LargeImageIndex = 203
         Me.bbShowWelcome.Name = "bbShowWelcome"
-        ToolTipTitleItem2.Text = "Show Welcome Dilaog"
-        ToolTipItem2.LeftIndent = 6
-        ToolTipItem2.Text = "This button displys the Welcome dialog that appears when you first execute the ap" &
+        ToolTipTitleItem6.Text = "Show Welcome Dilaog"
+        ToolTipItem7.LeftIndent = 6
+        ToolTipItem7.Text = "This button displys the Welcome dialog that appears when you first execute the ap" &
     "plicatuon."
-        SuperToolTip2.Items.Add(ToolTipTitleItem2)
-        SuperToolTip2.Items.Add(ToolTipItem2)
-        Me.bbShowWelcome.SuperTip = SuperToolTip2
+        SuperToolTip7.Items.Add(ToolTipTitleItem6)
+        SuperToolTip7.Items.Add(ToolTipItem7)
+        Me.bbShowWelcome.SuperTip = SuperToolTip7
         '
         'bbiWECAD
         '
@@ -2271,12 +2281,12 @@ Partial Class frmMain
         Me.bbiDeactivate.Id = 389
         Me.bbiDeactivate.ImageOptions.LargeImageIndex = 206
         Me.bbiDeactivate.Name = "bbiDeactivate"
-        ToolTipTitleItem3.Text = "DeActivate"
-        ToolTipItem3.LeftIndent = 6
-        ToolTipItem3.Text = "Deactivate the licnse on This PC in order to instal WE-CIMl and license a new PC"
-        SuperToolTip3.Items.Add(ToolTipTitleItem3)
-        SuperToolTip3.Items.Add(ToolTipItem3)
-        Me.bbiDeactivate.SuperTip = SuperToolTip3
+        ToolTipTitleItem7.Text = "DeActivate"
+        ToolTipItem8.LeftIndent = 6
+        ToolTipItem8.Text = "Deactivate the licnse on This PC in order to instal WE-CIMl and license a new PC"
+        SuperToolTip8.Items.Add(ToolTipTitleItem7)
+        SuperToolTip8.Items.Add(ToolTipItem8)
+        Me.bbiDeactivate.SuperTip = SuperToolTip8
         '
         'bbiBenchMark
         '
@@ -2293,9 +2303,9 @@ Partial Class frmMain
         Me.BarButtonItem16.ImageOptions.Image = CType(resources.GetObject("BarButtonItem16.ImageOptions.Image"), System.Drawing.Image)
         Me.BarButtonItem16.ImageOptions.LargeImage = Global.FabV25_WIN8.My.Resources.Resources.reset
         Me.BarButtonItem16.Name = "BarButtonItem16"
-        ToolTipItem4.Text = "Rsets the last PDB setting in the registry"
-        SuperToolTip4.Items.Add(ToolTipItem4)
-        Me.BarButtonItem16.SuperTip = SuperToolTip4
+        ToolTipItem9.Text = "Rsets the last PDB setting in the registry"
+        SuperToolTip9.Items.Add(ToolTipItem9)
+        Me.BarButtonItem16.SuperTip = SuperToolTip9
         '
         'beGraphicsPref
         '
@@ -3130,12 +3140,12 @@ Partial Class frmMain
         'rpgCustomMacros
         '
         Me.rpgCustomMacros.Name = "rpgCustomMacros"
-        ToolTipTitleItem4.Text = "Add an Icon"
-        ToolTipItem5.LeftIndent = 6
-        ToolTipItem5.Text = "Click the arrows in the lower right corner to add " & Global.Microsoft.VisualBasic.ChrW(13) & Global.Microsoft.VisualBasic.ChrW(10) & "Macros to the ToolBar"
-        SuperToolTip5.Items.Add(ToolTipTitleItem4)
-        SuperToolTip5.Items.Add(ToolTipItem5)
-        Me.rpgCustomMacros.SuperTip = SuperToolTip5
+        ToolTipTitleItem8.Text = "Add an Icon"
+        ToolTipItem10.LeftIndent = 6
+        ToolTipItem10.Text = "Click the arrows in the lower right corner to add " & Global.Microsoft.VisualBasic.ChrW(13) & Global.Microsoft.VisualBasic.ChrW(10) & "Macros to the ToolBar"
+        SuperToolTip10.Items.Add(ToolTipTitleItem8)
+        SuperToolTip10.Items.Add(ToolTipItem10)
+        Me.rpgCustomMacros.SuperTip = SuperToolTip10
         Me.rpgCustomMacros.Text = "Custom Macros"
         '
         'AdminRibbonPage
@@ -3322,20 +3332,20 @@ Partial Class frmMain
         Me.defaultToolTipController1.SetAllowHtmlText(Me.ToolStripContainer1.ContentPanel, DevExpress.Utils.DefaultBoolean.[Default])
         Me.ToolStripContainer1.ContentPanel.Controls.Add(Me.splitContainerControl)
         Me.ToolStripContainer1.ContentPanel.Margin = New System.Windows.Forms.Padding(0)
-        Me.ToolStripContainer1.ContentPanel.Size = New System.Drawing.Size(1352, 416)
+        Me.ToolStripContainer1.ContentPanel.Size = New System.Drawing.Size(1152, 416)
         Me.ToolStripContainer1.Dock = System.Windows.Forms.DockStyle.Fill
         '
         'ToolStripContainer1.LeftToolStripPanel
         '
         Me.defaultToolTipController1.SetAllowHtmlText(Me.ToolStripContainer1.LeftToolStripPanel, DevExpress.Utils.DefaultBoolean.[Default])
-        Me.ToolStripContainer1.Location = New System.Drawing.Point(0, 147)
+        Me.ToolStripContainer1.Location = New System.Drawing.Point(200, 147)
         Me.ToolStripContainer1.Margin = New System.Windows.Forms.Padding(0)
         Me.ToolStripContainer1.Name = "ToolStripContainer1"
         '
         'ToolStripContainer1.RightToolStripPanel
         '
         Me.defaultToolTipController1.SetAllowHtmlText(Me.ToolStripContainer1.RightToolStripPanel, DevExpress.Utils.DefaultBoolean.[Default])
-        Me.ToolStripContainer1.Size = New System.Drawing.Size(1352, 448)
+        Me.ToolStripContainer1.Size = New System.Drawing.Size(1152, 448)
         Me.ToolStripContainer1.TabIndex = 19
         Me.ToolStripContainer1.Text = "ToolStripContainer1"
         '
@@ -3363,7 +3373,7 @@ Partial Class frmMain
         Me.splitContainerControl.Panel2.Padding = New System.Windows.Forms.Padding(5)
         Me.splitContainerControl.Panel2.Text = "Panel2"
         Me.splitContainerControl.PanelVisibility = DevExpress.XtraEditors.SplitPanelVisibility.Panel2
-        Me.splitContainerControl.Size = New System.Drawing.Size(1352, 416)
+        Me.splitContainerControl.Size = New System.Drawing.Size(1152, 416)
         Me.splitContainerControl.SplitterPosition = 21
         Me.splitContainerControl.TabIndex = 28
         Me.splitContainerControl.Text = "splitContainerControl1"
@@ -3381,7 +3391,7 @@ Partial Class frmMain
         Me.pnlPicmodeler.Margin = New System.Windows.Forms.Padding(50)
         Me.pnlPicmodeler.MinimumSize = New System.Drawing.Size(150, 150)
         Me.pnlPicmodeler.Name = "pnlPicmodeler"
-        Me.pnlPicmodeler.Size = New System.Drawing.Size(1338, 369)
+        Me.pnlPicmodeler.Size = New System.Drawing.Size(1138, 369)
         Me.pnlPicmodeler.TabIndex = 5
         '
         'pnlNestCombos
@@ -3395,7 +3405,7 @@ Partial Class frmMain
         Me.pnlNestCombos.Dock = System.Windows.Forms.DockStyle.Top
         Me.pnlNestCombos.Location = New System.Drawing.Point(5, 5)
         Me.pnlNestCombos.Name = "pnlNestCombos"
-        Me.pnlNestCombos.Size = New System.Drawing.Size(1338, 33)
+        Me.pnlNestCombos.Size = New System.Drawing.Size(1138, 33)
         Me.pnlNestCombos.TabIndex = 54
         Me.pnlNestCombos.Visible = False
         '
@@ -3577,7 +3587,7 @@ Partial Class frmMain
         Me.tbUndo.GripMargin = New System.Windows.Forms.Padding(6)
         Me.tbUndo.ImageScalingSize = New System.Drawing.Size(24, 24)
         Me.tbUndo.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.tbUndo_Undo, Me.tbUndo_Redo})
-        Me.tbUndo.Location = New System.Drawing.Point(1182, 0)
+        Me.tbUndo.Location = New System.Drawing.Point(1076, 0)
         Me.tbUndo.Name = "tbUndo"
         Me.HelpProvider1.SetShowHelp(Me.tbUndo, True)
         Me.tbUndo.Size = New System.Drawing.Size(76, 31)
@@ -3615,7 +3625,7 @@ Partial Class frmMain
         Me.tbSelect.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.tbSelect_Enable, Me.tbSelect_Layers, Me.tbSelect_Tools, Me.tbSelect_Lines, Me.tbSelect_Arcs, Me.tbSelect_Circle, Me.tbSelect_Holes, Me.tbSelect_Points, Me.tbSelect_Command, Me.tbSelect_Profiles, Me.tbSelect_Features, Me.tbSelect_ByWindow, Me.tbSelect_AddAllByFilter, Me.tbSelect_RemoveAllByFilter, Me.tbSelect_All, Me.tbSelect_RemoveAll, Me.tbSelect_HotDot})
         Me.tbSelect.Location = New System.Drawing.Point(489, 0)
         Me.tbSelect.Name = "tbSelect"
-        Me.tbSelect.Size = New System.Drawing.Size(531, 32)
+        Me.tbSelect.Size = New System.Drawing.Size(500, 32)
         Me.tbSelect.TabIndex = 3
         '
         'tbSelect_Enable
@@ -3821,6 +3831,37 @@ Partial Class frmMain
         Me.picPattern.UseWaitCursor = True
         Me.picPattern.Visible = False
         '
+        'DockPanel1_Container
+        '
+        Me.defaultToolTipController1.SetAllowHtmlText(Me.DockPanel1_Container, DevExpress.Utils.DefaultBoolean.[Default])
+        Me.DockPanel1_Container.Controls.Add(Me.tlEntityList)
+        Me.DockPanel1_Container.Location = New System.Drawing.Point(3, 29)
+        Me.DockPanel1_Container.Name = "DockPanel1_Container"
+        Me.DockPanel1_Container.Size = New System.Drawing.Size(193, 416)
+        Me.DockPanel1_Container.TabIndex = 0
+        '
+        'tlEntityList
+        '
+        Me.tlEntityList.Columns.AddRange(New DevExpress.XtraTreeList.Columns.TreeListColumn() {Me.colEntityName})
+        Me.tlEntityList.Dock = System.Windows.Forms.DockStyle.Left
+        Me.tlEntityList.Location = New System.Drawing.Point(0, 0)
+        Me.tlEntityList.Name = "tlEntityList"
+        Me.tlEntityList.OptionsBehavior.Editable = False
+        Me.tlEntityList.OptionsView.ShowCheckBoxes = True
+        Me.tlEntityList.OptionsView.ShowColumns = False
+        Me.tlEntityList.OptionsView.ShowIndicator = False
+        Me.tlEntityList.Size = New System.Drawing.Size(187, 416)
+        Me.tlEntityList.TabIndex = 0
+        Me.tlEntityList.ToolTipController = Me.toolTipControllerEntityList
+        '
+        'colEntityName
+        '
+        Me.colEntityName.Caption = "Entity"
+        Me.colEntityName.FieldName = "EntityName"
+        Me.colEntityName.Name = "colEntityName"
+        Me.colEntityName.Visible = True
+        Me.colEntityName.VisibleIndex = 0
+        '
         'rgbSkins
         '
         Me.rgbSkins.ImageSize = New System.Drawing.Size(32, 32)
@@ -3948,6 +3989,26 @@ Partial Class frmMain
         Me.PopupMenu3.Name = "PopupMenu3"
         Me.PopupMenu3.Ribbon = Me.RibbonControl
         '
+        'dockManagerMain
+        '
+        Me.dockManagerMain.Form = Me
+        Me.dockManagerMain.RootPanels.AddRange(New DevExpress.XtraBars.Docking.DockPanel() {Me.dockPanelEntityList})
+        Me.dockManagerMain.TopZIndexControls.AddRange(New String() {"DevExpress.XtraBars.BarDockControl", "DevExpress.XtraBars.StandaloneBarDockControl", "System.Windows.Forms.StatusBar", "System.Windows.Forms.MenuStrip", "System.Windows.Forms.StatusStrip", "DevExpress.XtraBars.Ribbon.RibbonStatusBar", "DevExpress.XtraBars.Ribbon.RibbonControl", "DevExpress.XtraBars.Navigation.OfficeNavigationBar", "DevExpress.XtraBars.Navigation.TileNavPane", "DevExpress.XtraBars.TabFormControl", "DevExpress.XtraBars.FluentDesignSystem.FluentDesignFormControl"})
+        '
+        'dockPanelEntityList
+        '
+        Me.dockPanelEntityList.Controls.Add(Me.DockPanel1_Container)
+        Me.dockPanelEntityList.Dock = DevExpress.XtraBars.Docking.DockingStyle.Left
+        Me.dockPanelEntityList.ID = New System.Guid("7760ae09-1d15-4f0b-8391-c36c732c5755")
+        Me.dockPanelEntityList.Location = New System.Drawing.Point(0, 147)
+        Me.dockPanelEntityList.Name = "dockPanelEntityList"
+        Me.dockPanelEntityList.OriginalSize = New System.Drawing.Size(200, 200)
+        Me.dockPanelEntityList.Size = New System.Drawing.Size(200, 448)
+        Me.dockPanelEntityList.Text = "Entity List"
+        '
+        'toolTipControllerEntityList
+        '
+        '
         'frmMain
         '
         Me.AllowFormGlass = DevExpress.Utils.DefaultBoolean.[False]
@@ -3958,6 +4019,7 @@ Partial Class frmMain
         Me.ClientSize = New System.Drawing.Size(1352, 618)
         Me.Controls.Add(Me.ToolStripContainer1)
         Me.Controls.Add(Me.picPattern)
+        Me.Controls.Add(Me.dockPanelEntityList)
         Me.Controls.Add(Me.ribbonStatusBar)
         Me.Controls.Add(Me.RibbonControl)
         Me.DoubleBuffered = False
@@ -4027,6 +4089,8 @@ Partial Class frmMain
         Me.tbSelect.ResumeLayout(False)
         Me.tbSelect.PerformLayout()
         CType(Me.picPattern, System.ComponentModel.ISupportInitialize).EndInit()
+        Me.DockPanel1_Container.ResumeLayout(False)
+        CType(Me.tlEntityList, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.rgbSkins, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.imgCursors, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.PopupMenu1, System.ComponentModel.ISupportInitialize).EndInit()
@@ -4035,6 +4099,8 @@ Partial Class frmMain
         CType(Me.galleryDropDown1, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.BehaviorManager1, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.PopupMenu3, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.dockManagerMain, System.ComponentModel.ISupportInitialize).EndInit()
+        Me.dockPanelEntityList.ResumeLayout(False)
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
@@ -4419,4 +4485,10 @@ Partial Class frmMain
     Friend WithEvents bbiMaterialColor As BarEditItem
     Friend WithEvents RepositoryItemColorEdit1 As Repository.RepositoryItemColorEdit
     Friend WithEvents PopupMenu3 As PopupMenu
+    Friend WithEvents dockManagerMain As DevExpress.XtraBars.Docking.DockManager
+    Friend WithEvents dockPanelEntityList As DevExpress.XtraBars.Docking.DockPanel
+    Friend WithEvents DockPanel1_Container As DevExpress.XtraBars.Docking.ControlContainer
+    Friend WithEvents tlEntityList As DevExpress.XtraTreeList.TreeList
+    Friend WithEvents colEntityName As DevExpress.XtraTreeList.Columns.TreeListColumn
+    Friend WithEvents toolTipControllerEntityList As DevExpress.Utils.ToolTipController
 End Class

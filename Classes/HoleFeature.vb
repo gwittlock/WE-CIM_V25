@@ -15,6 +15,5 @@ Public Class HoleFeature
 
     Public Property SourceGeometryID As Integer
 
-    Public Property ToolSetupMemberID As Integer
 
 End Class

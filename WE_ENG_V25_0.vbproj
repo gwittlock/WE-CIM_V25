@@ -329,6 +329,7 @@
     <Compile Include="Classes\clamp.vb" />
     <Compile Include="Classes\clsMatList.vb" />
     <Compile Include="Classes\CommandFeature.vb" />
+    <Compile Include="Classes\ContourFeature.vb" />
     <Compile Include="Classes\ConvexHullArc.vb" />
     <Compile Include="Classes\ConvexHullGeometry.vb" />
     <Compile Include="Classes\ConvexHullOffsetter.vb" />
@@ -382,6 +383,7 @@
     <Compile Include="Classes\MachineMapAttribute.vb" />
     <Compile Include="Classes\MachineTypeAttribute.vb" />
     <Compile Include="Classes\MachiningFeature.vb" />
+    <Compile Include="Classes\ManufacturingFeatureFactory.vb" />
     <Compile Include="Classes\Material.vb" />
     <Compile Include="Classes\MaterialParameterDescriptor.vb" />
     <Compile Include="Classes\MaterialPicker.vb">
@@ -399,6 +401,7 @@
     <Compile Include="Classes\PierceHoleFeature.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
     <Compile Include="Classes\Profile.vb" />
+    <Compile Include="Classes\ProfileFeature.vb" />
     <Compile Include="Classes\PuncfResult.vb" />
     <Compile Include="Classes\QuadTree.vb" />
     <Compile Include="Classes\RapidPointFeature.vb" />

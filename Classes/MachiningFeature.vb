@@ -27,9 +27,10 @@ Public Enum MachiningFeatureType
     AreaClear
 
 End Enum
+
 Public Class MachiningFeature
     Implements isSelectable
-
+    Public Property ToolSetupMemberID As Integer
     Public Property ID As Integer
     Public Property Description As String
     Public Property FeatureType As MachiningFeatureType

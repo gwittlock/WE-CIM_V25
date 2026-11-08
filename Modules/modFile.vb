@@ -185,6 +185,19 @@ Public Module modFile
     PartGeometryBuilder.CreatePartGeometry(_cadEntities, _selectedLayerSetup)
 
 
+
+        For Each profile As GeoProfile In importedPart.GeoProfiles
+
+            Debug.WriteLine(
+        "PROFILE ID=" & profile.ID &
+        " | Entities=" & profile.Entities.Count &
+        " | Segments=" & profile.Segments.Count &
+        " | IsClosed=" & profile.IsClosed)
+
+        Next
+
+
+
         '============================================================
         ' TEST - Automatic Exact Round Punch Tooling
         '============================================================
@@ -385,6 +398,10 @@ Public Module modFile
 
         End If
 
+
+        frmMain.InitializeEntityList()
+        frmMain.RefreshEntityList()
+        'frmMain.dockPanelEntityList.Show()
     End Sub
 
 

@@ -6,6 +6,7 @@ Imports DevExpress.Utils
 Imports DevExpress.XtraBars
 Imports DevExpress.XtraBars.Helpers
 Imports DevExpress.XtraBars.Ribbon
+Imports DevExpress.XtraTreeList
 Imports FabV25_WIN8.AppData
 Imports FabV25_WIN8.CadEntity
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Helpers
@@ -47,7 +48,7 @@ Public Class frmMain
 
     Private _measureActive As Boolean = False
     Private _measureCurrentScreen As Point
-
+    Private _updatingEntityListSelection As Boolean = False
     Private _selectionManager As New SelectionManager()
     Private _selectionEnabled As Boolean = False
     'Bitwise selection-filter state.
@@ -79,7 +80,7 @@ Public Class frmMain
     'Private _importedProfiles As List(Of CamProfile)
 
     Private _inquireMode As Boolean = False
-   
+
 
     ' View history stacks
     Private _viewHistory As New Stack(Of ViewTransform)
@@ -208,12 +209,13 @@ Public Class frmMain
     selectedItems As IEnumerable(Of isSelectable))
 
         ' Update the selection count.
-        statusSelection.Caption =
-        "Selection: " & selectedItems.Count().ToString()
+        statusSelection.Caption = "Selection: " & GetEffectiveSelectionCount(selectedItems).ToString()
+
 
         ' Refresh the drawing.
         pnlPicmodeler.Invalidate()
 
+        SyncEntityListSelection()
     End Sub
 
 
@@ -262,7 +264,6 @@ Public Class frmMain
             bbiMaterialColor.EditValue = _materialDisplayColor
             ConfigurationManagerForm.MaterialDisplayColor = _materialDisplayColor
 
-
             Logging.Log("AppState loaded successfully.")
 
         Catch ex As Exception
@@ -279,6 +280,8 @@ Public Class frmMain
     Private Sub iOpen_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iOpen.ItemClick
 
         FileOpen()
+
+
     End Sub
 
 
@@ -850,7 +853,7 @@ Public Class frmMain
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
 
-        ElseIf l.IsHovered Then
+        ElseIf l.IsHovered OrElse IsEntityInHoveredProfile(l) Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 2.0F
@@ -934,7 +937,7 @@ Public Class frmMain
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
 
-        ElseIf a.IsHovered Then
+        ElseIf a.IsHovered OrElse IsEntityInHoveredProfile(a) Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 2.0F
@@ -953,7 +956,7 @@ Public Class frmMain
 
                 pen.DashStyle = DashStyle.Dash
 
-                End If
+            End If
 
 
             Debug.WriteLine(
@@ -962,7 +965,7 @@ Public Class frmMain
     " DashStyle=" & pen.DashStyle.ToString())
             g.DrawArc(pen, rect, startAngle, sweepAngle)
 
-            End Using
+        End Using
 
 
     End Sub
@@ -1004,8 +1007,7 @@ Public Class frmMain
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
 
-        ElseIf c.IsHovered Then
-
+        ElseIf c.IsHovered OrElse IsEntityInHoveredProfile(c) Then
             drawColor = System.Drawing.Color.Red
             drawWidth = 2.0F
             drawDashed = True
@@ -3698,7 +3700,7 @@ Public Class frmMain
     '    '-----------------------------------------
     '    ' Notify selection listeners
     '    '-----------------------------------------
-    '    RaiseEvent SelectionChanged(_selected)
+    'RaiseEvent SelectionChanged(_selected)
 
     'End Sub
 
@@ -4100,6 +4102,63 @@ Public Class frmMain
 
     End Function
 
+
+
+    Private Function IsEntityInHoveredProfile(
+    entity As GeoEntity) As Boolean
+
+        If entity Is Nothing OrElse
+       CurrentProductionJob Is Nothing Then
+            Return False
+        End If
+
+        If CurrentProductionJob.JobSheets Is Nothing Then
+            Return False
+        End If
+
+        For Each sheet In CurrentProductionJob.JobSheets
+
+            If sheet Is Nothing OrElse sheet.Parts Is Nothing Then
+                Continue For
+            End If
+
+            For Each part In sheet.Parts
+
+                If part Is Nothing OrElse part.GeoProfiles Is Nothing Then
+                    Continue For
+                End If
+
+                For Each profile As GeoProfile In part.GeoProfiles
+
+                    If profile Is Nothing OrElse Not profile.IsHovered Then
+                        Continue For
+                    End If
+
+                    If profile.Entities Is Nothing Then
+                        Continue For
+                    End If
+
+                    For Each member As GeoEntity In profile.Entities
+
+                        If Object.ReferenceEquals(member, entity) Then
+                            Return True
+                        End If
+
+                    Next
+
+                Next
+
+            Next
+
+        Next
+
+        Return False
+
+    End Function
+
+
+
+
     Private Sub tbViewSetTools_Click(
     sender As Object,
     e As EventArgs) Handles tbViewSetTools.Click
@@ -4500,6 +4559,599 @@ Public Class frmMain
         pnlPicmodeler.Invalidate()
 
     End Sub
+
+    Public Sub InitializeEntityList()
+
+
+        tlEntityList.BeginUnboundLoad()
+
+        Try
+            tlEntityList.Nodes.Clear()
+
+            Dim partGeoNode =
+    tlEntityList.AppendNode(
+        New Object() {"PartGeo"},
+        CType(Nothing, DevExpress.XtraTreeList.Nodes.TreeListNode))
+
+            Dim manufacturingGeoNode =
+    tlEntityList.AppendNode(
+        New Object() {"ManufacturingGeo"},
+        CType(Nothing, DevExpress.XtraTreeList.Nodes.TreeListNode))
+
+            partGeoNode.Expanded = True
+            manufacturingGeoNode.Expanded = True
+
+        Finally
+            tlEntityList.EndUnboundLoad()
+        End Try
+
+    End Sub
+
+    Public Sub RefreshEntityList()
+
+        ' No production job loaded
+        If CurrentProductionJob Is Nothing Then Exit Sub
+
+        ' No job sheets available
+        If CurrentProductionJob.JobSheets Is Nothing OrElse
+       CurrentProductionJob.JobSheets.Count = 0 Then Exit Sub
+
+        ' We will populate the TreeList here.
+        ' Make sure the root nodes exist
+        If tlEntityList.Nodes.Count < 2 Then Exit Sub
+
+        Dim partGeoNode As DevExpress.XtraTreeList.Nodes.TreeListNode =
+            tlEntityList.Nodes(0)
+
+        Dim manufacturingGeoNode As DevExpress.XtraTreeList.Nodes.TreeListNode =
+            tlEntityList.Nodes(1)
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            If sheet Is Nothing Then Continue For
+
+            Dim mm As MM3 = sheet.ManufacturingModel
+
+            If mm Is Nothing Then Continue For
+
+            If mm.PartGeometry Is Nothing Then Continue For
+
+            '---------------------------------------------
+            ' Populate PartGeo profiles
+            '---------------------------------------------
+            For Each part As Part In sheet.Parts
+
+                If part Is Nothing Then Continue For
+                If part.GeoProfiles Is Nothing Then Continue For
+
+                For Each profile As GeoProfile In part.GeoProfiles
+
+                    If profile Is Nothing Then Continue For
+
+                    Dim profileNode =
+            tlEntityList.AppendNode(
+                New Object() {"Profile " & profile.ID.ToString()},
+                partGeoNode)
+
+                    ' Reference the actual profile object
+                    profileNode.Tag = profile
+
+
+                    '---------------------------------------------
+                    ' Add profile geometry in traversal order
+                    '---------------------------------------------
+                    If profile.Segments IsNot Nothing Then
+
+                        For Each segment As GeoProfileSegment In profile.Segments
+
+                            If segment Is Nothing OrElse
+                               segment.Entity Is Nothing Then Continue For
+
+                            Dim entity As GeoEntity = segment.Entity
+
+                            Dim entityNode =
+                                tlEntityList.AppendNode(
+                                    New Object() {entity.GetType().Name},
+                                    profileNode)
+
+                            ' Retain the original geometry reference
+                            entityNode.Tag = entity
+
+                        Next
+
+                    End If
+
+
+
+                Next
+
+            Next
+
+
+            '---------------------------------------------
+            ' Populate ManufacturingGeo features
+            '---------------------------------------------
+            If mm.ManufacturingGeometry IsNot Nothing Then
+
+                For Each feature As MachiningFeature In mm.ManufacturingGeometry
+
+                    If feature Is Nothing Then Continue For
+
+                    Dim featureNode =
+            tlEntityList.AppendNode(
+                New Object() {
+                    feature.FeatureType.ToString() &
+                    " " &
+                    feature.ID.ToString()
+                },
+                manufacturingGeoNode)
+
+                    ' Reference the actual machining feature
+                    featureNode.Tag = feature
+
+                Next
+
+            End If
+
+
+
+            Debug.WriteLine(
+                "Entity List: PartGeo Count = " &
+                mm.PartGeometry.Count.ToString())
+
+        Next
+    End Sub
+
+
+    Private Sub tlEntityList_Load(sender As Object, e As EventArgs) Handles tlEntityList.Load
+
+        InitializeEntityList()
+
+        RefreshEntityList()
+
+    End Sub
+
+
+    Private Sub tlEntityList_AfterCheckNode(
+    sender As Object,
+    e As NodeEventArgs) Handles tlEntityList.AfterCheckNode
+
+        If _updatingEntityListSelection Then Return
+
+        If e.Node Is Nothing Then Return
+
+        Dim selectedObject As isSelectable =
+        TryCast(e.Node.Tag, isSelectable)
+
+        If selectedObject Is Nothing Then Return
+
+        ' Special case:
+        ' Unchecking an entity belonging to a selected profile.
+        If Not e.Node.Checked Then
+
+            Dim entity As GeoEntity =
+            TryCast(selectedObject, GeoEntity)
+
+            If entity IsNot Nothing AndAlso e.Node.ParentNode IsNot Nothing Then
+
+                Dim profile As GeoProfile =
+                TryCast(e.Node.ParentNode.Tag, GeoProfile)
+
+                If profile IsNot Nothing AndAlso profile.IsSelected Then
+
+                    _selectionManager.DeselectEntityFromProfile(
+                    profile,
+                    entity)
+
+                    pnlPicmodeler.Invalidate()
+                    Return
+
+                End If
+
+            End If
+
+        End If
+
+        ' Normal selection and deselection.
+        _selectionManager.SetObjectSelected(
+        selectedObject,
+        e.Node.Checked)
+
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Private Sub SyncEntityListSelection()
+
+        If tlEntityList.Nodes.Count = 0 Then Return
+
+        _updatingEntityListSelection = True
+
+        Try
+            tlEntityList.BeginUpdate()
+
+            Try
+                For Each rootNode As DevExpress.XtraTreeList.Nodes.TreeListNode In
+                    tlEntityList.Nodes
+
+                    SyncEntityListNode(rootNode)
+
+                Next
+
+            Finally
+                tlEntityList.EndUpdate()
+            End Try
+
+        Finally
+            _updatingEntityListSelection = False
+        End Try
+
+    End Sub
+
+    Private Sub SyncEntityListNode(
+    node As DevExpress.XtraTreeList.Nodes.TreeListNode)
+
+        Dim selectableObject As isSelectable =
+        TryCast(node.Tag, isSelectable)
+
+        If selectableObject IsNot Nothing Then
+
+            Dim effectiveSelected As Boolean =
+            selectableObject.IsSelected
+
+            ' A selected profile makes all its
+            ' constituent geometry effectively selected.
+            If TypeOf selectableObject Is GeoEntity Then
+
+                Dim parentNode As DevExpress.XtraTreeList.Nodes.TreeListNode =
+                node.ParentNode
+
+                If parentNode IsNot Nothing Then
+
+                    Dim parentProfile As GeoProfile =
+                    TryCast(parentNode.Tag, GeoProfile)
+
+                    If parentProfile IsNot Nothing AndAlso
+                   parentProfile.IsSelected Then
+
+                        effectiveSelected = True
+
+                    End If
+
+                End If
+
+            End If
+
+            node.Checked = effectiveSelected
+
+        End If
+
+        ' Process child nodes.
+        For Each childNode As DevExpress.XtraTreeList.Nodes.TreeListNode In
+        node.Nodes
+
+            SyncEntityListNode(childNode)
+
+        Next
+
+    End Sub
+
+    Private Function GetEffectiveSelectionCount(
+    selectedItems As IEnumerable(Of isSelectable)) As Integer
+
+        Dim counted As New HashSet(Of isSelectable)
+
+        For Each item As isSelectable In selectedItems
+
+            If item Is Nothing Then Continue For
+
+            counted.Add(item)
+
+            Dim profile As GeoProfile = TryCast(item, GeoProfile)
+
+            If profile IsNot Nothing AndAlso
+               profile.Entities IsNot Nothing Then
+
+                For Each entity As GeoEntity In profile.Entities
+
+                    If entity IsNot Nothing Then
+                        counted.Add(entity)
+                    End If
+
+                Next
+
+            End If
+
+        Next
+
+        Return counted.Count
+
+    End Function
+
+    Private Sub tlEntityList_MouseMove(
+        sender As Object,
+        e As MouseEventArgs) Handles tlEntityList.MouseMove
+
+        Dim hitInfo = tlEntityList.CalcHitInfo(e.Location)
+
+        Dim hoveredObject As isSelectable = Nothing
+
+        If hitInfo IsNot Nothing AndAlso
+           hitInfo.Node IsNot Nothing Then
+
+            hoveredObject =
+                TryCast(hitInfo.Node.Tag, isSelectable)
+
+        End If
+
+        _selectionManager.SetHoveredObject(hoveredObject)
+
+    End Sub
+
+
+    Private Sub tlEntityList_MouseLeave(
+    sender As Object,
+    e As EventArgs) Handles tlEntityList.MouseLeave
+
+        _selectionManager.SetHoveredObject(Nothing)
+
+    End Sub
+
+    Private Sub toolTipControllerEntityList_GetActiveObjectInfo(
+        sender As Object,
+        e As ToolTipControllerGetActiveObjectInfoEventArgs
+    ) Handles toolTipControllerEntityList.GetActiveObjectInfo
+
+        If e.SelectedControl IsNot tlEntityList Then Return
+
+        Dim mousePoint As Point =
+            tlEntityList.PointToClient(Control.MousePosition)
+
+        Dim hitInfo = tlEntityList.CalcHitInfo(mousePoint)
+
+        If hitInfo Is Nothing OrElse hitInfo.Node Is Nothing Then Return
+
+
+        Dim profile As GeoProfile =
+    TryCast(hitInfo.Node.Tag, GeoProfile)
+
+        If profile IsNot Nothing Then
+
+            Dim profileTooltipText As String =
+    "Profile ID: " & profile.ID.ToString() & vbCrLf &
+        "Entities: " & profile.Entities.Count.ToString() & vbCrLf &
+        "Segments: " & profile.Segments.Count.ToString() & vbCrLf &
+        "Status: " & If(profile.IsClosed, "Closed", "Open")
+
+            e.Info = New DevExpress.Utils.ToolTipControlInfo(
+    hitInfo.Node,
+    profileTooltipText)
+
+            Return
+
+        End If
+
+
+
+        Dim hole As HoleFeature =
+    TryCast(hitInfo.Node.Tag, HoleFeature)
+
+        If hole IsNot Nothing Then
+
+
+            Dim toolMember As ToolSetupMember =
+    AppData.ToolSetupMembers.FirstOrDefault(
+        Function(m) m.ID = hole.ToolSetupMemberID)
+
+
+            Dim toolDescription As String = "Unassigned"
+
+            If toolMember IsNot Nothing Then
+
+                Dim tool = AppData.ToolCrib.FirstOrDefault(
+        Function(t) t.ID = toolMember.ToolID)
+
+                If tool IsNot Nothing Then
+                    toolDescription = tool.Description
+                End If
+
+            End If
+
+
+            Dim toolNumber As Integer = -1
+
+            If toolMember IsNot Nothing Then
+
+                Dim station = AppData.StationsTable.Rows.FirstOrDefault(
+        Function(s) s.Value(Of Integer)("ID") = toolMember.StationID)
+
+                If station IsNot Nothing Then
+                    toolNumber = station.Value(Of Integer)("NCCodeNumber")
+                End If
+
+            End If
+
+
+
+            Dim holeTooltipText As String =
+        "Hole ID: " & hole.ID.ToString() & vbCrLf &
+        "Feature: " & hole.FeatureType.ToString() & vbCrLf &
+        "X: " & hole.X.ToString("F4") & vbCrLf &
+        "Y: " & hole.Y.ToString("F4") & vbCrLf &
+        "Angle: " & hole.Angle.ToString("F4") & vbCrLf &
+        "Source Geometry ID: " & hole.SourceGeometryID.ToString() & vbCrLf &
+        "Tool Setup Member ID: " & hole.ToolSetupMemberID.ToString() & vbCrLf &
+        "Tool: " & toolDescription & vbCrLf &
+        "CNC Tool Number: " & If(toolNumber >= 0,
+                         toolNumber.ToString(),
+                         "Not Assigned")
+
+            e.Info = New DevExpress.Utils.ToolTipControlInfo(
+        hitInfo.Node,
+        holeTooltipText)
+
+            Return
+
+        End If
+
+
+
+
+        Dim entity As GeoEntity =
+    TryCast(hitInfo.Node.Tag, GeoEntity)
+
+        If entity Is Nothing Then Return
+
+
+
+        Dim tooltipText As String = "Entity ID: " & entity.ID.ToString()
+
+
+
+        If TypeOf entity Is GeoLine Then
+
+            Dim line As GeoLine = DirectCast(entity, GeoLine)
+
+            If line.StartPoint IsNot Nothing AndAlso
+               line.EndPoint IsNot Nothing Then
+
+                Dim dx As Double = line.EndPoint.X - line.StartPoint.X
+                Dim dy As Double = line.EndPoint.Y - line.StartPoint.Y
+
+                Dim length As Double = Math.Sqrt(dx * dx + dy * dy)
+                Dim angle As Double = Math.Atan2(dy, dx) * 180.0 / Math.PI
+
+                tooltipText =
+                    "Entity ID: " & line.ID.ToString() & vbCrLf &
+                    "Start: X=" & line.StartPoint.X.ToString("F4") &
+                    "  Y=" & line.StartPoint.Y.ToString("F4") & vbCrLf &
+                    "End:   X=" & line.EndPoint.X.ToString("F4") &
+                    "  Y=" & line.EndPoint.Y.ToString("F4") & vbCrLf &
+                    "Length: " & length.ToString("F4") & vbCrLf &
+                    "Angle: " & angle.ToString("F4") & "°"
+
+            End If
+
+        End If
+
+
+
+        If TypeOf entity Is GeoArc Then
+
+            Dim arc As GeoArc = DirectCast(entity, GeoArc)
+
+            If arc.StartPoint IsNot Nothing AndAlso
+       arc.EndPoint IsNot Nothing AndAlso
+       arc.Center IsNot Nothing Then
+
+                Dim direction As String =
+            If(arc.IsClockwise, "CW", "CCW")
+
+                tooltipText =
+            "Entity ID: " & arc.ID.ToString() & vbCrLf &
+            "Start: X=" & arc.StartPoint.X.ToString("F4") &
+            "  Y=" & arc.StartPoint.Y.ToString("F4") & vbCrLf &
+            "End:   X=" & arc.EndPoint.X.ToString("F4") &
+            "  Y=" & arc.EndPoint.Y.ToString("F4") & vbCrLf &
+            "Center: X=" & arc.Center.X.ToString("F4") &
+            "  Y=" & arc.Center.Y.ToString("F4") & vbCrLf &
+            "Radius: " & arc.Radius.ToString("F4") & vbCrLf &
+            "Start Angle: " & arc.StartAngle.ToString("F4") & vbCrLf &
+            "End Angle: " & arc.EndAngle.ToString("F4") & vbCrLf &
+            "Direction: " & direction
+
+            End If
+
+        End If
+
+
+        If TypeOf entity Is GeoCircle Then
+
+            Dim circle As GeoCircle = DirectCast(entity, GeoCircle)
+
+            If circle.Center IsNot Nothing Then
+
+                tooltipText =
+            "Entity ID: " & circle.ID.ToString() & vbCrLf &
+            "Center: X=" & circle.Center.X.ToString("F4") &
+            "  Y=" & circle.Center.Y.ToString("F4") & vbCrLf &
+            "Radius: " & circle.Radius.ToString("F4") & vbCrLf &
+            "Diameter: " & (circle.Radius * 2.0).ToString("F4")
+
+            End If
+
+        End If
+
+
+        If TypeOf entity.Association Is Layer Then
+
+            Dim cadLayer As Layer =
+        DirectCast(entity.Association, Layer)
+
+            tooltipText &= vbCrLf & "Layer: " & cadLayer.Name
+
+        End If
+
+
+        e.Info = New DevExpress.Utils.ToolTipControlInfo(
+            hitInfo.Node,
+            tooltipText)
+
+
+    End Sub
+
+    Private Sub tlEntityList_NodeCellStyle(
+        sender As Object,
+        e As GetCustomNodeCellStyleEventArgs
+    ) Handles tlEntityList.NodeCellStyle
+
+        If e.Node Is Nothing Then Return
+
+        Dim entity As GeoEntity =
+            TryCast(e.Node.Tag, GeoEntity)
+
+
+
+        Dim profile As GeoProfile =
+    TryCast(e.Node.Tag, GeoProfile)
+
+        If profile IsNot Nothing Then
+
+            If profile.Entities IsNot Nothing AndAlso
+       profile.Entities.Count > 0 Then
+
+                Dim firstEntity As GeoEntity =
+            profile.Entities(0)
+
+                If firstEntity IsNot Nothing Then
+                    e.Appearance.ForeColor = firstEntity.Color
+                End If
+
+            End If
+
+            Return
+
+        End If
+
+
+        Dim hole As HoleFeature =
+    TryCast(e.Node.Tag, HoleFeature)
+
+        If hole Is Nothing Then Return
+
+        Dim toolMember = AppData.ToolSetupMembers.FirstOrDefault(
+    Function(m) m.ID = hole.ToolSetupMemberID)
+
+        If toolMember Is Nothing Then Return
+
+        Dim tool = AppData.ToolCrib.FirstOrDefault(
+    Function(t) t.ID = toolMember.ToolID)
+
+        If tool Is Nothing Then Return
+
+        e.Appearance.ForeColor = tool.Color
+    End Sub
+
 End Class
 
 

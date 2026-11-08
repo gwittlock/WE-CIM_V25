@@ -500,6 +500,31 @@ Public Class SelectionManager
 
     End Sub
 
+
+
+    Public Sub SetHoveredObject(ent As isSelectable)
+
+        If Object.ReferenceEquals(ent, _nativeHovered) Then Return
+
+        ' Clear previous hover
+        If _nativeHovered IsNot Nothing Then
+            _nativeHovered.IsHovered = False
+        End If
+
+        ' Set new hover
+        _nativeHovered = ent
+
+        If _nativeHovered IsNot Nothing Then
+            _nativeHovered.IsHovered = True
+        End If
+
+        RaiseEvent HoverChanged(_nativeHovered)
+
+    End Sub
+
+
+
+
 #End Region
 
 #Region "Selection Core"
@@ -533,6 +558,66 @@ Public Class SelectionManager
         End If
 
     End Sub
+
+
+
+    Public Sub DeselectEntityFromProfile(
+    profile As GeoProfile,
+    entityToDeselect As GeoEntity)
+
+        If profile Is Nothing OrElse entityToDeselect Is Nothing Then Return
+        If profile.Entities Is Nothing Then Return
+
+        ' Only perform this transition if the profile is selected.
+        If Not _selected.Contains(profile) Then Return
+
+        ' Verify the entity belongs to the profile.
+        If Not profile.Entities.Contains(entityToDeselect) Then Return
+
+        ' Remove the profile selection.
+        _selected.Remove(profile)
+        profile.IsSelected = False
+
+        ' Preserve selection of all other profile entities.
+        For Each entity As GeoEntity In profile.Entities
+
+            If entity Is Nothing Then Continue For
+
+            If entity Is entityToDeselect Then
+                _selected.Remove(entity)
+                entity.IsSelected = False
+            Else
+                _selected.Add(entity)
+                entity.IsSelected = True
+            End If
+
+        Next
+
+        ' Notify the application once.
+        RaiseEvent SelectionChanged(_selected)
+
+    End Sub
+
+
+
+
+
+    Public Sub SetObjectSelected(
+    ent As isSelectable,
+    selected As Boolean)
+
+        If ent Is Nothing Then Return
+
+        If selected Then
+            ApplySelection(ent)
+        Else
+            ApplyDeselection(ent)
+        End If
+
+    End Sub
+
+
+
     Public Sub Clear()
 
         For Each s In _selected
