@@ -11,5 +11,19 @@ Public Class MM3
 
     Public Property WorkZoneAssignments As New List(Of MM3WorkZoneAssignment)
 
+
+    Public Function GetNextFeatureID() As Integer
+
+        If ManufacturingGeometry Is Nothing OrElse
+       ManufacturingGeometry.Count = 0 Then
+
+            Return 1
+
+        End If
+
+        Return ManufacturingGeometry.Max(Function(f) f.ID) + 1
+
+    End Function
+
 End Class
 

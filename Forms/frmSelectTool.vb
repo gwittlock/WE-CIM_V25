@@ -19,22 +19,8 @@ Public Class frmSelectTool
 
         Dim setupID As Integer = CurrentJob.ToolSetupID
 
-        Dim installedTools =
-        (From member In AppData.ToolSetupMembers
-         Join tool In AppData.ToolCrib
-             On member.ToolID Equals tool.ID
-         Join station In AppData.StationsTable.Rows
-             On member.StationID Equals
-                 station.Value(Of Integer)("ID")
-         Where member.ToolSetupID = setupID
-         Order By station.Value(Of Integer)("NCCodeNumber")
-         Select New ToolSelectionRow With {
-             .ID = member.ID,
-             .ToolNumber = station.Value(Of Integer)("NCCodeNumber"),
-             .Description = tool.Description,
-             .Color = tool.Color,
-             .Show = True
-         }).ToList()
+        Dim installedTools As List(Of ToolSelectionRow) =
+    InstalledToolService.GetInstalledTools(setupID)
 
         grdToolLayer.DataSource = installedTools
 

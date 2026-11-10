@@ -7,6 +7,7 @@ Imports DevExpress.XtraBars
 Imports DevExpress.XtraBars.Helpers
 Imports DevExpress.XtraBars.Ribbon
 Imports DevExpress.XtraTreeList
+Imports DevExpress.XtraVerticalGrid.Events
 Imports FabV25_WIN8.AppData
 Imports FabV25_WIN8.CadEntity
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Helpers
@@ -146,6 +147,15 @@ Public Class frmMain
     Private _profileSelectionEnabled As Boolean = False
 
     Private _entityPropertiesForm As frmEntityProperties
+
+
+    Private _holeParameterValues As New Dictionary(Of String, HoleParameterValue)(StringComparer.OrdinalIgnoreCase)
+    Private _currentHoleArrangement As HoleArrangementDefinition = Nothing
+
+    Private _holeArrangementDefinitions As HoleArrangementDefinitions
+
+
+    Private _updatingHoleGrid As Boolean = False
 
     Private Declare Function LockWindowUpdate Lib "user32.dll" (ByVal hWndLock As IntPtr) As Boolean
 
@@ -399,11 +409,11 @@ Public Class frmMain
         ' UI not ready yet (very early startup)
         If Not _uiInitialized Then Return
 
-        Debug.WriteLine(
-    "PAINT: DoPrepareUI=" & _DoPrepareUI.ToString() &
-    " Scale=" & myTransform.Scale.ToString() &
-    " OffsetX=" & myTransform.OffsetX.ToString() &
-    " OffsetY=" & myTransform.OffsetY.ToString())
+        '    Debug.WriteLine(
+        '"PAINT: DoPrepareUI=" & _DoPrepareUI.ToString() &
+        '" Scale=" & myTransform.Scale.ToString() &
+        '" OffsetX=" & myTransform.OffsetX.ToString() &
+        '" OffsetY=" & myTransform.OffsetY.ToString())
 
         '' Scene not loaded yet → draw empty workspace
         'If Not _sceneReady OrElse CurrentJob Is Nothing Then
@@ -462,7 +472,7 @@ Public Class frmMain
 
     ' Central overlay routine
     Private Sub DrawOverlay(g As Graphics)
-        Debug.WriteLine("DRAW OVERLAY CALLED")
+        'Debug.WriteLine("DRAW OVERLAY CALLED")
 
         ' --------------------------
         ' 1) Hot-Dot
@@ -959,10 +969,11 @@ Public Class frmMain
             End If
 
 
-            Debug.WriteLine(
-    "DrawGeoArc: Selected=" & a.Selected.ToString() &
-    " Color=" & pen.Color.Name &
-    " DashStyle=" & pen.DashStyle.ToString())
+            '        Debug.WriteLine(
+            '"DrawGeoArc: Selected=" & a.Selected.ToString() &
+            '" Color=" & pen.Color.Name &
+            '" DashStyle=" & pen.DashStyle.ToString())
+
             g.DrawArc(pen, rect, startAngle, sweepAngle)
 
         End Using
@@ -1067,12 +1078,24 @@ Public Class frmMain
                 If TypeOf feature Is HoleFeature Then
 
                     DrawHoleFeature(
-                    DirectCast(feature, HoleFeature),
-                    g,
-                    vt,
-                    panelHeight)
+                        DirectCast(feature, HoleFeature),
+                        g,
+                        vt,
+                        panelHeight)
+
+                ElseIf TypeOf feature Is LineOfHolesFeature Then
+
+                    DrawLineOfHolesFeature(
+    DirectCast(feature, LineOfHolesFeature),
+    g,
+    vt,
+    panelHeight,
+    matLength,
+    matWidth)
 
                 End If
+
+
 
             Next
 
@@ -1778,6 +1801,9 @@ Public Class frmMain
             pnlPicmodeler.Cursor = Cursors.Default
         End If
         pnlPicmodeler.Invalidate()
+
+
+
         ' --------------------------
         ' 5) Measurement tool
         ' --------------------------
@@ -2174,6 +2200,12 @@ Public Class frmMain
                 lastMousePos = e.Location
                 Return
             End If
+        End If
+
+        If e.Button = MouseButtons.Left AndAlso
+           TryReturnGraphicPointToHoleControl(e.Location) Then
+
+            Return
         End If
 
         ' -----------------------------
@@ -4269,7 +4301,7 @@ Public Class frmMain
             .Y = circle.Center.Y,
             .Angle = 0,
             .SourceGeometryID = circle.ID,
-            .ID = owningPart.GetNextFeatureID(),
+            .ID = owningSheet.ManufacturingModel.GetNextFeatureID(),
             .ToolSetupMemberID = toolSetupMemberID
         }
 
@@ -4383,7 +4415,8 @@ Public Class frmMain
 
 
     Private Sub PrintCrossData_ItemClick(sender As Object, e As ItemClickEventArgs) Handles PrintCrossData.ItemClick
-        TestSelectedCircles()
+        'TestSelectedCircles()
+        dockPanelEntityList.Close()
     End Sub
 
     Private Sub DrawHoleFeature(
@@ -4459,6 +4492,155 @@ Public Class frmMain
 
 
     End Sub
+
+
+    Private Sub DrawLineOfHolesFeature(
+    row As LineOfHolesFeature,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer,
+    sheetXExtent As Double,
+    sheetYExtent As Double)
+
+        If row Is Nothing Then Exit Sub
+        If row.Count <= 0 Then Exit Sub
+
+        Debug.WriteLine(
+    "Drawing LineOfHolesFeature ID = " & row.ID.ToString())
+
+        'RepeatCount represents the total number of row instances.
+        Dim repeatCount As Integer =
+        Math.Max(1, row.Parameters.RepeatCount)
+
+        Dim baseStartX As Double = row.StartX
+
+        If row.Parameters.Centered Then
+
+            'Primary row span: first hole through last hole.
+            Dim patternSpanX As Double =
+                (row.Count - 1) * row.Spacing
+
+            'When repeated along X, include all repeated rows.
+            If row.Parameters.RepeatDirection = HoleRepeatDirection.X Then
+
+                patternSpanX +=
+                    (repeatCount - 1) * row.Parameters.Gap
+
+            End If
+
+            'Center the full X span in the material.
+            baseStartX =
+                (sheetXExtent - patternSpanX) / 2.0
+
+        End If
+
+        For repeatIndex As Integer = 0 To repeatCount - 1
+
+           Dim rowStartX As Double = baseStartX
+            Dim rowStartY As Double = row.StartY
+
+            Select Case row.Parameters.RepeatDirection
+
+                Case HoleRepeatDirection.X
+                    rowStartX += repeatIndex * row.Parameters.Gap
+
+                Case HoleRepeatDirection.Y
+                    rowStartY += repeatIndex * row.Parameters.Gap
+
+            End Select
+
+            For holeIndex As Integer = 0 To row.Count - 1
+
+                'These are display-only HoleFeature objects.
+                'Nothing is added to MM3 or to a Part.
+                Dim displayHole As New HoleFeature With {
+                .X = rowStartX + (holeIndex * row.Spacing),
+                .Y = rowStartY,
+                .ToolSetupMemberID = row.ToolSetupMemberID,
+                .IsSelected = row.IsSelected,
+                .IsHovered = row.IsHovered
+            }
+
+                DrawHoleFeature(displayHole, g, vt, panelHeight)
+
+                If row.Parameters.XMirror Then
+
+                    Dim mirroredX As Double =
+                        sheetXExtent - displayHole.X
+
+                    'Avoid a duplicate when the hole is on the centerline.
+                    If Math.Abs(mirroredX - displayHole.X) > 0.000001 Then
+
+                        Dim mirroredHole As New HoleFeature With {
+                            .X = mirroredX,
+                            .Y = displayHole.Y,
+                            .ToolSetupMemberID = row.ToolSetupMemberID,
+                            .IsSelected = row.IsSelected,
+                            .IsHovered = row.IsHovered
+                        }
+
+                        DrawHoleFeature(mirroredHole, g, vt, panelHeight)
+
+                    End If
+
+                End If
+
+
+                If row.Parameters.YMirror Then
+
+                    Dim mirroredY As Double =
+                        sheetYExtent - displayHole.Y
+
+                    If Math.Abs(mirroredY - displayHole.Y) > 0.000001 Then
+
+                        Dim mirroredHole As New HoleFeature With {
+                            .X = displayHole.X,
+                            .Y = mirroredY,
+                            .ToolSetupMemberID = row.ToolSetupMemberID,
+                            .IsSelected = row.IsSelected,
+                            .IsHovered = row.IsHovered
+                        }
+
+                        DrawHoleFeature(mirroredHole, g, vt, panelHeight)
+
+                    End If
+
+                End If
+
+                If row.Parameters.XMirror AndAlso
+   row.Parameters.YMirror Then
+
+                    Dim mirroredX As Double =
+                        sheetXExtent - displayHole.X
+
+                    Dim mirroredY As Double =
+                        sheetYExtent - displayHole.Y
+
+                    'If either coordinate is on center, this position
+                    'was already drawn by one of the individual mirrors.
+                    If Math.Abs(mirroredX - displayHole.X) > 0.000001 AndAlso
+                       Math.Abs(mirroredY - displayHole.Y) > 0.000001 Then
+
+                        Dim cornerHole As New HoleFeature With {
+                            .X = mirroredX,
+                            .Y = mirroredY,
+                            .ToolSetupMemberID = row.ToolSetupMemberID,
+                            .IsSelected = row.IsSelected,
+                            .IsHovered = row.IsHovered
+                        }
+
+                        DrawHoleFeature(cornerHole, g, vt, panelHeight)
+
+                    End If
+
+                End If
+            Next
+
+        Next
+
+    End Sub
+
+
 
     Private Sub tbSelect_AddAllByFilter_Click(
     sender As Object,
@@ -4605,6 +4787,10 @@ Public Class frmMain
 
         Dim manufacturingGeoNode As DevExpress.XtraTreeList.Nodes.TreeListNode =
             tlEntityList.Nodes(1)
+
+        ' Clear existing entries while preserving the root nodes.
+        partGeoNode.Nodes.Clear()
+        manufacturingGeoNode.Nodes.Clear()
 
         For Each sheet As JobSheet In CurrentProductionJob.JobSheets
 
@@ -5151,6 +5337,1064 @@ Public Class frmMain
 
         e.Appearance.ForeColor = tool.Color
     End Sub
+
+    Private Sub bbiForm1_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbiForm1.ItemClick
+
+
+    End Sub
+
+    Private Sub TestHoleArrangementDefinitions()
+
+        Try
+            Dim filePath As String =
+            IO.Path.Combine(dataFolder,
+                "HoleArrangementDefinitions.json")
+
+
+            Dim definitions As HoleArrangementDefinitions =
+    HoleArrangementDefinitionLoader.Load(filePath)
+
+            Dim definition As HoleArrangementDefinition =
+    definitions.Arrangements.FirstOrDefault(
+        Function(a) a.ID = 301)
+
+
+            MessageBox.Show(
+            "Arrangement: " & definition.Description &
+            vbCrLf &
+            "SNCS: " & definition.ID.ToString() &
+            vbCrLf &
+            "Parameters: " & definition.Parameters.Count.ToString(),
+            "Hole Definition Test")
+
+        Catch ex As Exception
+            MessageBox.Show(
+            ex.Message,
+            "Hole Definition Error")
+        End Try
+
+    End Sub
+
+
+    Private Sub InitializeHoleParameterValues(definition As HoleArrangementDefinition)
+
+        _holeParameterValues.Clear()
+
+        For Each parameter As HoleParameterDefinition In definition.Parameters
+
+            If parameter.Editor = "Category" Then
+                Continue For
+            End If
+
+            Dim value As New HoleParameterValue With {
+            .Name = parameter.Name,
+            .EnteredValue = If(parameter.Default Is Nothing,
+                               "",
+                               parameter.Default.ToString()),
+            .EvaluatedValue = parameter.Default,
+            .IsValid = True
+        }
+
+            _holeParameterValues(parameter.Name) = value
+
+        Next
+
+    End Sub
+    Private Sub PopulateHoleArrangementGrid(
+    definition As HoleArrangementDefinition)
+
+        _currentHoleArrangement = definition
+
+        InitializeHoleParameterValues(definition)
+
+        For Each item In _holeParameterValues
+            Debug.WriteLine(item.Key & " = " &
+                    item.Value.EnteredValue)
+        Next
+
+        vgCreateHoles.BeginUpdate()
+
+        Try
+            vgCreateHoles.Rows.Clear()
+
+            Dim category As New DevExpress.XtraVerticalGrid.Rows.CategoryRow()
+
+            category.Properties.Caption = definition.Description
+            category.Name = "catHoleArrangement"
+
+            vgCreateHoles.Rows.Add(category)
+
+
+
+            Dim section As DevExpress.XtraVerticalGrid.Rows.CategoryRow =
+    category
+
+            Dim sectionNumber As Integer = 0
+
+            For Each parameter As HoleParameterDefinition In definition.Parameters
+
+                If parameter.Editor = "Category" Then
+
+                    sectionNumber += 1
+
+                    section = New DevExpress.XtraVerticalGrid.Rows.CategoryRow()
+
+                    section.Name = "catHoleSection" & sectionNumber.ToString()
+                    section.Properties.Caption = parameter.Display
+
+                    vgCreateHoles.Rows.Add(section)
+
+                Else
+
+                    Dim editorRow As New DevExpress.XtraVerticalGrid.Rows.EditorRow()
+
+                    editorRow.Name = parameter.Name
+                    editorRow.Properties.Caption = parameter.Display
+
+                    If parameter.Editor = "Double" Then
+
+                        editorRow.Properties.Value =
+        If(parameter.Default Is Nothing,
+           "",
+           parameter.Default.ToString())
+
+                    Else
+
+                        editorRow.Properties.Value = parameter.Default
+
+                    End If
+
+
+                    If parameter.Editor = "ToolSelector" Then
+
+                        Dim toolEditor As New DevExpress.XtraEditors.Repository.RepositoryItemLookUpEdit()
+
+                        Dim installedTools As New List(Of ToolSelectionRow)()
+
+                        If CurrentJob IsNot Nothing Then
+                            installedTools =
+            InstalledToolService.GetInstalledTools(
+                CurrentJob.ToolSetupID)
+                        End If
+
+                        toolEditor.DataSource = installedTools
+
+                        toolEditor.ValueMember = "ID"
+                        toolEditor.DisplayMember = "Description"
+
+                        toolEditor.Columns.Clear()
+
+                        toolEditor.Columns.Add(
+        New DevExpress.XtraEditors.Controls.LookUpColumnInfo(
+            "ToolNumber", "Tool #", 60))
+
+                        toolEditor.Columns.Add(
+        New DevExpress.XtraEditors.Controls.LookUpColumnInfo(
+            "Description", "Description", 200))
+
+                        toolEditor.NullText = ""
+
+                        editorRow.Properties.RowEdit = toolEditor
+
+                    End If
+
+                    section.ChildRows.Add(editorRow)
+
+
+                    If parameter.Editor = "RepeatDirection" Then
+
+                        Dim repeatEditor As New DevExpress.XtraEditors.Repository.RepositoryItemComboBox()
+
+                        repeatEditor.Items.Add("X")
+                        repeatEditor.Items.Add("Y")
+
+                        repeatEditor.TextEditStyle =
+        DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+
+                        editorRow.Properties.RowEdit = repeatEditor
+
+                    End If
+
+                    If parameter.Editor = "Double" Then
+
+                        Dim textEditor As New DevExpress.XtraEditors.Repository.RepositoryItemTextEdit()
+
+
+                        editorRow.Properties.RowEdit = textEditor
+
+
+                    End If
+
+
+                    If parameter.Editor = "Integer" Then
+
+                        Dim integerEditor As New DevExpress.XtraEditors.Repository.RepositoryItemSpinEdit()
+
+                        integerEditor.IsFloatValue = False
+
+                        integerEditor.Mask.EditMask = "d0"
+
+                        editorRow.Properties.RowEdit = integerEditor
+
+                    End If
+
+                End If
+
+
+
+            Next
+
+        Finally
+            vgCreateHoles.EndUpdate()
+        End Try
+
+    End Sub
+
+    Private Sub vgCreateHoles_CellValueChanged(sender As Object, e As DevExpress.XtraVerticalGrid.Events.CellValueChangedEventArgs) Handles vgCreateHoles.CellValueChanged
+
+        If _updatingHoleGrid Then Return
+
+        If e.Row Is Nothing Then Return
+
+        Dim parameterName As String = e.Row.Name
+
+        Dim runtimeValue As HoleParameterValue = Nothing
+
+        If Not _holeParameterValues.TryGetValue(
+        parameterName, runtimeValue) Then
+            Return
+        End If
+
+        runtimeValue.EnteredValue =
+    If(e.Value Is Nothing, "", e.Value.ToString())
+
+        If parameterName = "ps_x" OrElse
+   parameterName = "ps_y" Then
+
+            Dim result As Double = 0
+
+            runtimeValue.IsValid =
+        HoleExpressionEvaluator.TryEvaluate(
+            runtimeValue.EnteredValue, result)
+
+
+            If runtimeValue.IsValid Then
+
+                runtimeValue.EvaluatedValue = result
+
+                _updatingHoleGrid = True
+
+                Try
+                    e.Row.Properties.Value =
+                        result.ToString(
+                            Globalization.CultureInfo.InvariantCulture)
+                Finally
+                    _updatingHoleGrid = False
+                End Try
+
+            Else
+
+                runtimeValue.EvaluatedValue = Nothing
+
+            End If
+
+
+        Else
+
+            runtimeValue.EvaluatedValue = e.Value
+            runtimeValue.IsValid = True
+
+
+            If parameterName = "tool" Then
+
+                Dim memberID As Integer =
+                    Convert.ToInt32(runtimeValue.EvaluatedValue)
+
+                Dim member As ToolSetupMember =
+                    AppData.ToolSetupMembers.FirstOrDefault(
+                        Function(m) m.ID = memberID)
+
+                If member IsNot Nothing Then
+
+                    Debug.WriteLine(
+                        "ToolSetupMember.ID = " & member.ID.ToString())
+
+                    Debug.WriteLine(
+                        "Configured Index Angle = " &
+                        member.IndexAngle.ToString())
+
+
+                    Dim angleValue As HoleParameterValue = Nothing
+
+                    If _holeParameterValues.TryGetValue(
+    "toolang", angleValue) Then
+
+                        angleValue.EnteredValue =
+        member.IndexAngle.ToString(
+            Globalization.CultureInfo.InvariantCulture)
+
+                        angleValue.EvaluatedValue = member.IndexAngle
+                        angleValue.IsValid = True
+
+                        _updatingHoleGrid = True
+
+                        Try
+                            Dim angleRow As DevExpress.XtraVerticalGrid.Rows.BaseRow =
+    vgCreateHoles.Rows.Cast(Of DevExpress.XtraVerticalGrid.Rows.BaseRow)().
+    SelectMany(Function(r) r.ChildRows.Cast(Of DevExpress.XtraVerticalGrid.Rows.BaseRow)()).
+    FirstOrDefault(Function(r) r.Name = "toolang")
+
+                            If angleRow IsNot Nothing Then
+                                angleRow.Properties.Value = member.IndexAngle
+                            End If
+
+                        Finally
+                            _updatingHoleGrid = False
+                        End Try
+
+                    End If
+
+
+                End If
+
+            End If
+
+        End If
+
+
+    End Sub
+
+
+    Private Sub TestHoleExpressionEvaluator()
+
+        Dim expressions As String() = {
+        "12+3",
+        "1.5+0.375",
+        "(10-2)/4",
+        "10/0",
+        "12+"
+    }
+
+        For Each expression As String In expressions
+
+            Dim result As Double = 0
+
+            Dim valid As Boolean =
+            HoleExpressionEvaluator.TryEvaluate(expression, result)
+
+            Debug.WriteLine(
+            expression &
+            " | Valid = " & valid.ToString() &
+            " | Result = " & result.ToString(
+                Globalization.CultureInfo.InvariantCulture))
+
+        Next
+
+    End Sub
+
+    Private Sub vgCreateHoles_ShownEditor(
+    sender As Object,
+    e As EventArgs
+) Handles vgCreateHoles.ShownEditor
+
+        Dim textEditor As DevExpress.XtraEditors.TextEdit =
+        TryCast(vgCreateHoles.ActiveEditor,
+                DevExpress.XtraEditors.TextEdit)
+
+        If textEditor Is Nothing Then Return
+
+        Dim row = vgCreateHoles.FocusedRow
+
+        If row IsNot Nothing Then
+
+            Dim parameterName As String = row.Name
+
+            If parameterName = "ps_x" OrElse
+           parameterName = "ps_y" Then
+
+                Dim runtimeValue As HoleParameterValue = Nothing
+
+                If _holeParameterValues.TryGetValue(
+                parameterName, runtimeValue) Then
+
+                    ' Restore the original expression for editing.
+                    textEditor.EditValue = runtimeValue.EnteredValue
+
+                End If
+
+            End If
+
+        End If
+
+        RemoveHandler textEditor.MouseUp,
+        AddressOf HoleCoordinateEditor_MouseUp
+
+        AddHandler textEditor.MouseUp,
+        AddressOf HoleCoordinateEditor_MouseUp
+
+        textEditor.SelectAll()
+
+    End Sub
+
+    Private Sub HoleCoordinateEditor_MouseUp(
+    sender As Object,
+    e As MouseEventArgs)
+
+        If e.Button <> MouseButtons.Left Then Return
+
+        Dim textEditor As DevExpress.XtraEditors.TextEdit =
+        TryCast(sender, DevExpress.XtraEditors.TextEdit)
+
+        If textEditor Is Nothing Then Return
+
+        textEditor.SelectAll()
+
+    End Sub
+
+    Private Sub vgCreateHoles_CustomDrawRowValueCell(
+        sender As Object,
+        e As DevExpress.XtraVerticalGrid.Events.CustomDrawRowValueCellEventArgs
+    ) Handles vgCreateHoles.CustomDrawRowValueCell
+
+        If e.Row Is Nothing Then Return
+
+        Dim parameterName As String = e.Row.Name
+
+        If parameterName <> "ps_x" AndAlso
+           parameterName <> "ps_y" Then
+            Return
+        End If
+
+        Dim runtimeValue As HoleParameterValue = Nothing
+
+        If Not _holeParameterValues.TryGetValue(
+            parameterName, runtimeValue) Then
+            Return
+        End If
+
+        If Not runtimeValue.IsValid Then
+
+            e.Appearance.BackColor = Color.MistyRose
+            e.Appearance.ForeColor = Color.DarkRed
+
+        End If
+
+    End Sub
+
+    Private Sub vgCreateHoles_KeyUp(
+        sender As Object,
+        e As KeyEventArgs
+    ) Handles vgCreateHoles.KeyUp
+
+        If e.KeyCode = Keys.Enter Then
+
+            e.Handled = True
+            SendKeys.Send("{TAB}")
+
+        End If
+
+    End Sub
+
+    Private Sub AcceptSingleHole()
+
+        Dim requiredParameters As String() = {"ps_x", "ps_y", "tool"}
+
+        For Each parameterName As String In requiredParameters
+
+            Dim parameterValue As HoleParameterValue = Nothing
+
+            If Not _holeParameterValues.TryGetValue(
+                parameterName, parameterValue) Then
+
+                MessageBox.Show(
+                    "Missing required parameter: " & parameterName,
+                    "Create Hole",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning)
+
+                Return
+            End If
+
+            If Not parameterValue.IsValid OrElse
+               parameterValue.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show(
+                    "Please enter a valid value for " & parameterName,
+                    "Create Hole",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning)
+
+                Return
+            End If
+
+        Next
+
+
+        Dim targetSheet As JobSheet = GetCurrentHoleJobSheet()
+
+        If targetSheet Is Nothing Then
+
+            MessageBox.Show(
+        "A production job with exactly one sheet is required.",
+        "Create Hole",
+        MessageBoxButtons.OK,
+        MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Debug.WriteLine(
+    "Create Hole - Target Sheet: " &
+    targetSheet.MaterialSheetID.ToString())
+
+        Debug.WriteLine(
+    "Existing Manufacturing Features: " &
+    targetSheet.ManufacturingModel.ManufacturingGeometry.Count.ToString())
+
+
+
+        Dim mm As MM3 = targetSheet.ManufacturingModel
+
+
+        Dim holeX As Double =
+    Convert.ToDouble(_holeParameterValues("ps_x").EvaluatedValue)
+
+        Dim holeY As Double =
+    Convert.ToDouble(_holeParameterValues("ps_y").EvaluatedValue)
+
+        Dim centered As Boolean =
+    Convert.ToBoolean(_holeParameterValues("soln(2)").EvaluatedValue)
+
+        If centered Then
+            holeX = targetSheet.Length / 2.0
+            holeY = targetSheet.Width / 2.0
+        End If
+
+
+
+        Dim hole As New HoleFeature With {
+    .ID = mm.GetNextFeatureID(),
+    .FeatureType = MachiningFeatureType.Hole,
+    .Description = "Single Hole",
+    .X = holeX,
+    .Y = holeY,
+    .Angle = Convert.ToDouble(
+        _holeParameterValues("toolang").EvaluatedValue),
+    .ToolSetupMemberID = Convert.ToInt32(
+        _holeParameterValues("tool").EvaluatedValue),
+    .SourceGeometryID = 0
+}
+
+        mm.ManufacturingGeometry.Add(hole)
+
+        _selectionManager.RegisterMachiningFeature(hole)
+
+
+        Dim mirrorX As Boolean =
+    Convert.ToBoolean(
+        _holeParameterValues("soln(0)").EvaluatedValue)
+
+        If Not centered AndAlso mirrorX Then
+
+            Dim mirroredHole As New HoleFeature With {
+        .ID = mm.GetNextFeatureID(),
+        .FeatureType = MachiningFeatureType.Hole,
+        .Description = "Single Hole",
+        .X = targetSheet.Length - holeX,
+        .Y = holeY,
+        .Angle = hole.Angle,
+        .ToolSetupMemberID = hole.ToolSetupMemberID,
+        .SourceGeometryID = 0
+    }
+
+            mm.ManufacturingGeometry.Add(mirroredHole)
+
+            _selectionManager.RegisterMachiningFeature(mirroredHole)
+
+        End If
+
+
+        Dim mirrorY As Boolean =
+    Convert.ToBoolean(
+        _holeParameterValues("soln(1)").EvaluatedValue)
+
+        If Not centered AndAlso mirrorY Then
+
+            Dim mirroredHoleY As New HoleFeature With {
+        .ID = mm.GetNextFeatureID(),
+        .FeatureType = MachiningFeatureType.Hole,
+        .Description = "Single Hole",
+        .X = holeX,
+        .Y = targetSheet.Width - holeY,
+        .Angle = hole.Angle,
+        .ToolSetupMemberID = hole.ToolSetupMemberID,
+        .SourceGeometryID = 0
+    }
+
+            mm.ManufacturingGeometry.Add(mirroredHoleY)
+
+            _selectionManager.RegisterMachiningFeature(mirroredHoleY)
+
+        End If
+
+
+        If Not centered AndAlso mirrorX AndAlso mirrorY Then
+
+            Dim mirroredHoleXY As New HoleFeature With {
+        .ID = mm.GetNextFeatureID(),
+        .FeatureType = MachiningFeatureType.Hole,
+        .Description = "Single Hole",
+        .X = targetSheet.Length - holeX,
+        .Y = targetSheet.Width - holeY,
+        .Angle = hole.Angle,
+        .ToolSetupMemberID = hole.ToolSetupMemberID,
+        .SourceGeometryID = 0
+    }
+
+            mm.ManufacturingGeometry.Add(mirroredHoleXY)
+
+            _selectionManager.RegisterMachiningFeature(mirroredHoleXY)
+
+        End If
+
+
+        RefreshEntityList()
+
+        Debug.WriteLine(
+    "Created HoleFeature ID = " & hole.ID.ToString())
+
+        Debug.WriteLine(
+    "Manufacturing Feature Count = " &
+    mm.ManufacturingGeometry.Count.ToString())
+
+        pnlPicmodeler.Invalidate()
+
+        MessageBox.Show(
+            "Hole parameters validated.",
+            "Create Hole",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+
+    End Sub
+
+    Private Sub btnAcceptHole_Click(sender As Object, e As EventArgs) Handles btnAcceptHole.Click
+
+        If _currentHoleArrangement Is Nothing Then
+            MessageBox.Show(
+            "No hole arrangement is selected.",
+            "Create Hole",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        Select Case _currentHoleArrangement.ID
+
+            Case 301
+                AcceptSingleHole()
+
+            Case 302
+                AcceptRowInX()
+            Case Else
+                MessageBox.Show(
+                "Hole arrangement SNCS " &
+                _currentHoleArrangement.ID.ToString() &
+                " is not yet implemented.",
+                "Create Hole",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information)
+
+        End Select
+
+    End Sub
+
+
+    Private Function GetCurrentHoleJobSheet() As JobSheet
+
+        If CurrentProductionJob Is Nothing OrElse
+       CurrentProductionJob.JobSheets Is Nothing Then
+
+            Return Nothing
+
+        End If
+
+        If CurrentProductionJob.JobSheets.Count <> 1 Then
+            Return Nothing
+        End If
+
+        Return CurrentProductionJob.JobSheets(0)
+
+    End Function
+
+    Private Sub ProfileBlend_ItemClick(sender As Object, e As ItemClickEventArgs) Handles ProfileBlend.ItemClick
+        dockPanelEntityList.Show()
+    End Sub
+
+
+    Private Sub cbeHoleDefinition_SelectedIndexChanged(
+    sender As Object,
+    e As EventArgs
+) Handles cbeHoleDefinition.SelectedIndexChanged
+
+        If _holeArrangementDefinitions Is Nothing Then Return
+
+        Dim selectedIndex As Integer =
+        cbeHoleDefinition.SelectedIndex
+
+        If selectedIndex < 0 Then Return
+
+        If selectedIndex >=
+        _holeArrangementDefinitions.Arrangements.Count Then Return
+
+        Dim definition As HoleArrangementDefinition =
+        _holeArrangementDefinitions.Arrangements(selectedIndex)
+
+        PopulateHoleArrangementGrid(definition)
+
+    End Sub
+
+
+    Private Sub bbCreateHole_ItemClick(
+        sender As Object,
+        e As ItemClickEventArgs
+    ) Handles bbCreateHole.ItemClick
+
+        Dim filePath As String =
+            IO.Path.Combine(
+                dataFolder,
+                "HoleArrangementDefinitions.json")
+
+
+        _holeArrangementDefinitions =
+    HoleArrangementDefinitionLoader.Load(filePath)
+
+        Dim definitions As HoleArrangementDefinitions =
+    _holeArrangementDefinitions
+
+        cbeHoleDefinition.Properties.Items.Clear()
+
+        For Each arrangement As HoleArrangementDefinition In definitions.Arrangements
+            cbeHoleDefinition.Properties.Items.Add(arrangement.Description)
+        Next
+
+        Dim definition As HoleArrangementDefinition =
+            definitions.Arrangements.FirstOrDefault(
+                Function(a) a.ID = 301)
+
+        If definition Is Nothing Then
+            MessageBox.Show("Single Hole definition not found.")
+            Return
+        End If
+
+        cbeHoleDefinition.SelectedIndex = 0
+
+        PopulateHoleArrangementGrid(definition)
+
+    End Sub
+
+
+    Private Sub AcceptRowInX()
+
+        Dim requiredParameters As String() = {
+        "ps_x",
+        "ps_y",
+        "tool",
+        "qty_x",
+        "spacing_x",
+        "rptd",
+        "rptcnt",
+        "rptdst"
+    }
+
+        For Each parameterName As String In requiredParameters
+
+            Dim parameterValue As HoleParameterValue = Nothing
+
+            If Not _holeParameterValues.TryGetValue(
+            parameterName, parameterValue) Then
+
+                MessageBox.Show(
+                "Missing required parameter: " & parameterName,
+                "Create Hole",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+                Return
+            End If
+
+            If parameterValue Is Nothing OrElse
+           Not parameterValue.IsValid OrElse
+           parameterValue.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show(
+                "Please enter a valid value for " & parameterName,
+                "Create Hole",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+                Return
+            End If
+
+        Next
+
+        Dim targetSheet As JobSheet = GetCurrentHoleJobSheet()
+
+        If targetSheet Is Nothing Then
+
+            MessageBox.Show(
+                "A production job with exactly one sheet is required.",
+                "Create Hole",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim mm As MM3 = targetSheet.ManufacturingModel
+
+
+        Dim rowFeature As New LineOfHolesFeature With {
+    .ID = mm.GetNextFeatureID(),
+    .FeatureType = MachiningFeatureType.LineOfHoles,
+    .Description = "Row In X",
+    .StartX = Convert.ToDouble(
+        _holeParameterValues("ps_x").EvaluatedValue),
+    .StartY = Convert.ToDouble(
+        _holeParameterValues("ps_y").EvaluatedValue),
+    .Count = Convert.ToInt32(
+        _holeParameterValues("qty_x").EvaluatedValue),
+    .Spacing = Convert.ToDouble(
+        _holeParameterValues("spacing_x").EvaluatedValue),
+    .ToolSetupMemberID = Convert.ToInt32(
+        _holeParameterValues("tool").EvaluatedValue)
+}
+
+
+        rowFeature.Parameters.RepeatDirection =
+    If(_holeParameterValues("rptd").EvaluatedValue.ToString() = "Y",
+       HoleRepeatDirection.Y,
+       HoleRepeatDirection.X)
+
+        rowFeature.Direction = rowFeature.Parameters.RepeatDirection
+
+        rowFeature.Parameters.RepeatCount =
+    Convert.ToInt32(_holeParameterValues("rptcnt").EvaluatedValue)
+
+        rowFeature.Parameters.Gap =
+    Convert.ToDouble(_holeParameterValues("rptdst").EvaluatedValue)
+
+        rowFeature.Parameters.XMirror =
+    Convert.ToBoolean(_holeParameterValues("soln(0)").EvaluatedValue)
+
+        rowFeature.Parameters.YMirror =
+    Convert.ToBoolean(_holeParameterValues("soln(1)").EvaluatedValue)
+
+        rowFeature.Parameters.Centered =
+    Convert.ToBoolean(_holeParameterValues("soln(2)").EvaluatedValue)
+
+        rowFeature.Parameters.Orientation =
+    Convert.ToInt32(_holeParameterValues("toolang").EvaluatedValue)
+
+
+        Debug.WriteLine("=== Row In X Feature ===")
+        Debug.WriteLine("Start X: " & rowFeature.StartX)
+        Debug.WriteLine("Start Y: " & rowFeature.StartY)
+        Debug.WriteLine("Quantity: " & rowFeature.Count)
+        Debug.WriteLine("Spacing: " & rowFeature.Spacing)
+        Debug.WriteLine("Repeat Along: " & rowFeature.Parameters.RepeatDirection.ToString())
+        Debug.WriteLine("Repeat Count: " & rowFeature.Parameters.RepeatCount)
+        Debug.WriteLine("Repeat Distance: " & rowFeature.Parameters.Gap)
+        Debug.WriteLine("Mirror X: " & rowFeature.Parameters.XMirror)
+        Debug.WriteLine("Mirror Y: " & rowFeature.Parameters.YMirror)
+        Debug.WriteLine("Center: " & rowFeature.Parameters.Centered)
+        Debug.WriteLine("Index Angle: " & rowFeature.Parameters.Orientation)
+        Debug.WriteLine("ToolSetupMemberID: " & rowFeature.ToolSetupMemberID)
+
+
+        Debug.WriteLine(
+            "Row In X - Target Sheet: " &
+            targetSheet.MaterialSheetID.ToString())
+
+        Debug.WriteLine(
+            "Existing Manufacturing Features: " &
+            mm.ManufacturingGeometry.Count.ToString())
+
+        MessageBox.Show(
+            "Row In X target sheet validated.",
+            "Create Hole",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+
+
+        mm.ManufacturingGeometry.Add(rowFeature)
+
+        pnlPicmodeler.Invalidate()
+
+        Debug.WriteLine(
+    "Created LineOfHolesFeature ID = " &
+    rowFeature.ID.ToString())
+
+        Debug.WriteLine(
+    "Manufacturing Feature Count = " &
+    mm.ManufacturingGeometry.Count.ToString())
+
+    End Sub
+
+
+    Private Function FindHoleGridRow(
+    row As DevExpress.XtraVerticalGrid.Rows.BaseRow,
+    rowName As String) _
+    As DevExpress.XtraVerticalGrid.Rows.BaseRow
+
+        If row Is Nothing Then Return Nothing
+
+        If String.Equals(
+            row.Name,
+            rowName,
+            StringComparison.OrdinalIgnoreCase) Then
+
+            Return row
+        End If
+
+        For Each child As DevExpress.XtraVerticalGrid.Rows.BaseRow In row.ChildRows
+
+            Dim found =
+                FindHoleGridRow(child, rowName)
+
+            If found IsNot Nothing Then
+                Return found
+            End If
+
+        Next
+
+        Return Nothing
+
+    End Function
+
+
+    Private Function FindHoleGridRow(
+        rowName As String) _
+        As DevExpress.XtraVerticalGrid.Rows.BaseRow
+
+        For Each rootRow As DevExpress.XtraVerticalGrid.Rows.BaseRow In vgCreateHoles.Rows
+
+            Dim found =
+                FindHoleGridRow(rootRow, rowName)
+
+            If found IsNot Nothing Then
+                Return found
+            End If
+
+        Next
+
+        Return Nothing
+
+    End Function
+
+
+    Private Sub SetHoleCoordinateFromGraphic(
+        parameterName As String,
+        value As Double)
+
+        Dim parameterValue As HoleParameterValue = Nothing
+
+        If Not _holeParameterValues.TryGetValue(
+            parameterName,
+            parameterValue) Then
+
+            Return
+        End If
+
+        Dim valueText As String =
+            value.ToString(
+                Globalization.CultureInfo.InvariantCulture)
+
+        parameterValue.EnteredValue = valueText
+        parameterValue.EvaluatedValue = value
+        parameterValue.IsValid = True
+
+        Dim gridRow =
+            FindHoleGridRow(parameterName)
+
+        If gridRow Is Nothing Then Return
+
+        _updatingHoleGrid = True
+
+        Try
+            gridRow.Properties.Value = valueText
+        Finally
+            _updatingHoleGrid = False
+        End Try
+
+    End Sub
+
+    Private Function TryReturnGraphicPointToHoleControl(
+    mouseScreen As Point) As Boolean
+
+        If _currentHoleArrangement Is Nothing Then
+            Return False
+        End If
+
+        Dim focusedRow As DevExpress.XtraVerticalGrid.Rows.BaseRow =
+            vgCreateHoles.FocusedRow
+
+        If focusedRow Is Nothing Then
+            Return False
+        End If
+
+        Dim returnX As Boolean = False
+        Dim returnY As Boolean = False
+
+        If String.Equals(focusedRow.Name, "ps_x",
+                         StringComparison.OrdinalIgnoreCase) Then
+
+            returnX = True
+
+        ElseIf String.Equals(focusedRow.Name, "ps_y",
+                             StringComparison.OrdinalIgnoreCase) Then
+
+            returnY = True
+
+        Else
+            'A category is Start Pt only when it contains both fields.
+            Dim xRow = FindHoleGridRow(focusedRow, "ps_x")
+            Dim yRow = FindHoleGridRow(focusedRow, "ps_y")
+
+            If xRow IsNot Nothing AndAlso yRow IsNot Nothing Then
+                returnX = True
+                returnY = True
+            End If
+
+        End If
+
+        If Not returnX AndAlso Not returnY Then
+            Return False
+        End If
+
+        Dim worldPoint As PointF =
+            If(_activeSnap.HasValue,
+               _activeSnap.Value.WorldPoint,
+               ScreenToWorld(
+                   mouseScreen,
+                   myTransform,
+                   pnlPicmodeler.ClientSize.Height))
+
+        If returnX Then
+            SetHoleCoordinateFromGraphic("ps_x", worldPoint.X)
+        End If
+
+        If returnY Then
+            SetHoleCoordinateFromGraphic("ps_y", worldPoint.Y)
+        End If
+
+        pnlPicmodeler.Invalidate()
+
+        Return True
+
+    End Function
+
 
 End Class
 

@@ -358,11 +358,16 @@
     <Compile Include="Classes\GridOfHolesFeature.vb" />
     <Compile Include="Classes\HelperFunctions.vb" />
     <Compile Include="Classes\HexagonToolShape.vb" />
+    <Compile Include="Classes\HoleArrangementDefinition.vb" />
+    <Compile Include="Classes\HoleArrangementDefinitionLoader,vb.vb" />
+    <Compile Include="Classes\HoleExpressionEvaluator.vb" />
     <Compile Include="Classes\HoleFeature.vb" />
+    <Compile Include="Classes\HoleParameterValue,vb.vb" />
     <Compile Include="Classes\HolePatternParameters.vb" />
     <Compile Include="Classes\HotSpot.vb" />
     <Compile Include="Classes\HotSpotManager.vb" />
     <Compile Include="Classes\IGeoAssociation.vb" />
+    <Compile Include="Classes\InstalledToolService.vb" />
     <Compile Include="Classes\Job.vb" />
     <Compile Include="Classes\JobContext.vb" />
     <Compile Include="Classes\JobSheet.vb" />

@@ -19,7 +19,7 @@ Partial Class frmSelectLayer
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
-        Dim GridLevelNode2 As DevExpress.XtraGrid.GridLevelNode = New DevExpress.XtraGrid.GridLevelNode()
+        Dim GridLevelNode1 As DevExpress.XtraGrid.GridLevelNode = New DevExpress.XtraGrid.GridLevelNode()
         Me.grdToolLayer = New DevExpress.XtraGrid.GridControl()
         Me.gViewToolLayer = New DevExpress.XtraGrid.Views.Grid.GridView()
         Me.sbOk = New DevExpress.XtraEditors.SimpleButton()
@@ -39,8 +39,8 @@ Partial Class frmSelectLayer
         'grdToolLayer
         '
         Me.grdToolLayer.Cursor = System.Windows.Forms.Cursors.Default
-        GridLevelNode2.RelationName = "Level1"
-        Me.grdToolLayer.LevelTree.Nodes.AddRange(New DevExpress.XtraGrid.GridLevelNode() {GridLevelNode2})
+        GridLevelNode1.RelationName = "Level1"
+        Me.grdToolLayer.LevelTree.Nodes.AddRange(New DevExpress.XtraGrid.GridLevelNode() {GridLevelNode1})
         Me.grdToolLayer.Location = New System.Drawing.Point(6, 6)
         Me.grdToolLayer.MainView = Me.gViewToolLayer
         Me.grdToolLayer.Name = "grdToolLayer"
