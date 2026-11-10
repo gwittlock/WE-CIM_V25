@@ -1201,7 +1201,7 @@ Namespace ToolShapes
                 radius,
                 Math.PI / 2.0,
                 -Math.PI / 2.0,
-                False))
+                True))
 
             ' Bottom straight segment.
             path.Add(
@@ -1222,7 +1222,7 @@ Namespace ToolShapes
         radius,
         -Math.PI / 2.0,
         -3.0 * Math.PI / 2.0,
-        False))
+        True))
             Return path
 
         End Function

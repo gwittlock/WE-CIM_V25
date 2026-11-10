@@ -363,6 +363,7 @@
     <Compile Include="Classes\HoleExpressionEvaluator.vb" />
     <Compile Include="Classes\HoleFeature.vb" />
     <Compile Include="Classes\HoleParameterValue,vb.vb" />
+    <Compile Include="Classes\HolePatternGeometry.vb" />
     <Compile Include="Classes\HolePatternParameters.vb" />
     <Compile Include="Classes\HotSpot.vb" />
     <Compile Include="Classes\HotSpotManager.vb" />

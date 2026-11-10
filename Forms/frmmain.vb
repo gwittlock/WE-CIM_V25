@@ -1077,6 +1077,10 @@ Public Class frmMain
             vt,
             panelHeight)
 
+
+            _selectionManager.SheetXExtent = matLength
+            _selectionManager.SheetYExtent = matWidth
+
             '---------------------------------------------
             ' Draw Manufacturing Geometry from MM3
             '---------------------------------------------
@@ -4614,28 +4618,60 @@ Public Class frmMain
             Exit Sub
         End If
 
+        Dim angleRadians As Double =
+    hole.Angle * Math.PI / 180.0
+
+        Dim cosA As Double = Math.Cos(angleRadians)
+        Dim sinA As Double = Math.Sin(angleRadians)
+
+        Debug.WriteLine(
+    $"HOLE ROTATION: Angle={hole.Angle}, Cos={cosA}, Sin={sinA}")
+
+
         For Each segment As IPathSegment In
         shape.CuttingProfile.Segments
 
+            Debug.WriteLine(
+    $"HOLE {hole.ID}: SegmentType = {segment.SegmentType}")
             If segment Is Nothing Then Continue For
 
             Select Case segment.SegmentType
 
                 Case PathSegmentType.Line
 
+                    'Rotate the start point around the tool center.
+                    Dim x1 As Double =
+                        segment.StartPoint.X * cosA -
+                        segment.StartPoint.Y * sinA
+
+                    Dim y1 As Double =
+                    segment.StartPoint.X * sinA +
+                    segment.StartPoint.Y * cosA
+
+                    'Rotate the end point around the tool center.
+                    Dim x2 As Double =
+                        segment.EndPoint.X * cosA -
+                        segment.EndPoint.Y * sinA
+
+                    Dim y2 As Double =
+                        segment.EndPoint.X * sinA +
+                        segment.EndPoint.Y * cosA
+
+
+                    'Convert rotated coordinates to screen coordinates.
                     Dim p1 As PointF =
-                    WorldToScreen(
-                        hole.X + segment.StartPoint.X,
-                        hole.Y + segment.StartPoint.Y,
-                        vt,
-                        panelHeight)
+                        WorldToScreen(
+                            hole.X + x1,
+                            hole.Y + y1,
+                            vt,
+                            panelHeight)
 
                     Dim p2 As PointF =
-                    WorldToScreen(
-                        hole.X + segment.EndPoint.X,
-                        hole.Y + segment.EndPoint.Y,
-                        vt,
-                        panelHeight)
+                        WorldToScreen(
+                            hole.X + x2,
+                            hole.Y + y2,
+                            vt,
+                            panelHeight)
 
                     g.DrawLine(pen, p1, p2)
 
@@ -4644,10 +4680,19 @@ Public Class frmMain
                     Dim arc As ArcSegment2D =
                     DirectCast(segment, ArcSegment2D)
 
+                    'Rotate the arc center around the tool origin.
+                    Dim rotatedCenterX As Double =
+                    arc.Center.X * cosA -
+                    arc.Center.Y * sinA
+
+                    Dim rotatedCenterY As Double =
+                    arc.Center.X * sinA +
+                    arc.Center.Y * cosA
+
                     Dim center As PointF =
                     WorldToScreen(
-                        hole.X + arc.Center.X,
-                        hole.Y + arc.Center.Y,
+                        hole.X + rotatedCenterX,
+                        hole.Y + rotatedCenterY,
                         vt,
                         panelHeight)
 
@@ -4661,8 +4706,8 @@ Public Class frmMain
                     radius * 2.0F)
 
                     Dim startAngle As Single =
-                    CSng(-arc.StartAngle * 180.0 / Math.PI)
-
+                    CSng(-(arc.StartAngle + angleRadians) *
+                         180.0 / Math.PI)
                     Dim sweepRadians As Double =
                     arc.EndAngle - arc.StartAngle
 
@@ -4716,10 +4761,10 @@ Public Class frmMain
         "Drawing LineOfHolesFeature ID = " & row.ID.ToString())
 
         For Each holeCenter As PointF In
-        GetLineOfHolesPoints(
-            row,
-            sheetXExtent,
-            sheetYExtent)
+    HolePatternGeometry.GetLineOfHolesPoints(
+        row,
+        sheetXExtent,
+        sheetYExtent)
 
             Dim displayHole As New HoleFeature With {
             .X = holeCenter.X,
@@ -5524,14 +5569,12 @@ Public Class frmMain
 
         End If
 
+        Dim feature As MachiningFeature =
+    TryCast(e.Node.Tag, MachiningFeature)
 
-        Dim hole As HoleFeature =
-    TryCast(e.Node.Tag, HoleFeature)
-
-        If hole Is Nothing Then Return
-
+        If feature Is Nothing Then Return
         Dim toolMember = AppData.ToolSetupMembers.FirstOrDefault(
-    Function(m) m.ID = hole.ToolSetupMemberID)
+    Function(m) m.ID = feature.ToolSetupMemberID)
 
         If toolMember Is Nothing Then Return
 
@@ -6093,6 +6136,9 @@ Public Class frmMain
 
         mm.ManufacturingGeometry.Add(hole)
 
+        Debug.WriteLine(
+    "CREATED HOLE ANGLE = " & hole.Angle.ToString())
+
         _selectionManager.RegisterMachiningFeature(hole)
 
 
@@ -6175,11 +6221,11 @@ Public Class frmMain
 
         pnlPicmodeler.Invalidate()
 
-        MessageBox.Show(
-            "Hole parameters validated.",
-            "Create Hole",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information)
+        'MessageBox.Show(
+        '    "Hole parameters validated.",
+        '    "Create Hole",
+        '    MessageBoxButtons.OK,
+        '    MessageBoxIcon.Information)
 
     End Sub
 
@@ -6431,8 +6477,11 @@ Public Class frmMain
             MessageBoxButtons.OK,
             MessageBoxIcon.Information)
 
-
         mm.ManufacturingGeometry.Add(rowFeature)
+
+        _selectionManager.RegisterMachiningFeature(rowFeature)
+
+        RefreshEntityList()
 
         pnlPicmodeler.Invalidate()
 

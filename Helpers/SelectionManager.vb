@@ -25,7 +25,8 @@ Public Class SelectionManager
 
 #Region "State"
 
-
+    Public Property SheetXExtent As Double
+    Public Property SheetYExtent As Double
     Private _geoEntities As New List(Of GeoEntity)
     Private _machiningFeatures As New List(Of MachiningFeature)
     Public ReadOnly Property GeoEntities As IEnumerable(Of GeoEntity)
@@ -266,8 +267,8 @@ Public Class SelectionManager
         ' Manufacturing Model Hole selection.
         If (selectionFilter And SelectionFilter.Hole) <> SelectionFilter.None Then
 
-            Dim holeHit As HoleFeature =
-        HitTestHoleAtPoint(ptWorld, tolWorld)
+            Dim holeHit As MachiningFeature =
+    HitTestHoleAtPoint(ptWorld, tolWorld)
 
             If holeHit IsNot Nothing Then
 
@@ -277,10 +278,9 @@ Public Class SelectionManager
                     ApplySelection(holeHit)
 
                     DiagnosticLogger.Write(
-    "HOLE SELECTED" &
-    " | SourceGeometryID=" & holeHit.SourceGeometryID &
-    " | X=" & holeHit.X.ToString("F4") &
-    " | Y=" & holeHit.Y.ToString("F4") &
+    "MANUFACTURING FEATURE SELECTED" &
+    " | Type=" & holeHit.GetType().Name &
+    " | ID=" & holeHit.ID.ToString() &
     " | IsSelected=" & holeHit.IsSelected.ToString())
 
                 End If
@@ -426,7 +426,7 @@ Public Class SelectionManager
     End Function
     Private Function HitTestHoleAtPoint(
     ptWorld As PointF,
-    tolWorld As Single) As HoleFeature
+    tolWorld As Single) As MachiningFeature
 
         Dim bestHole As HoleFeature = Nothing
         Dim bestDistance As Double = Double.MaxValue
@@ -448,10 +448,21 @@ Public Class SelectionManager
 
 
             ' Convert world coordinates to tool-local coordinates.
-            Dim localPoint As New PointF(
-    CSng(ptWorld.X - hole.X),
-    CSng(ptWorld.Y - hole.Y))
+            'Translate the mouse point relative to the hole center.
+            Dim dx As Double = ptWorld.X - hole.X
+            Dim dy As Double = ptWorld.Y - hole.Y
 
+            'Convert the operator's angle from degrees to radians.
+            Dim angleRadians As Double =
+    hole.Angle * Math.PI / 180.0
+
+            'Inverse rotation: world coordinates to tool-local coordinates.
+            Dim cosA As Double = Math.Cos(angleRadians)
+            Dim sinA As Double = Math.Sin(angleRadians)
+
+            Dim localPoint As New PointF(
+    CSng(dx * cosA + dy * sinA),
+    CSng(-dx * sinA + dy * cosA))
             ' Test against the actual punch cutting profile.
             Dim isInside As Boolean =
     Geometry2D.IsPointInsidePath(
@@ -474,6 +485,66 @@ Public Class SelectionManager
 
         Next
 
+        '-----------------------------------------
+        ' Hit-test parameterized Row in X features
+        '-----------------------------------------
+        For Each row As LineOfHolesFeature In
+            _machiningFeatures.OfType(Of LineOfHolesFeature)()
+
+            Dim tool As Tool = Nothing
+            Dim shape As ToolShape = Nothing
+
+            If Not ToolShapeResolver.TryResolve(
+                row.ToolSetupMemberID,
+                tool,
+                shape) Then
+
+                Continue For
+            End If
+
+            Dim angleRadians As Double =
+                row.Parameters.Orientation * Math.PI / 180.0
+
+            Dim cosA As Double = Math.Cos(angleRadians)
+            Dim sinA As Double = Math.Sin(angleRadians)
+
+            For Each holeCenter As PointF In
+                HolePatternGeometry.GetLineOfHolesPoints(
+                    row,
+                    SheetXExtent,
+                    SheetYExtent)
+
+                Dim dx As Double = ptWorld.X - holeCenter.X
+                Dim dy As Double = ptWorld.Y - holeCenter.Y
+
+                Dim localPoint As New PointF(
+                    CSng(dx * cosA + dy * sinA),
+                    CSng(-dx * sinA + dy * cosA))
+
+                Dim isInside As Boolean =
+                    Geometry2D.IsPointInsidePath(
+                        shape.CuttingProfile,
+                        localPoint)
+
+                Dim distanceToPunch As Double =
+                    If(isInside,
+                       0.0,
+                       DistanceToToolProfile(
+                           shape.CuttingProfile,
+                           localPoint))
+
+                If distanceToPunch <= tolWorld AndAlso
+                   distanceToPunch < bestDistance Then
+
+                    bestDistance = distanceToPunch
+                    Return row
+
+                End If
+
+            Next
+
+        Next
+
         Return bestHole
 
     End Function
@@ -486,8 +557,8 @@ Public Class SelectionManager
         HitTestGeoAtPoint(ptWorld, tolWorld)
 
         ' Include Manufacturing Model holes.
-        Dim holeHit As HoleFeature =
-        HitTestHoleAtPoint(ptWorld, tolWorld)
+        Dim holeHit As MachiningFeature =
+    HitTestHoleAtPoint(ptWorld, tolWorld)
 
         If holeHit IsNot Nothing Then
             nativeHit = holeHit
