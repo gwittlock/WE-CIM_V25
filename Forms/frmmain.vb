@@ -19,6 +19,11 @@ Imports IxMilia.Dxf.Entities
 Imports Newtonsoft.Json
 Imports Formatting = Newtonsoft.Json.Formatting
 
+Imports System.Linq
+Imports FabV25_WIN8.ToolShapes
+
+
+
 
 Public Class frmMain
     Inherits RibbonForm
@@ -237,6 +242,10 @@ Public Class frmMain
     Private Sub frmMain_Load(sender As Object, e As EventArgs) Handles Me.Load
 
         Try
+
+            Me.KeyPreview = True
+            dockPanelEntityList.Visible = False
+            dockPanelCreateHole.Visible = False
 
             EnableDoubleBuffering(pnlPicmodeler)
 
@@ -1776,6 +1785,7 @@ Public Class frmMain
             pnlPicmodeler.Invalidate()
         End If
 
+        Debug.WriteLine("VIEW WINDOW STARTED")
         ' --------------------------
         ' 4) Active Snap
         ' --------------------------
@@ -2182,6 +2192,9 @@ Public Class frmMain
 
         Debug.Print("MouseDown - SelectionEnabled = " & _selectionEnabled.ToString())
 
+
+        Debug.Print("MOUSEDOWN CURRENT TOOL = [" & _currentTool & "]")
+        Debug.Print("MOUSEDOWN SELECTION ENABLED = " & _selectionEnabled.ToString())
         ' -----------------------------
         ' 1) PANNING
         ' -----------------------------
@@ -2203,9 +2216,12 @@ Public Class frmMain
         End If
 
         If e.Button = MouseButtons.Left AndAlso
-           TryReturnGraphicPointToHoleControl(e.Location) Then
+   Not _selectionEnabled AndAlso
+   _currentTool = "None" AndAlso
+   TryReturnGraphicPointToHoleControl(e.Location) Then
 
             Return
+
         End If
 
         ' -----------------------------
@@ -3119,37 +3135,55 @@ Public Class frmMain
         ShowEntityPropertiesForm()
 
     End Sub
-    Private Sub frmMain_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown
+    Private Sub frmMain_KeyDown(
+    sender As Object,
+    e As KeyEventArgs) Handles Me.KeyDown
 
-        If e.KeyCode <> Keys.Escape Then Return
+        Select Case e.KeyCode
 
-        ' Preserve existing Inquire Mode behavior.
-        If _inquireMode Then
+            Case Keys.Delete
 
-            ExitInquireMode()
-            e.Handled = True
-            Return
+                If DeleteSelectedManufacturingFeatures() Then
+                    e.Handled = True
+                    e.SuppressKeyPress = True
+                End If
 
-        End If
+                Return
 
-        ' Exit persistent Window Selection mode.
-        If _selectWindowActive AndAlso
-       _currentTool = "SelectWindow" Then
+            Case Keys.Escape
 
-            _selectWindowActive = False
+                ' Preserve existing Inquire Mode behavior.
+                If _inquireMode Then
 
-            _selectWindowStart = System.Drawing.Point.Empty
-            _selectWindowEnd = System.Drawing.Point.Empty
+                    ExitInquireMode()
 
-            _currentTool = ""
+                    e.Handled = True
+                    e.SuppressKeyPress = True
+                    Return
 
-            pnlPicmodeler.Cursor = Cursors.Default
-            pnlPicmodeler.Invalidate()
+                End If
 
-            e.Handled = True
-            Return
+                ' Exit persistent Window Selection mode.
+                If _selectWindowActive AndAlso
+               _currentTool = "SelectWindow" Then
 
-        End If
+                    _selectWindowActive = False
+
+                    _selectWindowStart = System.Drawing.Point.Empty
+                    _selectWindowEnd = System.Drawing.Point.Empty
+
+                    _currentTool = ""
+
+                    pnlPicmodeler.Cursor = Cursors.Default
+                    pnlPicmodeler.Invalidate()
+
+                    e.Handled = True
+                    e.SuppressKeyPress = True
+                    Return
+
+                End If
+
+        End Select
 
     End Sub
 
@@ -3317,37 +3351,114 @@ Public Class frmMain
 
         pnlPicmodeler.Invalidate()
     End Sub
+
+    Private Sub ConsiderManufacturingHoleSnap(
+    candidate As PointF,
+    mouseWorld As PointF,
+    toleranceWorld As Single,
+    ByRef closestSnap As SnapResult?,
+    ByRef closestDistance As Single)
+
+        Dim dx As Single = candidate.X - mouseWorld.X
+        Dim dy As Single = candidate.Y - mouseWorld.Y
+
+        Dim distance As Single =
+        CSng(Math.Sqrt((dx * dx) + (dy * dy)))
+
+        If distance > toleranceWorld OrElse
+       distance >= closestDistance Then
+
+            Return
+        End If
+
+        closestDistance = distance
+
+        closestSnap = New SnapResult With {
+        .Type = SnapType.Center,
+        .WorldPoint = candidate,
+        .Entity = Nothing,
+        .Distance = distance
+    }
+
+    End Sub
+
+
+    Private Function GetManufacturingHoleSnap(
+    mouseWorld As PointF,
+    toleranceWorld As Single) As SnapResult?
+
+        Dim closestSnap As SnapResult? = Nothing
+        Dim closestDistance As Single = Single.MaxValue
+
+        If CurrentProductionJob Is Nothing Then
+            Return Nothing
+        End If
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            If sheet Is Nothing OrElse
+           sheet.ManufacturingModel Is Nothing Then
+
+                Continue For
+            End If
+
+            For Each feature As MachiningFeature In
+            sheet.ManufacturingModel.ManufacturingGeometry
+
+                If TypeOf feature Is HoleFeature Then
+
+                    Dim hole = DirectCast(feature, HoleFeature)
+
+                    ConsiderManufacturingHoleSnap(
+                    New PointF(
+                        CSng(hole.X),
+                        CSng(hole.Y)),
+                    mouseWorld,
+                    toleranceWorld,
+                    closestSnap,
+                    closestDistance)
+
+                ElseIf TypeOf feature Is LineOfHolesFeature Then
+
+                    Dim row = DirectCast(feature, LineOfHolesFeature)
+
+                    For Each holeCenter As PointF In
+                    GetLineOfHolesPoints(
+                        row,
+                        matLength,
+                        matWidth)
+
+                        ConsiderManufacturingHoleSnap(
+                        holeCenter,
+                        mouseWorld,
+                        toleranceWorld,
+                        closestSnap,
+                        closestDistance)
+
+                    Next
+
+                End If
+
+            Next
+
+        Next
+
+        Return closestSnap
+
+    End Function
+
+
+
     Private Function GetActiveSnap(
     mouseScreen As Point,
     tolScreenPx As Single
 ) As SnapResult?
-
-        If _hotSpotManager Is Nothing Then
-            Return Nothing
-        End If
-
-        If _cadEntities Is Nothing OrElse
-       _cadEntities.Count = 0 Then
-
-            Return Nothing
-
-        End If
-
-
-        '--------------------------------------------------
-        ' Convert mouse position to world coordinates
-        '--------------------------------------------------
 
         Dim mouseWorld As PointF =
         ScreenToWorld(
             mouseScreen,
             myTransform,
             pnlPicmodeler.ClientSize.Height)
-
-
-        '--------------------------------------------------
-        ' Convert screen tolerance to world tolerance
-        '--------------------------------------------------
 
         If myTransform.Scale <= 0.0F Then
             Return Nothing
@@ -3356,61 +3467,74 @@ Public Class frmMain
         Dim tolWorld As Single =
         tolScreenPx / myTransform.Scale
 
+        Dim cadSnap As SnapResult? = Nothing
 
-        '--------------------------------------------------
-        ' Ask HotSpotManager for the closest hot spot
-        '--------------------------------------------------
+        If _hotSpotManager IsNot Nothing Then
 
-        Dim hotSpot As HotSpot =
-        _hotSpotManager.FindHotSpot(
+            Dim hotSpot As HotSpot =
+            _hotSpotManager.FindHotSpot(
+                mouseWorld,
+                tolWorld)
+
+            If hotSpot IsNot Nothing Then
+
+                Dim result As New SnapResult
+
+                Select Case hotSpot.Type
+                    Case HotSpotType.Endpoint
+                        result.Type = SnapType.Endpoint
+
+                    Case HotSpotType.Midpoint
+                        result.Type = SnapType.Midpoint
+
+                    Case HotSpotType.Center
+                        result.Type = SnapType.Center
+
+                    Case HotSpotType.Intersection
+                        result.Type = SnapType.Intersection
+
+                    Case HotSpotType.Quadrant
+                        result.Type = SnapType.Quadrant
+
+                    Case Else
+                        result.Type = SnapType.None
+                End Select
+
+                If result.Type <> SnapType.None Then
+
+                    result.WorldPoint = hotSpot.WorldPoint
+                    result.Entity = hotSpot.Entity1
+                    result.Distance =
+                    Distance(mouseWorld, hotSpot.WorldPoint)
+
+                    cadSnap = result
+
+                End If
+
+            End If
+
+        End If
+
+        Dim manufacturingSnap As SnapResult? =
+        GetManufacturingHoleSnap(
             mouseWorld,
             tolWorld)
 
-
-        If hotSpot Is Nothing Then
-            Return Nothing
+        If Not cadSnap.HasValue Then
+            Return manufacturingSnap
         End If
 
+        If Not manufacturingSnap.HasValue Then
+            Return cadSnap
+        End If
 
-        '--------------------------------------------------
-        ' Adapt HotSpot to existing SnapResult
-        '--------------------------------------------------
+        If manufacturingSnap.Value.Distance <
+       cadSnap.Value.Distance Then
 
-        Dim result As New SnapResult
+            Return manufacturingSnap
+        End If
 
-        Select Case hotSpot.Type
-            Case HotSpotType.Endpoint
-                result.Type = SnapType.Endpoint
-
-            Case HotSpotType.Midpoint
-                result.Type = SnapType.Midpoint
-
-            Case HotSpotType.Center
-                result.Type = SnapType.Center
-
-            Case HotSpotType.Intersection
-                result.Type = SnapType.Intersection
-
-            Case HotSpotType.Quadrant
-                result.Type = SnapType.Quadrant
-
-            Case Else
-                Return Nothing
-        End Select
-
-
-        result.WorldPoint = hotSpot.WorldPoint
-        result.Entity = hotSpot.Entity1
-
-
-        ' HotSpotManager resolved the active Hot Spot.
-        result.Distance =
-        Distance(
-            mouseWorld,
-            hotSpot.WorldPoint)
-
-
-        Return result
+        Return cadSnap
 
     End Function
     '    Private Function TryEndpointSnap(
@@ -4427,41 +4551,18 @@ Public Class frmMain
 
         If hole Is Nothing Then Exit Sub
 
-        ' Resolve the actual round punch diameter.
-        Dim diameter As Double
+        ' Resolve the installed tool and its physical shape.
+        Dim tool As Tool = Nothing
+        Dim shape As ToolShape = Nothing
 
-        If Not AutoPunchingEngine.TryGetRoundPunchDiameter(
-    hole, diameter) Then
+        If Not ToolShapeResolver.TryResolve(
+    hole.ToolSetupMemberID,
+    tool,
+    shape) Then
 
             Exit Sub
 
         End If
-
-        ' Resolve the installed tool for its display color.
-        Dim member = AppData.ToolSetupMembers.
-    FirstOrDefault(
-        Function(m) m.ID = hole.ToolSetupMemberID)
-
-        If member Is Nothing Then Exit Sub
-
-        Dim tool = AppData.ToolCrib.
-    FirstOrDefault(
-        Function(t) t.ID = member.ToolID)
-
-        If tool Is Nothing Then Exit Sub
-
-        ' Convert punch center and radius to screen coordinates.
-        Dim center As PointF =
-            WorldToScreen(hole.X, hole.Y, vt, panelHeight)
-
-        Dim radius As Single =
-            CSng((diameter / 2.0) * vt.Scale)
-
-        Dim rect As New RectangleF(
-            center.X - radius,
-            center.Y - radius,
-            radius * 2.0F,
-            radius * 2.0F)
 
         Dim drawColor As Color = tool.Color
         Dim drawStyle As Drawing2D.DashStyle =
@@ -4481,17 +4582,124 @@ Public Class frmMain
         ' Draw the actual round punch outline.
         ' Dashed line distinguishes Manufacturing Geometry
         ' from the solid Part Geometry.
-
         Using pen As New Pen(drawColor, 2.0F)
 
             pen.DashStyle = drawStyle
 
-            g.DrawEllipse(pen, rect)
+            DrawToolCuttingProfile(
+        g,
+        shape,
+        hole,
+        vt,
+        panelHeight,
+        pen)
 
         End Using
 
 
     End Sub
+
+
+
+    Private Sub DrawToolCuttingProfile(
+    g As Graphics,
+    shape As ToolShape,
+    hole As HoleFeature,
+    vt As ViewTransform,
+    panelHeight As Integer,
+    pen As Pen)
+
+        If shape Is Nothing OrElse
+       shape.CuttingProfile Is Nothing Then
+            Exit Sub
+        End If
+
+        For Each segment As IPathSegment In
+        shape.CuttingProfile.Segments
+
+            If segment Is Nothing Then Continue For
+
+            Select Case segment.SegmentType
+
+                Case PathSegmentType.Line
+
+                    Dim p1 As PointF =
+                    WorldToScreen(
+                        hole.X + segment.StartPoint.X,
+                        hole.Y + segment.StartPoint.Y,
+                        vt,
+                        panelHeight)
+
+                    Dim p2 As PointF =
+                    WorldToScreen(
+                        hole.X + segment.EndPoint.X,
+                        hole.Y + segment.EndPoint.Y,
+                        vt,
+                        panelHeight)
+
+                    g.DrawLine(pen, p1, p2)
+
+                Case PathSegmentType.Arc
+
+                    Dim arc As ArcSegment2D =
+                    DirectCast(segment, ArcSegment2D)
+
+                    Dim center As PointF =
+                    WorldToScreen(
+                        hole.X + arc.Center.X,
+                        hole.Y + arc.Center.Y,
+                        vt,
+                        panelHeight)
+
+                    Dim radius As Single =
+                    CSng(arc.Radius * vt.Scale)
+
+                    Dim rect As New RectangleF(
+                    center.X - radius,
+                    center.Y - radius,
+                    radius * 2.0F,
+                    radius * 2.0F)
+
+                    Dim startAngle As Single =
+                    CSng(-arc.StartAngle * 180.0 / Math.PI)
+
+                    Dim sweepRadians As Double =
+                    arc.EndAngle - arc.StartAngle
+
+                    If arc.IsClockwise Then
+                        If sweepRadians > 0 Then
+                            sweepRadians -= 2.0 * Math.PI
+                        End If
+                    Else
+                        If sweepRadians < 0 Then
+                            sweepRadians += 2.0 * Math.PI
+                        End If
+                    End If
+
+                    Dim sweepAngle As Single =
+                    CSng(-sweepRadians * 180.0 / Math.PI)
+
+                    If Math.Abs(sweepRadians) >=
+                   (2.0 * Math.PI - 0.000001) Then
+
+                        g.DrawEllipse(pen, rect)
+
+                    Else
+
+                        g.DrawArc(
+                        pen,
+                        rect,
+                        startAngle,
+                        sweepAngle)
+
+                    End If
+
+            End Select
+
+        Next
+
+    End Sub
+
 
 
     Private Sub DrawLineOfHolesFeature(
@@ -4503,12 +4711,41 @@ Public Class frmMain
     sheetYExtent As Double)
 
         If row Is Nothing Then Exit Sub
-        If row.Count <= 0 Then Exit Sub
 
         Debug.WriteLine(
-    "Drawing LineOfHolesFeature ID = " & row.ID.ToString())
+        "Drawing LineOfHolesFeature ID = " & row.ID.ToString())
 
-        'RepeatCount represents the total number of row instances.
+        For Each holeCenter As PointF In
+        GetLineOfHolesPoints(
+            row,
+            sheetXExtent,
+            sheetYExtent)
+
+            Dim displayHole As New HoleFeature With {
+            .X = holeCenter.X,
+            .Y = holeCenter.Y,
+            .ToolSetupMemberID = row.ToolSetupMemberID,
+            .IsSelected = row.IsSelected,
+            .IsHovered = row.IsHovered
+        }
+
+            DrawHoleFeature(displayHole, g, vt, panelHeight)
+
+        Next
+
+    End Sub
+
+    Private Function GetLineOfHolesPoints(
+    row As LineOfHolesFeature,
+    sheetXExtent As Double,
+    sheetYExtent As Double) As List(Of PointF)
+
+        Dim points As New List(Of PointF)
+
+        If row Is Nothing OrElse row.Count <= 0 Then
+            Return points
+        End If
+
         Dim repeatCount As Integer =
         Math.Max(1, row.Parameters.RepeatCount)
 
@@ -4516,27 +4753,24 @@ Public Class frmMain
 
         If row.Parameters.Centered Then
 
-            'Primary row span: first hole through last hole.
             Dim patternSpanX As Double =
-                (row.Count - 1) * row.Spacing
+            (row.Count - 1) * row.Spacing
 
-            'When repeated along X, include all repeated rows.
-            If row.Parameters.RepeatDirection = HoleRepeatDirection.X Then
+            If row.Parameters.RepeatDirection =
+           HoleRepeatDirection.X Then
 
                 patternSpanX +=
-                    (repeatCount - 1) * row.Parameters.Gap
-
+                (repeatCount - 1) * row.Parameters.Gap
             End If
 
-            'Center the full X span in the material.
             baseStartX =
-                (sheetXExtent - patternSpanX) / 2.0
+            (sheetXExtent - patternSpanX) / 2.0
 
         End If
 
         For repeatIndex As Integer = 0 To repeatCount - 1
 
-           Dim rowStartX As Double = baseStartX
+            Dim rowStartX As Double = baseStartX
             Dim rowStartY As Double = row.StartY
 
             Select Case row.Parameters.RepeatDirection
@@ -4551,96 +4785,67 @@ Public Class frmMain
 
             For holeIndex As Integer = 0 To row.Count - 1
 
-                'These are display-only HoleFeature objects.
-                'Nothing is added to MM3 or to a Part.
-                Dim displayHole As New HoleFeature With {
-                .X = rowStartX + (holeIndex * row.Spacing),
-                .Y = rowStartY,
-                .ToolSetupMemberID = row.ToolSetupMemberID,
-                .IsSelected = row.IsSelected,
-                .IsHovered = row.IsHovered
-            }
+                Dim holeX As Double =
+                rowStartX + (holeIndex * row.Spacing)
 
-                DrawHoleFeature(displayHole, g, vt, panelHeight)
+                Dim holeY As Double = rowStartY
+
+                points.Add(New PointF(
+                CSng(holeX),
+                CSng(holeY)))
 
                 If row.Parameters.XMirror Then
 
                     Dim mirroredX As Double =
-                        sheetXExtent - displayHole.X
+                    sheetXExtent - holeX
 
-                    'Avoid a duplicate when the hole is on the centerline.
-                    If Math.Abs(mirroredX - displayHole.X) > 0.000001 Then
-
-                        Dim mirroredHole As New HoleFeature With {
-                            .X = mirroredX,
-                            .Y = displayHole.Y,
-                            .ToolSetupMemberID = row.ToolSetupMemberID,
-                            .IsSelected = row.IsSelected,
-                            .IsHovered = row.IsHovered
-                        }
-
-                        DrawHoleFeature(mirroredHole, g, vt, panelHeight)
-
+                    If Math.Abs(mirroredX - holeX) > 0.000001 Then
+                        points.Add(New PointF(
+                        CSng(mirroredX),
+                        CSng(holeY)))
                     End If
 
                 End If
 
-
                 If row.Parameters.YMirror Then
 
                     Dim mirroredY As Double =
-                        sheetYExtent - displayHole.Y
+                    sheetYExtent - holeY
 
-                    If Math.Abs(mirroredY - displayHole.Y) > 0.000001 Then
-
-                        Dim mirroredHole As New HoleFeature With {
-                            .X = displayHole.X,
-                            .Y = mirroredY,
-                            .ToolSetupMemberID = row.ToolSetupMemberID,
-                            .IsSelected = row.IsSelected,
-                            .IsHovered = row.IsHovered
-                        }
-
-                        DrawHoleFeature(mirroredHole, g, vt, panelHeight)
-
+                    If Math.Abs(mirroredY - holeY) > 0.000001 Then
+                        points.Add(New PointF(
+                        CSng(holeX),
+                        CSng(mirroredY)))
                     End If
 
                 End If
 
                 If row.Parameters.XMirror AndAlso
-   row.Parameters.YMirror Then
+               row.Parameters.YMirror Then
 
                     Dim mirroredX As Double =
-                        sheetXExtent - displayHole.X
+                    sheetXExtent - holeX
 
                     Dim mirroredY As Double =
-                        sheetYExtent - displayHole.Y
+                    sheetYExtent - holeY
 
-                    'If either coordinate is on center, this position
-                    'was already drawn by one of the individual mirrors.
-                    If Math.Abs(mirroredX - displayHole.X) > 0.000001 AndAlso
-                       Math.Abs(mirroredY - displayHole.Y) > 0.000001 Then
+                    If Math.Abs(mirroredX - holeX) > 0.000001 AndAlso
+                   Math.Abs(mirroredY - holeY) > 0.000001 Then
 
-                        Dim cornerHole As New HoleFeature With {
-                            .X = mirroredX,
-                            .Y = mirroredY,
-                            .ToolSetupMemberID = row.ToolSetupMemberID,
-                            .IsSelected = row.IsSelected,
-                            .IsHovered = row.IsHovered
-                        }
-
-                        DrawHoleFeature(cornerHole, g, vt, panelHeight)
-
+                        points.Add(New PointF(
+                        CSng(mirroredX),
+                        CSng(mirroredY)))
                     End If
 
                 End If
+
             Next
 
         Next
 
-    End Sub
+        Return points
 
-
+    End Function
 
     Private Sub tbSelect_AddAllByFilter_Click(
     sender As Object,
@@ -6055,10 +6260,9 @@ Public Class frmMain
     End Sub
 
 
-    Private Sub bbCreateHole_ItemClick(
-        sender As Object,
-        e As ItemClickEventArgs
-    ) Handles bbCreateHole.ItemClick
+    Private Sub bbCreateHole_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbCreateHole.ItemClick
+
+        dockPanelCreateHole.Show()
 
         Dim filePath As String =
             IO.Path.Combine(
@@ -6395,7 +6599,88 @@ Public Class frmMain
 
     End Function
 
+    Private Sub frmMain_KeyUp(sender As Object, e As KeyEventArgs) Handles Me.KeyUp
+        If e.KeyCode = Keys.F7 Then
+            dockPanelEntityList.Show()
 
+        End If
+    End Sub
+
+    Private Function DeleteSelectedManufacturingFeatures() As Boolean
+
+        Dim selectedFeatures As List(Of MachiningFeature) =
+            _selectionManager.Selected.
+            OfType(Of MachiningFeature)().
+            ToList()
+
+        If selectedFeatures.Count = 0 Then
+            Return False
+        End If
+
+        Dim removedCount As Integer = 0
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            If sheet Is Nothing Then Continue For
+
+            Dim mm As MM3 = sheet.ManufacturingModel
+
+            If mm IsNot Nothing Then
+
+                For Each feature As MachiningFeature In selectedFeatures
+
+                    If mm.ManufacturingGeometry.Remove(feature) Then
+                        removedCount += 1
+                    End If
+
+                Next
+
+            End If
+
+            'An auto-associated feature can also be listed on its Part.
+            'Remove the same operation there, without changing Part Geo.
+            For Each part As Part In sheet.Parts
+
+                If part Is Nothing OrElse
+                   part.Features Is Nothing Then
+
+                    Continue For
+                End If
+
+                For Each feature As MachiningFeature In selectedFeatures
+                    part.Features.Remove(feature)
+                Next
+
+            Next
+
+        Next
+
+        If removedCount = 0 Then
+            Return False
+        End If
+
+        _selectionManager.Clear()
+
+        BuildDrawables()
+        RefreshEntityList()
+        pnlPicmodeler.Invalidate()
+
+        Return True
+
+    End Function
+    Private Sub vgCreateHoles_MouseDown(sender As Object, e As MouseEventArgs) Handles vgCreateHoles.MouseDown
+
+        'V24 behavior:
+        'Interacting with the parameter grid ends
+        'normal entity selection.
+
+        _selectionEnabled = False
+        tbSelect_Enable.Checked = False
+        _selectionMode = Nothing
+
+        UpdateSelectionIcons()
+
+    End Sub
 End Class
 
 

@@ -268,19 +268,17 @@ Public Class frmLayers
 
 
     Private Sub gViewToolLayer_RowStyle(sender As Object, e As RowStyleEventArgs) Handles gViewToolLayer.RowStyle
-        'Dim lst As List(Of TheTools)
-        'Dim item As TheTools
 
-        'If (e.RowHandle < 0) Then
+        If e.RowHandle < 0 Then Return
 
-        '    Return
+        Dim lst As List(Of TheTools) =
+            CType(gViewToolLayer.DataSource, List(Of TheTools))
 
-        'End If
+        Dim item As TheTools = lst(e.RowHandle)
 
-        'lst = CType(gViewToolLayer.DataSource, List(Of TheTools))
-        'item = lst(e.RowHandle)
-        'e.Appearance.ForeColor = item.ToolColor
-        'e.Appearance.BackColor = Color.Black
+        e.Appearance.ForeColor = item.ToolColor
+        'e.Appearance.BackColor = MaterialDisplayColor
+
 
     End Sub
 

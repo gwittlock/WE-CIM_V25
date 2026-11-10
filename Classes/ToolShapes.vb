@@ -1724,6 +1724,17 @@ Namespace ToolShapes
 
             Const TwoPi As Double = Math.PI * 2.0
 
+            ' A full 360-degree arc includes every angle.
+            Dim originalSweep As Double =
+    Math.Abs(endAngle - startAngle)
+
+            If originalSweep >= TwoPi - 0.000001 Then
+                Return True
+            End If
+
+
+
+
             ' Normalize all angles to 0 .. 2π.
             angle = angle Mod TwoPi
             If angle < 0 Then angle += TwoPi

@@ -417,6 +417,7 @@
     <Compile Include="Classes\ToolpathOffsetter,vb.vb" />
     <Compile Include="Classes\ToolSelection.vb" />
     <Compile Include="Classes\ToolShapeFactory.vb" />
+    <Compile Include="Classes\ToolShapeResolver.vb" />
     <Compile Include="Classes\ToolShapes.vb" />
     <Compile Include="Classes\ToolShapes\ConvexHullArcIterator.vb" />
     <Compile Include="Classes\TrapezoidToolShape,vb.vb" />

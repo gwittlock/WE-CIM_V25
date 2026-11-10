@@ -1,4 +1,7 @@
-﻿Public Enum SelectionFilter
+﻿Imports FabV25_WIN8.ToolShapes
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
+
+Public Enum SelectionFilter
     None = 0
 
     ' Part Geometry
@@ -431,31 +434,40 @@ Public Class SelectionManager
         For Each hole As HoleFeature In
         _machiningFeatures.OfType(Of HoleFeature)()
 
-            Dim diameter As Double = 0
+            Dim tool As Tool = Nothing
+            Dim shape As ToolShape = Nothing
 
-            If Not AutoPunchingEngine.TryGetRoundPunchDiameter(
-            hole, diameter) Then
+            If Not ToolShapeResolver.TryResolve(
+    hole.ToolSetupMemberID,
+    tool,
+    shape) Then
 
                 Continue For
 
             End If
 
-            Dim radius As Double = diameter / 2.0
 
-            Dim dx As Double = hole.X - ptWorld.X
-            Dim dy As Double = hole.Y - ptWorld.Y
+            ' Convert world coordinates to tool-local coordinates.
+            Dim localPoint As New PointF(
+    CSng(ptWorld.X - hole.X),
+    CSng(ptWorld.Y - hole.Y))
 
-            Dim distanceFromCenter As Double =
-            Math.Sqrt(dx * dx + dy * dy)
+            ' Test against the actual punch cutting profile.
+            Dim isInside As Boolean =
+    Geometry2D.IsPointInsidePath(
+        shape.CuttingProfile,
+        localPoint)
 
-            ' Distance from cursor to actual punch circumference.
-            Dim distanceFromEdge As Double =
-            Math.Abs(distanceFromCenter - radius)
+            Dim distanceToPunch As Double =
+    If(isInside,
+       0.0,
+       DistanceToToolProfile(
+           shape.CuttingProfile,
+           localPoint))
+            If distanceToPunch <= tolWorld AndAlso
+   distanceToPunch < bestDistance Then
 
-            If distanceFromEdge <= tolWorld AndAlso
-           distanceFromEdge < bestDistance Then
-
-                bestDistance = distanceFromEdge
+                bestDistance = distanceToPunch
                 bestHole = hole
 
             End If
@@ -1371,6 +1383,81 @@ Public Class SelectionManager
         Return Distance(p, closest)
 
     End Function
+
+
+    Private Function DistanceToToolProfile(
+    path As IPath2D,
+    pt As PointF) As Double
+
+        If path Is Nothing Then Return Double.MaxValue
+
+        Dim bestDistance As Double = Double.MaxValue
+
+        For Each segment As IPathSegment In path.Segments
+
+            If segment Is Nothing Then Continue For
+
+            Select Case segment.SegmentType
+
+                Case PathSegmentType.Line
+
+                    Dim distance As Double =
+                    DistancePointToSegment(
+                        pt,
+                        segment.StartPoint,
+                        segment.EndPoint)
+
+                    bestDistance = Math.Min(
+                    bestDistance,
+                    distance)
+
+                Case PathSegmentType.Arc
+
+                    Dim arc As ArcSegment2D =
+                    DirectCast(segment, ArcSegment2D)
+
+                    Dim dx As Double = pt.X - arc.Center.X
+                    Dim dy As Double = pt.Y - arc.Center.Y
+
+                    Dim angle As Double = Math.Atan2(dy, dx)
+
+                    Dim arcDistance As Double
+
+                    If Geometry2D.IsAngleOnArc(
+                    angle,
+                    arc.StartAngle,
+                    arc.EndAngle,
+                    arc.IsClockwise) Then
+
+                        ' Closest point lies on the arc circumference.
+                        Dim radialDistance As Double =
+                        Math.Sqrt(dx * dx + dy * dy)
+
+                        arcDistance = Math.Abs(
+                        radialDistance - arc.Radius)
+
+                    Else
+
+                        ' Closest point is one of the arc endpoints.
+                        Dim startDistance As Double = Distance(pt, arc.StartPoint)
+
+                        Dim endDistance As Double = Distance(pt, arc.EndPoint)
+
+                        arcDistance = Math.Min(startDistance, endDistance)
+                    End If
+
+                    bestDistance = Math.Min(bestDistance, arcDistance)
+
+
+            End Select
+
+        Next
+
+        Return bestDistance
+
+    End Function
+
+
 
     Private Function NormalizeAngle(a As Double) As Double
         a = a Mod 360
