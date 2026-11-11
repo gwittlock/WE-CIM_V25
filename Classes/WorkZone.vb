@@ -2,6 +2,9 @@
 
 Public Class WorkZone
     Public Property Index As Integer
+    ' Repositioning
+    Public Property RepositionDistanceX As Double
+
 
     ' Sheet-relative envelope
     Public Property XMin As Double

@@ -338,6 +338,7 @@
     <Compile Include="Classes\CoreMachinePropertyDescriptor,vb.vb" />
     <Compile Include="Classes\CornerRadiusToolShape.vb" />
     <Compile Include="Classes\CreateGeo.vb" />
+    <Compile Include="Classes\CTGReader,vb.vb" />
     <Compile Include="Classes\CustomToolShape.vb" />
     <Compile Include="Classes\DatabaseConversion.vb" />
     <Compile Include="Classes\DirectiveStationEditor.vb" />

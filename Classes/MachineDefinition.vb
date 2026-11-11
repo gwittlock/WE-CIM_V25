@@ -4,6 +4,7 @@
     Public Property Name As String
     Public Property TypeID As Integer
     Public Property CNC_Folder As String
+    Public Property Clamp_CTG As String
     Public Property Clamp_Buffer As Double
     Public Property Clamp_Min_Split_Length As Double
     Public Property Clamp_Min_Split_Width As Double

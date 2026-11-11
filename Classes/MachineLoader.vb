@@ -53,6 +53,7 @@ Module MachineLoader
         .Name = machineRow.Description,
         .TypeID = machineRow.TypeID,
         .CNC_Folder = machineRow.CNC_Folder,
+        .Clamp_CTG = machineRow.Clamp_CTG,
         .Quadrant = MachineEnvelope.MachineQuadrant.LowerLeft, ' default, can update
         .Units = machineRow.Units,
         .WorkplaneTypeID = machineRow.WorkplaneTypeID,
@@ -95,6 +96,7 @@ Module MachineLoader
         )
         End If
 
+
         ' 2. Initialize clamps
         'InitializeClamps(CurrentJob, 2)
 
@@ -102,41 +104,27 @@ Module MachineLoader
         'frmMain.pnlPicmodeler.Invalidate()
     End Sub
 
+    Public Sub InitializeClamps(job As JobContext)
 
-    Public Sub InitializeClamps(
-   job As JobContext,
-   userClampCount As Integer
-)
-        Dim md = job.MachineDefinition
+        If job Is Nothing Then Exit Sub
+        If job.MachineDefinition Is Nothing Then Exit Sub
 
-        userClampCount = Math.Min(userClampCount, md.Number_of_Clamps)
+        Dim clampCount As Integer =
+            Math.Max(0, job.MachineDefinition.Number_of_Clamps)
 
-        Dim punchWidth = md.Punch_Clamp_Deadzone_Width
-        Dim punchLength = md.Punch_Clamp_Deadzone_Length
-        Dim punchCenterX = md.Punch_Clamp_Deadzone_Center
+        ' Preserve existing clamp positions.
+        ' Add only clamps that do not already exist.
+        While job.Clamps.Count < clampCount
 
-        Dim torchWidth = md.Torch_Clamp_Deadzone_Width
-        Dim torchLength = md.Torch_Clamp_Deadzone_Length
-        Dim torchCenterX = md.Torch_Clamp_Deadzone_Center
+            job.Clamps.Add(New Clamp With {
+                .Name = "Clamp " & (job.Clamps.Count + 1).ToString(),
+                .X = 0,
+                .Y = 0
+            })
 
-        For Each wz In job.WorkZones
-            wz.Clamps.Clear()
+        End While
 
-            For i = 1 To userClampCount
-                wz.Clamps.Add(New Clamp With {
-                    .X = punchCenterX,
-                    .Y = 0,
-                    .Width = punchLength,
-                    .Height = punchWidth,
-                    .TorchSize = New SizeF(
-                        CSng(torchLength),
-                        CSng(torchWidth)
-                    )
-                })
-            Next
-        Next
     End Sub
-
 
 End Module
 

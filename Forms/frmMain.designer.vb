@@ -32,20 +32,20 @@ Partial Class frmMain
     Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(frmMain))
-        Dim SuperToolTip16 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem13 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem16 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip17 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem14 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem17 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip18 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem15 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem18 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip19 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipItem19 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
-        Dim SuperToolTip20 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
-        Dim ToolTipTitleItem16 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
-        Dim ToolTipItem20 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip1 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem1 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem1 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip2 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem2 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem2 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip3 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem3 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem3 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip4 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipItem4 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
+        Dim SuperToolTip5 As DevExpress.Utils.SuperToolTip = New DevExpress.Utils.SuperToolTip()
+        Dim ToolTipTitleItem4 As DevExpress.Utils.ToolTipTitleItem = New DevExpress.Utils.ToolTipTitleItem()
+        Dim ToolTipItem5 As DevExpress.Utils.ToolTipItem = New DevExpress.Utils.ToolTipItem()
         Me.navbarImageListLarge = New System.Windows.Forms.ImageList(Me.components)
         Me.navbarImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.RibbonControl = New DevExpress.XtraBars.Ribbon.RibbonControl()
@@ -407,6 +407,8 @@ Partial Class frmMain
         Me.colEntityName = New DevExpress.XtraTreeList.Columns.TreeListColumn()
         Me.toolTipControllerEntityList = New DevExpress.Utils.ToolTipController(Me.components)
         Me.ControlContainer1 = New DevExpress.XtraBars.Docking.ControlContainer()
+        Me.lcHoleDefinition = New DevExpress.XtraEditors.LabelControl()
+        Me.cbeHoleDefinition = New DevExpress.XtraEditors.ComboBoxEdit()
         Me.btnAcceptHole = New DevExpress.XtraEditors.SimpleButton()
         Me.vgCreateHoles = New DevExpress.XtraVerticalGrid.VGridControl()
         Me.rgbSkins = New DevExpress.Utils.ImageCollection(Me.components)
@@ -431,8 +433,6 @@ Partial Class frmMain
         Me.dockManagerMain = New DevExpress.XtraBars.Docking.DockManager(Me.components)
         Me.dockPanelEntityList = New DevExpress.XtraBars.Docking.DockPanel()
         Me.dockPanelCreateHole = New DevExpress.XtraBars.Docking.DockPanel()
-        Me.cbeHoleDefinition = New DevExpress.XtraEditors.ComboBoxEdit()
-        Me.lcHoleDefinition = New DevExpress.XtraEditors.LabelControl()
         CType(Me.RibbonControl, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.appMenu, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.ribbonImageCollection, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -484,6 +484,7 @@ Partial Class frmMain
         Me.DockPanel1_Container.SuspendLayout()
         CType(Me.tlEntityList, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.ControlContainer1.SuspendLayout()
+        CType(Me.cbeHoleDefinition.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.vgCreateHoles, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.rgbSkins, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.imgCursors, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -496,7 +497,6 @@ Partial Class frmMain
         CType(Me.dockManagerMain, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.dockPanelEntityList.SuspendLayout()
         Me.dockPanelCreateHole.SuspendLayout()
-        CType(Me.cbeHoleDefinition.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
         '
         'navbarImageListLarge
@@ -1770,11 +1770,11 @@ Partial Class frmMain
         Me.bbConfigMan.Id = 211
         Me.bbConfigMan.ImageOptions.LargeImageIndex = 176
         Me.bbConfigMan.Name = "bbConfigMan"
-        ToolTipTitleItem13.Text = "Configuration Manager"
-        ToolTipItem16.LeftIndent = 6
-        SuperToolTip16.Items.Add(ToolTipTitleItem13)
-        SuperToolTip16.Items.Add(ToolTipItem16)
-        Me.bbConfigMan.SuperTip = SuperToolTip16
+        ToolTipTitleItem1.Text = "Configuration Manager"
+        ToolTipItem1.LeftIndent = 6
+        SuperToolTip1.Items.Add(ToolTipTitleItem1)
+        SuperToolTip1.Items.Add(ToolTipItem1)
+        Me.bbConfigMan.SuperTip = SuperToolTip1
         '
         'bbNesting
         '
@@ -2263,13 +2263,13 @@ Partial Class frmMain
         Me.bbShowWelcome.Id = 385
         Me.bbShowWelcome.ImageOptions.LargeImageIndex = 203
         Me.bbShowWelcome.Name = "bbShowWelcome"
-        ToolTipTitleItem14.Text = "Show Welcome Dilaog"
-        ToolTipItem17.LeftIndent = 6
-        ToolTipItem17.Text = "This button displys the Welcome dialog that appears when you first execute the ap" &
+        ToolTipTitleItem2.Text = "Show Welcome Dilaog"
+        ToolTipItem2.LeftIndent = 6
+        ToolTipItem2.Text = "This button displys the Welcome dialog that appears when you first execute the ap" &
     "plicatuon."
-        SuperToolTip17.Items.Add(ToolTipTitleItem14)
-        SuperToolTip17.Items.Add(ToolTipItem17)
-        Me.bbShowWelcome.SuperTip = SuperToolTip17
+        SuperToolTip2.Items.Add(ToolTipTitleItem2)
+        SuperToolTip2.Items.Add(ToolTipItem2)
+        Me.bbShowWelcome.SuperTip = SuperToolTip2
         '
         'bbiWECAD
         '
@@ -2291,12 +2291,12 @@ Partial Class frmMain
         Me.bbiDeactivate.Id = 389
         Me.bbiDeactivate.ImageOptions.LargeImageIndex = 206
         Me.bbiDeactivate.Name = "bbiDeactivate"
-        ToolTipTitleItem15.Text = "DeActivate"
-        ToolTipItem18.LeftIndent = 6
-        ToolTipItem18.Text = "Deactivate the licnse on This PC in order to instal WE-CIMl and license a new PC"
-        SuperToolTip18.Items.Add(ToolTipTitleItem15)
-        SuperToolTip18.Items.Add(ToolTipItem18)
-        Me.bbiDeactivate.SuperTip = SuperToolTip18
+        ToolTipTitleItem3.Text = "DeActivate"
+        ToolTipItem3.LeftIndent = 6
+        ToolTipItem3.Text = "Deactivate the licnse on This PC in order to instal WE-CIMl and license a new PC"
+        SuperToolTip3.Items.Add(ToolTipTitleItem3)
+        SuperToolTip3.Items.Add(ToolTipItem3)
+        Me.bbiDeactivate.SuperTip = SuperToolTip3
         '
         'bbiBenchMark
         '
@@ -2313,9 +2313,9 @@ Partial Class frmMain
         Me.BarButtonItem16.ImageOptions.Image = CType(resources.GetObject("BarButtonItem16.ImageOptions.Image"), System.Drawing.Image)
         Me.BarButtonItem16.ImageOptions.LargeImage = Global.FabV25_WIN8.My.Resources.Resources.reset
         Me.BarButtonItem16.Name = "BarButtonItem16"
-        ToolTipItem19.Text = "Rsets the last PDB setting in the registry"
-        SuperToolTip19.Items.Add(ToolTipItem19)
-        Me.BarButtonItem16.SuperTip = SuperToolTip19
+        ToolTipItem4.Text = "Rsets the last PDB setting in the registry"
+        SuperToolTip4.Items.Add(ToolTipItem4)
+        Me.BarButtonItem16.SuperTip = SuperToolTip4
         '
         'beGraphicsPref
         '
@@ -3150,12 +3150,12 @@ Partial Class frmMain
         'rpgCustomMacros
         '
         Me.rpgCustomMacros.Name = "rpgCustomMacros"
-        ToolTipTitleItem16.Text = "Add an Icon"
-        ToolTipItem20.LeftIndent = 6
-        ToolTipItem20.Text = "Click the arrows in the lower right corner to add " & Global.Microsoft.VisualBasic.ChrW(13) & Global.Microsoft.VisualBasic.ChrW(10) & "Macros to the ToolBar"
-        SuperToolTip20.Items.Add(ToolTipTitleItem16)
-        SuperToolTip20.Items.Add(ToolTipItem20)
-        Me.rpgCustomMacros.SuperTip = SuperToolTip20
+        ToolTipTitleItem4.Text = "Add an Icon"
+        ToolTipItem5.LeftIndent = 6
+        ToolTipItem5.Text = "Click the arrows in the lower right corner to add " & Global.Microsoft.VisualBasic.ChrW(13) & Global.Microsoft.VisualBasic.ChrW(10) & "Macros to the ToolBar"
+        SuperToolTip5.Items.Add(ToolTipTitleItem4)
+        SuperToolTip5.Items.Add(ToolTipItem5)
+        Me.rpgCustomMacros.SuperTip = SuperToolTip5
         Me.rpgCustomMacros.Text = "Custom Macros"
         '
         'AdminRibbonPage
@@ -3887,6 +3887,23 @@ Partial Class frmMain
         Me.ControlContainer1.Size = New System.Drawing.Size(235, 518)
         Me.ControlContainer1.TabIndex = 0
         '
+        'lcHoleDefinition
+        '
+        Me.lcHoleDefinition.Location = New System.Drawing.Point(3, 9)
+        Me.lcHoleDefinition.Name = "lcHoleDefinition"
+        Me.lcHoleDefinition.Size = New System.Drawing.Size(45, 13)
+        Me.lcHoleDefinition.TabIndex = 5
+        Me.lcHoleDefinition.Text = "Definition"
+        '
+        'cbeHoleDefinition
+        '
+        Me.cbeHoleDefinition.Location = New System.Drawing.Point(53, 6)
+        Me.cbeHoleDefinition.MenuManager = Me.RibbonControl
+        Me.cbeHoleDefinition.Name = "cbeHoleDefinition"
+        Me.cbeHoleDefinition.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.cbeHoleDefinition.Size = New System.Drawing.Size(179, 20)
+        Me.cbeHoleDefinition.TabIndex = 4
+        '
         'btnAcceptHole
         '
         Me.btnAcceptHole.Location = New System.Drawing.Point(0, 489)
@@ -4057,23 +4074,6 @@ Partial Class frmMain
         Me.dockPanelCreateHole.Size = New System.Drawing.Size(242, 550)
         Me.dockPanelCreateHole.Text = "Create Hole"
         '
-        'cbeHoleDefinition
-        '
-        Me.cbeHoleDefinition.Location = New System.Drawing.Point(53, 6)
-        Me.cbeHoleDefinition.MenuManager = Me.RibbonControl
-        Me.cbeHoleDefinition.Name = "cbeHoleDefinition"
-        Me.cbeHoleDefinition.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
-        Me.cbeHoleDefinition.Size = New System.Drawing.Size(179, 20)
-        Me.cbeHoleDefinition.TabIndex = 4
-        '
-        'lcHoleDefinition
-        '
-        Me.lcHoleDefinition.Location = New System.Drawing.Point(3, 9)
-        Me.lcHoleDefinition.Name = "lcHoleDefinition"
-        Me.lcHoleDefinition.Size = New System.Drawing.Size(45, 13)
-        Me.lcHoleDefinition.TabIndex = 5
-        Me.lcHoleDefinition.Text = "Definition"
-        '
         'frmMain
         '
         Me.AllowFormGlass = DevExpress.Utils.DefaultBoolean.[False]
@@ -4159,6 +4159,7 @@ Partial Class frmMain
         CType(Me.tlEntityList, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ControlContainer1.ResumeLayout(False)
         Me.ControlContainer1.PerformLayout()
+        CType(Me.cbeHoleDefinition.Properties, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.vgCreateHoles, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.rgbSkins, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.imgCursors, System.ComponentModel.ISupportInitialize).EndInit()
@@ -4171,7 +4172,6 @@ Partial Class frmMain
         CType(Me.dockManagerMain, System.ComponentModel.ISupportInitialize).EndInit()
         Me.dockPanelEntityList.ResumeLayout(False)
         Me.dockPanelCreateHole.ResumeLayout(False)
-        CType(Me.cbeHoleDefinition.Properties, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ResumeLayout(False)
         Me.PerformLayout()
 

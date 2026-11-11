@@ -5,6 +5,7 @@
     Public Property LayerSetupID As Integer
 
     Public Property WorkZones As New List(Of WorkZone)
+    Public Property Clamps As New List(Of Clamp)
     Public Property DxfPlacement As DxfPlacementMode = DxfPlacementMode.AlignLowerLeftToSheetOrigin
 
 

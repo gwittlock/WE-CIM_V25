@@ -23,18 +23,14 @@ Partial Class dlgEditClamps
         Me.vgProplist = New DevExpress.XtraVerticalGrid.VGridControl()
         Me.btnAccept = New DevExpress.XtraEditors.SimpleButton()
         Me.frmEditClampsConvertedLayout = New DevExpress.XtraLayout.LayoutControl()
-        Me.cboDefn = New DevExpress.XtraEditors.ComboBoxEdit()
         Me.LayoutControlGroup1 = New DevExpress.XtraLayout.LayoutControlGroup()
-        Me.LayoutControlItem1 = New DevExpress.XtraLayout.LayoutControlItem()
         Me.LayoutControlItem2 = New DevExpress.XtraLayout.LayoutControlItem()
         Me.LayoutControlItem3 = New DevExpress.XtraLayout.LayoutControlItem()
         Me.LayoutConverter1 = New DevExpress.XtraLayout.Converter.LayoutConverter(Me.components)
         CType(Me.vgProplist, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.frmEditClampsConvertedLayout, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.frmEditClampsConvertedLayout.SuspendLayout()
-        CType(Me.cboDefn.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.LayoutControlGroup1, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.LayoutControlItem1, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.LayoutControlItem2, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.LayoutControlItem3, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
@@ -43,11 +39,11 @@ Partial Class dlgEditClamps
         '
         Me.vgProplist.BorderStyle = DevExpress.XtraEditors.Controls.BorderStyles.Simple
         Me.vgProplist.LayoutStyle = DevExpress.XtraVerticalGrid.LayoutViewStyle.SingleRecordView
-        Me.vgProplist.Location = New System.Drawing.Point(12, 36)
+        Me.vgProplist.Location = New System.Drawing.Point(12, 12)
         Me.vgProplist.Name = "vgProplist"
         Me.vgProplist.OptionsBehavior.UseEnterAsTab = True
         Me.vgProplist.OptionsView.ShowButtons = False
-        Me.vgProplist.Size = New System.Drawing.Size(270, 272)
+        Me.vgProplist.Size = New System.Drawing.Size(270, 296)
         Me.vgProplist.TabIndex = 3
         Me.vgProplist.TreeButtonStyle = DevExpress.XtraVerticalGrid.TreeButtonStyle.ExplorerBar
         '
@@ -63,7 +59,6 @@ Partial Class dlgEditClamps
         '
         'frmEditClampsConvertedLayout
         '
-        Me.frmEditClampsConvertedLayout.Controls.Add(Me.cboDefn)
         Me.frmEditClampsConvertedLayout.Controls.Add(Me.btnAccept)
         Me.frmEditClampsConvertedLayout.Controls.Add(Me.vgProplist)
         Me.frmEditClampsConvertedLayout.Dock = System.Windows.Forms.DockStyle.Fill
@@ -73,35 +68,15 @@ Partial Class dlgEditClamps
         Me.frmEditClampsConvertedLayout.Size = New System.Drawing.Size(294, 346)
         Me.frmEditClampsConvertedLayout.TabIndex = 11
         '
-        'cboDefn
-        '
-        Me.cboDefn.EnterMoveNextControl = True
-        Me.cboDefn.Location = New System.Drawing.Point(60, 12)
-        Me.cboDefn.Name = "cboDefn"
-        Me.cboDefn.Properties.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
-        Me.cboDefn.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
-        Me.cboDefn.Size = New System.Drawing.Size(222, 20)
-        Me.cboDefn.TabIndex = 9
-        '
         'LayoutControlGroup1
         '
         Me.LayoutControlGroup1.CustomizationFormText = "LayoutControlGroup1"
         Me.LayoutControlGroup1.EnableIndentsWithoutBorders = DevExpress.Utils.DefaultBoolean.[True]
         Me.LayoutControlGroup1.GroupBordersVisible = False
-        Me.LayoutControlGroup1.Items.AddRange(New DevExpress.XtraLayout.BaseLayoutItem() {Me.LayoutControlItem1, Me.LayoutControlItem2, Me.LayoutControlItem3})
+        Me.LayoutControlGroup1.Items.AddRange(New DevExpress.XtraLayout.BaseLayoutItem() {Me.LayoutControlItem2, Me.LayoutControlItem3})
         Me.LayoutControlGroup1.Name = "Root"
         Me.LayoutControlGroup1.Size = New System.Drawing.Size(294, 346)
         Me.LayoutControlGroup1.TextVisible = False
-        '
-        'LayoutControlItem1
-        '
-        Me.LayoutControlItem1.Control = Me.cboDefn
-        Me.LayoutControlItem1.CustomizationFormText = "Definition"
-        Me.LayoutControlItem1.Location = New System.Drawing.Point(0, 0)
-        Me.LayoutControlItem1.Name = "cboDefnitem"
-        Me.LayoutControlItem1.Size = New System.Drawing.Size(274, 24)
-        Me.LayoutControlItem1.Text = "Definition"
-        Me.LayoutControlItem1.TextSize = New System.Drawing.Size(45, 13)
         '
         'LayoutControlItem2
         '
@@ -117,9 +92,9 @@ Partial Class dlgEditClamps
         '
         Me.LayoutControlItem3.Control = Me.vgProplist
         Me.LayoutControlItem3.CustomizationFormText = "vgProplistitem"
-        Me.LayoutControlItem3.Location = New System.Drawing.Point(0, 24)
+        Me.LayoutControlItem3.Location = New System.Drawing.Point(0, 0)
         Me.LayoutControlItem3.Name = "vgProplistitem"
-        Me.LayoutControlItem3.Size = New System.Drawing.Size(274, 276)
+        Me.LayoutControlItem3.Size = New System.Drawing.Size(274, 300)
         Me.LayoutControlItem3.TextSize = New System.Drawing.Size(0, 0)
         Me.LayoutControlItem3.TextVisible = False
         '
@@ -137,9 +112,7 @@ Partial Class dlgEditClamps
         CType(Me.vgProplist, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.frmEditClampsConvertedLayout, System.ComponentModel.ISupportInitialize).EndInit()
         Me.frmEditClampsConvertedLayout.ResumeLayout(False)
-        CType(Me.cboDefn.Properties, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.LayoutControlGroup1, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.LayoutControlItem1, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.LayoutControlItem2, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.LayoutControlItem3, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ResumeLayout(False)
@@ -147,10 +120,8 @@ Partial Class dlgEditClamps
     End Sub
     Friend WithEvents vgProplist As DevExpress.XtraVerticalGrid.VGridControl
     Friend WithEvents btnAccept As DevExpress.XtraEditors.SimpleButton
-    Friend WithEvents cboDefn As DevExpress.XtraEditors.ComboBoxEdit
     Friend WithEvents frmEditClampsConvertedLayout As DevExpress.XtraLayout.LayoutControl
     Friend WithEvents LayoutControlGroup1 As DevExpress.XtraLayout.LayoutControlGroup
-    Friend WithEvents LayoutControlItem1 As DevExpress.XtraLayout.LayoutControlItem
     Friend WithEvents LayoutControlItem2 As DevExpress.XtraLayout.LayoutControlItem
     Friend WithEvents LayoutControlItem3 As DevExpress.XtraLayout.LayoutControlItem
     Friend WithEvents LayoutConverter1 As DevExpress.XtraLayout.Converter.LayoutConverter

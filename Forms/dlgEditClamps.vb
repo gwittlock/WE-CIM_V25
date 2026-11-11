@@ -3,6 +3,7 @@ Imports DevExpress.XtraVerticalGrid.Rows
 
 Public Class dlgEditClamps
     'Implements IDialogMouseUp
+    Public Property Job As JobContext
     Private WithEvents rbPropSettings As DevExpress.XtraEditors.Repository.RepositoryItemButtonEdit
     Private m_is_active As Boolean
     Dim nclamps As Long
@@ -195,171 +196,87 @@ Public Class dlgEditClamps
 
 
     Private Sub dlgEditClamps_Load(sender As Object, e As EventArgs) Handles Me.Load
-        Dim org_clamp_pos(0 To 3) As Double
-        Dim indx As Long
-        Dim my_DatVarName As String
-        Dim my_DialogDisplay As String
-        Dim my_VBValue As String
-        Dim my_CValue As String
-        Dim my_CVarName As String
-        Dim my_DataType As Integer
-        Dim my_RecodID As Integer
-        Dim my_sOptions As String
 
-        Dim currentCategoryRow As CategoryRow = Nothing
-        Try
+        If CurrentJob Is Nothing Then Exit Sub
+        If CurrentJob.MachineDefinition Is Nothing Then Exit Sub
 
-            '    currentCategoryRow = CreateCategoryRow(vgProplist, "Clamp Information", "Clamp Information", "Clamp Information", "Clamp Information", "Clamp Information", 0, DB_HEADER, sEmpty, 0)
+        ' Ensure the job has its clamp records.
+        InitializeClamps(CurrentJob)
 
-            '    cboDefn.Properties.Items.Add("Clamp Locations")
-            '    cboDefn.SelectedIndex = 0
-            '    nclamps = HeaderIntGet("Number_Of_Clamps", 0)
+        vgProplist.Rows.Clear()
 
-            '    org_clamp_pos(0) = HeaderDoubleGet("Clamp1Pos", 0)
-            '    org_clamp_pos(1) = HeaderDoubleGet("Clamp2Pos", 0)
-            '    org_clamp_pos(2) = HeaderDoubleGet("Clamp3Pos", 0)
-            '    org_clamp_pos(3) = HeaderDoubleGet("Clamp4Pos", 0)
+        Dim category As New CategoryRow()
+        category.Properties.Caption = "Clamp Locations"
 
-            '    For indx = 0 To nclamps - 1
-            '        my_DatVarName = "Clamp " & indx & ":"
-            '        my_DialogDisplay = "Clamp " & indx
-            '        my_VBValue = org_clamp_pos(indx)
-            '        my_CValue = org_clamp_pos(indx)
-            '        my_CVarName = "Part Quantity"
-            '        my_DataType = DB_DBL
-            '        my_RecodID = 0
-            '        my_sOptions = sEmpty
+        vgProplist.Rows.Add(category)
 
-            '        currentCategoryRow.ChildRows.Add(CreateDoubleEditorRow(vgProplist, _
-            '                                                               my_DatVarName, _
-            '                                                               my_DialogDisplay, _
-            '                                                               my_VBValue, _
-            '                                                               my_CValue, _
-            '                                                               my_CVarName, _
-            '                                                               my_DataType, _
-            '                                                               my_RecodID, _
-            '                                                               my_sOptions, 0))
+        For i As Integer = 0 To CurrentJob.Clamps.Count - 1
 
+            Dim clamp As Clamp = CurrentJob.Clamps(i)
 
-            'Next
-        Catch ex As Exception
-            MessageBox.Show(ex.Message)
-        End Try
+            Dim clampRow As New EditorRow()
+            clampRow.Properties.Caption = "Clamp " & (i + 1).ToString()
+            clampRow.Properties.Value = clamp.X
+
+            category.ChildRows.Add(clampRow)
+
+        Next
+
     End Sub
 
     Private Sub btnAccept_Click(sender As Object, e As EventArgs) Handles btnAccept.Click
-        'Dim mach As MACHINE_ATTRIBUTES
-        'Dim cmd As String
-        'Dim dYMin As Double
-        'Dim dYMax As Double
-        'Dim dYpos As Double
-        'Dim machine_type As Long
-        'Dim workplane_type As Long
-        'Dim nclamps As Long
-        'Dim dClamp1 As Double
-        'Dim dClamp2 As Double
-        'Dim dClamp3 As Double
-        'Dim dClamp4 As Double
 
+        If CurrentJob Is Nothing Then Exit Sub
 
-        'Try
-        '    machine_type = HeaderIntGet("MachineType", 0)
-        '    workplane_type = HeaderIntGet("WorkplaneType", 0)
+        ' Commit any cell currently being edited.
+        vgProplist.CloseEditor()
 
-        '    mach = modMachine.GetMachineAttributes()
+        Dim category As CategoryRow =
+        TryCast(vgProplist.Rows(0), CategoryRow)
 
-        '    If (workplane_type = 2) Then
-        '        dYpos = HeaderDoubleGet("Width", 0)
-        '        If (machine_type = 8) Then
-        '            dYMin = 0
-        '            dYMax = Max(mach.Punch_Clamp_Deadzone_Width, mach.Torch_Clamp_Deadzone_Width)
-        '        Else
-        '            dYMin = Max(mach.Punch_Clamp_Deadzone_Width, mach.Torch_Clamp_Deadzone_Width) * -1
-        '            dYMax = 0
-        '        End If
-        '    Else
-        '        dYpos = 0
-        '        dYMin = 0
-        '        dYMax = Max(mach.Punch_Clamp_Deadzone_Width, mach.Torch_Clamp_Deadzone_Width)
-        '    End If
+        If category Is Nothing Then Exit Sub
 
-        '    nclamps = HeaderIntGet("Number_Of_Clamps", 0)
+        ' Read all positions before changing the job.
+        Dim positions As New List(Of Double)
 
+        For Each row As EditorRow In category.ChildRows
 
-        '    For Each row As CategoryRow In vgProplist.Rows
+            Dim x As Double
 
-        '        For Each childRow As EditorRow In row.ChildRows
+            If Not Double.TryParse(
+            Convert.ToString(row.Properties.Value),
+            x) Then
 
-        '            Select Case childRow.Index
+                MessageBox.Show(
+                "Please enter a valid clamp position.",
+                "Clamp Locations",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
 
-        '                Case 0
+                Return
+            End If
 
-        '                    dClamp1 = CDbl(childRow.Properties.Value)
+            positions.Add(x)
 
-        '                Case 1
+        Next
 
-        '                    dClamp2 = CDbl(childRow.Properties.Value)
+        If positions.Count <> CurrentJob.Clamps.Count Then
+            MessageBox.Show(
+            "Clamp count does not match the current job.",
+            "Clamp Locations",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
 
-        '                Case 2
+        ' Save positions to the job.
+        For i As Integer = 0 To positions.Count - 1
+            CurrentJob.Clamps(i).X = positions(i)
+        Next
 
-        '                    dClamp3 = CDbl(childRow.Properties.Value)
+        Me.DialogResult = DialogResult.OK
 
-        '                Case 3
-
-        '                    dClamp4 = CDbl(childRow.Properties.Value)
-
-        '            End Select
-
-        '        Next
-        '    Next
-
-        '    Select Case nclamps
-        '        Case 1
-        '            cmd = "Create:Clamp: num=1" & _
-        '                ",x1=" & CDbl(dClamp1) & ",y1=" & dYpos
-
-        '        Case 2
-        '            cmd = "Create:Clamp: num=2" & _
-        '                ",x1=" & CDbl(dClamp1) & ",y1=" & dYpos & _
-        '                ",x2=" & CDbl(dClamp2) & ",y2=" & dYpos
-
-        '        Case 3
-        '            cmd = "Create:Clamp: num=3" & _
-        '                ",x1=" & CDbl(dClamp1) & ",y1=" & dYpos & _
-        '                ",x2=" & CDbl(dClamp2) & ",y2=" & dYpos & _
-        '                ",x3=" & CDbl(dClamp3) & ",y3=" & dYpos
-
-        '        Case 4
-        '            cmd = "Create:Clamp: num=4" & _
-        '                ",x1=" & CDbl(dClamp1) & ",y1=" & dYpos & _
-        '                ",x2=" & CDbl(dClamp2) & ",y2=" & dYpos & _
-        '                ",x3=" & CDbl(dClamp3) & ",y3=" & dYpos & _
-        '                ",x4=" & CDbl(dClamp4) & ",y4=" & dYpos
-
-        '        Case Else
-        '            cmd = "Create:Clamp:"
-
-        '    End Select
-
-        '    UndoPrepare()
-
-        '    'Temporarily set current workplane to world.
-        '    lReturn = PortalExecute("create:plane:id=" & modPlanes.GetWorldID())
-
-        '    'Update the clamps.
-        '    lReturn = PortalExecute(cmd)
-
-        '    'Reset the previously active workplane.
-        '    lReturn = PortalExecute("create:plane:id=" & modPlanes.GetTopID())
-
-        '    UndoCommit()
-
-        '    modView.ViewRefresh()
-
-        '    If (bIsEntityLoaded = True) Then frmEntityList.FillTreeView()
-        'Catch ex As Exception
-        '    MessageBox.Show(ex.Message)
-        'End Try
+        Me.Close()
 
     End Sub
 

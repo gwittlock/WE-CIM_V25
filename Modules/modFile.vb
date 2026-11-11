@@ -134,6 +134,7 @@ Public Module modFile
         CurrentJob = New JobContext()
 
         CurrentJob.MachineDefinition = machineDef
+
         CurrentJob.ToolSetupID = SelectedToolSetupID
         CurrentJob.MaterialID = SelectedMaterialID
         CurrentJob.LayerSetupID = SelectedLayerSetupID

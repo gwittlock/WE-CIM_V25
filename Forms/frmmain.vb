@@ -162,6 +162,10 @@ Public Class frmMain
 
     Private _updatingHoleGrid As Boolean = False
 
+    Private _ctgTestGeometry As List(Of GeoEntity) = Nothing
+
+    Private _clampCTGGeometry As List(Of GeoEntity) = Nothing
+
     Private Declare Function LockWindowUpdate Lib "user32.dll" (ByVal hWndLock As IntPtr) As Boolean
 
     Public Sub New()
@@ -540,6 +544,10 @@ Public Class frmMain
         ' -------------------------------------------------
         DrawSheetAndWorkzones(g, matLength, matWidth)
         DrawProductionGeometry(g, myTransform, panelHeight)
+
+
+        ' Draw machine clamps
+        DrawMachineClamps(g)
 
         ' -------------------------------------------------
         ' 2) HOVER HIGHLIGHT (still View-owned for now)
@@ -1144,39 +1152,6 @@ Public Class frmMain
 
             g.FillRectangle(wzBrush, wzRect)
             g.DrawRectangle(wzPen, wzRect.X, wzRect.Y, wzRect.Width, wzRect.Height)
-
-            For Each clamp In wz.Clamps
-
-                ' Machine coordinates: clamp.Y is distance FROM BOTTOM of sheet
-                ' Convert to top-origin before screen transform
-                Dim yBottom = clamp.Y
-                Dim yTop = clamp.Y + clamp.Height
-
-                ' --- Punch rectangle ---
-                Dim punchBL As PointF = WorldToScreen(clamp.X - clamp.Width / 2, yBottom, myTransform, panelHeight)
-
-                Dim punchTR As PointF = WorldToScreen(clamp.X + clamp.Width / 2, yTop, myTransform, panelHeight)
-
-                Dim punchRect = HelperFunctions.RectFromPoints(punchBL, punchTR)
-
-                g.FillRectangle(wzBrush, punchRect)
-                g.DrawRectangle(wzPen,
-                    punchRect.X, punchRect.Y,
-                    punchRect.Width, punchRect.Height)
-
-                ' --- Torch rectangle ---
-                Dim torchBL As PointF = WorldToScreen(clamp.X - clamp.TorchSize.Width / 2, yBottom, myTransform, panelHeight)
-
-                Dim torchTR As PointF = WorldToScreen(clamp.X + clamp.TorchSize.Width / 2, yBottom + clamp.TorchSize.Height, myTransform, panelHeight)
-
-                Dim torchRect = HelperFunctions.RectFromPoints(torchBL, torchTR)
-
-                g.FillRectangle(wzBrush, torchRect)
-                g.DrawRectangle(wzPen,
-                    torchRect.X, torchRect.Y,
-                    torchRect.Width, torchRect.Height)
-
-            Next
 
         Next
     End Sub
@@ -4982,7 +4957,28 @@ Public Class frmMain
     End Sub
 
     Private Sub BarButtonItem20_ItemClick(sender As Object, e As ItemClickEventArgs) Handles BarButtonItem20.ItemClick
-        frmSelectLayer.Show(Me)
+        Dim points As List(Of CTGPoint) =
+    CTGReader.ReadFile("C:\ctg\C-tool.ctg")
+
+        MessageBox.Show(
+    "CTG records loaded: " & points.Count.ToString(),
+    "CTG Reader Test")
+        Dim geometry As List(Of GeoEntity) =
+    CTGReader.ConvertToGeometry(points)
+
+        _ctgTestGeometry = geometry
+
+        Dim lineCount As Integer =
+            geometry.OfType(Of GeoLine)().Count()
+
+        Dim arcCount As Integer =
+            geometry.OfType(Of GeoArc)().Count()
+
+        MessageBox.Show(
+            "CTG Records: " & points.Count & vbCrLf &
+            "Lines: " & lineCount & vbCrLf &
+            "Arcs: " & arcCount,
+            "CTG Geometry Test")
     End Sub
     Private Sub tbSelect_All_Click(sender As Object, e As EventArgs) Handles tbSelect_All.Click
 
@@ -6730,6 +6726,207 @@ Public Class frmMain
         UpdateSelectionIcons()
 
     End Sub
+    Private Sub bbModClamps_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbModClamps.ItemClick
+
+        If dlgEditClamps.ShowDialog() = DialogResult.OK Then
+
+            pnlPicmodeler.SuspendLayout()
+            'DrawMachineClamps(pnlPicmodeler)
+
+            ' Load clamp CTG geometry.
+            _clampCTGGeometry = Nothing
+
+            Dim clampCTG As String =
+            CurrentJob.MachineDefinition.Clamp_CTG
+
+            If Not String.IsNullOrWhiteSpace(clampCTG) Then
+
+                Try
+                    Dim points As List(Of CTGPoint) =
+                    CTGReader.ReadFile(clampCTG)
+
+                    _clampCTGGeometry =
+                    CTGReader.ConvertToGeometry(points)
+
+                    Debug.WriteLine(
+                    "Clamp CTG geometry loaded: " &
+                    _clampCTGGeometry.Count.ToString())
+
+                Catch ex As Exception
+
+                    Debug.WriteLine(
+                    "Clamp CTG load failed: " & ex.Message)
+
+                    MessageBox.Show(
+                    "Unable to load clamp CTG:" & vbCrLf &
+                    clampCTG & vbCrLf & vbCrLf &
+                    ex.Message,
+                    "Clamp CTG",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning)
+
+                End Try
+
+            End If
+            pnlPicmodeler.ResumeLayout()
+
+            '' Clamp positions have been updated.
+            '' Request a redraw of the drawing surface.
+            'pnlPicmodeler.Refresh()
+
+        End If
+
+    End Sub
+
+
+    Private Sub DrawMachineClamps(g As Graphics)
+
+        If CurrentJob Is Nothing OrElse
+       CurrentJob.MachineDefinition Is Nothing OrElse
+       CurrentJob.Clamps Is Nothing Then
+            Return
+        End If
+
+        Dim machine = CurrentJob.MachineDefinition
+
+        Dim isUpper As Boolean =
+        (machine.Quadrant = MachineEnvelope.MachineQuadrant.UpperLeft)
+
+        Dim baseY As Double = If(isUpper, matWidth, 0.0)
+        Dim directionY As Double = If(isUpper, -1.0, 1.0)
+
+        Using punchPen As New Pen(Color.Yellow, 1.5F),
+          torchPen As New Pen(Color.Orange, 1.5F)
+
+            For Each clamp In CurrentJob.Clamps
+
+                Dim clampX As Double = clamp.X
+
+
+                If _clampCTGGeometry IsNot Nothing AndAlso
+   _clampCTGGeometry.Count > 0 Then
+
+                    ' Draw the actual clamp geometry.
+                    DrawClampCTG(g, clampX, baseY)
+
+                Else
+
+                    ' No CTG available. Draw basic clamp deadzones.
+                    DrawClampDeadzone(
+        g,
+        clampX + machine.Punch_Clamp_Deadzone_Center,
+        baseY,
+        machine.Punch_Clamp_Deadzone_Length,
+        machine.Punch_Clamp_Deadzone_Width,
+        directionY,
+        punchPen)
+
+                    DrawClampDeadzone(
+        g,
+        clampX + machine.Torch_Clamp_Deadzone_Center,
+        baseY,
+        machine.Torch_Clamp_Deadzone_Length,
+        machine.Torch_Clamp_Deadzone_Width,
+        directionY,
+        torchPen)
+
+                End If
+
+
+                '' Punch deadzone
+                'DrawClampDeadzone(
+                'g,
+                'clampX + machine.Punch_Clamp_Deadzone_Center,
+                'baseY,
+                'machine.Punch_Clamp_Deadzone_Length,
+                'machine.Punch_Clamp_Deadzone_Width,
+                'directionY,
+                'punchPen)
+
+                '' Torch deadzone
+                'DrawClampDeadzone(
+                'g,
+                'clampX + machine.Torch_Clamp_Deadzone_Center,
+                'baseY,
+                'machine.Torch_Clamp_Deadzone_Length,
+                'machine.Torch_Clamp_Deadzone_Width,
+                'directionY,
+                'torchPen)
+
+            Next
+
+        End Using
+
+    End Sub
+
+    Private Sub DrawClampDeadzone(
+    g As Graphics,
+    centerX As Double,
+    baseY As Double,
+    length As Double,
+    width As Double,
+    directionY As Double,
+    pen As Pen)
+
+        If length <= 0 OrElse width <= 0 Then Return
+
+        Dim x1 As Double = centerX - length / 2.0
+        Dim x2 As Double = centerX + length / 2.0
+
+        Dim y1 As Double = baseY
+        Dim y2 As Double = baseY + directionY * width
+
+        Dim p1 As PointF =
+        WorldToScreen(x1, y1, myTransform, panelHeight)
+
+        Dim p2 As PointF =
+        WorldToScreen(x2, y2, myTransform, panelHeight)
+
+        Dim rect As RectangleF =
+        HelperFunctions.RectFromPoints(p1, p2)
+
+        g.DrawRectangle(
+        pen,
+        rect.X,
+        rect.Y,
+        rect.Width,
+        rect.Height)
+
+    End Sub
+
+
+    Private Sub DrawClampCTG(
+    g As Graphics,
+    clampX As Double,
+    clampY As Double)
+
+        If _clampCTGGeometry Is Nothing Then Return
+
+        Dim state As Drawing2D.GraphicsState = g.Save()
+
+        Try
+            Dim offsetX As Single =
+            CSng(clampX * myTransform.Scale)
+
+            Dim offsetY As Single =
+            CSng(-clampY * myTransform.Scale)
+
+            g.TranslateTransform(offsetX, offsetY)
+
+            DrawGeoEntities(
+            _clampCTGGeometry,
+            g,
+            myTransform,
+            panelHeight)
+
+        Finally
+            g.Restore(state)
+        End Try
+
+    End Sub
+
+
+
 End Class
 
 
