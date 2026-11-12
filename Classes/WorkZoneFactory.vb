@@ -39,14 +39,17 @@ Public Class WorkZoneFactory
         Dim xMax As Double = machineTravelX
 
         Dim firstZone As New WorkZone With {
-            .Index = 0,
-            .XMin = xMin,
-            .XMax = xMax,
-            .YMin = 0,
-            .YMax = sheetWidth,
-            .RepositionOffsetX = 0,
-            .IsActive = True
-        }
+    .Index = 0,
+    .XMin = 0,
+    .XMax = 0,
+    .YMin = 0,
+    .YMax = 0,
+    .HoldX = 0,
+    .HoldY = 0,
+    .RepositionDistanceX = 0,
+    .RepositionOffsetX = 0,
+    .IsActive = True
+}
 
         zones.Add(firstZone)
 

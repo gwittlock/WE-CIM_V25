@@ -121,7 +121,7 @@ Namespace ToolShapes
             minorRadius,
             Math.PI / 2.0,
             -Math.PI / 2.0,
-            False))
+            True))
 
             ' Bottom connecting line.
             path.Add(
@@ -138,7 +138,7 @@ Namespace ToolShapes
         majorRadius,
         -majorAngle,
         -2.0 * Math.PI + majorAngle,
-        False))
+        True))
 
             Return path
 

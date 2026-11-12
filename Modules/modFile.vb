@@ -349,6 +349,9 @@ Public Module modFile
         .Y = 0,
         .Angle = 0
     }
+
+        productionSheet.Patterns.Add(importedPattern)
+
         '============================================================
         ' Register Part and Manufacturing Geometry in MM3
         '============================================================
@@ -361,22 +364,22 @@ Public Module modFile
         '============================================================
         If productionSheet.WorkZones.Count > 0 Then
 
-            productionSheet.WorkZones(0).Patterns.Add(importedPattern)
+            '  productionSheet.WorkZones(0).Patterns.Add(importedPattern)
 
             If productionSheet.ManufacturingModel.WorkZones.Count > 0 Then
 
                 Dim firstZoneIndex As Integer =
                     productionSheet.ManufacturingModel.WorkZones(0).Index
 
-                For Each entity As GeoEntity In importedPart.Geometry
+                'For Each entity As GeoEntity In importedPart.Geometry
 
-                    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(
-                        New MM3WorkZoneAssignment With {
-                            .WorkZoneIndex = firstZoneIndex,
-                            .Entity = entity
-                        })
+                '    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(
+                '        New MM3WorkZoneAssignment With {
+                '            .WorkZoneIndex = firstZoneIndex,
+                '            .Entity = entity
+                '        })
 
-                Next
+                'Next
 
             End If
 
@@ -385,26 +388,26 @@ Public Module modFile
                 Dim firstZoneIndex As Integer =
                     productionSheet.ManufacturingModel.WorkZones(0).Index
 
-                For Each feature As MachiningFeature In importedPart.Features
+                'For Each feature As MachiningFeature In importedPart.Features
 
-                    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(
-                        New MM3WorkZoneAssignment With {
-                            .WorkZoneIndex = firstZoneIndex,
-                            .Entity = feature
-                        })
+                '    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(
+                '        New MM3WorkZoneAssignment With {
+                '            .WorkZoneIndex = firstZoneIndex,
+                '            .Entity = feature
+                '        })
 
-                Next
+                'Next
 
             End If
 
         End If
 
-
+        Debug.WriteLine("The pattern Count Is <" & CurrentProductionJob.JobSheets(0).Patterns.Count & " > ")
         frmMain.InitializeEntityList()
         frmMain.RefreshEntityList()
 
-        MyStopWatch.Sw.Stop()
-        MessageBox.Show("Elapsed time: " & MyStopWatch.Sw.Elapsed.ToString())
+        ' MyStopWatch.Sw.Stop()
+        ' MessageBox.Show("Elapsed time: " & MyStopWatch.Sw.Elapsed.ToString())
         'frmMain.dockPanelEntityList.Show()
     End Sub
 

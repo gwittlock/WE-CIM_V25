@@ -294,7 +294,7 @@ Public Class frmOpenProject
 
         Try
 
-            MyStopWatch.Sw.Restart()
+            ' MyStopWatch.Sw.Restart()
             ' Validate selections
             If SelectedMachineID = 0 Then
                 MessageBox.Show("Please select a machine.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)

@@ -4980,8 +4980,14 @@ Public Class frmMain
             If TypeOf selectedObject Is HoleFeature Then
 
                 _entityPropertiesForm.ShowSelectedObject(
-                New RoundPunchProperties(
-                    DirectCast(selectedObject, HoleFeature)))
+        New RoundPunchProperties(
+            DirectCast(selectedObject, HoleFeature)))
+
+            ElseIf TypeOf selectedObject Is LineOfHolesFeature Then
+
+                _entityPropertiesForm.ShowSelectedObject(
+        New RowInXProperties(
+            DirectCast(selectedObject, LineOfHolesFeature)))
 
             Else
 
@@ -5060,22 +5066,30 @@ Public Class frmMain
 
     Public Sub InitializeEntityList()
 
-
         tlEntityList.BeginUnboundLoad()
 
         Try
             tlEntityList.Nodes.Clear()
 
+            '-----------------------------------------
+            ' Pattern root
+            '-----------------------------------------
+            Dim patternNode =
+            tlEntityList.AppendNode(
+                New Object() {"Pattern"},
+                CType(Nothing, DevExpress.XtraTreeList.Nodes.TreeListNode))
+
             Dim partGeoNode =
-    tlEntityList.AppendNode(
-        New Object() {"PartGeo"},
-        CType(Nothing, DevExpress.XtraTreeList.Nodes.TreeListNode))
+            tlEntityList.AppendNode(
+                New Object() {"PartGeo"},
+                patternNode)
 
             Dim manufacturingGeoNode =
-    tlEntityList.AppendNode(
-        New Object() {"ManufacturingGeo"},
-        CType(Nothing, DevExpress.XtraTreeList.Nodes.TreeListNode))
+            tlEntityList.AppendNode(
+                New Object() {"ManufacturingGeo"},
+                patternNode)
 
+            patternNode.Expanded = True
             partGeoNode.Expanded = True
             manufacturingGeoNode.Expanded = True
 
@@ -5096,14 +5110,28 @@ Public Class frmMain
 
         ' We will populate the TreeList here.
         ' Make sure the root nodes exist
-        If tlEntityList.Nodes.Count < 2 Then Exit Sub
+        If tlEntityList.Nodes.Count = 0 Then Exit Sub
+
+
+        '---------------------------------------------
+        ' Remove previously displayed Workzone nodes
+        ' while preserving the Pattern root.
+        '---------------------------------------------
+        For i As Integer = tlEntityList.Nodes.Count - 1 To 1 Step -1
+            tlEntityList.Nodes.RemoveAt(i)
+        Next
+
+
+        Dim patternNode As DevExpress.XtraTreeList.Nodes.TreeListNode =
+    tlEntityList.Nodes(0)
+
+        If patternNode.Nodes.Count < 2 Then Exit Sub
 
         Dim partGeoNode As DevExpress.XtraTreeList.Nodes.TreeListNode =
-            tlEntityList.Nodes(0)
+    patternNode.Nodes(0)
 
         Dim manufacturingGeoNode As DevExpress.XtraTreeList.Nodes.TreeListNode =
-            tlEntityList.Nodes(1)
-
+    patternNode.Nodes(1)
         ' Clear existing entries while preserving the root nodes.
         partGeoNode.Nodes.Clear()
         manufacturingGeoNode.Nodes.Clear()
@@ -5179,14 +5207,16 @@ Public Class frmMain
 
                     If feature Is Nothing Then Continue For
 
-                    Dim featureNode =
-            tlEntityList.AppendNode(
-                New Object() {
-                    feature.FeatureType.ToString() &
-                    " " &
-                    feature.ID.ToString()
-                },
-                manufacturingGeoNode)
+                    Dim displayName As String = feature.FeatureType.ToString()
+
+                    Select Case feature.FeatureType
+
+                        Case MachiningFeatureType.LineOfHoles
+                            displayName = "Row In X"
+
+                    End Select
+
+                    Dim featureNode = tlEntityList.AppendNode(New Object() {displayName & " " & feature.ID.ToString()}, manufacturingGeoNode)
 
                     ' Reference the actual machining feature
                     featureNode.Tag = feature
@@ -5202,6 +5232,31 @@ Public Class frmMain
             '    mm.PartGeometry.Count.ToString())
 
         Next
+
+
+        '---------------------------------------------
+        ' Populate Workzone root nodes
+        '---------------------------------------------
+        If CurrentJob IsNot Nothing AndAlso
+           CurrentJob.WorkZones IsNot Nothing Then
+
+            For i As Integer = 0 To CurrentJob.WorkZones.Count - 1
+
+                Dim zone As WorkZone = CurrentJob.WorkZones(i)
+
+                Dim zoneNode =
+                    tlEntityList.AppendNode(
+                        New Object() {"WorkZone " & (zone.Index + 1).ToString() & " (Empty)"},
+                        CType(Nothing, DevExpress.XtraTreeList.Nodes.TreeListNode))
+
+                zoneNode.Tag = zone
+
+
+            Next
+
+        End If
+
+
     End Sub
 
 
@@ -5608,6 +5663,28 @@ Public Class frmMain
     ) Handles tlEntityList.NodeCellStyle
 
         If e.Node Is Nothing Then Return
+
+        '---------------------------------------------
+        ' Workzone node color
+        '---------------------------------------------
+        Dim zone As WorkZone =
+    TryCast(e.Node.Tag, WorkZone)
+
+        If zone IsNot Nothing Then
+
+            If WorkzoneColors IsNot Nothing AndAlso
+       WorkzoneColors.Length > 0 Then
+
+                Dim colorIndex As Integer =
+            zone.Index Mod WorkzoneColors.Length
+
+                e.Appearance.ForeColor = WorkzoneColors(colorIndex)
+
+            End If
+
+            Return
+
+        End If
 
         Dim entity As GeoEntity =
             TryCast(e.Node.Tag, GeoEntity)
