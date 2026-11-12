@@ -182,8 +182,8 @@ Public Class ConfigurationManagerForm
     sender As Object,
     e As MouseEventArgs)
 
-        Debug.WriteLine(
-        "PropertyGridView MouseWheel: " & e.Delta)
+        'Debug.WriteLine(
+        '"PropertyGridView MouseWheel: " & e.Delta)
 
     End Sub
 
@@ -268,9 +268,9 @@ Public Class ConfigurationManagerForm
                        ls.ToolSetupID = ts.ID).
     ToList()
 
-                            Debug.WriteLine("Machine ID = " & machine.ID)
-                            Debug.WriteLine("Tool Setup ID = " & ts.ID)
-                            Debug.WriteLine("Matching Layer Setups = " & lsForToolSetup.Count)
+                            'Debug.WriteLine("Machine ID = " & machine.ID)
+                            'Debug.WriteLine("Tool Setup ID = " & ts.ID)
+                            'Debug.WriteLine("Matching Layer Setups = " & lsForToolSetup.Count)
 
                             Dim layerSetupsNode As New TreeNode("Layer Setups")
                             layerSetupsNode.Tag = EncodeConfigTreeTag(mt.ID, machine.ID, ts.ID, 0, 0, 14)
@@ -615,10 +615,10 @@ Public Class ConfigurationManagerForm
 
 
 
-        Debug.WriteLine(
-    "CELL FORMATTING | Column=" &
-    dgvToolSetup.Columns(e.ColumnIndex).Name &
-    " | Row=" & e.RowIndex)
+        '    Debug.WriteLine(
+        '"CELL FORMATTING | Column=" &
+        'dgvToolSetup.Columns(e.ColumnIndex).Name &
+        '" | Row=" & e.RowIndex)
 
 
         If e.RowIndex < 0 Then Return
@@ -3961,30 +3961,30 @@ Public Class ConfigurationManagerForm
             ' Serialize and save
             Dim json = JsonConvert.SerializeObject(materialSheets, Formatting.Indented)
 
-            Debug.WriteLine("Default settings: " &
-    JsonConvert.SerializeObject(materialSheets.Rows(0)))
+            '        Debug.WriteLine("Default settings: " &
+            'JsonConvert.SerializeObject(materialSheets.Rows(0)))
 
-            Debug.WriteLine("Explicit settings: " &
-    JsonConvert.SerializeObject(materialSheets.Rows(0),
-                                Formatting.Indented))
+            '        Debug.WriteLine("Explicit settings: " &
+            'JsonConvert.SerializeObject(materialSheets.Rows(0),
+            '                            Formatting.Indented))
 
             Dim savedJson As String = File.ReadAllText(materialInventoryPath)
 
-            Debug.WriteLine("Serialized JSON starts with: " &
-                json.Substring(0, Math.Min(json.Length, 100)))
+            'Debug.WriteLine("Serialized JSON starts with: " &
+            '    json.Substring(0, Math.Min(json.Length, 100)))
 
-            Debug.WriteLine("File JSON starts with: " &
-                savedJson.Substring(0, Math.Min(savedJson.Length, 100)))
+            'Debug.WriteLine("File JSON starts with: " &
+            '    savedJson.Substring(0, Math.Min(savedJson.Length, 100)))
 
-            Debug.WriteLine($"Table type: {materialSheets.GetType().FullName}")
-            Debug.WriteLine($"Rows type: {materialSheets.Rows.GetType().FullName}")
-            Debug.WriteLine($"Row count: {materialSheets.Rows.Count}")
+            'Debug.WriteLine($"Table type: {materialSheets.GetType().FullName}")
+            'Debug.WriteLine($"Rows type: {materialSheets.Rows.GetType().FullName}")
+            'Debug.WriteLine($"Row count: {materialSheets.Rows.Count}")
 
-            For Each row In materialSheets.Rows
-                Debug.WriteLine(If(row Is Nothing, "<Nothing>", row.GetType().FullName))
-                Debug.WriteLine($"Description:{row.Description }")
+            'For Each row In materialSheets.Rows
+            '    Debug.WriteLine(If(row Is Nothing, "<Nothing>", row.GetType().FullName))
+            '    Debug.WriteLine($"Description:{row.Description }")
 
-            Next
+            'Next
 
             File.WriteAllText(materialInventoryPath, json)
         Catch ex As Exception

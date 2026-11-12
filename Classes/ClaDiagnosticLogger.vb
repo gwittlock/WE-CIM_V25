@@ -26,8 +26,8 @@ Public NotInheritable Class DiagnosticLogger
                 logEntry & Environment.NewLine)
 
         Catch ex As Exception
-            Debug.WriteLine(
-                "DiagnosticLogger ERROR: " & ex.Message)
+            'Debug.WriteLine(
+            '    "DiagnosticLogger ERROR: " & ex.Message)
         End Try
 
     End Sub

@@ -12,6 +12,10 @@ Public Class WorkZone
     Public Property YMin As Double = 0
     Public Property YMax As Double
 
+    ' Hold-down anchor position
+    Public Property HoldX As Double
+    Public Property HoldY As Double
+
     ' Mapping
     Public Property RepositionOffsetX As Double
 

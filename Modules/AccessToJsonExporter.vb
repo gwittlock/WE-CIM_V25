@@ -1547,8 +1547,8 @@ Public Module AccessToJsonExporter
             Using countCmd As New OleDbCommand(
     "SELECT COUNT(*) FROM [Layer Setups]", conn)
 
-                Debug.WriteLine(
-        "Layer Setups count: " & countCmd.ExecuteScalar().ToString())
+                '        Debug.WriteLine(
+                '"Layer Setups count: " & countCmd.ExecuteScalar().ToString())
             End Using
 
             ' Read Layer Setups
@@ -1575,7 +1575,7 @@ Public Module AccessToJsonExporter
                                             {"RequiresToolIDVerification", True}
                                         }
 
-                        Debug.WriteLine("Exporting ID: " & reader("ID").ToString())
+                        '  Debug.WriteLine("Exporting ID: " & reader("ID").ToString())
 
 
                         layerSetupRows.Add(row)
@@ -1682,8 +1682,8 @@ Public Module AccessToJsonExporter
             Using countCmd As New OleDbCommand(
     "SELECT COUNT(*) FROM [Directives]", conn)
 
-                Debug.WriteLine(
-        "Directives count: " & countCmd.ExecuteScalar().ToString())
+                '        Debug.WriteLine(
+                '"Directives count: " & countCmd.ExecuteScalar().ToString())
             End Using
 
             Using cmd As New OleDbCommand($"SELECT * FROM [{tableName}]", conn)
@@ -1703,8 +1703,8 @@ Public Module AccessToJsonExporter
                             End If
                         Next
 
-                        Debug.WriteLine("Nested Directive ID: " &
-                reader("ID").ToString())
+                        '        Debug.WriteLine("Nested Directive ID: " &
+                        'reader("ID").ToString())
 
                         ' Compute DisplayColor from OLE Color integer
                         Dim oleColor As Integer = If(row.ContainsKey("Color") AndAlso row("Color") IsNot Nothing, CInt(row("Color")), 0)

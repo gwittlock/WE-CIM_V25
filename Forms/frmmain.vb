@@ -13,6 +13,7 @@ Imports FabV25_WIN8.CadEntity
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Helpers
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 Imports FabV25_WIN8.WE_ENG_V25_0.Core.Services
+
 ' IxMilia DXF imports
 Imports IxMilia.Dxf
 Imports IxMilia.Dxf.Entities
@@ -166,6 +167,9 @@ Public Class frmMain
 
     Private _clampCTGGeometry As List(Of GeoEntity) = Nothing
 
+    Private _workZonesForm As frmWorkZones
+
+    Private ReadOnly _workZoneAssignFlash As New HashSet(Of isSelectable)
     Private Declare Function LockWindowUpdate Lib "user32.dll" (ByVal hWndLock As IntPtr) As Boolean
 
     Public Sub New()
@@ -250,6 +254,11 @@ Public Class frmMain
             Me.KeyPreview = True
             dockPanelEntityList.Visible = False
             dockPanelCreateHole.Visible = False
+            dockPanelWorkZones.Visible = False
+
+
+            InitializeWorkZonesPanel()
+
 
             EnableDoubleBuffering(pnlPicmodeler)
 
@@ -479,6 +488,11 @@ Public Class frmMain
         ' Any additional overlays
         DrawOverlay(e.Graphics)
 
+        ' White assignment confirmation lasts for one repaint.
+        If _workZoneAssignFlash.Count > 0 Then
+            _workZoneAssignFlash.Clear()
+        End If
+
     End Sub
 
 
@@ -549,104 +563,104 @@ Public Class frmMain
         ' Draw machine clamps
         DrawMachineClamps(g)
 
-        ' -------------------------------------------------
-        ' 2) HOVER HIGHLIGHT (still View-owned for now)
-        ' -------------------------------------------------
-        'If _hoverEntity IsNot Nothing Then
-        '    DrawEntityHighlight(g, _hoverEntity)
+        '' -------------------------------------------------
+        '' 2) HOVER HIGHLIGHT (still View-owned for now)
+        '' -------------------------------------------------
+        ''If _hoverEntity IsNot Nothing Then
+        ''    DrawEntityHighlight(g, _hoverEntity)
+        ''End If
+
+        '' -------------------------------------------------
+        '' 3) SELECTION HIGHLIGHT (SelectionManager-owned)
+        '' -------------------------------------------------
+        'If _selectionManager.HasSelection Then
+
+        '    Using pen As New Pen(System.Drawing.Color.Yellow, 2.0F)
+
+        '        For Each sel In _selectionManager.Selected
+
+        '            Dim ent As CadEntity = TryCast(sel, CadEntity)
+        '            If ent Is Nothing Then Continue For
+
+        '            Select Case ent.GeometryType
+
+        '                Case GeometryTypeEnum.Line
+
+        '                    Dim line As CadLine = TryCast(ent, CadLine)
+        '                    If line Is Nothing Then Continue For
+
+        '                    Dim p1 = WorldToScreen(line.StartPoint.X, line.StartPoint.Y, myTransform, panelHeight)
+        '                    Dim p2 = WorldToScreen(line.EndPoint.X, line.EndPoint.Y, myTransform, panelHeight)
+
+        '                    g.DrawLine(pen, p1, p2)
+
+        '                Case GeometryTypeEnum.Circle
+
+        '                    Dim circle As CadCircle = TryCast(ent, CadCircle)
+        '                    If circle Is Nothing Then Continue For
+
+        '                    Dim center = WorldToScreen(circle.Center.X, circle.Center.Y, myTransform, panelHeight)
+        '                    Dim r As Single = CSng(circle.Radius * myTransform.Scale)
+
+        '                    g.DrawEllipse(pen,
+        '                              CSng(center.X - r),
+        '                              CSng(center.Y - r),
+        '                              CSng(r * 2),
+        '                              CSng(r * 2))
+
+        '                Case GeometryTypeEnum.Arc
+
+        '                    Dim arc As CadArc = TryCast(ent, CadArc)
+        '                    If arc Is Nothing Then Continue For
+
+        '                    Dim center = WorldToScreen(arc.Center.X, arc.Center.Y, myTransform, panelHeight)
+        '                    Dim r As Single = CSng(arc.Radius * myTransform.Scale)
+
+        '                    Dim sweep As Single = CSng(arc.EndAngle - arc.StartAngle)
+
+        '                    If sweep < 0 Then
+        '                        sweep += 360
+        '                    End If
+
+        '                    Dim startAngle As Single = CSng(-arc.StartAngle)
+        '                    Dim sweepAngle As Single = CSng(-sweep)
+
+        '                    g.DrawArc(pen,
+        '                                    CSng(center.X - r),
+        '                                    CSng(center.Y - r),
+        '                                    CSng(r * 2),
+        '                                    CSng(r * 2),
+        '                                    startAngle,
+        '                                    sweepAngle)
+
+        '                Case GeometryTypeEnum.Point
+
+        '                    Dim point As CadPoint = TryCast(ent, CadPoint)
+        '                    If point Is Nothing Then Continue For
+
+        '                    Dim screenPt As PointF =
+        '                        WorldToScreen(
+        '                            point.Position.X,
+        '                            point.Position.Y,
+        '                            myTransform,
+        '                            panelHeight)
+
+        '                    Const pointSize As Single = 8.0F
+
+        '                    g.DrawRectangle(
+        '                        pen,
+        '                        screenPt.X - pointSize / 2.0F,
+        '                        screenPt.Y - pointSize / 2.0F,
+        '                        pointSize,
+        '                        pointSize)
+
+        '            End Select
+
+        '        Next
+
+        '    End Using
+
         'End If
-
-        ' -------------------------------------------------
-        ' 3) SELECTION HIGHLIGHT (SelectionManager-owned)
-        ' -------------------------------------------------
-        If _selectionManager.HasSelection Then
-
-            Using pen As New Pen(System.Drawing.Color.Yellow, 2.0F)
-
-                For Each sel In _selectionManager.Selected
-
-                    Dim ent As CadEntity = TryCast(sel, CadEntity)
-                    If ent Is Nothing Then Continue For
-
-                    Select Case ent.GeometryType
-
-                        Case GeometryTypeEnum.Line
-
-                            Dim line As CadLine = TryCast(ent, CadLine)
-                            If line Is Nothing Then Continue For
-
-                            Dim p1 = WorldToScreen(line.StartPoint.X, line.StartPoint.Y, myTransform, panelHeight)
-                            Dim p2 = WorldToScreen(line.EndPoint.X, line.EndPoint.Y, myTransform, panelHeight)
-
-                            g.DrawLine(pen, p1, p2)
-
-                        Case GeometryTypeEnum.Circle
-
-                            Dim circle As CadCircle = TryCast(ent, CadCircle)
-                            If circle Is Nothing Then Continue For
-
-                            Dim center = WorldToScreen(circle.Center.X, circle.Center.Y, myTransform, panelHeight)
-                            Dim r As Single = CSng(circle.Radius * myTransform.Scale)
-
-                            g.DrawEllipse(pen,
-                                      CSng(center.X - r),
-                                      CSng(center.Y - r),
-                                      CSng(r * 2),
-                                      CSng(r * 2))
-
-                        Case GeometryTypeEnum.Arc
-
-                            Dim arc As CadArc = TryCast(ent, CadArc)
-                            If arc Is Nothing Then Continue For
-
-                            Dim center = WorldToScreen(arc.Center.X, arc.Center.Y, myTransform, panelHeight)
-                            Dim r As Single = CSng(arc.Radius * myTransform.Scale)
-
-                            Dim sweep As Single = CSng(arc.EndAngle - arc.StartAngle)
-
-                            If sweep < 0 Then
-                                sweep += 360
-                            End If
-
-                            Dim startAngle As Single = CSng(-arc.StartAngle)
-                            Dim sweepAngle As Single = CSng(-sweep)
-
-                            g.DrawArc(pen,
-                                            CSng(center.X - r),
-                                            CSng(center.Y - r),
-                                            CSng(r * 2),
-                                            CSng(r * 2),
-                                            startAngle,
-                                            sweepAngle)
-
-                        Case GeometryTypeEnum.Point
-
-                            Dim point As CadPoint = TryCast(ent, CadPoint)
-                            If point Is Nothing Then Continue For
-
-                            Dim screenPt As PointF =
-                                WorldToScreen(
-                                    point.Position.X,
-                                    point.Position.Y,
-                                    myTransform,
-                                    panelHeight)
-
-                            Const pointSize As Single = 8.0F
-
-                            g.DrawRectangle(
-                                pen,
-                                screenPt.X - pointSize / 2.0F,
-                                screenPt.Y - pointSize / 2.0F,
-                                pointSize,
-                                pointSize)
-
-                    End Select
-
-                Next
-
-            End Using
-
-        End If
 
         ' Select By Window rubber-band
         If _selectWindowActive AndAlso
@@ -871,11 +885,17 @@ Public Class frmMain
         Dim drawColor As System.Drawing.Color = l.Color
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
+        '    Debug.WriteLine(
+        '"FLASH CHECK: Count=" & _workZoneAssignFlash.Count.ToString() &
+        '", ContainsLine=" & _workZoneAssignFlash.Contains(l).ToString())
 
-        If l.Selected OrElse IsEntityInSelectedProfile(l) Then
-            Debug.WriteLine(
-    $"DrawGeoLine: Selected={l.Selected}, " &
-    $"ProfileSelected={IsEntityInSelectedProfile(l)}")
+
+        If _workZoneAssignFlash.Contains(l) Then
+
+            drawColor = System.Drawing.Color.White
+            drawWidth = 1.0F
+
+        ElseIf l.Selected OrElse IsEntityInSelectedProfile(l) Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
@@ -887,6 +907,23 @@ Public Class frmMain
             drawDashed = True
 
         End If
+
+
+        '    If l.Selected OrElse IsEntityInSelectedProfile(l) Then
+        '        Debug.WriteLine(
+        '$"DrawGeoLine: Selected={l.Selected}, " &
+        '$"ProfileSelected={IsEntityInSelectedProfile(l)}")
+
+        '        drawColor = System.Drawing.Color.Red
+        '        drawWidth = 1.0F
+
+        '    ElseIf l.IsHovered OrElse IsEntityInHoveredProfile(l) Then
+
+        '        drawColor = System.Drawing.Color.Red
+        '        drawWidth = 2.0F
+        '        drawDashed = True
+
+        '    End If
 
         Using pen As New Pen(drawColor, drawWidth)
 
@@ -959,7 +996,12 @@ Public Class frmMain
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
 
-        If displaySelected Then
+        If _workZoneAssignFlash.Contains(a) Then
+
+            drawColor = System.Drawing.Color.White
+            drawWidth = 1.0F
+
+        ElseIf displaySelected Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
@@ -1029,13 +1071,18 @@ Public Class frmMain
         Dim drawColor As System.Drawing.Color = c.Color
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
+        If _workZoneAssignFlash.Contains(c) Then
 
-        If displaySelected Then
+            drawColor = System.Drawing.Color.White
+            drawWidth = 1.0F
+
+        ElseIf displaySelected Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
 
         ElseIf c.IsHovered OrElse IsEntityInHoveredProfile(c) Then
+
             drawColor = System.Drawing.Color.Red
             drawWidth = 2.0F
             drawDashed = True
@@ -1152,6 +1199,8 @@ Public Class frmMain
 
             g.FillRectangle(wzBrush, wzRect)
             g.DrawRectangle(wzPen, wzRect.X, wzRect.Y, wzRect.Width, wzRect.Height)
+
+            DrawWorkZoneHolddowns(g, wz, CurrentJob.MachineDefinition)
 
         Next
     End Sub
@@ -1357,7 +1406,13 @@ Public Class frmMain
         Dim drawColor As System.Drawing.Color = pt.Color
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
-        If pt.Selected Then
+
+        If _workZoneAssignFlash.Contains(pt) Then
+
+            drawColor = System.Drawing.Color.White
+            drawWidth = 1.0F
+
+        ElseIf pt.Selected Then
 
             drawColor = System.Drawing.Color.Red
             drawWidth = 1.0F
@@ -1369,7 +1424,6 @@ Public Class frmMain
             drawDashed = True
 
         End If
-
         Using pen As New Pen(drawColor, drawWidth)
 
             If pt.Selected Then
@@ -1754,6 +1808,7 @@ Public Class frmMain
         If _windowSelecting Then
             _windowEnd = e.Location
             pnlPicmodeler.Invalidate()
+            Debug.WriteLine("VIEW WINDOW STARTED")
         End If
 
         ' 3a) Select By Window rubber-band
@@ -1762,9 +1817,10 @@ Public Class frmMain
 
             _selectWindowEnd = e.Location
             pnlPicmodeler.Invalidate()
+            Debug.WriteLine("WINDOW SELECTION STARTED")
         End If
 
-        Debug.WriteLine("VIEW WINDOW STARTED")
+
         ' --------------------------
         ' 4) Active Snap
         ' --------------------------
@@ -1822,9 +1878,9 @@ Public Class frmMain
         Dim nativeHit As Boolean =
             _selectionManager.TestGeoHitAtPoint(modelPt, tolWorld)
 
-        If nativeHit Then
-            Debug.WriteLine("NATIVE GEO HIT = TRUE")
-        End If
+        'If nativeHit Then
+        '    Debug.WriteLine("NATIVE GEO HIT = TRUE")
+        'End If
 
 
 
@@ -2291,8 +2347,8 @@ Public Class frmMain
 
 
         ' MessageBox.Show("TEST: SelectAtPoint is about to execute")
-        Debug.WriteLine("TEST: Selection Filter = " & _selectionFilter.ToString())
-        Debug.WriteLine("TEST: Profile Selection = " & _profileSelectionEnabled.ToString())
+        'Debug.WriteLine("TEST: Selection Filter = " & _selectionFilter.ToString())
+        'Debug.WriteLine("TEST: Profile Selection = " & _profileSelectionEnabled.ToString())
         '    MessageBox.Show(
         '"Selection Filter = " & _selectionFilter.ToString() &
         'vbCrLf &
@@ -2387,7 +2443,7 @@ Public Class frmMain
 
             Dim isReverseWindow As Boolean = _selectWindowEnd.X < _selectWindowStart.X
 
-            Debug.WriteLine($"Selection Window: Reverse={isReverseWindow}")
+            ' Debug.WriteLine($"Selection Window: Reverse={isReverseWindow}")
 
             Dim deselect As Boolean = (Control.ModifierKeys And Keys.Control) = Keys.Control
 
@@ -3936,7 +3992,7 @@ Public Class frmMain
     sender As Object,
     e As EventArgs) Handles tbSelect_RemoveAllByFilter.Click
 
-        Debug.WriteLine("ENTERED tbSelect_RemoveAllByFilter_Click")
+        'Debug.WriteLine("ENTERED tbSelect_RemoveAllByFilter_Click")
 
         _selectionManager.RemoveAllByFilter(
         Nothing,
@@ -4324,22 +4380,22 @@ Public Class frmMain
         OfType(Of GeoCircle)().
         ToList()
 
-        Debug.WriteLine(
-        "Selected GeoCircles: " & circles.Count)
+        'Debug.WriteLine(
+        '"Selected GeoCircles: " & circles.Count)
 
-        For Each circle As GeoCircle In circles
+        'For Each circle As GeoCircle In circles
 
-            MessageBox.Show(
-                "Circle ID = " & circle.ID &
-                vbCrLf &
-                "X = " & circle.Center.X &
-                vbCrLf &
-                "Y = " & circle.Center.Y &
-                vbCrLf &
-                "Radius = " & circle.Radius,
-                "Selected Circle Test")
+        '    MessageBox.Show(
+        '        "Circle ID = " & circle.ID &
+        '        vbCrLf &
+        '        "X = " & circle.Center.X &
+        '        vbCrLf &
+        '        "Y = " & circle.Center.Y &
+        '        vbCrLf &
+        '        "Radius = " & circle.Radius,
+        '        "Selected Circle Test")
 
-        Next
+        'Next
     End Sub
 
 
@@ -4547,7 +4603,11 @@ Public Class frmMain
         Dim drawStyle As Drawing2D.DashStyle =
     Drawing2D.DashStyle.Dash
 
-        If hole.IsSelected Then
+        If _workZoneAssignFlash.Contains(hole) Then
+
+            drawColor = Color.White
+
+        ElseIf hole.IsSelected Then
 
             drawColor = Color.Red
 
@@ -4599,15 +4659,15 @@ Public Class frmMain
         Dim cosA As Double = Math.Cos(angleRadians)
         Dim sinA As Double = Math.Sin(angleRadians)
 
-        Debug.WriteLine(
-    $"HOLE ROTATION: Angle={hole.Angle}, Cos={cosA}, Sin={sinA}")
+        '    Debug.WriteLine(
+        '$"HOLE ROTATION: Angle={hole.Angle}, Cos={cosA}, Sin={sinA}")
 
 
         For Each segment As IPathSegment In
         shape.CuttingProfile.Segments
 
-            Debug.WriteLine(
-    $"HOLE {hole.ID}: SegmentType = {segment.SegmentType}")
+            '        Debug.WriteLine(
+            '$"HOLE {hole.ID}: SegmentType = {segment.SegmentType}")
             If segment Is Nothing Then Continue For
 
             Select Case segment.SegmentType
@@ -4732,8 +4792,14 @@ Public Class frmMain
 
         If row Is Nothing Then Exit Sub
 
-        Debug.WriteLine(
-        "Drawing LineOfHolesFeature ID = " & row.ID.ToString())
+        '    Debug.WriteLine(
+        '"LINE OF HOLES: ID=" & row.ID.ToString() &
+        '", IsSelected=" & row.IsSelected.ToString() &
+        '", InSelectionManager=" &
+        '_selectionManager.Selected.Contains(row).ToString())
+
+        '    Debug.WriteLine(
+        '    "Drawing LineOfHolesFeature ID = " & row.ID.ToString())
 
         For Each holeCenter As PointF In
     HolePatternGeometry.GetLineOfHolesPoints(
@@ -4750,6 +4816,10 @@ Public Class frmMain
         }
 
             DrawHoleFeature(displayHole, g, vt, panelHeight)
+
+            If _workZoneAssignFlash.Contains(row) Then
+                _workZoneAssignFlash.Add(displayHole)
+            End If
 
         Next
 
@@ -4874,11 +4944,11 @@ Public Class frmMain
         '-----------------------------------------
         ' Debug selection state
         '-----------------------------------------
-        Debug.WriteLine("ENTERED tbSelect_AddAllByFilter_Click")
+        'Debug.WriteLine("ENTERED tbSelect_AddAllByFilter_Click")
 
-        Debug.WriteLine(
-        $"ProfileSelectionEnabled={_profileSelectionEnabled}, " &
-        $"SelectionFilter={_selectionFilter}")
+        'Debug.WriteLine(
+        '$"ProfileSelectionEnabled={_profileSelectionEnabled}, " &
+        '$"SelectionFilter={_selectionFilter}")
 
         '-----------------------------------------
         ' Select all native geometry by filter
@@ -5127,9 +5197,9 @@ Public Class frmMain
 
 
 
-            Debug.WriteLine(
-                "Entity List: PartGeo Count = " &
-                mm.PartGeometry.Count.ToString())
+            'Debug.WriteLine(
+            '    "Entity List: PartGeo Count = " &
+            '    mm.PartGeometry.Count.ToString())
 
         Next
     End Sub
@@ -5860,12 +5930,12 @@ Public Class frmMain
 
                 If member IsNot Nothing Then
 
-                    Debug.WriteLine(
-                        "ToolSetupMember.ID = " & member.ID.ToString())
+                    'Debug.WriteLine(
+                    '    "ToolSetupMember.ID = " & member.ID.ToString())
 
-                    Debug.WriteLine(
-                        "Configured Index Angle = " &
-                        member.IndexAngle.ToString())
+                    'Debug.WriteLine(
+                    '    "Configured Index Angle = " &
+                    '    member.IndexAngle.ToString())
 
 
                     Dim angleValue As HoleParameterValue = Nothing
@@ -5926,11 +5996,11 @@ Public Class frmMain
             Dim valid As Boolean =
             HoleExpressionEvaluator.TryEvaluate(expression, result)
 
-            Debug.WriteLine(
-            expression &
-            " | Valid = " & valid.ToString() &
-            " | Result = " & result.ToString(
-                Globalization.CultureInfo.InvariantCulture))
+            'Debug.WriteLine(
+            'expression &
+            '" | Valid = " & valid.ToString() &
+            '" | Result = " & result.ToString(
+            '    Globalization.CultureInfo.InvariantCulture))
 
         Next
 
@@ -6088,13 +6158,13 @@ Public Class frmMain
 
         End If
 
-        Debug.WriteLine(
-    "Create Hole - Target Sheet: " &
-    targetSheet.MaterialSheetID.ToString())
+        '    Debug.WriteLine(
+        '"Create Hole - Target Sheet: " &
+        'targetSheet.MaterialSheetID.ToString())
 
-        Debug.WriteLine(
-    "Existing Manufacturing Features: " &
-    targetSheet.ManufacturingModel.ManufacturingGeometry.Count.ToString())
+        '    Debug.WriteLine(
+        '"Existing Manufacturing Features: " &
+        'targetSheet.ManufacturingModel.ManufacturingGeometry.Count.ToString())
 
 
 
@@ -6132,8 +6202,8 @@ Public Class frmMain
 
         mm.ManufacturingGeometry.Add(hole)
 
-        Debug.WriteLine(
-    "CREATED HOLE ANGLE = " & hole.Angle.ToString())
+        '    Debug.WriteLine(
+        '"CREATED HOLE ANGLE = " & hole.Angle.ToString())
 
         _selectionManager.RegisterMachiningFeature(hole)
 
@@ -6208,12 +6278,12 @@ Public Class frmMain
 
         RefreshEntityList()
 
-        Debug.WriteLine(
-    "Created HoleFeature ID = " & hole.ID.ToString())
+        '    Debug.WriteLine(
+        '"Created HoleFeature ID = " & hole.ID.ToString())
 
-        Debug.WriteLine(
-    "Manufacturing Feature Count = " &
-    mm.ManufacturingGeometry.Count.ToString())
+        '    Debug.WriteLine(
+        '"Manufacturing Feature Count = " &
+        'mm.ManufacturingGeometry.Count.ToString())
 
         pnlPicmodeler.Invalidate()
 
@@ -6444,28 +6514,28 @@ Public Class frmMain
     Convert.ToInt32(_holeParameterValues("toolang").EvaluatedValue)
 
 
-        Debug.WriteLine("=== Row In X Feature ===")
-        Debug.WriteLine("Start X: " & rowFeature.StartX)
-        Debug.WriteLine("Start Y: " & rowFeature.StartY)
-        Debug.WriteLine("Quantity: " & rowFeature.Count)
-        Debug.WriteLine("Spacing: " & rowFeature.Spacing)
-        Debug.WriteLine("Repeat Along: " & rowFeature.Parameters.RepeatDirection.ToString())
-        Debug.WriteLine("Repeat Count: " & rowFeature.Parameters.RepeatCount)
-        Debug.WriteLine("Repeat Distance: " & rowFeature.Parameters.Gap)
-        Debug.WriteLine("Mirror X: " & rowFeature.Parameters.XMirror)
-        Debug.WriteLine("Mirror Y: " & rowFeature.Parameters.YMirror)
-        Debug.WriteLine("Center: " & rowFeature.Parameters.Centered)
-        Debug.WriteLine("Index Angle: " & rowFeature.Parameters.Orientation)
-        Debug.WriteLine("ToolSetupMemberID: " & rowFeature.ToolSetupMemberID)
+        'Debug.WriteLine("=== Row In X Feature ===")
+        'Debug.WriteLine("Start X: " & rowFeature.StartX)
+        'Debug.WriteLine("Start Y: " & rowFeature.StartY)
+        'Debug.WriteLine("Quantity: " & rowFeature.Count)
+        'Debug.WriteLine("Spacing: " & rowFeature.Spacing)
+        'Debug.WriteLine("Repeat Along: " & rowFeature.Parameters.RepeatDirection.ToString())
+        'Debug.WriteLine("Repeat Count: " & rowFeature.Parameters.RepeatCount)
+        'Debug.WriteLine("Repeat Distance: " & rowFeature.Parameters.Gap)
+        'Debug.WriteLine("Mirror X: " & rowFeature.Parameters.XMirror)
+        'Debug.WriteLine("Mirror Y: " & rowFeature.Parameters.YMirror)
+        'Debug.WriteLine("Center: " & rowFeature.Parameters.Centered)
+        'Debug.WriteLine("Index Angle: " & rowFeature.Parameters.Orientation)
+        'Debug.WriteLine("ToolSetupMemberID: " & rowFeature.ToolSetupMemberID)
 
 
-        Debug.WriteLine(
-            "Row In X - Target Sheet: " &
-            targetSheet.MaterialSheetID.ToString())
+        'Debug.WriteLine(
+        '    "Row In X - Target Sheet: " &
+        '    targetSheet.MaterialSheetID.ToString())
 
-        Debug.WriteLine(
-            "Existing Manufacturing Features: " &
-            mm.ManufacturingGeometry.Count.ToString())
+        'Debug.WriteLine(
+        '    "Existing Manufacturing Features: " &
+        '    mm.ManufacturingGeometry.Count.ToString())
 
         MessageBox.Show(
             "Row In X target sheet validated.",
@@ -6481,13 +6551,13 @@ Public Class frmMain
 
         pnlPicmodeler.Invalidate()
 
-        Debug.WriteLine(
-    "Created LineOfHolesFeature ID = " &
-    rowFeature.ID.ToString())
+        '    Debug.WriteLine(
+        '"Created LineOfHolesFeature ID = " &
+        'rowFeature.ID.ToString())
 
-        Debug.WriteLine(
-    "Manufacturing Feature Count = " &
-    mm.ManufacturingGeometry.Count.ToString())
+        '    Debug.WriteLine(
+        '"Manufacturing Feature Count = " &
+        'mm.ManufacturingGeometry.Count.ToString())
 
     End Sub
 
@@ -6748,14 +6818,14 @@ Public Class frmMain
                     _clampCTGGeometry =
                     CTGReader.ConvertToGeometry(points)
 
-                    Debug.WriteLine(
-                    "Clamp CTG geometry loaded: " &
-                    _clampCTGGeometry.Count.ToString())
+                    'Debug.WriteLine(
+                    '"Clamp CTG geometry loaded: " &
+                    '_clampCTGGeometry.Count.ToString())
 
                 Catch ex As Exception
 
-                    Debug.WriteLine(
-                    "Clamp CTG load failed: " & ex.Message)
+                    'Debug.WriteLine(
+                    '"Clamp CTG load failed: " & ex.Message)
 
                     MessageBox.Show(
                     "Unable to load clamp CTG:" & vbCrLf &
@@ -6925,8 +6995,151 @@ Public Class frmMain
 
     End Sub
 
+    Private Sub InitializeWorkZonesPanel()
 
+        If _workZonesForm IsNot Nothing AndAlso
+           Not _workZonesForm.IsDisposed Then
+            Return
+        End If
 
+        _workZonesForm = New frmWorkZones()
+
+        AddHandler _workZonesForm.WorkZoneChanged, AddressOf HandleWorkZoneChanged
+        AddHandler _workZonesForm.AssignWorkZoneRequested, AddressOf HandleAssignWorkZoneRequested
+
+        With _workZonesForm
+            .TopLevel = False
+            .FormBorderStyle = FormBorderStyle.None
+            .Dock = DockStyle.Fill
+            .Parent = ControlContainer2
+            .Show()
+        End With
+
+    End Sub
+    Private Sub bbModZonesManage_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbModZonesManage.ItemClick
+
+        If _workZonesForm IsNot Nothing AndAlso
+       Not _workZonesForm.IsDisposed Then
+
+            _workZonesForm.FillWorkZones()
+
+        End If
+
+        dockPanelWorkZones.Show()
+
+    End Sub
+
+    Private Sub HandleWorkZoneChanged()
+
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Private Sub DrawWorkZoneHolddowns(
+        g As Graphics,
+        wz As WorkZone,
+        machineDef As MachineDefinition)
+
+        If wz Is Nothing OrElse machineDef Is Nothing Then Return
+
+        ' No reposition means no hold-down display.
+        If wz.RepositionDistanceX = 0 Then Return
+
+        Dim diameter As Double = machineDef.Holddown_Diameter
+        If diameter <= 0 Then Return
+
+        ' Machine-relative hold-down positions.
+        Dim x1 As Double =
+            wz.HoldX + machineDef.Holddown_Location_X1
+
+        Dim x2 As Double =
+            wz.HoldX + machineDef.Holddown_Location_X2
+
+        Dim y As Double =
+            wz.HoldY + machineDef.Holddown_Location_Y
+
+        Dim radius As Double = diameter / 2.0
+
+        Using holdPen As New Pen(Color.Blue, 1.0F)
+
+            For Each x As Double In New Double() {x1, x2}
+
+                Dim topLeft As PointF =
+                    WorldToScreen(x - radius, y + radius,
+                                  myTransform, panelHeight)
+
+                Dim bottomRight As PointF =
+                    WorldToScreen(x + radius, y - radius,
+                                  myTransform, panelHeight)
+
+                Dim rect As RectangleF =
+                    HelperFunctions.RectFromPoints(topLeft, bottomRight)
+
+                g.DrawEllipse(holdPen, rect)
+
+            Next
+
+        End Using
+
+        ' Cyan anchor marker.
+        Dim anchor As PointF =
+            WorldToScreen(wz.HoldX, wz.HoldY,
+                          myTransform, panelHeight)
+
+        Using anchorBrush As New SolidBrush(Color.Cyan)
+            g.FillEllipse(anchorBrush,
+                  anchor.X - 4,
+                  anchor.Y - 4,
+                  8,
+                  8)
+        End Using
+
+    End Sub
+    Private Sub HandleAssignWorkZoneRequested(zone As WorkZone)
+
+        If zone Is Nothing Then Return
+
+        Dim sheet As JobSheet = GetCurrentHoleJobSheet()
+
+        If sheet Is Nothing Then Return
+
+        Dim mm As MM3 = sheet.ManufacturingModel
+
+        If mm Is Nothing Then Return
+
+        For Each entity As isSelectable In _selectionManager.Selected
+
+            Dim assignment As MM3WorkZoneAssignment =
+                mm.WorkZoneAssignments.FirstOrDefault(
+                    Function(a) Object.ReferenceEquals(a.Entity, entity))
+
+            If assignment Is Nothing Then
+
+                mm.WorkZoneAssignments.Add(
+                    New MM3WorkZoneAssignment With {
+                        .Entity = entity,
+                        .WorkZoneIndex = zone.Index
+                    })
+
+            Else
+
+                assignment.WorkZoneIndex = zone.Index
+
+            End If
+        Next
+
+        ' Remember the assigned entities for one white confirmation redraw.
+        _workZoneAssignFlash.Clear()
+
+        For Each entity As isSelectable In _selectionManager.Selected
+            If entity IsNot Nothing Then
+                _workZoneAssignFlash.Add(entity)
+            End If
+        Next
+
+        pnlPicmodeler.Invalidate()
+
+    End Sub
 End Class
 
 

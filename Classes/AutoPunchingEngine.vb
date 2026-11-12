@@ -124,26 +124,26 @@ Public Class AutoPunchingEngine
 
             If tool Is Nothing Then Continue For
 
-            Debug.WriteLine(
-    "ROUND PUNCH CANDIDATE | MemberID=" & member.ID &
-    " | ToolID=" & tool.ID &
-    " | TypeID=" & tool.TypeID &
-    " | Description=" & tool.Description)
+            '        Debug.WriteLine(
+            '"ROUND PUNCH CANDIDATE | MemberID=" & member.ID &
+            '" | ToolID=" & tool.ID &
+            '" | TypeID=" & tool.TypeID &
+            '" | Description=" & tool.Description)
 
             ' Round punch only
             If tool.TypeID <> 15 Then Continue For
 
             If tool.ID = 144 Then
 
-                Debug.WriteLine("TOOL 144 ATTRIBUTES:")
+                'Debug.WriteLine("TOOL 144 ATTRIBUTES:")
 
                 If tool.Attributes Is Nothing Then
                     Debug.WriteLine("Attributes = Nothing")
                 Else
                     For Each attribute In tool.Attributes
-                        Debug.WriteLine(
-                "Key=[" & attribute.Key &
-                "] Value=[" & Convert.ToString(attribute.Value) & "]")
+                        '        Debug.WriteLine(
+                        '"Key=[" & attribute.Key &
+                        '"] Value=[" & Convert.ToString(attribute.Value) & "]")
                     Next
                 End If
 

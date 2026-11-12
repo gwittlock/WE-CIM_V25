@@ -812,26 +812,26 @@ Public Class ToolShapeTest
             uArc,
             uLine)
 
-        Debug.WriteLine("")
-        Debug.WriteLine("========== LINE / ARC TEST ==========")
-        Debug.WriteLine("Does Intersect: " & result)
-        Debug.WriteLine("Intersection Count: " & points.Count)
+        'Debug.WriteLine("")
+        'Debug.WriteLine("========== LINE / ARC TEST ==========")
+        'Debug.WriteLine("Does Intersect: " & result)
+        'Debug.WriteLine("Intersection Count: " & points.Count)
 
-        For index As Integer = 0 To points.Count - 1
+        'For index As Integer = 0 To points.Count - 1
 
-            Debug.WriteLine(
-            "Point " & index &
-            " = (" &
-            points(index).X.ToString("F6") &
-            ", " &
-            points(index).Y.ToString("F6") &
-            ")" &
-            "  Arc U = " &
-            uArc(index).ToString("F6") &
-            "  Line U = " &
-            uLine(index).ToString("F6"))
+        '    Debug.WriteLine(
+        '    "Point " & index &
+        '    " = (" &
+        '    points(index).X.ToString("F6") &
+        '    ", " &
+        '    points(index).Y.ToString("F6") &
+        '    ")" &
+        '    "  Arc U = " &
+        '    uArc(index).ToString("F6") &
+        '    "  Line U = " &
+        '    uLine(index).ToString("F6"))
 
-        Next
+        'Next
 
     End Sub
 
@@ -866,74 +866,74 @@ Public Class ToolShapeTest
             intersections,
             curveRecords)
 
-        Debug.WriteLine("")
-        Debug.WriteLine("========== LINE / ARC RECORD TEST ==========")
-        Debug.WriteLine(
-        "Does Intersect: " &
-        doesIntersect.ToString())
+        'Debug.WriteLine("")
+        'Debug.WriteLine("========== LINE / ARC RECORD TEST ==========")
+        'Debug.WriteLine(
+        '"Does Intersect: " &
+        'doesIntersect.ToString())
 
-        Debug.WriteLine(
-        "Intersection Records: " &
-        intersections.Count.ToString())
+        'Debug.WriteLine(
+        '"Intersection Records: " &
+        'intersections.Count.ToString())
 
         For i As Integer = 0 To intersections.Count - 1
 
             Dim record As WmIntersectionRecord =
             intersections(i)
 
-            Debug.WriteLine(
-            "Intersection " &
-            i.ToString() &
-            " = (" &
-            record.Point.X.ToString("F6") &
-            ", " &
-            record.Point.Y.ToString("F6") &
-            ")" &
-            "  References = " &
-            record.Count.ToString())
+            'Debug.WriteLine(
+            '"Intersection " &
+            'i.ToString() &
+            '" = (" &
+            'record.Point.X.ToString("F6") &
+            '", " &
+            'record.Point.Y.ToString("F6") &
+            '")" &
+            '"  References = " &
+            'record.Count.ToString())
 
         Next
 
-        Debug.WriteLine(
-        "Curve Records: " &
-        curveRecords.Count.ToString())
+        'Debug.WriteLine(
+        '"Curve Records: " &
+        'curveRecords.Count.ToString())
 
         For i As Integer = 0 To curveRecords.Count - 1
 
             Dim curveRecord As WmCurveRecord =
             curveRecords(i)
 
-            Debug.WriteLine("")
-            Debug.WriteLine(
-            "Curve " &
-            i.ToString() &
-            "  SegmentIndex = " &
-            curveRecord.SegmentIndex.ToString() &
-            "  Count = " &
-            curveRecord.Count.ToString())
+            'Debug.WriteLine("")
+            'Debug.WriteLine(
+            '"Curve " &
+            'i.ToString() &
+            '"  SegmentIndex = " &
+            'curveRecord.SegmentIndex.ToString() &
+            '"  Count = " &
+            'curveRecord.Count.ToString())
 
             For j As Integer = 0 To curveRecord.Count - 1
 
                 Dim extData As WmCurveRecordExtData =
                 curveRecord.ExtData(j)
 
-                Debug.WriteLine(
-                "    U = " &
-                extData.UParam.ToString("F6") &
-                "  Point = (" &
-                extData.Point.X.ToString("F6") &
-                ", " &
-                extData.Point.Y.ToString("F6") &
-                ")" &
-                "  Intersection = " &
-                (extData.Intersection IsNot Nothing).ToString())
+                'Debug.WriteLine(
+                '"    U = " &
+                'extData.UParam.ToString("F6") &
+                '"  Point = (" &
+                'extData.Point.X.ToString("F6") &
+                '", " &
+                'extData.Point.Y.ToString("F6") &
+                '")" &
+                '"  Intersection = " &
+                '(extData.Intersection IsNot Nothing).ToString())
 
             Next
 
         Next
 
-        Debug.WriteLine(
-        "============================================")
+        'Debug.WriteLine(
+        '"============================================")
 
     End Sub
     Private Sub btnTestArcArcIntersection_Click(
@@ -967,35 +967,35 @@ Public Class ToolShapeTest
             uA,
             uB)
 
-        Debug.WriteLine("")
-        Debug.WriteLine("========== ARC / ARC TEST ==========")
-        Debug.WriteLine(
-        "Does Intersect: " &
-        result.ToString())
+        'Debug.WriteLine("")
+        'Debug.WriteLine("========== ARC / ARC TEST ==========")
+        'Debug.WriteLine(
+        '"Does Intersect: " &
+        'result.ToString())
 
-        Debug.WriteLine(
-        "Intersection Count: " &
-        points.Count.ToString())
+        'Debug.WriteLine(
+        '"Intersection Count: " &
+        'points.Count.ToString())
 
-        For index As Integer = 0 To points.Count - 1
+        'For index As Integer = 0 To points.Count - 1
 
-            Debug.WriteLine(
-            "Point " &
-            index.ToString() &
-            " = (" &
-            points(index).X.ToString("F6") &
-            ", " &
-            points(index).Y.ToString("F6") &
-            ")" &
-            "  Arc A U = " &
-            uA(index).ToString("F6") &
-            "  Arc B U = " &
-            uB(index).ToString("F6"))
+        '    Debug.WriteLine(
+        '    "Point " &
+        '    index.ToString() &
+        '    " = (" &
+        '    points(index).X.ToString("F6") &
+        '    ", " &
+        '    points(index).Y.ToString("F6") &
+        '    ")" &
+        '    "  Arc A U = " &
+        '    uA(index).ToString("F6") &
+        '    "  Arc B U = " &
+        '    uB(index).ToString("F6"))
 
-        Next
+        'Next
 
-        Debug.WriteLine(
-        "====================================")
+        'Debug.WriteLine(
+        '"====================================")
 
     End Sub
     Private Sub btnTestArcArcRecords_Click(
@@ -1030,74 +1030,74 @@ Public Class ToolShapeTest
             intersections,
             curveRecords)
 
-        Debug.WriteLine("")
-        Debug.WriteLine("========== ARC / ARC RECORD TEST ==========")
-        Debug.WriteLine(
-        "Does Intersect: " &
-        doesIntersect.ToString())
+        'Debug.WriteLine("")
+        'Debug.WriteLine("========== ARC / ARC RECORD TEST ==========")
+        'Debug.WriteLine(
+        '"Does Intersect: " &
+        'doesIntersect.ToString())
 
-        Debug.WriteLine(
-        "Intersection Records: " &
-        intersections.Count.ToString())
+        'Debug.WriteLine(
+        '"Intersection Records: " &
+        'intersections.Count.ToString())
 
-        For i As Integer = 0 To intersections.Count - 1
+        'For i As Integer = 0 To intersections.Count - 1
 
-            Dim record As WmIntersectionRecord =
-            intersections(i)
+        '    Dim record As WmIntersectionRecord =
+        '    intersections(i)
 
-            Debug.WriteLine(
-            "Intersection " &
-            i.ToString() &
-            " = (" &
-            record.Point.X.ToString("F6") &
-            ", " &
-            record.Point.Y.ToString("F6") &
-            ")" &
-            "  References = " &
-            record.Count.ToString())
+        '    Debug.WriteLine(
+        '    "Intersection " &
+        '    i.ToString() &
+        '    " = (" &
+        '    record.Point.X.ToString("F6") &
+        '    ", " &
+        '    record.Point.Y.ToString("F6") &
+        '    ")" &
+        '    "  References = " &
+        '    record.Count.ToString())
 
-        Next
+        'Next
 
-        Debug.WriteLine(
-        "Curve Records: " &
-        curveRecords.Count.ToString())
+        'Debug.WriteLine(
+        '"Curve Records: " &
+        'curveRecords.Count.ToString())
 
         For i As Integer = 0 To curveRecords.Count - 1
 
             Dim curveRecord As WmCurveRecord =
             curveRecords(i)
 
-            Debug.WriteLine("")
-            Debug.WriteLine(
-            "Curve " &
-            i.ToString() &
-            "  SegmentIndex = " &
-            curveRecord.SegmentIndex.ToString() &
-            "  Count = " &
-            curveRecord.Count.ToString())
+            'Debug.WriteLine("")
+            'Debug.WriteLine(
+            '"Curve " &
+            'i.ToString() &
+            '"  SegmentIndex = " &
+            'curveRecord.SegmentIndex.ToString() &
+            '"  Count = " &
+            'curveRecord.Count.ToString())
 
             For j As Integer = 0 To curveRecord.Count - 1
 
                 Dim extData As WmCurveRecordExtData =
                 curveRecord.ExtData(j)
 
-                Debug.WriteLine(
-                "    U = " &
-                extData.UParam.ToString("F6") &
-                "  Point = (" &
-                extData.Point.X.ToString("F6") &
-                ", " &
-                extData.Point.Y.ToString("F6") &
-                ")" &
-                "  Intersection = " &
-                (extData.Intersection IsNot Nothing).ToString())
+                'Debug.WriteLine(
+                '"    U = " &
+                'extData.UParam.ToString("F6") &
+                '"  Point = (" &
+                'extData.Point.X.ToString("F6") &
+                '", " &
+                'extData.Point.Y.ToString("F6") &
+                '")" &
+                '"  Intersection = " &
+                '(extData.Intersection IsNot Nothing).ToString())
 
             Next
 
         Next
 
-        Debug.WriteLine(
-        "============================================")
+        'Debug.WriteLine(
+        '"============================================")
 
     End Sub
     Private Sub btnTestAllIntersections_Click(
@@ -1167,79 +1167,79 @@ Public Class ToolShapeTest
             intersections,
             curveRecords)
 
-        Debug.WriteLine("")
-        Debug.WriteLine("========== ALL INTERSECTION TEST ==========")
+        'Debug.WriteLine("")
+        'Debug.WriteLine("========== ALL INTERSECTION TEST ==========")
 
-        Debug.WriteLine(
-        "Does Intersect: " &
-        doesIntersect.ToString())
+        'Debug.WriteLine(
+        '"Does Intersect: " &
+        'doesIntersect.ToString())
 
-        Debug.WriteLine(
-        "Segment Count: " &
-        segments.Count.ToString())
+        'Debug.WriteLine(
+        '"Segment Count: " &
+        'segments.Count.ToString())
 
-        Debug.WriteLine(
-        "Intersection Records: " &
-        intersections.Count.ToString())
+        'Debug.WriteLine(
+        '"Intersection Records: " &
+        'intersections.Count.ToString())
 
-        For i As Integer = 0 To intersections.Count - 1
+        'For i As Integer = 0 To intersections.Count - 1
 
-            Dim record As WmIntersectionRecord =
-            intersections(i)
+        '    Dim record As WmIntersectionRecord =
+        '    intersections(i)
 
-            Debug.WriteLine(
-            "Intersection " &
-            i.ToString() &
-            " = (" &
-            record.Point.X.ToString("F6") &
-            ", " &
-            record.Point.Y.ToString("F6") &
-            ")" &
-            "  References = " &
-            record.Count.ToString())
+        '    Debug.WriteLine(
+        '    "Intersection " &
+        '    i.ToString() &
+        '    " = (" &
+        '    record.Point.X.ToString("F6") &
+        '    ", " &
+        '    record.Point.Y.ToString("F6") &
+        '    ")" &
+        '    "  References = " &
+        '    record.Count.ToString())
 
-        Next
+        'Next
 
-        Debug.WriteLine(
-        "Curve Records: " &
-        curveRecords.Count.ToString())
+        'Debug.WriteLine(
+        '"Curve Records: " &
+        'curveRecords.Count.ToString())
 
         For i As Integer = 0 To curveRecords.Count - 1
 
             Dim curveRecord As WmCurveRecord =
             curveRecords(i)
 
-            Debug.WriteLine("")
-            Debug.WriteLine(
-            "Curve " &
-            i.ToString() &
-            "  SegmentIndex = " &
-            curveRecord.SegmentIndex.ToString() &
-            "  Count = " &
-            curveRecord.Count.ToString())
+            'Debug.WriteLine("")
+            'Debug.WriteLine(
+            '"Curve " &
+            'i.ToString() &
+            '"  SegmentIndex = " &
+            'curveRecord.SegmentIndex.ToString() &
+            '"  Count = " &
+            'curveRecord.Count.ToString())
 
             For j As Integer = 0 To curveRecord.Count - 1
 
                 Dim extData As WmCurveRecordExtData =
                 curveRecord.ExtData(j)
 
-                Debug.WriteLine(
-                "    U = " &
-                extData.UParam.ToString("F6") &
-                "  Point = (" &
-                extData.Point.X.ToString("F6") &
-                ", " &
-                extData.Point.Y.ToString("F6") &
-                ")" &
-                "  Intersection = " &
-                (extData.Intersection IsNot Nothing).ToString())
+                'Debug.WriteLine(
+                '"    U = " &
+                'extData.UParam.ToString("F6") &
+                '"  Point = (" &
+                'extData.Point.X.ToString("F6") &
+                '", " &
+                'extData.Point.Y.ToString("F6") &
+                '")" &
+                '"  Intersection = " &
+                '(extData.Intersection IsNot Nothing).ToString())
 
             Next
 
         Next
 
-        Debug.WriteLine(
-        "===========================================")
+        'Debug.WriteLine(
+        '"===========================================")
 
     End Sub
 End Class

@@ -149,9 +149,9 @@ Public Class SelectionManager
         ' No valid geometry bounds.
         If validEntities.Count = 0 Then Return
 
-        Debug.WriteLine(
-    "NATIVE GEO VALID BOUNDS = " &
-    validEntities.Count)
+        '    Debug.WriteLine(
+        '"NATIVE GEO VALID BOUNDS = " &
+        'validEntities.Count)
 
         Dim rootBounds As New RectangleF(
         minX,
@@ -177,12 +177,12 @@ Public Class SelectionManager
         Dim queryResults As List(Of GeoEntity) =
     _geoSpatialIndex.Query(rootBounds)
 
-        Debug.WriteLine(
-    "NATIVE GEO QUADTREE QUERY COUNT = " &
-    queryResults.Count)
+        '    Debug.WriteLine(
+        '"NATIVE GEO QUADTREE QUERY COUNT = " &
+        'queryResults.Count)
 
-        Debug.WriteLine(
-    "NATIVE GEO SPATIAL INDEX BUILT")
+        '    Debug.WriteLine(
+        '"NATIVE GEO SPATIAL INDEX BUILT")
     End Sub
 
     Public Sub SetMachiningFeatures(features As IEnumerable(Of MachiningFeature))
@@ -221,11 +221,11 @@ Public Class SelectionManager
 
             End If
 
-            Debug.WriteLine(
-            "MM FEATURE REGISTERED: " &
-            feature.FeatureType.ToString() &
-            " | TOTAL = " &
-            _machiningFeatures.Count)
+            'Debug.WriteLine(
+            '"MM FEATURE REGISTERED: " &
+            'feature.FeatureType.ToString() &
+            '" | TOTAL = " &
+            '_machiningFeatures.Count)
 
         End If
 
@@ -329,12 +329,12 @@ Public Class SelectionManager
 
         End If
 
-        Debug.WriteLine(
-    "NATIVE SELECTION: " &
-    If(nativeHit Is Nothing,
-       "NO HIT",
-       nativeHit.GetType().Name &
-       " Selected=" & nativeHit.IsSelected.ToString()))
+        '    Debug.WriteLine(
+        '"NATIVE SELECTION: " &
+        'If(nativeHit Is Nothing,
+        '   "NO HIT",
+        '   nativeHit.GetType().Name &
+        '   " Selected=" & nativeHit.IsSelected.ToString()))
         Return nativeHit
 
     End Function
@@ -415,11 +415,11 @@ Public Class SelectionManager
         Dim hit As isSelectable =
         HitTestGeoAtPoint(ptWorld, tolWorld)
 
-        If hit IsNot Nothing Then
-            Debug.WriteLine(
-            "NATIVE HIT ENTITY TYPE = " &
-            hit.GetType().Name)
-        End If
+        'If hit IsNot Nothing Then
+        '    Debug.WriteLine(
+        '    "NATIVE HIT ENTITY TYPE = " &
+        '    hit.GetType().Name)
+        'End If
 
         Return hit IsNot Nothing
 
@@ -742,11 +742,11 @@ Public Class SelectionManager
     selectionFilter As SelectionFilter,
     profileSelectionEnabled As Boolean)
 
-        Debug.WriteLine("ENTERED SelectionManager.SelectAllByFilter")
+        'Debug.WriteLine("ENTERED SelectionManager.SelectAllByFilter")
 
-        Debug.WriteLine(
-        $"ProfileSelectionEnabled={profileSelectionEnabled}, " &
-        $"SelectionFilter={selectionFilter}")
+        'Debug.WriteLine(
+        '$"ProfileSelectionEnabled={profileSelectionEnabled}, " &
+        '$"SelectionFilter={selectionFilter}")
 
         '-----------------------------------------
         ' Native profile selection
@@ -756,8 +756,8 @@ Public Class SelectionManager
             Dim profileCount As Integer =
             If(_geoProfiles Is Nothing, 0, _geoProfiles.Count)
 
-            Debug.WriteLine(
-            $"SelectionManager Profile Count={profileCount}")
+            'Debug.WriteLine(
+            '$"SelectionManager Profile Count={profileCount}")
 
             If _geoProfiles IsNot Nothing Then
 
@@ -848,8 +848,8 @@ Public Class SelectionManager
         '-----------------------------------------
         ' Report selection results
         '-----------------------------------------
-        Debug.WriteLine(
-        $"SelectionManager Selected Count={_selected.Count}")
+        'Debug.WriteLine(
+        '$"SelectionManager Selected Count={_selected.Count}")
 
         RaiseEvent SelectionChanged(_selected)
 
@@ -1144,11 +1144,11 @@ Public Class SelectionManager
     selectionFilter As SelectionFilter,
     profileSelectionEnabled As Boolean)
 
-        Debug.WriteLine("ENTERED SelectionManager.RemoveAllByFilter")
+        'Debug.WriteLine("ENTERED SelectionManager.RemoveAllByFilter")
 
-        Debug.WriteLine(
-        $"ProfileSelectionEnabled={profileSelectionEnabled}, " &
-        $"SelectionFilter={selectionFilter}")
+        'Debug.WriteLine(
+        '$"ProfileSelectionEnabled={profileSelectionEnabled}, " &
+        '$"SelectionFilter={selectionFilter}")
 
         If _selected.Count = 0 Then Return
 
@@ -1236,8 +1236,8 @@ Public Class SelectionManager
 
         Next
 
-        Debug.WriteLine(
-        $"Removed={toRemove.Count}, Remaining={_selected.Count}")
+        'Debug.WriteLine(
+        '$"Removed={toRemove.Count}, Remaining={_selected.Count}")
 
         RaiseEvent SelectionChanged(_selected)
 

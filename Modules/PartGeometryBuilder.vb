@@ -90,8 +90,8 @@
             geometry,
             layerSetup.GapTolerance)
 
-        Debug.WriteLine(
-        "Native GeoProfile Count: " & geoProfiles.Count)
+        'Debug.WriteLine(
+        '"Native GeoProfile Count: " & geoProfiles.Count)
 
         Dim part As New Part()
 
@@ -180,14 +180,14 @@
                     If profiles(i).Entities.Count = 7 AndAlso
                      profiles(j).Entities.Count = 1 Then
 
-                        Debug.WriteLine(
-        "FINAL MERGE CHECK: " &
-        "Profile " & profiles(i).ID &
-        " + Profile " & profiles(j).ID &
-        " | SameAssociation=" &
-        SameGeoAssociation(
-            profiles(i).Entities(0),
-            profiles(j).Entities(0)).ToString())
+                        ' Debug.WriteLine(
+                        '"FINAL MERGE CHECK: " &
+                        '"Profile " & profiles(i).ID &
+                        '" + Profile " & profiles(j).ID &
+                        '" | SameAssociation=" &
+                        'SameGeoAssociation(
+                        '    profiles(i).Entities(0),
+                        '    profiles(j).Entities(0)).ToString())
 
                     End If
 
@@ -197,9 +197,9 @@
                     Dim ends2 As List(Of GeoPoint) =
     GetProfileEndpoints(profiles(j), gapTolerance)
 
-                    Debug.WriteLine(
-    "GapTolerance=" &
-    gapTolerance.ToString("G17"))
+                    '                Debug.WriteLine(
+                    '"GapTolerance=" &
+                    'gapTolerance.ToString("G17"))
 
                     For Each p1 As GeoPoint In ends1
                         For Each p2 As GeoPoint In ends2
@@ -208,11 +208,11 @@
                             Dim dy As Double = p1.Y - p2.Y
                             Dim distance As Double = Math.Sqrt(dx * dx + dy * dy)
 
-                            Debug.WriteLine(
-            "ENDPOINT DISTANCE=" &
-            distance.ToString("G17") &
-            " | WithinGap=" &
-            PointsWithinGap(p1, p2, gapTolerance).ToString())
+                            '                Debug.WriteLine(
+                            '"ENDPOINT DISTANCE=" &
+                            'distance.ToString("G17") &
+                            '" | WithinGap=" &
+                            'PointsWithinGap(p1, p2, gapTolerance).ToString())
 
                         Next
                     Next
@@ -330,11 +330,11 @@
             '" | Free Endpoints: " & endpoints.Count &
             '" | IsClosed: " & profile.IsClosed)
 
-            Debug.WriteLine(
-    "PROFILE " & profile.ID &
-    " | Entities=" & profile.Entities.Count &
-    " | Free Endpoints=" & endpoints.Count &
-    " | IsClosed=" & profile.IsClosed)
+            '        Debug.WriteLine(
+            '"PROFILE " & profile.ID &
+            '" | Entities=" & profile.Entities.Count &
+            '" | Free Endpoints=" & endpoints.Count &
+            '" | IsClosed=" & profile.IsClosed)
 
             For Each entity As GeoEntity In profile.Entities
 
@@ -343,13 +343,13 @@
 
                 If GetGeoEntityEndpoints(entity, p1, p2) Then
 
-                    Debug.WriteLine(
-                        "  Entity=" & entity.ID &
-                        " | Type=" & entity.GetType().Name &
-                        " | Start=(" & p1.X.ToString("F6") &
-                        ", " & p1.Y.ToString("F6") & ")" &
-                        " | End=(" & p2.X.ToString("F6") &
-                        ", " & p2.Y.ToString("F6") & ")")
+                    'Debug.WriteLine(
+                    '    "  Entity=" & entity.ID &
+                    '    " | Type=" & entity.GetType().Name &
+                    '    " | Start=(" & p1.X.ToString("F6") &
+                    '    ", " & p1.Y.ToString("F6") & ")" &
+                    '    " | End=(" & p2.X.ToString("F6") &
+                    '    ", " & p2.Y.ToString("F6") & ")")
 
                 End If
 
@@ -871,9 +871,9 @@
             Dim endpoints As List(Of GeoPoint) =
             GetProfileEndpoints(profile, gapTolerance)
 
-            Debug.WriteLine(
-            "ORDER CHECK: Free Endpoints = " &
-            endpoints.Count)
+            'Debug.WriteLine(
+            '"ORDER CHECK: Free Endpoints = " &
+            'endpoints.Count)
 
             If endpoints.Count <> 2 Then
                 Return False
@@ -1002,32 +1002,32 @@
                     If GetGeoEntityEndpoints(
                     remainingEntity, p1, p2) Then
 
-                        Debug.WriteLine(
-                        "REMAINING ENTITY: " &
-                        remainingEntity.ID &
-                        " | Type: " &
-                        remainingEntity.GetType().Name &
-                        " | Start: (" &
-                        p1.X & ", " & p1.Y & ")" &
-                        " | End: (" &
-                        p2.X & ", " & p2.Y & ")")
+                        'Debug.WriteLine(
+                        '"REMAINING ENTITY: " &
+                        'remainingEntity.ID &
+                        '" | Type: " &
+                        'remainingEntity.GetType().Name &
+                        '" | Start: (" &
+                        'p1.X & ", " & p1.Y & ")" &
+                        '" | End: (" &
+                        'p2.X & ", " & p2.Y & ")")
 
                     End If
 
                 Next
 
-                Debug.WriteLine(
-                "ORDER FAILED | Profile ID: " &
-                profile.ID &
-                " | Ordered Segments: " &
-                profile.Segments.Count &
-                " | Remaining Entities: " &
-                remaining.Count &
-                " | Current Point: (" &
-                currentPoint.X & ", " &
-                currentPoint.Y & ")" &
-                " | Gap Tolerance: " &
-                gapTolerance)
+                'Debug.WriteLine(
+                '"ORDER FAILED | Profile ID: " &
+                'profile.ID &
+                '" | Ordered Segments: " &
+                'profile.Segments.Count &
+                '" | Remaining Entities: " &
+                'remaining.Count &
+                '" | Current Point: (" &
+                'currentPoint.X & ", " &
+                'currentPoint.Y & ")" &
+                '" | Gap Tolerance: " &
+                'gapTolerance)
 
                 profile.Segments.Clear()
                 Return False
@@ -1386,9 +1386,9 @@
             If length = 0 OrElse
     (filterTolerance > 0 AndAlso length < filterTolerance) Then
 
-                Debug.WriteLine(
-                    "FILTER REMOVED LINE: Length = " &
-                    length.ToString("F6"))
+                'Debug.WriteLine(
+                '    "FILTER REMOVED LINE: Length = " &
+                '    length.ToString("F6"))
 
                 geometry.RemoveAt(i)
 
@@ -1568,12 +1568,12 @@
                         usedPoints.Add(p1)
                         usedPoints.Add(p2)
 
-                        Debug.WriteLine(
-                            "CLEAN Line-Line: " &
-                            distance.ToString("F6") &
-                            " → Midpoint (" &
-                            midX.ToString("F6") & ", " &
-                            midY.ToString("F6") & ")")
+                        'Debug.WriteLine(
+                        '    "CLEAN Line-Line: " &
+                        '    distance.ToString("F6") &
+                        '    " → Midpoint (" &
+                        '    midX.ToString("F6") & ", " &
+                        '    midY.ToString("F6") & ")")
 
                     Next
                 Next

@@ -48,8 +48,8 @@ Public Class DXFFileSelectionDialog
         InitializeFolderIcons()
         LoadRootFolders()
 
-        Debug.WriteLine("After LoadRootFolders: " &
-                loadTimer.ElapsedMilliseconds & " ms")
+        'Debug.WriteLine("After LoadRootFolders: " &
+        '        loadTimer.ElapsedMilliseconds & " ms")
 
         nMyMaterialID = RegGetInt("Global", "MaterialID", 5)
         sMyMaterial = RegGetString("Global", "Material", "ALUM .250 X 96 X 48")
@@ -69,8 +69,8 @@ Public Class DXFFileSelectionDialog
         AddHandler pnlPreview.Paint, AddressOf pnlPreview_Paint
 
         loadTimer.Stop()
-        Debug.WriteLine("DXF Dialog Load Time: " &
-                        loadTimer.ElapsedMilliseconds & " ms")
+        'Debug.WriteLine("DXF Dialog Load Time: " &
+        '                loadTimer.ElapsedMilliseconds & " ms")
 
     End Sub
 

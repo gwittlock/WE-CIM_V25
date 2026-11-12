@@ -105,7 +105,7 @@
     </WarningsAsErrors>
     <DefineConstants>CCS_FAB=false,DIAMOND=0, Rittal =0, APIHeatTransfer=0</DefineConstants>
     <UseVSHostingProcess>false</UseVSHostingProcess>
-    <Optimize>false</Optimize>
+    <Optimize>true</Optimize>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
@@ -506,6 +506,12 @@
     <Compile Include="Forms\frmSelectTool.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\frmWorkZones.Designer.vb">
+      <DependentUpon>frmWorkZones.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmWorkZones.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\MaterialPickerPopUp.Designer.vb">
       <DependentUpon>MaterialPickerPopUp.vb</DependentUpon>
     </Compile>
@@ -546,6 +552,7 @@
     <Compile Include="Modules\modSelection.vb" />
     <Compile Include="Modules\modSnap.vb" />
     <Compile Include="Modules\modView.vb" />
+    <Compile Include="Modules\MyStopWatch.vb" />
     <Compile Include="Modules\PartGeometryBuilder.vb" />
     <Compile Include="Modules\PropertyGridContext.vb" />
     <Compile Include="Modules\ValidationService.vb" />
@@ -663,6 +670,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmSelectTool.resx">
       <DependentUpon>frmSelectTool.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmWorkZones.resx">
+      <DependentUpon>frmWorkZones.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\ToolShapeTest.resx">
       <DependentUpon>ToolShapeTest.vb</DependentUpon>

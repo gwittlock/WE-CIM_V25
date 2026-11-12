@@ -32,7 +32,7 @@ Imports FabV25_WIN8.ToolShapes
 
 Public Module modFile
 
-
+    Public loadTimer As Stopwatch
     Public _hotSpotManager As HotSpotManager
 
     Public _sceneReady As Boolean = False
@@ -189,11 +189,11 @@ Public Module modFile
 
         For Each profile As GeoProfile In importedPart.GeoProfiles
 
-            Debug.WriteLine(
-        "PROFILE ID=" & profile.ID &
-        " | Entities=" & profile.Entities.Count &
-        " | Segments=" & profile.Segments.Count &
-        " | IsClosed=" & profile.IsClosed)
+            '    Debug.WriteLine(
+            '"PROFILE ID=" & profile.ID &
+            '" | Entities=" & profile.Entities.Count &
+            '" | Segments=" & profile.Segments.Count &
+            '" | IsClosed=" & profile.IsClosed)
 
         Next
 
@@ -402,6 +402,9 @@ Public Module modFile
 
         frmMain.InitializeEntityList()
         frmMain.RefreshEntityList()
+
+        MyStopWatch.Sw.Stop()
+        MessageBox.Show("Elapsed time: " & MyStopWatch.Sw.Elapsed.ToString())
         'frmMain.dockPanelEntityList.Show()
     End Sub
 
@@ -467,6 +470,11 @@ Public Module modFile
         Finally
 
             frmMain.Cursor = Cursors.Default
+
+
+            'Debug.WriteLine("DXF Dialog Load Time: " &
+            '                loadTimer.ElapsedMilliseconds & " ms")
+
 
         End Try
 
