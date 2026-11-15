@@ -7600,7 +7600,13 @@ Public Class frmMain
         Return Nothing
 
     End Function
+    Public Sub RegisterManufacturingFeature(feature As MachiningFeature)
 
+        If feature Is Nothing Then Return
+
+        _selectionManager.RegisterMachiningFeature(feature)
+
+    End Sub
 
 End Class
 

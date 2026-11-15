@@ -182,35 +182,7 @@ Public Module modFile
         '============================================================
         ' TEST - Native Part Geometry Conversion
         '============================================================
-        Dim importedPart As Part =
-    PartGeometryBuilder.CreatePartGeometry(_cadEntities, _selectedLayerSetup)
-
-
-
-        For Each profile As GeoProfile In importedPart.GeoProfiles
-
-            If Not profile.IsClosed Then Continue For
-
-            Debug.WriteLine(
-        "GeoProfile " & profile.ID &
-        " | Signed Area: " &
-        profile.SignedArea.ToString("F4") &
-        " | Direction: " &
-        If(profile.SignedArea > 0, "CCW",
-           If(profile.SignedArea < 0, "CW", "Degenerate")))
-
-        Next
-
-        For Each profile As GeoProfile In importedPart.GeoProfiles
-
-            '    Debug.WriteLine(
-            '"PROFILE ID=" & profile.ID &
-            '" | Entities=" & profile.Entities.Count &
-            '" | Segments=" & profile.Segments.Count &
-            '" | IsClosed=" & profile.IsClosed)
-
-        Next
-
+        Dim importedPart As Part = PartGeometryBuilder.CreatePartGeometry(_cadEntities, _selectedLayerSetup)
 
         ProcessRoundPunchAutoTool(importedPart, machineDef)
 
@@ -218,42 +190,201 @@ Public Module modFile
         ' Preferred Horizontal / Vertical AutoTool
         '============================================================
 
-        Dim preferredContext As PreferredAutoToolContext =
-    InitializePreferredAutoTools()
-
-
-
+        Dim preferredContext As PreferredAutoToolContext = InitializePreferredAutoTools()
 
         If _selectedLayerSetup Is Nothing Then
             Exit Sub
         End If
-
-        Dim horizontalMember As ToolSetupMember =
-    preferredContext.HorizontalMember
-
-        Dim verticalMember As ToolSetupMember =
-    preferredContext.VerticalMember
-
-        Dim horizontalTool As Tool =
-    preferredContext.HorizontalTool
-
-        Dim verticalTool As Tool =
-    preferredContext.VerticalTool
-
-        Dim horizontalShape As ToolShape =
-    preferredContext.HorizontalShape
-
-        Dim verticalShape As ToolShape =
-    preferredContext.VerticalShape
-
-        Dim horizontalAngleValid As Boolean =
-    preferredContext.HorizontalAngleValid
-
-        Dim verticalAngleValid As Boolean =
-    preferredContext.VerticalAngleValid
         '============================================================
         ' Preferred AutoTool - Horizontal Line Eligibility
         '============================================================
+
+        ProcessHorizontalAutoTool(importedPart, preferredContext)
+
+        ProcessVerticalAutoTool(importedPart, preferredContext)
+        '============================================================
+        ' Create Part
+        '============================================================
+        importedPart.ID = 0
+
+        importedPart.Description = Path.GetFileNameWithoutExtension(_selectedDxfPath)
+
+        productionSheet.Parts.Add(importedPart)
+
+        '============================================================
+        ' Create Imported Pattern
+        '============================================================
+        Dim importedPattern As New Pattern With {.Part = importedPart, .X = 0, .Y = 0, .Angle = 0}
+
+        productionSheet.Patterns.Add(importedPattern)
+
+        '============================================================
+        ' Register Part and Manufacturing Geometry in MM3
+        '============================================================
+        productionSheet.ManufacturingModel.PartGeometry.AddRange(importedPart.Geometry)
+
+        productionSheet.ManufacturingModel.ManufacturingGeometry.AddRange(importedPart.Features)
+
+        Debug.WriteLine("FEATURE COUNT BEFORE REGISTRATION = " &
+                importedPart.Features.Count)
+
+        For Each feature As MachiningFeature In importedPart.Features
+
+            frmMain.RegisterManufacturingFeature(feature)
+
+        Next
+
+        Debug.WriteLine("The pattern Count Is <" & CurrentProductionJob.JobSheets(0).Patterns.Count & " > ")
+        frmMain.InitializeEntityList()
+        frmMain.RefreshEntityList()
+
+        ' MyStopWatch.Sw.Stop()
+        ' MessageBox.Show("Elapsed time: " & MyStopWatch.Sw.Elapsed.ToString())
+        'frmMain.dockPanelEntityList.Show()
+    End Sub
+
+
+    Private Sub ProcessRoundPunchAutoTool(
+    importedPart As Part,
+    machineDef As MachineDefinition)
+
+
+
+        '============================================================
+        ' TEST - Automatic Exact Round Punch Tooling
+        '============================================================
+        For Each circle As GeoCircle In importedPart.Geometry.OfType(Of GeoCircle)()
+
+
+            Dim camLayer As Layer = TryCast(circle.Association, Layer)
+
+            If camLayer Is Nothing Then Continue For
+
+            Dim directive = PartGeometryBuilder.FindDirectiveByCAMLayer(camLayer.Name, _selectedLayerSetup)
+
+            If directive Is Nothing Then Continue For
+
+            Dim selectedStation As String = directive.Station.Trim()
+
+            Dim memberID As Integer = 0
+
+            Dim toolDiameter As Double = 0
+
+
+            If String.Equals(selectedStation, "None", StringComparison.OrdinalIgnoreCase) Then
+
+                Continue For
+
+            End If
+
+            If Not String.Equals(selectedStation, "**Auto**", StringComparison.OrdinalIgnoreCase) Then
+
+                Dim ncNumber As Integer
+
+                If Not Integer.TryParse(selectedStation, ncNumber) Then
+                    Continue For
+                End If
+
+                Dim stationRecord = AppData.StationsTable.Rows.
+                    FirstOrDefault(
+                        Function(s) CInt(s("MachineID")) = machineDef.ID AndAlso
+                                    CInt(s("NCCodeNumber")) = ncNumber)
+
+                If stationRecord Is Nothing Then
+                    Continue For
+                End If
+
+                Dim stationID As Integer = CInt(stationRecord("ID"))
+
+                Dim assignedMember = AppData.ToolSetupMembers.
+                    FirstOrDefault(
+                        Function(m) m.ToolSetupID = CurrentJob.ToolSetupID AndAlso
+                                    m.StationID = stationID)
+
+                If assignedMember Is Nothing Then
+                    Continue For
+                End If
+
+                memberID = assignedMember.ID
+
+                Dim assignedTool As Tool =
+                    AppData.ToolCrib.FirstOrDefault(
+                        Function(t) t.ID = assignedMember.ToolID)
+
+                If assignedTool Is Nothing OrElse
+                   assignedTool.Attributes Is Nothing Then
+                    Continue For
+                End If
+
+                Dim diameterValue As Object = Nothing
+
+                If Not assignedTool.Attributes.TryGetValue("DIAMETER", diameterValue) Then
+                    Continue For
+                End If
+
+                toolDiameter = Convert.ToDouble(diameterValue, Globalization.CultureInfo.InvariantCulture)
+
+            End If
+
+            If String.Equals(
+    selectedStation,
+    "**Auto**",
+    StringComparison.OrdinalIgnoreCase) Then
+
+                memberID = AutoPunchingEngine.FindExactRoundPunch(
+        circle,
+        CurrentJob.ToolSetupID,
+        machineDef)
+
+            End If
+
+
+            ' Temporary safeguard for the specific-station test.
+            ' Station 104 has a 1.000-inch round punch.
+            ' Only create single-hit holes for matching circles.
+
+            If Not String.Equals(
+    selectedStation,
+    "**Auto**",
+    StringComparison.OrdinalIgnoreCase) Then
+
+                If Math.Abs((circle.Radius * 2.0) - toolDiameter) > 0.0001 Then
+
+                    Continue For
+
+                End If
+
+            End If
+
+
+            If memberID = 0 Then Continue For
+            If circle.Center Is Nothing Then Continue For
+
+            Dim hole As New HoleFeature With {
+        .ID = importedPart.GetNextFeatureID(),
+        .FeatureType = MachiningFeatureType.Hole,
+        .Description = "Punch Hole",
+        .X = circle.Center.X,
+        .Y = circle.Center.Y,
+        .Angle = 0,
+        .SourceGeometryID = circle.ID,
+        .ToolSetupMemberID = memberID}
+
+            importedPart.Features.Add(hole)
+
+        Next
+    End Sub
+
+
+
+
+    Private Sub ProcessHorizontalAutoTool(importedPart As Part, preferredContext As PreferredAutoToolContext)
+
+        Dim horizontalMember As ToolSetupMember = preferredContext.HorizontalMember
+
+        Dim horizontalTool As Tool = preferredContext.HorizontalTool
+
+        Dim horizontalAngleValid As Boolean = preferredContext.HorizontalAngleValid
 
         Dim closedProfileCount As Integer = 0
         Dim horizontalLineCount As Integer = 0
@@ -477,6 +608,20 @@ Public Module modFile
         Debug.WriteLine("Horizontal Lines: " & horizontalLineCount)
         Debug.WriteLine("Eligible Horizontal Lines: " & eligibleHorizontalCount)
 
+    End Sub
+
+    Private Sub ProcessVerticalAutoTool(importedPart As Part, preferredContext As PreferredAutoToolContext)
+
+        Dim verticalMember As ToolSetupMember =
+    preferredContext.VerticalMember
+
+        Dim verticalTool As Tool =
+            preferredContext.VerticalTool
+
+        Dim verticalAngleValid As Boolean =
+            preferredContext.VerticalAngleValid
+
+
         Dim verticalLineCount As Integer = 0
         Dim eligibleVerticalCount As Integer = 0
 
@@ -604,7 +749,7 @@ Public Module modFile
                     Dim toolCenterX As Double = line.StartPoint.X
 
 
-                    Select Case Directive.CutSide.ToString()
+                    Select Case directive.CutSide.ToString()
 
                         Case "Left"
                             toolCenterX -= directionY * halfToolWidth
@@ -672,211 +817,6 @@ Public Module modFile
         Debug.WriteLine("Vertical Lines: " & verticalLineCount)
         Debug.WriteLine("Eligible Vertical Lines: " & eligibleVerticalCount)
 
-        '============================================================
-        ' Create Part
-        '============================================================
-        importedPart.ID = 0
-
-        importedPart.Description = Path.GetFileNameWithoutExtension(_selectedDxfPath)
-
-        productionSheet.Parts.Add(importedPart)
-
-        '============================================================
-        ' Create Imported Pattern
-        '============================================================
-        Dim importedPattern As New Pattern With {.Part = importedPart, .X = 0, .Y = 0, .Angle = 0}
-
-        productionSheet.Patterns.Add(importedPattern)
-
-        '============================================================
-        ' Register Part and Manufacturing Geometry in MM3
-        '============================================================
-        productionSheet.ManufacturingModel.PartGeometry.AddRange(importedPart.Geometry)
-
-        productionSheet.ManufacturingModel.ManufacturingGeometry.AddRange(importedPart.Features)
-
-        '============================================================
-        ' Assign Imported Pattern and Geometry to WorkZone
-        '============================================================
-        If productionSheet.WorkZones.Count > 0 Then
-
-            '  productionSheet.WorkZones(0).Patterns.Add(importedPattern)
-
-            If productionSheet.ManufacturingModel.WorkZones.Count > 0 Then
-
-                Dim firstZoneIndex As Integer =
-                    productionSheet.ManufacturingModel.WorkZones(0).Index
-
-                'For Each entity As GeoEntity In importedPart.Geometry
-
-                '    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(
-                '        New MM3WorkZoneAssignment With {
-                '            .WorkZoneIndex = firstZoneIndex,
-                '            .Entity = entity
-                '        })
-
-                'Next
-
-            End If
-
-            If productionSheet.ManufacturingModel.WorkZones.Count > 0 Then
-
-                Dim firstZoneIndex As Integer =
-                    productionSheet.ManufacturingModel.WorkZones(0).Index
-
-                'For Each feature As MachiningFeature In importedPart.Features
-
-                '    productionSheet.ManufacturingModel.WorkZoneAssignments.Add(
-                '        New MM3WorkZoneAssignment With {
-                '            .WorkZoneIndex = firstZoneIndex,
-                '            .Entity = feature
-                '        })
-
-                'Next
-
-            End If
-
-        End If
-
-        Debug.WriteLine("The pattern Count Is <" & CurrentProductionJob.JobSheets(0).Patterns.Count & " > ")
-        frmMain.InitializeEntityList()
-        frmMain.RefreshEntityList()
-
-        ' MyStopWatch.Sw.Stop()
-        ' MessageBox.Show("Elapsed time: " & MyStopWatch.Sw.Elapsed.ToString())
-        'frmMain.dockPanelEntityList.Show()
-    End Sub
-
-
-    Private Sub ProcessRoundPunchAutoTool(
-    importedPart As Part,
-    machineDef As MachineDefinition)
-
-
-
-        '============================================================
-        ' TEST - Automatic Exact Round Punch Tooling
-        '============================================================
-        For Each circle As GeoCircle In importedPart.Geometry.OfType(Of GeoCircle)()
-
-
-            Dim camLayer As Layer = TryCast(circle.Association, Layer)
-
-            If camLayer Is Nothing Then Continue For
-
-            Dim directive = PartGeometryBuilder.FindDirectiveByCAMLayer(camLayer.Name, _selectedLayerSetup)
-
-            If directive Is Nothing Then Continue For
-
-            Dim selectedStation As String = directive.Station.Trim()
-
-            Dim memberID As Integer = 0
-
-            Dim toolDiameter As Double = 0
-
-
-            If String.Equals(selectedStation, "None", StringComparison.OrdinalIgnoreCase) Then
-
-                Continue For
-
-            End If
-
-            If Not String.Equals(selectedStation, "**Auto**", StringComparison.OrdinalIgnoreCase) Then
-
-                Dim ncNumber As Integer
-
-                If Not Integer.TryParse(selectedStation, ncNumber) Then
-                    Continue For
-                End If
-
-                Dim stationRecord = AppData.StationsTable.Rows.
-                    FirstOrDefault(
-                        Function(s) CInt(s("MachineID")) = machineDef.ID AndAlso
-                                    CInt(s("NCCodeNumber")) = ncNumber)
-
-                If stationRecord Is Nothing Then
-                    Continue For
-                End If
-
-                Dim stationID As Integer = CInt(stationRecord("ID"))
-
-                Dim assignedMember = AppData.ToolSetupMembers.
-                    FirstOrDefault(
-                        Function(m) m.ToolSetupID = CurrentJob.ToolSetupID AndAlso
-                                    m.StationID = stationID)
-
-                If assignedMember Is Nothing Then
-                    Continue For
-                End If
-
-                memberID = assignedMember.ID
-
-                Dim assignedTool As Tool =
-                    AppData.ToolCrib.FirstOrDefault(
-                        Function(t) t.ID = assignedMember.ToolID)
-
-                If assignedTool Is Nothing OrElse
-                   assignedTool.Attributes Is Nothing Then
-                    Continue For
-                End If
-
-                Dim diameterValue As Object = Nothing
-
-                If Not assignedTool.Attributes.TryGetValue("DIAMETER", diameterValue) Then
-                    Continue For
-                End If
-
-                toolDiameter = Convert.ToDouble(diameterValue, Globalization.CultureInfo.InvariantCulture)
-
-            End If
-
-            If String.Equals(
-    selectedStation,
-    "**Auto**",
-    StringComparison.OrdinalIgnoreCase) Then
-
-                memberID = AutoPunchingEngine.FindExactRoundPunch(
-        circle,
-        CurrentJob.ToolSetupID,
-        machineDef)
-
-            End If
-
-
-            ' Temporary safeguard for the specific-station test.
-            ' Station 104 has a 1.000-inch round punch.
-            ' Only create single-hit holes for matching circles.
-
-            If Not String.Equals(
-    selectedStation,
-    "**Auto**",
-    StringComparison.OrdinalIgnoreCase) Then
-
-                If Math.Abs((circle.Radius * 2.0) - toolDiameter) > 0.0001 Then
-
-                    Continue For
-
-                End If
-
-            End If
-
-
-            If memberID = 0 Then Continue For
-            If circle.Center Is Nothing Then Continue For
-
-            Dim hole As New HoleFeature With {
-        .ID = importedPart.GetNextFeatureID(),
-        .FeatureType = MachiningFeatureType.Hole,
-        .Description = "Punch Hole",
-        .X = circle.Center.X,
-        .Y = circle.Center.Y,
-        .Angle = 0,
-        .SourceGeometryID = circle.ID,
-        .ToolSetupMemberID = memberID}
-
-            importedPart.Features.Add(hole)
-
-        Next
     End Sub
 
 

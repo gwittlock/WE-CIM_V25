@@ -14,6 +14,7 @@ Public Enum SelectionFilter
 
     ' Manufacturing Model
     Hole = 1 << 6
+    Contour = 1 << 7
 
     ' Part Geometry only
     AllGeometry = Line Or Circle Or Arc Or
@@ -292,6 +293,27 @@ Public Class SelectionManager
 
         End If
 
+        ' Manufacturing Model contour selection.
+        If Not profileSelectionEnabled AndAlso
+   (selectionFilter And SelectionFilter.Line) <> SelectionFilter.None Then
+
+            Dim contourHit As ContourFeature =
+        HitTestContourAtPoint(ptWorld, tolWorld)
+
+            If contourHit IsNot Nothing Then
+
+                If deselect Then
+                    ApplyDeselection(contourHit)
+                Else
+                    ApplySelection(contourHit)
+                End If
+
+                Return contourHit
+
+            End If
+
+        End If
+
         If profileSelectionEnabled Then
 
             ' Find the underlying geometric entity.
@@ -564,6 +586,16 @@ Public Class SelectionManager
             nativeHit = holeHit
         End If
 
+        ' Include Manufacturing Model contours.
+        Dim contourHit As ContourFeature =
+    HitTestContourAtPoint(ptWorld, tolWorld)
+
+        If contourHit IsNot Nothing Then
+            nativeHit = contourHit
+        End If
+
+
+
         ' Update native hover state.
         If Not Object.ReferenceEquals(nativeHit, _nativeHovered) Then
 
@@ -733,6 +765,20 @@ Public Class SelectionManager
 
         Next
 
+        For Each feature As MachiningFeature In _machiningFeatures
+
+            If feature Is Nothing Then
+                Continue For
+            End If
+
+            If Not _selected.Contains(feature) Then
+                _selected.Add(feature)
+            End If
+
+            feature.IsSelected = True
+
+        Next
+
         RaiseEvent SelectionChanged(_selected)
 
     End Sub
@@ -833,8 +879,9 @@ Public Class SelectionManager
 
             If _machiningFeatures IsNot Nothing Then
 
-                For Each hole As HoleFeature In
-            _machiningFeatures.OfType(Of HoleFeature)()
+                For Each hole As HoleFeature In _machiningFeatures
+
+                    _machiningFeatures.OfType(Of HoleFeature)()
 
                     ApplySelection(hole)
 
@@ -855,7 +902,46 @@ Public Class SelectionManager
 
     End Sub
 
+    Private Function HitTestContourAtPoint(
+    ptWorld As PointF,
+    tolWorld As Single) As ContourFeature
 
+        Dim bestContour As ContourFeature = Nothing
+        Dim bestDistance As Double = Double.MaxValue
+
+        For Each contour As ContourFeature In
+        _machiningFeatures.OfType(Of ContourFeature)()
+
+            If contour.Path Is Nothing Then Continue For
+
+            For Each segment As IPathSegment In contour.Path.Segments
+
+                Dim line As LineSegment2D =
+                TryCast(segment, LineSegment2D)
+
+                If line Is Nothing Then Continue For
+
+                Dim distance As Double =
+                DistancePointToLineSegment(
+                    ptWorld,
+                    line.StartPoint,
+                    line.EndPoint)
+
+                If distance <= tolWorld AndAlso
+               distance < bestDistance Then
+
+                    bestDistance = distance
+                    bestContour = contour
+
+                End If
+
+            Next
+
+        Next
+
+        Return bestContour
+
+    End Function
 
 
     Public Sub SelectByLayer(layerName As String)
@@ -2178,6 +2264,40 @@ Public Class SelectionManager
         Next
 
         Return Nothing
+
+    End Function
+
+    Private Function DistancePointToLineSegment(
+    pt As PointF,
+    startPt As PointF,
+    endPt As PointF) As Double
+
+        Dim dx As Double = endPt.X - startPt.X
+        Dim dy As Double = endPt.Y - startPt.Y
+
+        Dim lengthSquared As Double = dx * dx + dy * dy
+
+        ' Handle zero-length segments.
+        If lengthSquared <= 0 Then
+            Return Math.Sqrt(
+                (pt.X - startPt.X) ^ 2 +
+                (pt.Y - startPt.Y) ^ 2)
+        End If
+
+        ' Project the point onto the line.
+        Dim t As Double =
+            ((pt.X - startPt.X) * dx +
+             (pt.Y - startPt.Y) * dy) / lengthSquared
+
+        ' Clamp projection to the segment endpoints.
+        t = Math.Max(0.0, Math.Min(1.0, t))
+
+        Dim closestX As Double = startPt.X + t * dx
+        Dim closestY As Double = startPt.Y + t * dy
+
+        Return Math.Sqrt(
+            (pt.X - closestX) ^ 2 +
+            (pt.Y - closestY) ^ 2)
 
     End Function
 
