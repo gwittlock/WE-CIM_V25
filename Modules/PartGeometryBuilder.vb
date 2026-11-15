@@ -288,6 +288,8 @@
                 Dim signedArea As Double =
             CalculateGeoProfileSignedArea(profile)
 
+                profile.SignedArea = signedArea
+
                 Dim direction As String = "Degenerate"
 
                 If signedArea > 0 Then
@@ -1583,6 +1585,132 @@
         Next
 
     End Sub
+
+    Public Function ConvertGeoProfileToPath(
+    profile As GeoProfile) As ToolShapes.IPath2D
+
+        If profile Is Nothing OrElse Not profile.IsClosed Then
+            Return Nothing
+        End If
+
+        Dim path As New ToolShapes.Path2D()
+
+        For Each segment As GeoProfileSegment In profile.Segments
+
+            If segment Is Nothing OrElse segment.Entity Is Nothing Then
+                Return Nothing
+            End If
+
+            If TypeOf segment.Entity Is GeoLine Then
+
+                Dim line As GeoLine =
+                    DirectCast(segment.Entity, GeoLine)
+
+                If line.StartPoint Is Nothing OrElse
+                   line.EndPoint Is Nothing Then
+                    Return Nothing
+                End If
+
+                Dim startPt As GeoPoint =
+                    If(segment.Reversed, line.EndPoint, line.StartPoint)
+
+                Dim endPt As GeoPoint =
+                    If(segment.Reversed, line.StartPoint, line.EndPoint)
+
+                path.Add(
+                    New ToolShapes.LineSegment2D(
+                        New PointF(CSng(startPt.X), CSng(startPt.Y)),
+                        New PointF(CSng(endPt.X), CSng(endPt.Y))))
+
+            ElseIf TypeOf segment.Entity Is GeoArc Then
+
+                Dim arc As GeoArc =
+                    DirectCast(segment.Entity, GeoArc)
+
+                If arc.Center Is Nothing OrElse arc.Radius <= 0 Then
+                    Return Nothing
+                End If
+
+                Dim startAngle As Double =
+                    arc.StartAngle * Math.PI / 180.0
+
+                Dim endAngle As Double =
+                    arc.EndAngle * Math.PI / 180.0
+
+                Dim clockwise As Boolean = arc.IsClockwise
+
+                If segment.Reversed Then
+
+                    Dim temp As Double = startAngle
+                    startAngle = endAngle
+                    endAngle = temp
+
+                    clockwise = Not clockwise
+
+                End If
+
+                path.Add(
+                    New ToolShapes.ArcSegment2D(
+                        New PointF(
+                            CSng(arc.Center.X),
+                            CSng(arc.Center.Y)),
+                        arc.Radius,
+                        startAngle,
+                        endAngle,
+                        clockwise))
+
+            ElseIf TypeOf segment.Entity Is GeoCircle Then
+
+                Dim circle As GeoCircle =
+                    DirectCast(segment.Entity, GeoCircle)
+
+                If circle.Center Is Nothing OrElse circle.Radius <= 0 Then
+                    Return Nothing
+                End If
+
+                path.Add(
+                    New ToolShapes.ArcSegment2D(
+                        New PointF(
+                            CSng(circle.Center.X),
+                            CSng(circle.Center.Y)),
+                        circle.Radius,
+                        0.0,
+                        Math.PI * 2.0,
+                        False))
+
+            Else
+
+                Return Nothing
+
+            End If
+
+        Next
+
+        Return path
+
+    End Function
+
+    Public Function ShouldReverseProfileDirection(
+    profile As GeoProfile,
+    isInsideProfile As Boolean) As Boolean
+
+        If profile Is Nothing OrElse Not profile.IsClosed Then
+            Return False
+        End If
+
+        If Math.Abs(profile.SignedArea) < 0.000001 Then
+            Return False
+        End If
+
+        Dim currentlyClockwise As Boolean =
+            profile.SignedArea < 0.0
+
+        Dim requiredClockwise As Boolean =
+            Not isInsideProfile
+
+        Return currentlyClockwise <> requiredClockwise
+
+    End Function
 
 
 End Module

@@ -12,6 +12,12 @@ Public Class WorkZone
     Public Property YMin As Double = 0
     Public Property YMax As Double
 
+
+    Public Property MaterialWidth As Double = 0
+
+
+
+
     ' Hold-down anchor position
     Public Property HoldX As Double
     Public Property HoldY As Double

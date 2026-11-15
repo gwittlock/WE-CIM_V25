@@ -88,41 +88,119 @@ Public Module DxfImport
     End Function
 
 
-    ' Converts two vertices + bulge into a CadArc
-    Private Function ArcFromBulge(p1 As IxMilia.Dxf.DxfPoint, p2 As IxMilia.Dxf.DxfPoint, bulge As Double) As CadArc
-        ' Calculate chord length
-        Dim dx = p2.X - p1.X
-        Dim dy = p2.Y - p1.Y
-        Dim chord = Math.Sqrt(dx * dx + dy * dy)
+    Private Function ExplodeLwPolyline(
+    pl As IxMilia.Dxf.Entities.DxfLwPolyline) As List(Of CadEntity)
 
-        ' Included angle
-        Dim angle = 4 * Math.Atan(bulge)
+        Dim result As New List(Of CadEntity)
+        Dim verts = pl.Vertices
+        Dim count As Integer = verts.Count
 
-        ' Radius
-        Dim r = chord / (2 * Math.Sin(angle / 2))
+        If count < 2 Then Return result
 
-        ' Midpoint
-        Dim mx = (p1.X + p2.X) / 2
-        Dim my = (p1.Y + p2.Y) / 2
+        Dim segmentCount As Integer =
+        If(pl.IsClosed, count, count - 1)
 
-        ' Determine center of arc
-        Dim sagitta = r * (1 - Math.Cos(angle / 2))
-        Dim perpX = -dy / chord * sagitta
-        Dim perpY = dx / chord * sagitta
-        Dim cx = mx + perpX
-        Dim cy = my + perpY
+        For i As Integer = 0 To segmentCount - 1
 
-        ' Start/End angles
-        Dim startAngle = Math.Atan2(p1.Y - cy, p1.X - cx) * 180 / Math.PI
-        Dim endAngle = Math.Atan2(p2.Y - cy, p2.X - cx) * 180 / Math.PI
+            Dim v1 = verts(i)
+            Dim v2 = verts((i + 1) Mod count)
+
+            If v1.Bulge = 0 Then
+
+                result.Add(New CadLine With {
+                .StartPoint = New PointF(CSng(v1.X), CSng(v1.Y)),
+                .EndPoint = New PointF(CSng(v2.X), CSng(v2.Y)),
+                .Color = System.Drawing.Color.Black
+            })
+
+            Else
+
+                Dim p1 As New IxMilia.Dxf.DxfPoint(v1.X, v1.Y, 0)
+                Dim p2 As New IxMilia.Dxf.DxfPoint(v2.X, v2.Y, 0)
+
+                result.Add(ArcFromBulge(p1, p2, v1.Bulge))
+
+            End If
+
+        Next
+
+        Return result
+
+    End Function
+
+
+
+    ' Converts two DXF vertices and their bulge into a CadArc.
+    ' Positive bulge = CCW
+    ' Negative bulge = CW
+    Private Function ArcFromBulge(
+    p1 As IxMilia.Dxf.DxfPoint,
+    p2 As IxMilia.Dxf.DxfPoint,
+    bulge As Double) As CadArc
+
+        Dim dx As Double = p2.X - p1.X
+        Dim dy As Double = p2.Y - p1.Y
+
+        Dim chord As Double = Math.Sqrt(dx * dx + dy * dy)
+
+        If chord <= 0 OrElse bulge = 0 Then
+            Throw New ArgumentException(
+            "ArcFromBulge requires two distinct vertices and a nonzero bulge.")
+        End If
+
+        ' Signed included angle, in radians.
+        Dim sweep As Double = 4.0 * Math.Atan(bulge)
+
+        ' Radius is always positive.
+        Dim radius As Double =
+        chord * (1.0 + bulge * bulge) /
+        (4.0 * Math.Abs(bulge))
+
+        ' Chord midpoint.
+        Dim mx As Double = (p1.X + p2.X) / 2.0
+        Dim my As Double = (p1.Y + p2.Y) / 2.0
+
+        ' Signed perpendicular distance from chord midpoint
+        ' to circle center. Works for minor and major arcs.
+        Dim centerOffset As Double =
+        chord * (1.0 - bulge * bulge) /
+        (4.0 * bulge)
+
+        Dim cx As Double =
+        mx - (dy / chord) * centerOffset
+
+        Dim cy As Double =
+        my + (dx / chord) * centerOffset
+
+        ' Angular coordinates are stored in degrees.
+        Dim startAngle As Double =
+        Math.Atan2(p1.Y - cy, p1.X - cx) *
+        180.0 / Math.PI
+
+        Dim endAngle As Double =
+        Math.Atan2(p2.Y - cy, p2.X - cx) *
+        180.0 / Math.PI
+
+
+        Debug.WriteLine(
+    "BULGE ARC | Bulge=" & bulge.ToString("F6") &
+    " | Radius=" & radius.ToString("F6") &
+    " | Center=(" & cx.ToString("F6") &
+    "," & cy.ToString("F6") & ")" &
+    " | Direction=" &
+    If(sweep < 0.0, "CW", "CCW"))
+
+
 
         Return New CadArc With {
         .Center = New PointF(CSng(cx), CSng(cy)),
-        .Radius = CSng(r),
+        .Radius = CSng(radius),
         .StartAngle = CSng(startAngle),
         .EndAngle = CSng(endAngle),
+        .IsClockwise = (sweep < 0.0),
         .Color = System.Drawing.Color.Black
     }
+
     End Function
 
     Public Function ImportDxf(path As String) As List(Of CadEntity)
@@ -187,7 +265,20 @@ Public Module DxfImport
                        .Color = GetLayerColor(dxf, p.Layer)
                     })
 
+                Case DxfEntityType.LwPolyline
 
+                    Dim pl = CType(e, IxMilia.Dxf.Entities.DxfLwPolyline)
+
+                    Debug.WriteLine(
+                        "LWPolyline found | Vertices=" & pl.Vertices.Count.ToString())
+
+                    Dim exploded As List(Of CadEntity) = ExplodeLwPolyline(pl)
+
+                    For Each cad As CadEntity In exploded
+                        cad.LayerName = pl.Layer
+                        cad.Color = GetLayerColor(dxf, pl.Layer)
+                        entities.Add(cad)
+                    Next
             End Select
 
         Next
@@ -282,7 +373,8 @@ Public Module DxfImport
     a As GeoArc,
     g As Graphics,
     vt As ViewTransform,
-    panelHeight As Integer)
+    panelHeight As Integer,
+    Optional overrideColor As Nullable(Of Color) = Nothing)
 
         If a Is Nothing OrElse a.Center Is Nothing Then
             Exit Sub
@@ -331,7 +423,8 @@ Public Module DxfImport
             sweepAngle = -sweep
         End If
 
-        Dim drawColor As System.Drawing.Color = a.Color
+        Dim drawColor As System.Drawing.Color =
+    If(overrideColor.HasValue, overrideColor.Value, a.Color)
         Dim drawWidth As Single = 1.0F
 
         If a.Selected Then

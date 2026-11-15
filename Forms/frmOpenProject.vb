@@ -345,7 +345,10 @@ Public Class frmOpenProject
         RegPutString("Global", "LayerSetup", cboLayerSetup.Text)
         RegPutString("Global", "LayerSetupID", CStr(SelectedLayerSetupID))
 
-        _DoPrepareUI = True
+
+            matWidth = GetMaterialWidth(MaterialSheets, _SelectedMaterialID)
+            matLength = GetMaterialLength(MaterialSheets, _SelectedMaterialID)
+            _DoPrepareUI = True
 
         ' Close dialog
         Me.DialogResult = DialogResult.OK

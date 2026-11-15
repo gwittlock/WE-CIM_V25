@@ -75,6 +75,8 @@ Namespace WE_ENG_V25_0.Core.Models
         Public Property Description As String
         Public Property MachineID As Integer
         Public Shared Property ToolSetupMembers As List(Of ToolSetupMember)
+        Public Property PreferredHorizontalCuttingToolID As Integer = 0
+        Public Property PreferredVerticalCuttingToolID As Integer = 0
         '  Public Property ToolSignatures As New List(Of ToolSignature)
 
 

@@ -41,6 +41,7 @@ Partial Class ConfigurationManagerForm
         Me.tabToolSetup = New System.Windows.Forms.TabPage()
         Me.SplitContainer2 = New System.Windows.Forms.SplitContainer()
         Me.Panel1 = New System.Windows.Forms.Panel()
+        Me.cmdAutoToolHelpers = New System.Windows.Forms.Button()
         Me.btnRemFromStation = New System.Windows.Forms.Button()
         Me.btnTSRemoveParameter = New System.Windows.Forms.Button()
         Me.btnAddTSParameter = New System.Windows.Forms.Button()
@@ -79,6 +80,8 @@ Partial Class ConfigurationManagerForm
         Me.pnlLayerMapSave = New System.Windows.Forms.Panel()
         Me.btnLayerMapSave = New System.Windows.Forms.Button()
         Me.propgrdLayer = New System.Windows.Forms.PropertyGrid()
+        Me.tabPageAutoToolHelpers = New System.Windows.Forms.TabPage()
+        Me.dgvAutoToolHelpers = New System.Windows.Forms.DataGridView()
         Me.cmsTreeActions = New System.Windows.Forms.ContextMenuStrip(Me.components)
         Me.AddMachineTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteMachineTSM = New System.Windows.Forms.ToolStripMenuItem()
@@ -93,6 +96,8 @@ Partial Class ConfigurationManagerForm
         Me.DeleteMaterialTypeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteMaterialSizeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteLayerTSM = New System.Windows.Forms.ToolStripMenuItem()
+        Me.colHelper = New System.Windows.Forms.DataGridViewTextBoxColumn()
+        Me.colHelperTool = New System.Windows.Forms.DataGridViewComboBoxColumn()
         CType(Me.SplitContainer1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SplitContainer1.Panel1.SuspendLayout()
         Me.SplitContainer1.Panel2.SuspendLayout()
@@ -121,6 +126,8 @@ Partial Class ConfigurationManagerForm
         Me.pnlLayerSetSaveCancel.SuspendLayout()
         Me.tabLayer.SuspendLayout()
         Me.pnlLayerMapSave.SuspendLayout()
+        Me.tabPageAutoToolHelpers.SuspendLayout()
+        CType(Me.dgvAutoToolHelpers, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.cmsTreeActions.SuspendLayout()
         Me.SuspendLayout()
         '
@@ -141,7 +148,7 @@ Partial Class ConfigurationManagerForm
         'SplitContainer1.Panel2
         '
         Me.SplitContainer1.Panel2.Controls.Add(Me.tabControlMain)
-        Me.SplitContainer1.Size = New System.Drawing.Size(1306, 531)
+        Me.SplitContainer1.Size = New System.Drawing.Size(1306, 544)
         Me.SplitContainer1.SplitterDistance = 337
         Me.SplitContainer1.SplitterWidth = 3
         Me.SplitContainer1.TabIndex = 0
@@ -150,7 +157,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.Panel4.Controls.Add(Me.btnConvertCMDB)
         Me.Panel4.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.Panel4.Location = New System.Drawing.Point(0, 470)
+        Me.Panel4.Location = New System.Drawing.Point(0, 472)
         Me.Panel4.Name = "Panel4"
         Me.Panel4.Size = New System.Drawing.Size(353, 55)
         Me.Panel4.TabIndex = 2
@@ -184,12 +191,13 @@ Partial Class ConfigurationManagerForm
         Me.tabControlMain.Controls.Add(Me.tabMaterialInventory)
         Me.tabControlMain.Controls.Add(Me.tabLayerSetup)
         Me.tabControlMain.Controls.Add(Me.tabLayer)
+        Me.tabControlMain.Controls.Add(Me.tabPageAutoToolHelpers)
         Me.tabControlMain.Dock = System.Windows.Forms.DockStyle.Fill
         Me.tabControlMain.Location = New System.Drawing.Point(0, 0)
         Me.tabControlMain.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabControlMain.Name = "tabControlMain"
         Me.tabControlMain.SelectedIndex = 0
-        Me.tabControlMain.Size = New System.Drawing.Size(966, 531)
+        Me.tabControlMain.Size = New System.Drawing.Size(966, 544)
         Me.tabControlMain.TabIndex = 2
         '
         'tabMachine
@@ -201,7 +209,7 @@ Partial Class ConfigurationManagerForm
         Me.tabMachine.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabMachine.Name = "tabMachine"
         Me.tabMachine.Padding = New System.Windows.Forms.Padding(3, 2, 3, 2)
-        Me.tabMachine.Size = New System.Drawing.Size(609, 505)
+        Me.tabMachine.Size = New System.Drawing.Size(958, 518)
         Me.tabMachine.TabIndex = 0
         Me.tabMachine.Text = "Machine"
         Me.tabMachine.UseVisualStyleBackColor = True
@@ -237,7 +245,7 @@ Partial Class ConfigurationManagerForm
         Me.propgrdMachine.Location = New System.Drawing.Point(3, 2)
         Me.propgrdMachine.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.propgrdMachine.Name = "propgrdMachine"
-        Me.propgrdMachine.Size = New System.Drawing.Size(603, 450)
+        Me.propgrdMachine.Size = New System.Drawing.Size(952, 450)
         Me.propgrdMachine.TabIndex = 0
         Me.propgrdMachine.TabStop = False
         '
@@ -251,7 +259,7 @@ Partial Class ConfigurationManagerForm
         Me.tabStations.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabStations.Name = "tabStations"
         Me.tabStations.Padding = New System.Windows.Forms.Padding(3, 2, 3, 2)
-        Me.tabStations.Size = New System.Drawing.Size(609, 505)
+        Me.tabStations.Size = New System.Drawing.Size(958, 518)
         Me.tabStations.TabIndex = 1
         Me.tabStations.Text = "Stations"
         Me.tabStations.UseVisualStyleBackColor = True
@@ -300,7 +308,7 @@ Partial Class ConfigurationManagerForm
         Me.dgvStations.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.dgvStations.Name = "dgvStations"
         Me.dgvStations.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
-        Me.dgvStations.Size = New System.Drawing.Size(603, 398)
+        Me.dgvStations.Size = New System.Drawing.Size(952, 398)
         Me.dgvStations.TabIndex = 0
         '
         'tabToolSetup
@@ -309,7 +317,7 @@ Partial Class ConfigurationManagerForm
         Me.tabToolSetup.Location = New System.Drawing.Point(4, 22)
         Me.tabToolSetup.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabToolSetup.Name = "tabToolSetup"
-        Me.tabToolSetup.Size = New System.Drawing.Size(958, 505)
+        Me.tabToolSetup.Size = New System.Drawing.Size(958, 518)
         Me.tabToolSetup.TabIndex = 2
         Me.tabToolSetup.Text = "ToolSetups"
         Me.tabToolSetup.UseVisualStyleBackColor = True
@@ -329,22 +337,32 @@ Partial Class ConfigurationManagerForm
         'SplitContainer2.Panel2
         '
         Me.SplitContainer2.Panel2.Controls.Add(Me.grpboxToolInventory)
-        Me.SplitContainer2.Size = New System.Drawing.Size(958, 505)
+        Me.SplitContainer2.Size = New System.Drawing.Size(958, 518)
         Me.SplitContainer2.SplitterDistance = 639
         Me.SplitContainer2.SplitterWidth = 3
         Me.SplitContainer2.TabIndex = 6
         '
         'Panel1
         '
+        Me.Panel1.Controls.Add(Me.cmdAutoToolHelpers)
         Me.Panel1.Controls.Add(Me.btnRemFromStation)
         Me.Panel1.Controls.Add(Me.btnTSRemoveParameter)
         Me.Panel1.Controls.Add(Me.btnAddTSParameter)
         Me.Panel1.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.Panel1.Location = New System.Drawing.Point(0, 434)
+        Me.Panel1.Location = New System.Drawing.Point(0, 447)
         Me.Panel1.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.Panel1.Name = "Panel1"
         Me.Panel1.Size = New System.Drawing.Size(639, 71)
         Me.Panel1.TabIndex = 4
+        '
+        'cmdAutoToolHelpers
+        '
+        Me.cmdAutoToolHelpers.Location = New System.Drawing.Point(403, 42)
+        Me.cmdAutoToolHelpers.Name = "cmdAutoToolHelpers"
+        Me.cmdAutoToolHelpers.Size = New System.Drawing.Size(125, 27)
+        Me.cmdAutoToolHelpers.TabIndex = 7
+        Me.cmdAutoToolHelpers.Text = "AutoTool Helper"
+        Me.cmdAutoToolHelpers.UseVisualStyleBackColor = True
         '
         'btnRemFromStation
         '
@@ -360,7 +378,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.btnTSRemoveParameter.AutoSize = True
         Me.btnTSRemoveParameter.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.btnTSRemoveParameter.Location = New System.Drawing.Point(201, 37)
+        Me.btnTSRemoveParameter.Location = New System.Drawing.Point(201, 42)
         Me.btnTSRemoveParameter.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.btnTSRemoveParameter.Name = "btnTSRemoveParameter"
         Me.btnTSRemoveParameter.Size = New System.Drawing.Size(140, 27)
@@ -372,7 +390,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.btnAddTSParameter.AutoSize = True
         Me.btnAddTSParameter.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.btnAddTSParameter.Location = New System.Drawing.Point(82, 37)
+        Me.btnAddTSParameter.Location = New System.Drawing.Point(82, 42)
         Me.btnAddTSParameter.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.btnAddTSParameter.Name = "btnAddTSParameter"
         Me.btnAddTSParameter.Size = New System.Drawing.Size(113, 27)
@@ -390,7 +408,7 @@ Partial Class ConfigurationManagerForm
         Me.dgvToolSetup.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.dgvToolSetup.Name = "dgvToolSetup"
         Me.dgvToolSetup.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
-        Me.dgvToolSetup.Size = New System.Drawing.Size(639, 460)
+        Me.dgvToolSetup.Size = New System.Drawing.Size(639, 472)
         Me.dgvToolSetup.TabIndex = 3
         '
         'grpboxToolInventory
@@ -406,7 +424,7 @@ Partial Class ConfigurationManagerForm
         Me.grpboxToolInventory.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.grpboxToolInventory.Name = "grpboxToolInventory"
         Me.grpboxToolInventory.Padding = New System.Windows.Forms.Padding(3, 2, 3, 2)
-        Me.grpboxToolInventory.Size = New System.Drawing.Size(316, 505)
+        Me.grpboxToolInventory.Size = New System.Drawing.Size(316, 518)
         Me.grpboxToolInventory.TabIndex = 4
         Me.grpboxToolInventory.TabStop = False
         Me.grpboxToolInventory.Text = "Tool Inventory"
@@ -485,7 +503,7 @@ Partial Class ConfigurationManagerForm
         Me.tabDefinition.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabDefinition.Name = "tabDefinition"
         Me.tabDefinition.Padding = New System.Windows.Forms.Padding(3, 2, 3, 2)
-        Me.tabDefinition.Size = New System.Drawing.Size(609, 505)
+        Me.tabDefinition.Size = New System.Drawing.Size(958, 518)
         Me.tabDefinition.TabIndex = 3
         Me.tabDefinition.Text = "Definition"
         Me.tabDefinition.UseVisualStyleBackColor = True
@@ -497,7 +515,7 @@ Partial Class ConfigurationManagerForm
         Me.txtPreamble.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.txtPreamble.Multiline = True
         Me.txtPreamble.Name = "txtPreamble"
-        Me.txtPreamble.Size = New System.Drawing.Size(603, 501)
+        Me.txtPreamble.Size = New System.Drawing.Size(952, 514)
         Me.txtPreamble.TabIndex = 0
         Me.txtPreamble.Text = "This is where we would put some guidance for the user. this text will change base" &
     "d on with node is highlighted."
@@ -511,7 +529,7 @@ Partial Class ConfigurationManagerForm
         Me.tabToolProperties.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.tabToolProperties.Name = "tabToolProperties"
         Me.tabToolProperties.Padding = New System.Windows.Forms.Padding(3, 2, 3, 2)
-        Me.tabToolProperties.Size = New System.Drawing.Size(609, 505)
+        Me.tabToolProperties.Size = New System.Drawing.Size(958, 518)
         Me.tabToolProperties.TabIndex = 4
         Me.tabToolProperties.Text = "Tool Properties"
         Me.tabToolProperties.UseVisualStyleBackColor = True
@@ -521,10 +539,10 @@ Partial Class ConfigurationManagerForm
         Me.PanelBtnsToolProps.Controls.Add(Me.btnCancelToolProps)
         Me.PanelBtnsToolProps.Controls.Add(Me.btnSaveToolProps)
         Me.PanelBtnsToolProps.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.PanelBtnsToolProps.Location = New System.Drawing.Point(222, 427)
+        Me.PanelBtnsToolProps.Location = New System.Drawing.Point(222, 440)
         Me.PanelBtnsToolProps.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.PanelBtnsToolProps.Name = "PanelBtnsToolProps"
-        Me.PanelBtnsToolProps.Size = New System.Drawing.Size(384, 76)
+        Me.PanelBtnsToolProps.Size = New System.Drawing.Size(733, 76)
         Me.PanelBtnsToolProps.TabIndex = 4
         '
         'btnCancelToolProps
@@ -560,7 +578,7 @@ Partial Class ConfigurationManagerForm
         Me.panelToolProps.Location = New System.Drawing.Point(222, 2)
         Me.panelToolProps.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.panelToolProps.Name = "panelToolProps"
-        Me.panelToolProps.Size = New System.Drawing.Size(384, 98)
+        Me.panelToolProps.Size = New System.Drawing.Size(733, 98)
         Me.panelToolProps.TabIndex = 1
         '
         'lblCurrentDescription
@@ -597,7 +615,7 @@ Partial Class ConfigurationManagerForm
         Me.propgrdToolProps.Location = New System.Drawing.Point(3, 2)
         Me.propgrdToolProps.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
         Me.propgrdToolProps.Name = "propgrdToolProps"
-        Me.propgrdToolProps.Size = New System.Drawing.Size(219, 501)
+        Me.propgrdToolProps.Size = New System.Drawing.Size(219, 514)
         Me.propgrdToolProps.TabIndex = 0
         '
         'tabMaterialInventory
@@ -607,7 +625,7 @@ Partial Class ConfigurationManagerForm
         Me.tabMaterialInventory.Location = New System.Drawing.Point(4, 22)
         Me.tabMaterialInventory.Name = "tabMaterialInventory"
         Me.tabMaterialInventory.Padding = New System.Windows.Forms.Padding(3)
-        Me.tabMaterialInventory.Size = New System.Drawing.Size(609, 505)
+        Me.tabMaterialInventory.Size = New System.Drawing.Size(958, 518)
         Me.tabMaterialInventory.TabIndex = 5
         Me.tabMaterialInventory.Text = "Material Inventory"
         Me.tabMaterialInventory.UseVisualStyleBackColor = True
@@ -618,7 +636,7 @@ Partial Class ConfigurationManagerForm
         Me.Panel3.Dock = System.Windows.Forms.DockStyle.Fill
         Me.Panel3.Location = New System.Drawing.Point(3, 3)
         Me.Panel3.Name = "Panel3"
-        Me.Panel3.Size = New System.Drawing.Size(603, 449)
+        Me.Panel3.Size = New System.Drawing.Size(952, 462)
         Me.Panel3.TabIndex = 1
         '
         'propgridMaterial
@@ -636,9 +654,9 @@ Partial Class ConfigurationManagerForm
         Me.Panel2.Controls.Add(Me.btnMaterialCancel)
         Me.Panel2.Controls.Add(Me.btnSaveMaterial)
         Me.Panel2.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.Panel2.Location = New System.Drawing.Point(3, 452)
+        Me.Panel2.Location = New System.Drawing.Point(3, 465)
         Me.Panel2.Name = "Panel2"
-        Me.Panel2.Size = New System.Drawing.Size(603, 50)
+        Me.Panel2.Size = New System.Drawing.Size(952, 50)
         Me.Panel2.TabIndex = 0
         '
         'btnRemoveMaterialUDP
@@ -691,7 +709,7 @@ Partial Class ConfigurationManagerForm
         Me.tabLayerSetup.Location = New System.Drawing.Point(4, 22)
         Me.tabLayerSetup.Name = "tabLayerSetup"
         Me.tabLayerSetup.Padding = New System.Windows.Forms.Padding(3)
-        Me.tabLayerSetup.Size = New System.Drawing.Size(958, 505)
+        Me.tabLayerSetup.Size = New System.Drawing.Size(958, 518)
         Me.tabLayerSetup.TabIndex = 6
         Me.tabLayerSetup.Text = "Layer Setup"
         Me.tabLayerSetup.UseVisualStyleBackColor = True
@@ -700,7 +718,7 @@ Partial Class ConfigurationManagerForm
         '
         Me.pnlLayerSetSaveCancel.Controls.Add(Me.btnSaveLayerSetp)
         Me.pnlLayerSetSaveCancel.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.pnlLayerSetSaveCancel.Location = New System.Drawing.Point(3, 447)
+        Me.pnlLayerSetSaveCancel.Location = New System.Drawing.Point(3, 460)
         Me.pnlLayerSetSaveCancel.Name = "pnlLayerSetSaveCancel"
         Me.pnlLayerSetSaveCancel.Size = New System.Drawing.Size(952, 55)
         Me.pnlLayerSetSaveCancel.TabIndex = 1
@@ -729,7 +747,7 @@ Partial Class ConfigurationManagerForm
         Me.tabLayer.Location = New System.Drawing.Point(4, 22)
         Me.tabLayer.Name = "tabLayer"
         Me.tabLayer.Padding = New System.Windows.Forms.Padding(3)
-        Me.tabLayer.Size = New System.Drawing.Size(609, 505)
+        Me.tabLayer.Size = New System.Drawing.Size(958, 518)
         Me.tabLayer.TabIndex = 7
         Me.tabLayer.Text = "Layer Map"
         Me.tabLayer.UseVisualStyleBackColor = True
@@ -738,9 +756,9 @@ Partial Class ConfigurationManagerForm
         '
         Me.pnlLayerMapSave.Controls.Add(Me.btnLayerMapSave)
         Me.pnlLayerMapSave.Dock = System.Windows.Forms.DockStyle.Bottom
-        Me.pnlLayerMapSave.Location = New System.Drawing.Point(3, 451)
+        Me.pnlLayerMapSave.Location = New System.Drawing.Point(3, 464)
         Me.pnlLayerMapSave.Name = "pnlLayerMapSave"
-        Me.pnlLayerMapSave.Size = New System.Drawing.Size(603, 51)
+        Me.pnlLayerMapSave.Size = New System.Drawing.Size(952, 51)
         Me.pnlLayerMapSave.TabIndex = 1
         '
         'btnLayerMapSave
@@ -758,6 +776,30 @@ Partial Class ConfigurationManagerForm
         Me.propgrdLayer.Name = "propgrdLayer"
         Me.propgrdLayer.Size = New System.Drawing.Size(733, 445)
         Me.propgrdLayer.TabIndex = 0
+        '
+        'tabPageAutoToolHelpers
+        '
+        Me.tabPageAutoToolHelpers.Controls.Add(Me.dgvAutoToolHelpers)
+        Me.tabPageAutoToolHelpers.Location = New System.Drawing.Point(4, 22)
+        Me.tabPageAutoToolHelpers.Name = "tabPageAutoToolHelpers"
+        Me.tabPageAutoToolHelpers.Padding = New System.Windows.Forms.Padding(3)
+        Me.tabPageAutoToolHelpers.Size = New System.Drawing.Size(958, 518)
+        Me.tabPageAutoToolHelpers.TabIndex = 8
+        Me.tabPageAutoToolHelpers.Text = "AutoTool Helpers"
+        Me.tabPageAutoToolHelpers.UseVisualStyleBackColor = True
+        '
+        'dgvAutoToolHelpers
+        '
+        Me.dgvAutoToolHelpers.AllowUserToAddRows = False
+        Me.dgvAutoToolHelpers.AllowUserToDeleteRows = False
+        Me.dgvAutoToolHelpers.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
+        Me.dgvAutoToolHelpers.Columns.AddRange(New System.Windows.Forms.DataGridViewColumn() {Me.colHelper, Me.colHelperTool})
+        Me.dgvAutoToolHelpers.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.dgvAutoToolHelpers.Location = New System.Drawing.Point(3, 3)
+        Me.dgvAutoToolHelpers.Name = "dgvAutoToolHelpers"
+        Me.dgvAutoToolHelpers.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
+        Me.dgvAutoToolHelpers.Size = New System.Drawing.Size(952, 512)
+        Me.dgvAutoToolHelpers.TabIndex = 0
         '
         'cmsTreeActions
         '
@@ -843,11 +885,25 @@ Partial Class ConfigurationManagerForm
         Me.DeleteLayerTSM.Size = New System.Drawing.Size(196, 22)
         Me.DeleteLayerTSM.Text = "Delete Layer"
         '
+        'colHelper
+        '
+        Me.colHelper.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None
+        Me.colHelper.HeaderText = "AutoTool Helper"
+        Me.colHelper.Name = "colHelper"
+        Me.colHelper.ReadOnly = True
+        Me.colHelper.Width = 250
+        '
+        'colHelperTool
+        '
+        Me.colHelperTool.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill
+        Me.colHelperTool.HeaderText = "Preferred Tool"
+        Me.colHelperTool.Name = "colHelperTool"
+        '
         'ConfigurationManagerForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(1306, 531)
+        Me.ClientSize = New System.Drawing.Size(1306, 544)
         Me.Controls.Add(Me.SplitContainer1)
         Me.Icon = CType(resources.GetObject("$this.Icon"), System.Drawing.Icon)
         Me.Margin = New System.Windows.Forms.Padding(3, 2, 3, 2)
@@ -891,6 +947,8 @@ Partial Class ConfigurationManagerForm
         Me.pnlLayerSetSaveCancel.ResumeLayout(False)
         Me.tabLayer.ResumeLayout(False)
         Me.pnlLayerMapSave.ResumeLayout(False)
+        Me.tabPageAutoToolHelpers.ResumeLayout(False)
+        CType(Me.dgvAutoToolHelpers, System.ComponentModel.ISupportInitialize).EndInit()
         Me.cmsTreeActions.ResumeLayout(False)
         Me.ResumeLayout(False)
 
@@ -965,4 +1023,9 @@ Partial Class ConfigurationManagerForm
     Friend WithEvents propgridMaterial As PropertyGrid
     Private WithEvents propgrdMachine As PropertyGrid
     Friend WithEvents btnRemFromStation As Button
+    Friend WithEvents cmdAutoToolHelpers As Button
+    Friend WithEvents tabPageAutoToolHelpers As TabPage
+    Friend WithEvents dgvAutoToolHelpers As DataGridView
+    Friend WithEvents colHelper As DataGridViewTextBoxColumn
+    Friend WithEvents colHelperTool As DataGridViewComboBoxColumn
 End Class

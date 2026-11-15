@@ -12,6 +12,8 @@ Public Class GeoProfile
 
     Public Property IsClosed As Boolean
 
+    Public Property SignedArea As Double
+
     ' Profile selection state
     Public Property Selected As Boolean
 
@@ -32,6 +34,14 @@ End Class
 Public Class GeoProfileSegment
 
     Public Property Entity As GeoEntity
+
+    ' For Lines and Arcs:
+    ' False = traverse in the entity's native direction.
+    ' True  = traverse in the opposite direction.
+    '
+    ' For a complete GeoCircle:
+    ' False = counterclockwise (CCW).
+    ' True  = clockwise (CW).
     Public Property Reversed As Boolean
 
 End Class

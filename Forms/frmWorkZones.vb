@@ -2,6 +2,10 @@
 Imports DevExpress.XtraGrid.Views.Base
 
 Public Class frmWorkZones
+
+    Public Property MaterialWidth As Double = 0
+
+
     Public Event WorkZoneChanged()
     Private _workZoneBindingSource As New BindingSource()
     Public Event AssignWorkZoneRequested(zone As WorkZone)
@@ -57,12 +61,15 @@ Public Class frmWorkZones
 
         If CurrentJob Is Nothing Then Return
 
+        Dim zoneWidth As Double = modMaterial.matWidth
+
+
         Dim newZone As New WorkZone With {
             .Index = CurrentJob.WorkZones.Count,
             .XMin = 0,
             .XMax = 0,
             .YMin = 0,
-            .YMax = 0,
+           .YMax = zoneWidth,
             .HoldX = 0,
             .HoldY = 0,
             .RepositionDistanceX = 0,
@@ -138,9 +145,7 @@ Public Class frmWorkZones
         RaiseEvent WorkZoneChanged()
 
     End Sub
-    Private Sub cmdAssign_Click(
-    sender As Object,
-    e As EventArgs) Handles cmdAssign.Click
+    Private Sub cmdAssign_Click(sender As Object, e As EventArgs) Handles cmdAssign.Click
 
         Dim selectedZone As WorkZone = GetSelectedWorkZone()
 

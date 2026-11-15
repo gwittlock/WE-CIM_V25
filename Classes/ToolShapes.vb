@@ -9,6 +9,21 @@ Namespace ToolShapes
         Arc
     End Enum
 
+    Public Enum ProfileContainmentResult
+        Outside
+        Inside
+        Intersecting
+        Touching
+        Invalid
+    End Enum
+
+    Public Enum SegmentIntersectionResult
+        None
+        Crossing
+        Touching
+        Overlapping
+    End Enum
+
     Public Enum ToolMotionType
         Rapid
         LinearCut
@@ -1968,10 +1983,142 @@ Namespace ToolShapes
         End Function
 
 
+        Public Shared Function ClassifyProfileContainment(
+    innerPath As IPath2D,
+    outerPath As IPath2D) As ProfileContainmentResult
+
+            If innerPath Is Nothing OrElse outerPath Is Nothing Then
+                Return ProfileContainmentResult.Invalid
+            End If
+
+            If Not innerPath.IsClosed OrElse Not outerPath.IsClosed Then
+                Return ProfileContainmentResult.Invalid
+            End If
+
+            If Not innerPath.Segments.Any() OrElse
+               Not outerPath.Segments.Any() Then
+
+                Return ProfileContainmentResult.Invalid
+            End If
+
+
+            ' Check for intersections between the two profiles.
+            For Each innerSegment As IPathSegment In innerPath.Segments
+
+                If innerSegment.SegmentType <> PathSegmentType.Line Then
+                    Return ProfileContainmentResult.Invalid
+                End If
+
+                For Each outerSegment As IPathSegment In outerPath.Segments
+
+                    If outerSegment.SegmentType <> PathSegmentType.Line Then
+                        Return ProfileContainmentResult.Invalid
+                    End If
+
+                    If LineSegmentsIntersect(
+            DirectCast(innerSegment, LineSegment2D),
+            DirectCast(outerSegment, LineSegment2D)) Then
+
+                        Return ProfileContainmentResult.Intersecting
+
+                    End If
+
+                Next
+
+            Next
+            ' No intersections were found.
+            ' Determine whether the inner profile is inside
+            ' or outside the outer profile.
+
+            Dim testPoint As PointF =
+                innerPath.Segments.First().StartPoint
+
+            If IsPointInsidePath(outerPath, testPoint) Then
+
+                Return ProfileContainmentResult.Inside
+
+            Else
+
+                Return ProfileContainmentResult.Outside
+
+            End If
+        End Function
+
+
+        Private Shared Function LineSegmentsIntersect(
+            a As LineSegment2D,
+            b As LineSegment2D) As Boolean
+
+            If a Is Nothing OrElse b Is Nothing Then
+                Return False
+            End If
+
+            Const tolerance As Double = 0.0000001
+
+            Dim ax As Double = a.EndPoint.X - a.StartPoint.X
+            Dim ay As Double = a.EndPoint.Y - a.StartPoint.Y
+
+            Dim bx As Double = b.EndPoint.X - b.StartPoint.X
+            Dim by As Double = b.EndPoint.Y - b.StartPoint.Y
+
+            Dim cx As Double = b.StartPoint.X - a.StartPoint.X
+            Dim cy As Double = b.StartPoint.Y - a.StartPoint.Y
+
+            Dim denominator As Double = ax * by - ay * bx
+
+            If Math.Abs(denominator) <= tolerance Then
+
+                ' Parallel lines may also be collinear.
+                Dim cross As Double = cx * ay - cy * ax
+
+                If Math.Abs(cross) > tolerance Then
+                    Return False
+                End If
+
+                ' Collinear lines: check whether their
+                ' projected intervals overlap or touch.
+                Dim aMin As Double
+                Dim aMax As Double
+                Dim bMin As Double
+                Dim bMax As Double
+
+                If Math.Abs(ax) >= Math.Abs(ay) Then
+
+                    aMin = Math.Min(a.StartPoint.X, a.EndPoint.X)
+                    aMax = Math.Max(a.StartPoint.X, a.EndPoint.X)
+
+                    bMin = Math.Min(b.StartPoint.X, b.EndPoint.X)
+                    bMax = Math.Max(b.StartPoint.X, b.EndPoint.X)
+
+                Else
+
+                    aMin = Math.Min(a.StartPoint.Y, a.EndPoint.Y)
+                    aMax = Math.Max(a.StartPoint.Y, a.EndPoint.Y)
+
+                    bMin = Math.Min(b.StartPoint.Y, b.EndPoint.Y)
+                    bMax = Math.Max(b.StartPoint.Y, b.EndPoint.Y)
+
+                End If
+
+                Return aMax >= bMin - tolerance AndAlso
+           bMax >= aMin - tolerance
+
+            End If
+
+            Dim t As Double = (cx * by - cy * bx) / denominator
+            Dim u As Double = (cx * ay - cy * ax) / denominator
+
+            Return t >= -tolerance AndAlso
+                   t <= 1.0 + tolerance AndAlso
+                   u >= -tolerance AndAlso
+                   u <= 1.0 + tolerance
+
+        End Function
 
 
 
     End Class
+
 
 #End Region
 

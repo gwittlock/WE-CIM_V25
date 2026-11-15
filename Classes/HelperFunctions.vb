@@ -69,27 +69,115 @@ Public Class HelperFunctions
         Return columns
     End Function
 
-    Public Shared Function GetCadBounds(entities As List(Of CadEntity)) As RectangleF
+    Public Shared Function GetCadBounds(
+    entities As List(Of CadEntity)) As RectangleF
+
+        If entities Is Nothing OrElse entities.Count = 0 Then
+            Return RectangleF.Empty
+        End If
 
         Dim minX As Single = Single.MaxValue
         Dim minY As Single = Single.MaxValue
         Dim maxX As Single = Single.MinValue
         Dim maxY As Single = Single.MinValue
 
-        For Each e In entities
+        For Each e As CadEntity In entities
 
             If TypeOf e Is CadLine Then
+
                 Dim l = CType(e, CadLine)
+
                 UpdateBounds(l.StartPoint, minX, minY, maxX, maxY)
                 UpdateBounds(l.EndPoint, minX, minY, maxX, maxY)
 
+            ElseIf TypeOf e Is CadCircle Then
+
+                Dim c = CType(e, CadCircle)
+                Dim r As Single = Math.Abs(c.Radius)
+
+                UpdateBounds(
+                New PointF(c.Center.X - r, c.Center.Y - r),
+                minX, minY, maxX, maxY)
+
+                UpdateBounds(
+                New PointF(c.Center.X + r, c.Center.Y + r),
+                minX, minY, maxX, maxY)
+
+            ElseIf TypeOf e Is CadPoint Then
+
+                Dim p = CType(e, CadPoint)
+
+                UpdateBounds(p.Position, minX, minY, maxX, maxY)
+
             ElseIf TypeOf e Is CadArc Then
+
                 Dim a = CType(e, CadArc)
 
-                ' Conservative: full circle bounds
-                Dim r As Single = CSng(a.Radius)
-                UpdateBounds(New PointF(a.Center.X - r, a.Center.Y - r), minX, minY, maxX, maxY)
-                UpdateBounds(New PointF(a.Center.X + r, a.Center.Y + r), minX, minY, maxX, maxY)
+                Dim radius As Double = Math.Abs(CDbl(a.Radius))
+
+                Dim startAngle As Double =
+                CDbl(a.StartAngle) Mod 360.0
+
+                Dim endAngle As Double =
+                CDbl(a.EndAngle) Mod 360.0
+
+                If startAngle < 0 Then startAngle += 360.0
+                If endAngle < 0 Then endAngle += 360.0
+
+                ' Always include the actual endpoints.
+                Dim startRadians As Double =
+                startAngle * Math.PI / 180.0
+
+                Dim endRadians As Double =
+                endAngle * Math.PI / 180.0
+
+                UpdateBounds(
+                New PointF(
+                    CSng(a.Center.X + radius * Math.Cos(startRadians)),
+                    CSng(a.Center.Y + radius * Math.Sin(startRadians))),
+                minX, minY, maxX, maxY)
+
+                UpdateBounds(
+                New PointF(
+                    CSng(a.Center.X + radius * Math.Cos(endRadians)),
+                    CSng(a.Center.Y + radius * Math.Sin(endRadians))),
+                minX, minY, maxX, maxY)
+
+                ' Include cardinal points only if they
+                ' lie on the actual arc sweep.
+                For Each cardinal As Double In
+                New Double() {0.0, 90.0, 180.0, 270.0}
+
+                    Dim sweep As Double
+                    Dim distance As Double
+
+                    If a.IsClockwise Then
+
+                        sweep = (startAngle - endAngle + 360.0) Mod 360.0
+                        distance = (startAngle - cardinal + 360.0) Mod 360.0
+
+                    Else
+
+                        sweep = (endAngle - startAngle + 360.0) Mod 360.0
+                        distance = (cardinal - startAngle + 360.0) Mod 360.0
+
+                    End If
+
+                    If distance <= sweep + 0.0000001 Then
+
+                        Dim radians As Double =
+                        cardinal * Math.PI / 180.0
+
+                        UpdateBounds(
+                        New PointF(
+                            CSng(a.Center.X + radius * Math.Cos(radians)),
+                            CSng(a.Center.Y + radius * Math.Sin(radians))),
+                        minX, minY, maxX, maxY)
+
+                    End If
+
+                Next
+
             End If
 
         Next
@@ -101,7 +189,6 @@ Public Class HelperFunctions
         Return RectangleF.FromLTRB(minX, minY, maxX, maxY)
 
     End Function
-
     Private Shared Sub UpdateBounds(
     p As PointF,
     ByRef minX As Single, ByRef minY As Single,

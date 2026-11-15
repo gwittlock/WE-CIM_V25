@@ -171,6 +171,10 @@ Public Class ConfigurationManagerForm
 
         'lstTools.BackColor = ColorTranslator.FromOle(RegGetString("Preferences\ViewOptions", "MaterialColor", System.Drawing.Color.Gray))
         lstTools.BackColor = _MaterialDisplayColor
+        dgvToolSetup.BackgroundColor = _MaterialDisplayColor
+        dgvToolSetup.DefaultCellStyle.BackColor = _MaterialDisplayColor
+        dgvToolSetup.RowsDefaultCellStyle.BackColor = _MaterialDisplayColor
+        dgvToolSetup.AlternatingRowsDefaultCellStyle.BackColor = _MaterialDisplayColor
 
 
         'ExportTreeToFile(Path.Combine(dataFolder, "TreeView.txt"))
@@ -608,18 +612,7 @@ Public Class ConfigurationManagerForm
 
     End Sub
 
-    Private Sub dgvToolSetup_CellFormatting(
-    sender As Object,
-    e As DataGridViewCellFormattingEventArgs
-) Handles dgvToolSetup.CellFormatting
-
-
-
-        '    Debug.WriteLine(
-        '"CELL FORMATTING | Column=" &
-        'dgvToolSetup.Columns(e.ColumnIndex).Name &
-        '" | Row=" & e.RowIndex)
-
+    Private Sub dgvToolSetup_CellFormatting(sender As Object, e As DataGridViewCellFormattingEventArgs) Handles dgvToolSetup.CellFormatting
 
         If e.RowIndex < 0 Then Return
 
@@ -651,13 +644,14 @@ Public Class ConfigurationManagerForm
 
         Dim toolColor As Color = tool.Color
 
-        Debug.WriteLine(
-    "TOOL CELL COLOR | MemberID=" & memberID &
-    " | ToolID=" & tool.ID &
-    " | Description=" & tool.Description &
-    " | Color=" & toolColor.ToString())
-
+        ' Display the actual tool color.
         e.CellStyle.ForeColor = toolColor
+
+        ' Maintain material background.
+        e.CellStyle.BackColor = _MaterialDisplayColor
+
+        ' Preserve tool-colored text when selected.
+        e.CellStyle.SelectionForeColor = toolColor
 
         ' Choose readable text based on background brightness.
         Dim brightness As Double =
@@ -665,8 +659,14 @@ Public Class ConfigurationManagerForm
          toolColor.G * 587 +
          toolColor.B * 114) / 1000.0
 
-        e.CellStyle.ForeColor =
-        If(brightness < 128, Color.White, Color.Black)
+        ' Display the actual tool color.
+        e.CellStyle.ForeColor = toolColor
+
+        ' Maintain material background.
+        e.CellStyle.BackColor = _MaterialDisplayColor
+
+        ' Preserve tool-colored text when selected.
+        e.CellStyle.SelectionForeColor = toolColor
 
         ' Preserve colors when the row is selected.
         e.CellStyle.SelectionBackColor = toolColor
@@ -2423,6 +2423,29 @@ Public Class ConfigurationManagerForm
         PopulateTreeView()
     End Sub
     Private Sub TreeViewMachines_NodeMouseClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles TreeViewMachines.NodeMouseClick
+
+        ' Return to Tool Setup when its node is left-clicked,
+        ' even if the node is already selected.
+        If e.Button = MouseButtons.Left Then
+
+            If e.Node IsNot Nothing AndAlso
+       TypeOf e.Node.Tag Is String Then
+
+                Dim nodeType As Integer =
+            CInt(GetValueFromDelimitedData(
+                CStr(e.Node.Tag), "NodeType", "0"))
+
+                If nodeType = 13 AndAlso
+           TreeViewMachines.SelectedNode Is e.Node Then
+
+                    tabControlMain.SelectedTab = tabToolSetup
+
+                End If
+
+            End If
+
+        End If
+
         If e.Button <> MouseButtons.Right Then Return
 
         Dim selectedNode As TreeNode = e.Node
@@ -5085,6 +5108,8 @@ Public Class ConfigurationManagerForm
                 Return
         End Select
 
+
+
         ' Confirm this column is a defined Tool Setup UDP.
         If AppData.ToolSetupUDPDefinitions Is Nothing Then Return
 
@@ -5389,8 +5414,141 @@ Public Class ConfigurationManagerForm
         SaveDirectives()
 
     End Sub
+    Private Sub cmdAutoToolHelpers_Click(
+    sender As Object,
+    e As EventArgs
+) Handles cmdAutoToolHelpers.Click
 
-    Private Sub dgvToolSetup_CellContextMenuStripChanged(sender As Object, e As DataGridViewCellEventArgs) Handles dgvToolSetup.CellContextMenuStripChanged
+        LoadAutoToolHelpers()
+
+        tabControlMain.SelectedTab = tabPageAutoToolHelpers
 
     End Sub
+
+    Private Sub LoadAutoToolHelpers()
+
+        dgvAutoToolHelpers.Rows.Clear()
+
+        PopulateAutoToolHelperTools()
+
+        dgvAutoToolHelpers.Rows.Add(
+        "Preferred Horizontal Cutting Tool")
+
+        dgvAutoToolHelpers.Rows.Add(
+        "Preferred Vertical Cutting Tool")
+
+
+        Dim setup As ToolSetup = GetCurrentToolSetup()
+
+        If setup Is Nothing Then Return
+
+        If setup.PreferredHorizontalCuttingToolID > 0 Then
+            dgvAutoToolHelpers.Rows(0).Cells("colHelperTool").Value =
+        setup.PreferredHorizontalCuttingToolID
+        End If
+
+        If setup.PreferredVerticalCuttingToolID > 0 Then
+            dgvAutoToolHelpers.Rows(1).Cells("colHelperTool").Value =
+        setup.PreferredVerticalCuttingToolID
+        End If
+
+
+    End Sub
+
+    Private Sub PopulateAutoToolHelperTools()
+
+        Dim toolColumn As DataGridViewComboBoxColumn =
+            CType(dgvAutoToolHelpers.Columns("colHelperTool"),
+                  DataGridViewComboBoxColumn)
+
+        toolColumn.DataSource = Nothing
+        toolColumn.Items.Clear()
+
+        If AppData.ToolSetupMembers Is Nothing OrElse
+           AppData.Stations Is Nothing OrElse
+           AppData.ToolCrib Is Nothing Then Return
+
+        Dim members = AppData.ToolSetupMembers.
+            Where(Function(m) m.ToolSetupID = currenttoolSetupID).
+            ToList()
+
+        For Each member As ToolSetupMember In members
+
+            Dim station = AppData.Stations.FirstOrDefault(
+                Function(s) s.ID = member.StationID)
+
+            Dim tool = AppData.ToolCrib.FirstOrDefault(
+                Function(t) t.ID = member.ToolID)
+
+            If station Is Nothing OrElse tool Is Nothing Then Continue For
+
+            Dim displayText As String =
+                station.NCCodeNumber.ToString() & " - " & tool.Description
+
+            toolColumn.Items.Add(New With {.ID = member.ID, .Description = displayText})
+
+        Next
+
+        toolColumn.DataSource = toolColumn.Items.Cast(Of Object)().ToList()
+        toolColumn.DisplayMember = "Description"
+        toolColumn.ValueMember = "ID"
+
+    End Sub
+
+
+    Private Function GetCurrentToolSetup() As ToolSetup
+
+        If AppData.ToolSetups Is Nothing Then
+            Return Nothing
+        End If
+
+        Return AppData.ToolSetups.FirstOrDefault(
+        Function(ts) ts.ID = currenttoolSetupID)
+
+    End Function
+
+
+    Private Sub dgvAutoToolHelpers_CellValueChanged(
+        sender As Object,
+        e As DataGridViewCellEventArgs
+    ) Handles dgvAutoToolHelpers.CellValueChanged
+
+        If e.RowIndex < 0 Then Return
+
+        If dgvAutoToolHelpers.Columns(e.ColumnIndex).Name <>
+           "colHelperTool" Then Return
+
+        Dim setup As ToolSetup = GetCurrentToolSetup()
+        If setup Is Nothing Then Return
+
+        Dim cellValue As Object =
+            dgvAutoToolHelpers.Rows(e.RowIndex).
+                Cells("colHelperTool").Value
+
+        Dim memberID As Integer = 0
+
+        If cellValue IsNot Nothing AndAlso
+           cellValue IsNot DBNull.Value Then
+
+            memberID = Convert.ToInt32(cellValue)
+
+        End If
+
+        Select Case e.RowIndex
+
+            Case 0
+                setup.PreferredHorizontalCuttingToolID = memberID
+
+            Case 1
+                setup.PreferredVerticalCuttingToolID = memberID
+
+        End Select
+
+        JsonSaver.SaveObjectToJsonFile(
+    AppData.ToolSetups,
+    Path.Combine(dataFolder, "ToolSetups.json"))
+
+
+    End Sub
+
 End Class

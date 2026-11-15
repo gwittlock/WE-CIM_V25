@@ -189,6 +189,20 @@ Public Module modFile
 
         For Each profile As GeoProfile In importedPart.GeoProfiles
 
+            If Not profile.IsClosed Then Continue For
+
+            Debug.WriteLine(
+        "GeoProfile " & profile.ID &
+        " | Signed Area: " &
+        profile.SignedArea.ToString("F4") &
+        " | Direction: " &
+        If(profile.SignedArea > 0, "CCW",
+           If(profile.SignedArea < 0, "CW", "Degenerate")))
+
+        Next
+
+        For Each profile As GeoProfile In importedPart.GeoProfiles
+
             '    Debug.WriteLine(
             '"PROFILE ID=" & profile.ID &
             '" | Entities=" & profile.Entities.Count &
@@ -323,32 +337,569 @@ Public Module modFile
 
         Next
 
+        '============================================================
+        ' Preferred Horizontal / Vertical AutoTool
+        '============================================================
+
+        Dim activeToolSetup As ToolSetup =
+    AppData.ToolSetups.FirstOrDefault(
+        Function(ts) ts.ID = CurrentJob.ToolSetupID)
+
+        Dim verticalTool As Tool = Nothing
+        Dim verticalShape As ToolShape = Nothing
+        If activeToolSetup IsNot Nothing Then
+
+            Debug.WriteLine(
+        "Preferred Horizontal Tool Member ID: " &
+        activeToolSetup.PreferredHorizontalCuttingToolID)
+
+            Debug.WriteLine(
+        "Preferred Vertical Tool Member ID: " &
+        activeToolSetup.PreferredVerticalCuttingToolID)
+
+        End If
+
+
+
+
+        Dim horizontalMember = AppData.ToolSetupMembers.
+    FirstOrDefault(
+        Function(m) m.ID =
+            activeToolSetup.PreferredHorizontalCuttingToolID)
+
+        Dim verticalMember = AppData.ToolSetupMembers.
+    FirstOrDefault(
+        Function(m) m.ID =
+            activeToolSetup.PreferredVerticalCuttingToolID)
+
+        If horizontalMember IsNot Nothing Then
+            Debug.WriteLine(
+        "Horizontal Installed Index Angle: " &
+        horizontalMember.IndexAngle)
+        End If
+
+        If verticalMember IsNot Nothing Then
+            Debug.WriteLine(
+        "Vertical Installed Index Angle: " &
+        verticalMember.IndexAngle)
+        End If
 
         If _selectedLayerSetup Is Nothing Then
             Exit Sub
         End If
+
+
+        Dim horizontalAngleValid As Boolean =
+    horizontalMember IsNot Nothing AndAlso
+    (Math.Abs(horizontalMember.IndexAngle - 0.0) < 0.001 OrElse
+     Math.Abs(horizontalMember.IndexAngle - 180.0) < 0.001)
+
+        Dim verticalAngleValid As Boolean =
+    verticalMember IsNot Nothing AndAlso
+    (Math.Abs(verticalMember.IndexAngle - 90.0) < 0.001 OrElse
+     Math.Abs(verticalMember.IndexAngle - 270.0) < 0.001)
+
+        Debug.WriteLine(
+    "Preferred Horizontal Orientation Valid: " &
+    horizontalAngleValid)
+
+        Debug.WriteLine(
+    "Preferred Vertical Orientation Valid: " &
+    verticalAngleValid)
+
+
+        Dim horizontalTool As Tool = Nothing
+        Dim horizontalShape As ToolShape = Nothing
+
+        If horizontalAngleValid Then
+
+            If ToolShapeResolver.TryResolve(
+        horizontalMember.ID,
+        horizontalTool,
+        horizontalShape) Then
+
+                Debug.WriteLine(
+            "Preferred Horizontal Tool Resolved: " &
+            horizontalTool.Description)
+
+                Debug.WriteLine(
+    "Horizontal Punch Length: " &
+    horizontalTool.Attributes("LENGTH").ToString())
+
+                Debug.WriteLine(
+                    "Horizontal Punch Width: " &
+                    horizontalTool.Attributes("WIDTH").ToString())
+
+            Else
+                Debug.WriteLine(
+            "Preferred Horizontal Tool: Resolution Failed")
+            End If
+
+
+            If verticalAngleValid Then
+
+                If ToolShapeResolver.TryResolve(
+                    verticalMember.ID,
+                    verticalTool,
+                    verticalShape) Then
+
+                    Debug.WriteLine(
+                        "Preferred Vertical Tool Resolved: " &
+                        verticalTool.Description)
+
+                Else
+
+                    Debug.WriteLine(
+                        "Preferred Vertical Tool: Resolution Failed")
+
+                End If
+
+            Else
+
+                Debug.WriteLine(
+                    "Preferred Vertical Tool: Skipped - Invalid Orientation")
+
+            End If
+
+        Else
+            Debug.WriteLine(
+        "Preferred Horizontal Tool: Skipped - Invalid Orientation")
+        End If
+
+        '============================================================
+        ' Preferred AutoTool - Horizontal Line Eligibility
+        '============================================================
+
+        Dim closedProfileCount As Integer = 0
+        Dim horizontalLineCount As Integer = 0
+        Dim eligibleHorizontalCount As Integer = 0
+
+        For Each profile As GeoProfile In importedPart.GeoProfiles
+
+            If Not profile.IsClosed Then Continue For
+
+            closedProfileCount += 1
+
+            Dim isInsideProfile As Boolean = False
+
+            Dim innerPath As ToolShapes.IPath2D =
+    PartGeometryBuilder.ConvertGeoProfileToPath(profile)
+
+            If innerPath IsNot Nothing AndAlso innerPath.IsClosed Then
+
+                For Each outerProfile As GeoProfile In importedPart.GeoProfiles
+
+                    If outerProfile Is profile OrElse Not outerProfile.IsClosed Then
+                        Continue For
+                    End If
+
+                    Dim outerPath As ToolShapes.IPath2D =
+            PartGeometryBuilder.ConvertGeoProfileToPath(outerProfile)
+
+                    If outerPath Is Nothing OrElse Not outerPath.IsClosed Then
+                        Continue For
+                    End If
+
+                    If ToolShapes.Geometry2D.ClassifyProfileContainment(
+            innerPath, outerPath) =
+            ToolShapes.ProfileContainmentResult.Inside Then
+
+                        isInsideProfile = True
+                        Exit For
+
+                    End If
+
+                Next
+
+            End If
+            Dim reverseProfileDirection As Boolean =
+    PartGeometryBuilder.ShouldReverseProfileDirection(
+        profile,
+        isInsideProfile)
+
+            For Each segment As GeoProfileSegment In profile.Segments
+
+                Dim line As GeoLine = TryCast(segment.Entity, GeoLine)
+
+                If line Is Nothing Then Continue For
+
+                'Only process geometry configured for AutoTool
+                Dim camLayer As Layer =
+                    TryCast(line.Association, Layer)
+
+                If camLayer Is Nothing Then Continue For
+
+                Dim directive =
+                    PartGeometryBuilder.FindDirectiveByCAMLayer(
+                        camLayer.Name,
+                        _selectedLayerSetup)
+
+                If directive Is Nothing Then Continue For
+
+                If Not String.Equals(
+                    directive.Station.Trim(),
+                    "**Auto**",
+                    StringComparison.OrdinalIgnoreCase) Then
+
+                    Continue For
+
+                End If
+
+
+
+                If line.StartPoint Is Nothing OrElse
+           line.EndPoint Is Nothing Then Continue For
+
+                Dim dx As Double =
+            line.EndPoint.X - line.StartPoint.X
+
+                Dim dy As Double =
+            line.EndPoint.Y - line.StartPoint.Y
+
+                If Math.Abs(dy) > 0.000001 Then Continue For
+
+                horizontalLineCount += 1
+
+                Dim lineLength As Double = Math.Abs(dx)
+
+                If horizontalAngleValid AndAlso
+     horizontalTool IsNot Nothing AndAlso
+     lineLength >=
+         1.5 * Convert.ToDouble(
+             horizontalTool.Attributes("LENGTH"),
+             Globalization.CultureInfo.InvariantCulture) Then
+                    eligibleHorizontalCount += 1
+
+                    Debug.WriteLine(
+                        "AutoTool Directive: " &
+                        "CAMLayer=" & camLayer.Name &
+                        " CutSide=" & directive.CutSide.ToString() &
+                        " CutDirection=" & directive.CutDirection.ToString() &
+                        " SegmentReversed=" & segment.Reversed.ToString())
+
+                    Debug.WriteLine(
+                "Eligible Horizontal Line: " &
+                "Length=" & lineLength.ToString("F3") &
+                " Start=(" &
+                line.StartPoint.X & "," &
+                line.StartPoint.Y & ")" &
+                " End=(" &
+                line.EndPoint.X & "," &
+                line.EndPoint.Y & ")")
+
+                    Dim halfToolLength As Double =
+                        Convert.ToDouble(
+                            horizontalTool.Attributes("LENGTH"),
+                            Globalization.CultureInfo.InvariantCulture) / 2.0
+
+                    Dim directionX As Double = Math.Sign(dx)
+
+                    If segment.Reversed Xor reverseProfileDirection Then
+                        directionX = -directionX
+                    End If
+
+                    Dim effectiveStartX As Double = line.StartPoint.X
+                    Dim effectiveEndX As Double = line.EndPoint.X
+
+                    If segment.Reversed Xor reverseProfileDirection Then
+                        effectiveStartX = line.EndPoint.X
+                        effectiveEndX = line.StartPoint.X
+                    End If
+
+                    Dim toolStartX As Double = effectiveStartX + directionX * halfToolLength
+
+                    Dim toolEndX As Double = effectiveEndX - directionX * halfToolLength
+                    Debug.WriteLine(
+                                "Horizontal Tool Center: StartX=" &
+                                toolStartX.ToString("F3") &
+                                " EndX=" &
+                                toolEndX.ToString("F3") &
+                                " Y=" &
+                                line.StartPoint.Y.ToString("F3"))
+
+                    Dim halfToolWidth As Double =
+                            Convert.ToDouble(
+                                horizontalTool.Attributes("WIDTH"),
+                                Globalization.CultureInfo.InvariantCulture) / 2.0
+
+                    Dim toolCenterY As Double = line.StartPoint.Y
+
+                    Select Case directive.CutSide.ToString()
+
+                        Case "Left"
+                            toolCenterY += directionX * halfToolWidth
+
+                        Case "Right"
+                            toolCenterY -= directionX * halfToolWidth
+
+                        Case "None"
+        ' No perpendicular offset.
+
+                        Case "Auto"
+                            ' Material-side calculation comes later.
+                            Debug.WriteLine("Auto CutSide: Not yet implemented")
+                            Continue For
+
+                    End Select
+
+                    Debug.WriteLine(
+                        "Offset Tool Center: Start=(" &
+                        toolStartX.ToString("F3") & "," &
+                        toolCenterY.ToString("F3") &
+                        ") End=(" &
+                        toolEndX.ToString("F3") & "," &
+                        toolCenterY.ToString("F3") & ")")
+
+
+                    Dim toolPath As New ToolShapes.Path2D()
+
+                    toolPath.Add(
+                            New ToolShapes.LineSegment2D(
+                                New PointF(
+                                    CSng(toolStartX),
+                                    CSng(toolCenterY)),
+                                New PointF(
+                                    CSng(toolEndX),
+                                    CSng(toolCenterY))))
+
+                    Dim contour As New ContourFeature With {
+                            .ID = importedPart.GetNextFeatureID(),
+                            .Description = "Preferred Horizontal AutoTool",
+                            .ToolSetupMemberID = horizontalMember.ID,
+                            .Path = toolPath,
+                            .IsLogicallyClosed = False
+                        }
+
+                    importedPart.Features.Add(contour)
+
+                    Debug.WriteLine(
+                            "Created AutoTool Contour ID=" & contour.ID &
+                            " ToolMemberID=" & contour.ToolSetupMemberID)
+
+
+
+
+                    Debug.WriteLine(
+                        "AutoTool Profile ID: " & profile.ID &
+                        " SegmentReversed: " & segment.Reversed)
+                End If
+
+            Next
+
+        Next
+
+        Debug.WriteLine("Closed Profiles: " & closedProfileCount)
+        Debug.WriteLine("Horizontal Lines: " & horizontalLineCount)
+        Debug.WriteLine("Eligible Horizontal Lines: " & eligibleHorizontalCount)
+
+        Dim verticalLineCount As Integer = 0
+        Dim eligibleVerticalCount As Integer = 0
+
+        For Each profile As GeoProfile In importedPart.GeoProfiles
+
+            If Not profile.IsClosed Then Continue For
+
+            For Each segment As GeoProfileSegment In profile.Segments
+
+                Dim line As GeoLine = TryCast(segment.Entity, GeoLine)
+                If line Is Nothing Then Continue For
+
+                Dim camLayer As Layer =
+    TryCast(line.Association, Layer)
+
+                If camLayer Is Nothing Then Continue For
+
+                Dim directive =
+    PartGeometryBuilder.FindDirectiveByCAMLayer(
+        camLayer.Name,
+        _selectedLayerSetup)
+
+                If directive Is Nothing Then Continue For
+
+                If Not String.Equals(
+    directive.Station.Trim(),
+    "**Auto**",
+    StringComparison.OrdinalIgnoreCase) Then
+
+                    Continue For
+
+                End If
+
+
+                Dim dx As Double = line.EndPoint.X - line.StartPoint.X
+                Dim dy As Double = line.EndPoint.Y - line.StartPoint.Y
+
+                If Math.Abs(dx) > 0.000001 Then Continue For
+
+                verticalLineCount += 1
+
+                Dim lineLength As Double = Math.Abs(dy)
+
+                If verticalAngleValid AndAlso
+           verticalTool IsNot Nothing AndAlso
+           lineLength >= 1.5 * Convert.ToDouble(
+               verticalTool.Attributes("LENGTH"),
+               Globalization.CultureInfo.InvariantCulture) Then
+
+                    eligibleVerticalCount += 1
+
+                    Dim halfToolLength As Double =
+    Convert.ToDouble(
+        verticalTool.Attributes("LENGTH"),
+        Globalization.CultureInfo.InvariantCulture) / 2.0
+
+                    Dim directionY As Double = Math.Sign(dy)
+
+                    Dim effectiveStartY As Double = line.StartPoint.Y
+                    Dim effectiveEndY As Double = line.EndPoint.Y
+
+                    Dim isInsideProfile As Boolean = False
+
+                    Dim innerPath As ToolShapes.IPath2D =
+    PartGeometryBuilder.ConvertGeoProfileToPath(profile)
+
+                    If innerPath IsNot Nothing AndAlso innerPath.IsClosed Then
+
+                        For Each outerProfile As GeoProfile In importedPart.GeoProfiles
+
+                            If outerProfile Is profile OrElse Not outerProfile.IsClosed Then
+                                Continue For
+                            End If
+
+                            Dim outerPath As ToolShapes.IPath2D =
+            PartGeometryBuilder.ConvertGeoProfileToPath(outerProfile)
+
+                            If outerPath Is Nothing OrElse Not outerPath.IsClosed Then
+                                Continue For
+                            End If
+
+                            If ToolShapes.Geometry2D.ClassifyProfileContainment(
+            innerPath, outerPath) =
+            ToolShapes.ProfileContainmentResult.Inside Then
+
+                                isInsideProfile = True
+                                Exit For
+
+                            End If
+
+                        Next
+
+                    End If
+
+                    Dim reverseProfileDirection As Boolean =
+    PartGeometryBuilder.ShouldReverseProfileDirection(
+        profile,
+        isInsideProfile)
+
+                    If segment.Reversed Xor reverseProfileDirection Then
+                        directionY = -directionY
+                        effectiveStartY = line.EndPoint.Y
+                        effectiveEndY = line.StartPoint.Y
+                    End If
+
+                    Dim toolStartY As Double =
+    effectiveStartY + directionY * halfToolLength
+
+                    Dim toolEndY As Double =
+    effectiveEndY - directionY * halfToolLength
+
+                    Debug.WriteLine(
+                        "Vertical Tool Center: StartY=" &
+                        toolStartY.ToString("F3") &
+                        " EndY=" &
+                        toolEndY.ToString("F3") &
+                        " X=" &
+                        line.StartPoint.X.ToString("F3"))
+
+                    Dim halfToolWidth As Double =
+    Convert.ToDouble(
+        verticalTool.Attributes("WIDTH"),
+        Globalization.CultureInfo.InvariantCulture) / 2.0
+
+                    Dim toolCenterX As Double = line.StartPoint.X
+
+
+                    Select Case Directive.CutSide.ToString()
+
+                        Case "Left"
+                            toolCenterX -= directionY * halfToolWidth
+
+                        Case "Right"
+                            toolCenterX += directionY * halfToolWidth
+
+                        Case "None"
+        ' No perpendicular offset.
+
+                        Case "Auto"
+                            Debug.WriteLine("Vertical Auto CutSide: Not yet implemented")
+                            Continue For
+
+                    End Select
+
+                    Debug.WriteLine(
+                        "Vertical Offset Tool Center: Start=(" &
+                        toolCenterX.ToString("F3") & "," &
+                        toolStartY.ToString("F3") &
+                        ") End=(" &
+                        toolCenterX.ToString("F3") & "," &
+                        toolEndY.ToString("F3") & ")")
+
+
+                    Dim toolPath As New ToolShapes.Path2D()
+
+                    toolPath.Add(
+    New ToolShapes.LineSegment2D(
+        New PointF(
+            CSng(toolCenterX),
+            CSng(toolStartY)),
+        New PointF(
+            CSng(toolCenterX),
+            CSng(toolEndY))))
+
+                    Dim contour As New ContourFeature With {
+    .ID = importedPart.GetNextFeatureID(),
+    .Description = "Preferred Vertical AutoTool",
+    .ToolSetupMemberID = verticalMember.ID,
+    .Path = toolPath,
+    .IsLogicallyClosed = False
+}
+
+                    importedPart.Features.Add(contour)
+
+                    Debug.WriteLine(
+    "Created Vertical AutoTool Contour ID=" & contour.ID &
+    " ToolMemberID=" & contour.ToolSetupMemberID)
+
+
+
+                    Debug.WriteLine(
+                "Eligible Vertical Line: Length=" &
+                lineLength.ToString("F3") &
+                " Start=(" & line.StartPoint.X & "," & line.StartPoint.Y & ")" &
+                " End=(" & line.EndPoint.X & "," & line.EndPoint.Y & ")")
+
+                End If
+
+            Next
+
+        Next
+
+        Debug.WriteLine("Vertical Lines: " & verticalLineCount)
+        Debug.WriteLine("Eligible Vertical Lines: " & eligibleVerticalCount)
 
         '============================================================
         ' Create Part
         '============================================================
         importedPart.ID = 0
 
-        importedPart.Description =
-    Path.GetFileNameWithoutExtension(
-        _selectedDxfPath)
+        importedPart.Description = Path.GetFileNameWithoutExtension(_selectedDxfPath)
 
-        productionSheet.Parts.Add(
-        importedPart)
+        productionSheet.Parts.Add(importedPart)
 
         '============================================================
         ' Create Imported Pattern
         '============================================================
-        Dim importedPattern As New Pattern With {
-        .Part = importedPart,
-        .X = 0,
-        .Y = 0,
-        .Angle = 0
-    }
+        Dim importedPattern As New Pattern With {.Part = importedPart, .X = 0, .Y = 0, .Angle = 0}
 
         productionSheet.Patterns.Add(importedPattern)
 
@@ -463,6 +1014,8 @@ Public Module modFile
 
                     _DoPrepareUI = True
                     _DoDrawUI = False
+
+                    frmMain.InitializeWorkZonesPanel()
 
                     frmMain.pnlPicmodeler.Invalidate()
 

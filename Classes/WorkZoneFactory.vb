@@ -43,7 +43,7 @@ Public Class WorkZoneFactory
     .XMin = 0,
     .XMax = 0,
     .YMin = 0,
-    .YMax = 0,
+    .YMax = sheetWidth,
     .HoldX = 0,
     .HoldY = 0,
     .RepositionDistanceX = 0,

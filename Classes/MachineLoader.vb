@@ -9,7 +9,7 @@ Module MachineLoader
     Public ReadOnly WorkzoneColors As Color() = {
     Color.DarkBlue,
     Color.LightGreen,
-    Color.LightCoral,
+    Color.Moccasin,
     Color.LightGoldenrodYellow,
     Color.LightPink,
     Color.LightSalmon

@@ -257,7 +257,6 @@ Public Class frmMain
             dockPanelWorkZones.Visible = False
 
 
-            InitializeWorkZonesPanel()
 
 
             EnableDoubleBuffering(pnlPicmodeler)
@@ -561,7 +560,32 @@ Public Class frmMain
 
 
         ' Draw machine clamps
-        DrawMachineClamps(g)
+        ' Draw machine clamps for each WorkZone
+        If CurrentJob IsNot Nothing AndAlso
+            CurrentJob.WorkZones IsNot Nothing Then
+
+            For i As Integer = 0 To CurrentJob.WorkZones.Count - 1
+
+                Dim wz As WorkZone = CurrentJob.WorkZones(i)
+
+                Dim zoneColor As Color =
+                    WorkzoneColors(i Mod WorkzoneColors.Length)
+
+                DrawMachineClamps(g, wz, zoneColor)
+
+            Next
+
+            'For i As Integer = 0 To CurrentJob.WorkZones.Count - 1
+
+            '    Dim wz As WorkZone = CurrentJob.WorkZones(i)
+
+            '    Dim zoneColor As Color = WorkzoneColors(i Mod WorkzoneColors.Length)
+
+            '    DrawMachineClamps(g, wz, zoneColor)
+
+            'Next
+
+        End If
 
         '' -------------------------------------------------
         '' 2) HOVER HIGHLIGHT (still View-owned for now)
@@ -821,7 +845,8 @@ Public Class frmMain
     entities As IEnumerable(Of GeoEntity),
     g As Graphics,
     vt As ViewTransform,
-    panelHeight As Integer)
+    panelHeight As Integer,
+    Optional overrideColor As Nullable(Of Color) = Nothing)
 
         If entities Is Nothing Then Return
 
@@ -839,17 +864,42 @@ Public Class frmMain
             End If
 
 
+
             If TypeOf entity Is GeoLine Then
-                DrawGeoLine(DirectCast(entity, GeoLine), g, vt, panelHeight)
+
+                DrawGeoLine(
+                        DirectCast(entity, GeoLine),
+                        g,
+                        vt,
+                        panelHeight,
+                        overrideColor)
 
             ElseIf TypeOf entity Is GeoArc Then
-                DrawGeoArc(DirectCast(entity, GeoArc), g, vt, panelHeight)
+
+                DrawGeoArc(
+        DirectCast(entity, GeoArc),
+        g,
+        vt,
+        panelHeight,
+        overrideColor)
 
             ElseIf TypeOf entity Is GeoCircle Then
-                DrawGeoCircle(DirectCast(entity, GeoCircle), g, vt, panelHeight)
+
+                DrawGeoCircle(
+        DirectCast(entity, GeoCircle),
+        g,
+        vt,
+        panelHeight,
+        overrideColor)
 
             ElseIf TypeOf entity Is GeoPoint Then
-                DrawGeoPoint(DirectCast(entity, GeoPoint), g, vt, panelHeight)
+
+                DrawGeoPoint(
+        DirectCast(entity, GeoPoint),
+        g,
+        vt,
+        panelHeight,
+        overrideColor)
 
             End If
 
@@ -857,12 +907,12 @@ Public Class frmMain
 
     End Sub
 
-
     Private Sub DrawGeoLine(
     l As GeoLine,
     g As Graphics,
     vt As ViewTransform,
-    panelHeight As Integer)
+    panelHeight As Integer,
+    Optional overrideColor As Nullable(Of Color) = Nothing)
 
         If l Is Nothing OrElse
        l.StartPoint Is Nothing OrElse
@@ -882,7 +932,9 @@ Public Class frmMain
         vt,
         panelHeight)
 
-        Dim drawColor As System.Drawing.Color = l.Color
+        Dim drawColor As System.Drawing.Color =
+    If(overrideColor.HasValue, overrideColor.Value, l.Color)
+
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
         '    Debug.WriteLine(
@@ -942,7 +994,8 @@ Public Class frmMain
     a As GeoArc,
     g As Graphics,
     vt As ViewTransform,
-    panelHeight As Integer)
+    panelHeight As Integer,
+    Optional overrideColor As Nullable(Of Color) = Nothing)
 
         If a Is Nothing OrElse a.Center Is Nothing Then
             Exit Sub
@@ -1040,12 +1093,12 @@ Public Class frmMain
 
     End Sub
 
-
     Private Sub DrawGeoCircle(
     c As GeoCircle,
     g As Graphics,
     vt As ViewTransform,
-    panelHeight As Integer)
+    panelHeight As Integer,
+    Optional overrideColor As Nullable(Of Color) = Nothing)
 
         If c Is Nothing OrElse c.Center Is Nothing Then
             Exit Sub
@@ -1068,7 +1121,7 @@ Public Class frmMain
         Dim displaySelected As Boolean = c.Selected OrElse IsEntityInSelectedProfile(c)
 
 
-        Dim drawColor As System.Drawing.Color = c.Color
+        Dim drawColor As System.Drawing.Color = If(overrideColor.HasValue, overrideColor.Value, c.Color)
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
         If _workZoneAssignFlash.Contains(c) Then
@@ -1154,12 +1207,21 @@ Public Class frmMain
                 ElseIf TypeOf feature Is LineOfHolesFeature Then
 
                     DrawLineOfHolesFeature(
-    DirectCast(feature, LineOfHolesFeature),
-    g,
-    vt,
-    panelHeight,
-    matLength,
-    matWidth)
+                        DirectCast(feature, LineOfHolesFeature),
+                        g,
+                        vt,
+                        panelHeight,
+                        matLength,
+                        matWidth)
+
+                ElseIf TypeOf feature Is ContourFeature Then
+
+                    DrawContourFeature(
+                        DirectCast(feature, ContourFeature),
+                        g,
+                        vt,
+                        panelHeight)
+
 
                 End If
 
@@ -1191,6 +1253,12 @@ Public Class frmMain
             Dim wzColor As Color = WorkzoneColors(i Mod WorkzoneColors.Length)
             Dim wzBrush As New SolidBrush(System.Drawing.Color.FromArgb(50, wzColor))
             Dim wzPen As New Pen(wzColor, 2)
+
+            Debug.WriteLine(
+    $"Drawing WorkZone {wz.Index + 1}: " &
+    $"XMin={wz.XMin}, XMax={wz.XMax}, " &
+    $"YMin={wz.YMin}, YMax={wz.YMax}")
+
 
             ' Flip Y for workzone bottom-left origin
             Dim wzBL As PointF = WorldToScreen(wz.XMin, sheetHeight - wz.YMax, myTransform, panelHeight)
@@ -1384,7 +1452,8 @@ Public Class frmMain
     pt As GeoPoint,
     g As Graphics,
     vt As ViewTransform,
-    panelHeight As Integer)
+    panelHeight As Integer,
+    Optional overrideColor As Nullable(Of Color) = Nothing)
 
         If pt Is Nothing Then Exit Sub
 
@@ -1403,7 +1472,7 @@ Public Class frmMain
         PointSize,
         PointSize)
 
-        Dim drawColor As System.Drawing.Color = pt.Color
+        Dim drawColor As System.Drawing.Color = If(overrideColor.HasValue, overrideColor.Value, pt.Color)
         Dim drawWidth As Single = 1.0F
         Dim drawDashed As Boolean = False
 
@@ -4639,6 +4708,99 @@ Public Class frmMain
     End Sub
 
 
+    Private Sub DrawContourFeature(
+    contour As ContourFeature,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If contour Is Nothing OrElse contour.Path Is Nothing Then
+            Exit Sub
+        End If
+
+        Dim tool As Tool = Nothing
+        Dim shape As ToolShape = Nothing
+
+        If Not ToolShapeResolver.TryResolve(
+        contour.ToolSetupMemberID,
+        tool,
+        shape) Then
+
+            Exit Sub
+        End If
+
+        Dim toolMember = AppData.ToolSetupMembers.
+    FirstOrDefault(
+        Function(m) m.ID = contour.ToolSetupMemberID)
+
+        If toolMember Is Nothing Then Exit Sub '
+
+
+        Dim drawColor As Color = tool.Color
+        Dim drawWidth As Single = 2.0F
+
+        If _workZoneAssignFlash.Contains(contour) Then
+
+            drawColor = Color.White
+
+        ElseIf contour.IsSelected Then
+
+            drawColor = Color.Red
+
+        ElseIf contour.IsHovered Then
+
+            drawColor = Color.Red
+
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
+
+            pen.DashStyle = Drawing2D.DashStyle.Dash
+
+            For Each segment As IPathSegment In contour.Path.Segments
+
+                If segment.SegmentType <> PathSegmentType.Line Then
+                    Continue For
+                End If
+
+                Dim p1 As PointF = WorldToScreen(
+                segment.StartPoint.X,
+                segment.StartPoint.Y,
+                vt,
+                panelHeight)
+
+                Dim p2 As PointF = WorldToScreen(
+                segment.EndPoint.X,
+                segment.EndPoint.Y,
+                vt,
+                panelHeight)
+
+                g.DrawLine(pen, p1, p2)
+
+                ' Draw the physical punch outline at the
+                ' starting position of the tool-center path.
+                ' Draw the physical punch outline as a solid line.
+                Using toolPen As New Pen(drawColor, drawWidth)
+
+                    toolPen.DashStyle = Drawing2D.DashStyle.Solid
+
+                    DrawToolCuttingProfile(
+                        g,
+                        shape,
+                        CDbl(segment.StartPoint.X),
+                        CDbl(segment.StartPoint.Y),
+                        toolMember.IndexAngle,
+                        vt,
+                        panelHeight,
+                        toolPen)
+
+                End Using
+            Next
+
+        End Using
+
+    End Sub
+
 
     Private Sub DrawToolCuttingProfile(
     g As Graphics,
@@ -4780,7 +4942,31 @@ Public Class frmMain
 
     End Sub
 
+    Private Sub DrawToolCuttingProfile(
+    g As Graphics,
+    shape As ToolShape,
+    centerX As Double,
+    centerY As Double,
+    angle As Double,
+    vt As ViewTransform,
+    panelHeight As Integer,
+    pen As Pen)
 
+        Dim displayHole As New HoleFeature With {
+        .X = centerX,
+        .Y = centerY,
+        .Angle = angle
+    }
+
+        DrawToolCuttingProfile(
+        g,
+        shape,
+        displayHole,
+        vt,
+        panelHeight,
+        pen)
+
+    End Sub
 
     Private Sub DrawLineOfHolesFeature(
     row As LineOfHolesFeature,
@@ -5237,21 +5423,151 @@ Public Class frmMain
         '---------------------------------------------
         ' Populate Workzone root nodes
         '---------------------------------------------
+        '---------------------------------------------
+        ' Populate WorkZone hierarchy
+        '---------------------------------------------
         If CurrentJob IsNot Nothing AndAlso
-           CurrentJob.WorkZones IsNot Nothing Then
+   CurrentJob.WorkZones IsNot Nothing Then
 
-            For i As Integer = 0 To CurrentJob.WorkZones.Count - 1
+            For Each zone As WorkZone In CurrentJob.WorkZones
 
-                Dim zone As WorkZone = CurrentJob.WorkZones(i)
+                Dim assignments As New List(Of MM3WorkZoneAssignment)
+
+                ' Collect assignments for this WorkZone.
+                For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+                    If sheet Is Nothing OrElse
+               sheet.ManufacturingModel Is Nothing Then Continue For
+
+                    Dim mm As MM3 = sheet.ManufacturingModel
+
+                    If mm.WorkZoneAssignments Is Nothing Then Continue For
+
+                    For Each assignment As MM3WorkZoneAssignment In mm.WorkZoneAssignments
+
+                        If assignment Is Nothing Then Continue For
+
+                        If assignment.WorkZoneIndex.HasValue AndAlso
+                   assignment.WorkZoneIndex.Value = zone.Index AndAlso
+                   assignment.Entity IsNot Nothing Then
+
+                            assignments.Add(assignment)
+
+                        End If
+
+                    Next
+                Next
+
+                Dim zoneText As String =
+            "WorkZone " & (zone.Index + 1).ToString()
+
+                If assignments.Count = 0 Then
+                    zoneText &= " (Empty)"
+                End If
 
                 Dim zoneNode =
-                    tlEntityList.AppendNode(
-                        New Object() {"WorkZone " & (zone.Index + 1).ToString() & " (Empty)"},
-                        CType(Nothing, DevExpress.XtraTreeList.Nodes.TreeListNode))
+            tlEntityList.AppendNode(
+                New Object() {zoneText},
+                CType(Nothing, DevExpress.XtraTreeList.Nodes.TreeListNode))
 
                 zoneNode.Tag = zone
 
+                ' Empty WorkZones have no children.
+                If assignments.Count = 0 Then Continue For
 
+                Dim zonePartGeoNode =
+            tlEntityList.AppendNode(
+                New Object() {"PartGeo"}, zoneNode)
+
+                Dim zoneManufacturingGeoNode =
+            tlEntityList.AppendNode(
+                New Object() {"ManufacturingGeo"}, zoneNode)
+
+                For Each assignment As MM3WorkZoneAssignment In assignments
+
+                    Dim profile As GeoProfile =
+                TryCast(assignment.Entity, GeoProfile)
+
+                    If profile IsNot Nothing Then
+
+                        Dim profileNode =
+                    tlEntityList.AppendNode(
+                        New Object() {"Profile " & profile.ID.ToString()},
+                        zonePartGeoNode)
+
+                        profileNode.Tag = profile
+
+                        If profile.Segments IsNot Nothing Then
+
+                            For Each segment As GeoProfileSegment In profile.Segments
+
+                                If segment Is Nothing OrElse
+                           segment.Entity Is Nothing Then Continue For
+
+                                Dim entityNode =
+                            tlEntityList.AppendNode(
+                                New Object() {segment.Entity.GetType().Name},
+                                profileNode)
+
+                                entityNode.Tag = segment.Entity
+
+                            Next
+
+                        End If
+
+                        Continue For
+
+                    End If
+
+                    Dim entity As GeoEntity =
+                TryCast(assignment.Entity, GeoEntity)
+
+                    If entity IsNot Nothing Then
+
+                        Dim entityNode =
+                    tlEntityList.AppendNode(
+                        New Object() {entity.GetType().Name},
+                        zonePartGeoNode)
+
+                        entityNode.Tag = entity
+
+                        Continue For
+
+                    End If
+
+                    Dim feature As MachiningFeature =
+                TryCast(assignment.Entity, MachiningFeature)
+
+                    If feature IsNot Nothing Then
+
+                        Dim displayName As String = feature.FeatureType.ToString()
+
+                        Select Case feature.FeatureType
+                            Case MachiningFeatureType.LineOfHoles
+                                displayName = "Row In X"
+                        End Select
+
+                        Dim featureNode =
+                    tlEntityList.AppendNode(
+                        New Object() {
+                            displayName & " " & feature.ID.ToString()
+                        },
+                        zoneManufacturingGeoNode)
+
+                        featureNode.Tag = feature
+
+                    End If
+
+                Next
+
+                ' Do not show unused categories.
+                If zonePartGeoNode.Nodes.Count = 0 Then
+                    zonePartGeoNode.ParentNode.Nodes.Remove(zonePartGeoNode)
+                End If
+
+                If zonePartGeoNode.Nodes.Count = 0 Then
+                    zonePartGeoNode.ParentNode.Nodes.Remove(zonePartGeoNode)
+                End If
             Next
 
         End If
@@ -6926,7 +7242,10 @@ Public Class frmMain
     End Sub
 
 
-    Private Sub DrawMachineClamps(g As Graphics)
+    Private Sub DrawMachineClamps(
+    g As Graphics,
+    wz As WorkZone,
+    zoneColor As Color)
 
         If CurrentJob Is Nothing OrElse
        CurrentJob.MachineDefinition Is Nothing OrElse
@@ -6947,14 +7266,20 @@ Public Class frmMain
 
             For Each clamp In CurrentJob.Clamps
 
-                Dim clampX As Double = clamp.X
+                Debug.WriteLine(
+    $"WorkZone {wz.Index + 1}: " &
+    $"Clamp={clamp.Name}, " &
+    $"MachineX={clamp.X}, " &
+    $"SheetX={clamp.X}")
+
+                Dim clampX As Double = wz.XMin + clamp.X
 
 
                 If _clampCTGGeometry IsNot Nothing AndAlso
    _clampCTGGeometry.Count > 0 Then
 
                     ' Draw the actual clamp geometry.
-                    DrawClampCTG(g, clampX, baseY)
+                    DrawClampCTG(g, clampX, baseY, zoneColor)
 
                 Else
 
@@ -7045,7 +7370,8 @@ Public Class frmMain
     Private Sub DrawClampCTG(
     g As Graphics,
     clampX As Double,
-    clampY As Double)
+    clampY As Double,
+    zoneColor As Color)
 
         If _clampCTGGeometry Is Nothing Then Return
 
@@ -7061,10 +7387,11 @@ Public Class frmMain
             g.TranslateTransform(offsetX, offsetY)
 
             DrawGeoEntities(
-            _clampCTGGeometry,
-            g,
-            myTransform,
-            panelHeight)
+    _clampCTGGeometry,
+    g,
+    myTransform,
+    panelHeight,
+    zoneColor)
 
         Finally
             g.Restore(state)
@@ -7072,7 +7399,7 @@ Public Class frmMain
 
     End Sub
 
-    Private Sub InitializeWorkZonesPanel()
+    Public Sub InitializeWorkZonesPanel()
 
         If _workZonesForm IsNot Nothing AndAlso
            Not _workZonesForm.IsDisposed Then
@@ -7083,6 +7410,11 @@ Public Class frmMain
 
         AddHandler _workZonesForm.WorkZoneChanged, AddressOf HandleWorkZoneChanged
         AddHandler _workZonesForm.AssignWorkZoneRequested, AddressOf HandleAssignWorkZoneRequested
+
+
+        matWidth = modMaterial.matWidth
+        '_workZonesForm.MaterialWidth = matWidth
+
 
         With _workZonesForm
             .TopLevel = False
@@ -7184,7 +7516,22 @@ Public Class frmMain
 
         If mm Is Nothing Then Return
 
-        For Each entity As isSelectable In _selectionManager.Selected
+        For Each selectedObject As isSelectable In _selectionManager.Selected
+
+            Dim entity As isSelectable = selectedObject
+
+            ' If an individual geometric entity belongs to a profile,
+            ' assign the complete profile instead.
+            Dim geoEntity As GeoEntity = TryCast(selectedObject, GeoEntity)
+
+            If geoEntity IsNot Nothing Then
+                Dim owningProfile As GeoProfile =
+            FindProfileForGeometry(geoEntity)
+
+                If owningProfile IsNot Nothing Then
+                    entity = owningProfile
+                End If
+            End If
 
             Dim assignment As MM3WorkZoneAssignment =
                 mm.WorkZoneAssignments.FirstOrDefault(
@@ -7215,8 +7562,46 @@ Public Class frmMain
         Next
 
         pnlPicmodeler.Invalidate()
+        RefreshEntityList()
 
     End Sub
+
+    Private Function FindProfileForGeometry(
+        geometry As GeoEntity) As GeoProfile
+
+        If geometry Is Nothing Then Return Nothing
+
+        Dim part As Part = FindPartForGeometry(geometry)
+
+        If part Is Nothing OrElse
+           part.GeoProfiles Is Nothing Then
+
+            Return Nothing
+
+        End If
+
+        For Each profile As GeoProfile In part.GeoProfiles
+
+            If profile Is Nothing OrElse
+               profile.Segments Is Nothing Then Continue For
+
+            For Each segment As GeoProfileSegment In profile.Segments
+
+                If segment Is Nothing Then Continue For
+
+                If Object.ReferenceEquals(segment.Entity, geometry) Then
+                    Return profile
+                End If
+
+            Next
+
+        Next
+
+        Return Nothing
+
+    End Function
+
+
 End Class
 
 
