@@ -212,260 +212,45 @@ Public Module modFile
         Next
 
 
-
-        '============================================================
-        ' TEST - Automatic Exact Round Punch Tooling
-        '============================================================
-        For Each circle As GeoCircle In importedPart.Geometry.OfType(Of GeoCircle)()
-
-
-            Dim camLayer As Layer = TryCast(circle.Association, Layer)
-
-            If camLayer Is Nothing Then Continue For
-
-            Dim directive = PartGeometryBuilder.FindDirectiveByCAMLayer(camLayer.Name, _selectedLayerSetup)
-
-            If directive Is Nothing Then Continue For
-
-            Dim selectedStation As String = directive.Station.Trim()
-
-            Dim memberID As Integer = 0
-
-            Dim toolDiameter As Double = 0
-
-
-            If String.Equals(selectedStation, "None", StringComparison.OrdinalIgnoreCase) Then
-
-                Continue For
-
-            End If
-
-            If Not String.Equals(selectedStation, "**Auto**", StringComparison.OrdinalIgnoreCase) Then
-
-                Dim ncNumber As Integer
-
-                If Not Integer.TryParse(selectedStation, ncNumber) Then
-                    Continue For
-                End If
-
-                Dim stationRecord = AppData.StationsTable.Rows.
-                    FirstOrDefault(
-                        Function(s) CInt(s("MachineID")) = machineDef.ID AndAlso
-                                    CInt(s("NCCodeNumber")) = ncNumber)
-
-                If stationRecord Is Nothing Then
-                    Continue For
-                End If
-
-                Dim stationID As Integer = CInt(stationRecord("ID"))
-
-                Dim assignedMember = AppData.ToolSetupMembers.
-                    FirstOrDefault(
-                        Function(m) m.ToolSetupID = CurrentJob.ToolSetupID AndAlso
-                                    m.StationID = stationID)
-
-                If assignedMember Is Nothing Then
-                    Continue For
-                End If
-
-                memberID = assignedMember.ID
-
-                Dim assignedTool As Tool =
-                    AppData.ToolCrib.FirstOrDefault(
-                        Function(t) t.ID = assignedMember.ToolID)
-
-                If assignedTool Is Nothing OrElse
-                   assignedTool.Attributes Is Nothing Then
-                    Continue For
-                End If
-
-                Dim diameterValue As Object = Nothing
-
-                If Not assignedTool.Attributes.TryGetValue("DIAMETER", diameterValue) Then
-                    Continue For
-                End If
-
-                toolDiameter = Convert.ToDouble(diameterValue, Globalization.CultureInfo.InvariantCulture)
-
-            End If
-
-            If String.Equals(
-    selectedStation,
-    "**Auto**",
-    StringComparison.OrdinalIgnoreCase) Then
-
-                memberID = AutoPunchingEngine.FindExactRoundPunch(
-        circle,
-        CurrentJob.ToolSetupID,
-        machineDef)
-
-            End If
-
-
-            ' Temporary safeguard for the specific-station test.
-            ' Station 104 has a 1.000-inch round punch.
-            ' Only create single-hit holes for matching circles.
-
-            If Not String.Equals(
-    selectedStation,
-    "**Auto**",
-    StringComparison.OrdinalIgnoreCase) Then
-
-                If Math.Abs((circle.Radius * 2.0) - toolDiameter) > 0.0001 Then
-
-                    Continue For
-
-                End If
-
-            End If
-
-
-            If memberID = 0 Then Continue For
-            If circle.Center Is Nothing Then Continue For
-
-            Dim hole As New HoleFeature With {
-        .ID = importedPart.GetNextFeatureID(),
-        .FeatureType = MachiningFeatureType.Hole,
-        .Description = "Punch Hole",
-        .X = circle.Center.X,
-        .Y = circle.Center.Y,
-        .Angle = 0,
-        .SourceGeometryID = circle.ID,
-        .ToolSetupMemberID = memberID}
-
-            importedPart.Features.Add(hole)
-
-        Next
+        ProcessRoundPunchAutoTool(importedPart, machineDef)
 
         '============================================================
         ' Preferred Horizontal / Vertical AutoTool
         '============================================================
 
-        Dim activeToolSetup As ToolSetup =
-    AppData.ToolSetups.FirstOrDefault(
-        Function(ts) ts.ID = CurrentJob.ToolSetupID)
-
-        Dim verticalTool As Tool = Nothing
-        Dim verticalShape As ToolShape = Nothing
-        If activeToolSetup IsNot Nothing Then
-
-            Debug.WriteLine(
-        "Preferred Horizontal Tool Member ID: " &
-        activeToolSetup.PreferredHorizontalCuttingToolID)
-
-            Debug.WriteLine(
-        "Preferred Vertical Tool Member ID: " &
-        activeToolSetup.PreferredVerticalCuttingToolID)
-
-        End If
+        Dim preferredContext As PreferredAutoToolContext =
+    InitializePreferredAutoTools()
 
 
 
-
-        Dim horizontalMember = AppData.ToolSetupMembers.
-    FirstOrDefault(
-        Function(m) m.ID =
-            activeToolSetup.PreferredHorizontalCuttingToolID)
-
-        Dim verticalMember = AppData.ToolSetupMembers.
-    FirstOrDefault(
-        Function(m) m.ID =
-            activeToolSetup.PreferredVerticalCuttingToolID)
-
-        If horizontalMember IsNot Nothing Then
-            Debug.WriteLine(
-        "Horizontal Installed Index Angle: " &
-        horizontalMember.IndexAngle)
-        End If
-
-        If verticalMember IsNot Nothing Then
-            Debug.WriteLine(
-        "Vertical Installed Index Angle: " &
-        verticalMember.IndexAngle)
-        End If
 
         If _selectedLayerSetup Is Nothing Then
             Exit Sub
         End If
 
+        Dim horizontalMember As ToolSetupMember =
+    preferredContext.HorizontalMember
+
+        Dim verticalMember As ToolSetupMember =
+    preferredContext.VerticalMember
+
+        Dim horizontalTool As Tool =
+    preferredContext.HorizontalTool
+
+        Dim verticalTool As Tool =
+    preferredContext.VerticalTool
+
+        Dim horizontalShape As ToolShape =
+    preferredContext.HorizontalShape
+
+        Dim verticalShape As ToolShape =
+    preferredContext.VerticalShape
 
         Dim horizontalAngleValid As Boolean =
-    horizontalMember IsNot Nothing AndAlso
-    (Math.Abs(horizontalMember.IndexAngle - 0.0) < 0.001 OrElse
-     Math.Abs(horizontalMember.IndexAngle - 180.0) < 0.001)
+    preferredContext.HorizontalAngleValid
 
         Dim verticalAngleValid As Boolean =
-    verticalMember IsNot Nothing AndAlso
-    (Math.Abs(verticalMember.IndexAngle - 90.0) < 0.001 OrElse
-     Math.Abs(verticalMember.IndexAngle - 270.0) < 0.001)
-
-        Debug.WriteLine(
-    "Preferred Horizontal Orientation Valid: " &
-    horizontalAngleValid)
-
-        Debug.WriteLine(
-    "Preferred Vertical Orientation Valid: " &
-    verticalAngleValid)
-
-
-        Dim horizontalTool As Tool = Nothing
-        Dim horizontalShape As ToolShape = Nothing
-
-        If horizontalAngleValid Then
-
-            If ToolShapeResolver.TryResolve(
-        horizontalMember.ID,
-        horizontalTool,
-        horizontalShape) Then
-
-                Debug.WriteLine(
-            "Preferred Horizontal Tool Resolved: " &
-            horizontalTool.Description)
-
-                Debug.WriteLine(
-    "Horizontal Punch Length: " &
-    horizontalTool.Attributes("LENGTH").ToString())
-
-                Debug.WriteLine(
-                    "Horizontal Punch Width: " &
-                    horizontalTool.Attributes("WIDTH").ToString())
-
-            Else
-                Debug.WriteLine(
-            "Preferred Horizontal Tool: Resolution Failed")
-            End If
-
-
-            If verticalAngleValid Then
-
-                If ToolShapeResolver.TryResolve(
-                    verticalMember.ID,
-                    verticalTool,
-                    verticalShape) Then
-
-                    Debug.WriteLine(
-                        "Preferred Vertical Tool Resolved: " &
-                        verticalTool.Description)
-
-                Else
-
-                    Debug.WriteLine(
-                        "Preferred Vertical Tool: Resolution Failed")
-
-                End If
-
-            Else
-
-                Debug.WriteLine(
-                    "Preferred Vertical Tool: Skipped - Invalid Orientation")
-
-            End If
-
-        Else
-            Debug.WriteLine(
-        "Preferred Horizontal Tool: Skipped - Invalid Orientation")
-        End If
-
+    preferredContext.VerticalAngleValid
         '============================================================
         ' Preferred AutoTool - Horizontal Line Eligibility
         '============================================================
@@ -963,6 +748,226 @@ Public Module modFile
     End Sub
 
 
+    Private Sub ProcessRoundPunchAutoTool(
+    importedPart As Part,
+    machineDef As MachineDefinition)
+
+
+
+        '============================================================
+        ' TEST - Automatic Exact Round Punch Tooling
+        '============================================================
+        For Each circle As GeoCircle In importedPart.Geometry.OfType(Of GeoCircle)()
+
+
+            Dim camLayer As Layer = TryCast(circle.Association, Layer)
+
+            If camLayer Is Nothing Then Continue For
+
+            Dim directive = PartGeometryBuilder.FindDirectiveByCAMLayer(camLayer.Name, _selectedLayerSetup)
+
+            If directive Is Nothing Then Continue For
+
+            Dim selectedStation As String = directive.Station.Trim()
+
+            Dim memberID As Integer = 0
+
+            Dim toolDiameter As Double = 0
+
+
+            If String.Equals(selectedStation, "None", StringComparison.OrdinalIgnoreCase) Then
+
+                Continue For
+
+            End If
+
+            If Not String.Equals(selectedStation, "**Auto**", StringComparison.OrdinalIgnoreCase) Then
+
+                Dim ncNumber As Integer
+
+                If Not Integer.TryParse(selectedStation, ncNumber) Then
+                    Continue For
+                End If
+
+                Dim stationRecord = AppData.StationsTable.Rows.
+                    FirstOrDefault(
+                        Function(s) CInt(s("MachineID")) = machineDef.ID AndAlso
+                                    CInt(s("NCCodeNumber")) = ncNumber)
+
+                If stationRecord Is Nothing Then
+                    Continue For
+                End If
+
+                Dim stationID As Integer = CInt(stationRecord("ID"))
+
+                Dim assignedMember = AppData.ToolSetupMembers.
+                    FirstOrDefault(
+                        Function(m) m.ToolSetupID = CurrentJob.ToolSetupID AndAlso
+                                    m.StationID = stationID)
+
+                If assignedMember Is Nothing Then
+                    Continue For
+                End If
+
+                memberID = assignedMember.ID
+
+                Dim assignedTool As Tool =
+                    AppData.ToolCrib.FirstOrDefault(
+                        Function(t) t.ID = assignedMember.ToolID)
+
+                If assignedTool Is Nothing OrElse
+                   assignedTool.Attributes Is Nothing Then
+                    Continue For
+                End If
+
+                Dim diameterValue As Object = Nothing
+
+                If Not assignedTool.Attributes.TryGetValue("DIAMETER", diameterValue) Then
+                    Continue For
+                End If
+
+                toolDiameter = Convert.ToDouble(diameterValue, Globalization.CultureInfo.InvariantCulture)
+
+            End If
+
+            If String.Equals(
+    selectedStation,
+    "**Auto**",
+    StringComparison.OrdinalIgnoreCase) Then
+
+                memberID = AutoPunchingEngine.FindExactRoundPunch(
+        circle,
+        CurrentJob.ToolSetupID,
+        machineDef)
+
+            End If
+
+
+            ' Temporary safeguard for the specific-station test.
+            ' Station 104 has a 1.000-inch round punch.
+            ' Only create single-hit holes for matching circles.
+
+            If Not String.Equals(
+    selectedStation,
+    "**Auto**",
+    StringComparison.OrdinalIgnoreCase) Then
+
+                If Math.Abs((circle.Radius * 2.0) - toolDiameter) > 0.0001 Then
+
+                    Continue For
+
+                End If
+
+            End If
+
+
+            If memberID = 0 Then Continue For
+            If circle.Center Is Nothing Then Continue For
+
+            Dim hole As New HoleFeature With {
+        .ID = importedPart.GetNextFeatureID(),
+        .FeatureType = MachiningFeatureType.Hole,
+        .Description = "Punch Hole",
+        .X = circle.Center.X,
+        .Y = circle.Center.Y,
+        .Angle = 0,
+        .SourceGeometryID = circle.ID,
+        .ToolSetupMemberID = memberID}
+
+            importedPart.Features.Add(hole)
+
+        Next
+    End Sub
+
+
+    Private Class PreferredAutoToolContext
+
+        Public Property HorizontalMember As ToolSetupMember
+        Public Property VerticalMember As ToolSetupMember
+
+        Public Property HorizontalTool As Tool
+        Public Property VerticalTool As Tool
+
+        Public Property HorizontalShape As ToolShape
+        Public Property VerticalShape As ToolShape
+
+        Public Property HorizontalAngleValid As Boolean
+        Public Property VerticalAngleValid As Boolean
+
+    End Class
+
+    Private Function InitializePreferredAutoTools() As PreferredAutoToolContext
+
+        Dim context As New PreferredAutoToolContext()
+
+        Dim activeToolSetup As ToolSetup =
+    AppData.ToolSetups.FirstOrDefault(
+        Function(ts) ts.ID = CurrentJob.ToolSetupID)
+
+        If activeToolSetup Is Nothing Then
+            Return context
+        End If
+
+
+        context.HorizontalMember =
+    AppData.ToolSetupMembers.FirstOrDefault(
+        Function(m) m.ID =
+            activeToolSetup.PreferredHorizontalCuttingToolID)
+
+        context.VerticalMember =
+    AppData.ToolSetupMembers.FirstOrDefault(
+        Function(m) m.ID =
+            activeToolSetup.PreferredVerticalCuttingToolID)
+
+        context.HorizontalAngleValid =
+    context.HorizontalMember IsNot Nothing AndAlso
+    (Math.Abs(context.HorizontalMember.IndexAngle - 0.0) < 0.001 OrElse
+     Math.Abs(context.HorizontalMember.IndexAngle - 180.0) < 0.001)
+
+        context.VerticalAngleValid =
+    context.VerticalMember IsNot Nothing AndAlso
+    (Math.Abs(context.VerticalMember.IndexAngle - 90.0) < 0.001 OrElse
+     Math.Abs(context.VerticalMember.IndexAngle - 270.0) < 0.001)
+
+
+        If context.HorizontalAngleValid Then
+
+            ToolShapeResolver.TryResolve(
+        context.HorizontalMember.ID,
+        context.HorizontalTool,
+        context.HorizontalShape)
+
+        End If
+
+        If context.HorizontalAngleValid AndAlso
+            context.VerticalAngleValid Then
+
+            ToolShapeResolver.TryResolve(
+        context.VerticalMember.ID,
+        context.VerticalTool,
+        context.VerticalShape)
+
+        End If
+
+
+        Debug.WriteLine(
+    "Preferred AutoTool Context | " &
+    "HorizontalMember=" &
+    If(context.HorizontalMember Is Nothing,
+       "None",
+       context.HorizontalMember?.ID.ToString()) &
+    " | VerticalMember=" &
+    If(context.VerticalMember Is Nothing,
+       "None",
+       context.VerticalMember?.ID.ToString()) &
+    " | HorizontalResolved=" &
+    (context.HorizontalTool IsNot Nothing).ToString() &
+    " | VerticalResolved=" &
+    (context.VerticalTool IsNot Nothing).ToString())
+
+        Return context
+
+    End Function
     Public Function FileOpen()
 
         frmMain.Cursor = Cursors.WaitCursor
