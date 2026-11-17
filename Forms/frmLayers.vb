@@ -3,6 +3,7 @@ Imports DevExpress.XtraGrid.Views.Grid
 Public Class frmLayers
 
     Public Property ProductionJob As Job
+    Public Event ActiveLayerChanged(selectedLayer As Layer)
     Dim sLayerName As String
     Dim lLayerColor As System.Drawing.Color
     Private edit As RepositoryItemCheckEdit
@@ -271,15 +272,12 @@ Public Class frmLayers
 
         If e.RowHandle < 0 Then Return
 
-        Dim lst As List(Of TheTools) =
-            CType(gViewToolLayer.DataSource, List(Of TheTools))
+        Dim layer As Layer =
+            TryCast(gViewToolLayer.GetRow(e.RowHandle), Layer)
 
-        Dim item As TheTools = lst(e.RowHandle)
+        If layer Is Nothing Then Return
 
-        e.Appearance.ForeColor = item.ToolColor
-        'e.Appearance.BackColor = MaterialDisplayColor
-
-
+        e.Appearance.ForeColor = layer.Color
     End Sub
 
     Private Sub sbHideAll_Click(sender As Object, e As EventArgs) Handles sbHideAll.Click
@@ -327,37 +325,23 @@ Public Class frmLayers
 
     Private Sub sbSetCurrent_Click(sender As Object, e As EventArgs) Handles sbSetCurrent.Click
 
-        'Try
+        Dim selectedLayer As Layer =
+        TryCast(gViewToolLayer.GetFocusedRow(), Layer)
 
-        '    If (gViewToolLayer.FocusedRowHandle < 0) Then
+        If selectedLayer Is Nothing Then
 
-        '        MessageBox.Show("Please select a 'Layer'.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Exclamation)
-        '        Exit Sub
-        '    End If
+            MessageBox.Show(
+            "Please select a layer.",
+            "Set Active Layer",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
 
-        '    If (gViewToolLayer.GetRowCellValue(gViewToolLayer.FocusedRowHandle, gViewToolLayer.Columns("ToolHidden")) = False) Then
+            Return
 
-        '        MessageBox.Show("The Selected Layer is Hidden", "Error", MessageBoxButtons.OK, MessageBoxIcon.Exclamation)
+        End If
 
-        '    End If
+        RaiseEvent ActiveLayerChanged(selectedLayer)
 
-        '    If (UCase(gViewToolLayer.GetRowCellValue(gViewToolLayer.FocusedRowHandle, gViewToolLayer.Columns("ToolName"))) <> "STOCK") Then
-
-        '        Call SetActiveLayer(gViewToolLayer.GetRowCellValue(gViewToolLayer.FocusedRowHandle, gViewToolLayer.Columns("ToolName")), _
-        '                             System.Drawing.ColorTranslator.ToOle(gViewToolLayer.GetRowCellValue(gViewToolLayer.FocusedRowHandle, gViewToolLayer.Columns("ToolColor"))))
-
-        '    End If
-
-        '    ' clear the default drawing flag
-        '    lReturn = PortalExecute("attrib:defdel:name=" & QStr("partprof"))
-
-        '    frmMain.CloseFirstPanel()
-        '    Me.Dispose()
-
-
-        'Catch ex As Exception
-        '    MessageBox.Show(ex.Message)
-        'End Try
     End Sub
 
     Private Sub btnAddLayer_Click(sender As Object, e As EventArgs) Handles btnAddLayer.Click

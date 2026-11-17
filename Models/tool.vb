@@ -100,6 +100,7 @@ Namespace WE_ENG_V25_0.Core.Models
         Public Property ToolSetupID As Integer  ' Which ToolSetup this belongs to
         Public Property StationID As Integer    ' Which Station this maps to
         Public Property ToolID As Integer       ' Tool assigned to the Station
+        Public Property OrderID As Integer
 
         ' These come from ToolSetupMembers.json
         Public Property FixedStation As Boolean

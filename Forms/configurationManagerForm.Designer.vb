@@ -82,6 +82,8 @@ Partial Class ConfigurationManagerForm
         Me.propgrdLayer = New System.Windows.Forms.PropertyGrid()
         Me.tabPageAutoToolHelpers = New System.Windows.Forms.TabPage()
         Me.dgvAutoToolHelpers = New System.Windows.Forms.DataGridView()
+        Me.colHelper = New System.Windows.Forms.DataGridViewTextBoxColumn()
+        Me.colHelperTool = New System.Windows.Forms.DataGridViewComboBoxColumn()
         Me.cmsTreeActions = New System.Windows.Forms.ContextMenuStrip(Me.components)
         Me.AddMachineTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteMachineTSM = New System.Windows.Forms.ToolStripMenuItem()
@@ -96,8 +98,8 @@ Partial Class ConfigurationManagerForm
         Me.DeleteMaterialTypeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteMaterialSizeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteLayerTSM = New System.Windows.Forms.ToolStripMenuItem()
-        Me.colHelper = New System.Windows.Forms.DataGridViewTextBoxColumn()
-        Me.colHelperTool = New System.Windows.Forms.DataGridViewComboBoxColumn()
+        Me.btnMoveToolUp = New System.Windows.Forms.Button()
+        Me.btnMoveToolDown = New System.Windows.Forms.Button()
         CType(Me.SplitContainer1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SplitContainer1.Panel1.SuspendLayout()
         Me.SplitContainer1.Panel2.SuspendLayout()
@@ -344,6 +346,8 @@ Partial Class ConfigurationManagerForm
         '
         'Panel1
         '
+        Me.Panel1.Controls.Add(Me.btnMoveToolDown)
+        Me.Panel1.Controls.Add(Me.btnMoveToolUp)
         Me.Panel1.Controls.Add(Me.cmdAutoToolHelpers)
         Me.Panel1.Controls.Add(Me.btnRemFromStation)
         Me.Panel1.Controls.Add(Me.btnTSRemoveParameter)
@@ -367,7 +371,7 @@ Partial Class ConfigurationManagerForm
         'btnRemFromStation
         '
         Me.btnRemFromStation.AutoSize = True
-        Me.btnRemFromStation.Location = New System.Drawing.Point(131, 6)
+        Me.btnRemFromStation.Location = New System.Drawing.Point(82, 8)
         Me.btnRemFromStation.Name = "btnRemFromStation"
         Me.btnRemFromStation.Size = New System.Drawing.Size(143, 26)
         Me.btnRemFromStation.TabIndex = 6
@@ -801,6 +805,20 @@ Partial Class ConfigurationManagerForm
         Me.dgvAutoToolHelpers.Size = New System.Drawing.Size(952, 512)
         Me.dgvAutoToolHelpers.TabIndex = 0
         '
+        'colHelper
+        '
+        Me.colHelper.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None
+        Me.colHelper.HeaderText = "AutoTool Helper"
+        Me.colHelper.Name = "colHelper"
+        Me.colHelper.ReadOnly = True
+        Me.colHelper.Width = 250
+        '
+        'colHelperTool
+        '
+        Me.colHelperTool.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill
+        Me.colHelperTool.HeaderText = "Preferred Tool"
+        Me.colHelperTool.Name = "colHelperTool"
+        '
         'cmsTreeActions
         '
         Me.cmsTreeActions.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.AddMachineTSM, Me.DeleteMachineTSM, Me.DeleteToolSetupTSM, Me.AddToolSetupTSM, Me.RenameToolSetupTSM, Me.AddLayerSetupTSM, Me.AddLayerTSM, Me.DeleteLayerSetpTSM, Me.AddMaterialTypeTSM, Me.AddMaterialSizeTSM, Me.DeleteMaterialTypeTSM, Me.DeleteMaterialSizeTSM, Me.DeleteLayerTSM})
@@ -885,19 +903,25 @@ Partial Class ConfigurationManagerForm
         Me.DeleteLayerTSM.Size = New System.Drawing.Size(196, 22)
         Me.DeleteLayerTSM.Text = "Delete Layer"
         '
-        'colHelper
+        'btnMoveToolUp
         '
-        Me.colHelper.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None
-        Me.colHelper.HeaderText = "AutoTool Helper"
-        Me.colHelper.Name = "colHelper"
-        Me.colHelper.ReadOnly = True
-        Me.colHelper.Width = 250
+        Me.btnMoveToolUp.AutoSize = True
+        Me.btnMoveToolUp.Location = New System.Drawing.Point(378, 10)
+        Me.btnMoveToolUp.Name = "btnMoveToolUp"
+        Me.btnMoveToolUp.Size = New System.Drawing.Size(85, 23)
+        Me.btnMoveToolUp.TabIndex = 8
+        Me.btnMoveToolUp.Text = "Move Tool Up"
+        Me.btnMoveToolUp.UseVisualStyleBackColor = True
         '
-        'colHelperTool
+        'btnMoveToolDown
         '
-        Me.colHelperTool.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill
-        Me.colHelperTool.HeaderText = "Preferred Tool"
-        Me.colHelperTool.Name = "colHelperTool"
+        Me.btnMoveToolDown.AutoSize = True
+        Me.btnMoveToolDown.Location = New System.Drawing.Point(469, 10)
+        Me.btnMoveToolDown.Name = "btnMoveToolDown"
+        Me.btnMoveToolDown.Size = New System.Drawing.Size(99, 23)
+        Me.btnMoveToolDown.TabIndex = 9
+        Me.btnMoveToolDown.Text = "Move Tool Down"
+        Me.btnMoveToolDown.UseVisualStyleBackColor = True
         '
         'ConfigurationManagerForm
         '
@@ -1028,4 +1052,6 @@ Partial Class ConfigurationManagerForm
     Friend WithEvents dgvAutoToolHelpers As DataGridView
     Friend WithEvents colHelper As DataGridViewTextBoxColumn
     Friend WithEvents colHelperTool As DataGridViewComboBoxColumn
+    Friend WithEvents btnMoveToolDown As Button
+    Friend WithEvents btnMoveToolUp As Button
 End Class

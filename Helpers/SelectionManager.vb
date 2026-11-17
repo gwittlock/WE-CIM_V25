@@ -1172,7 +1172,78 @@ Public Class SelectionManager
 
         End If
 
+        '====================================================
+        ' MANUFACTURING MODEL CONTOUR WINDOW SELECTION
+        '====================================================
 
+        If Not profileSelectionEnabled AndAlso
+   (selectionFilter And SelectionFilter.Line) <> SelectionFilter.None AndAlso
+   _machiningFeatures IsNot Nothing Then
+
+            For Each contour As ContourFeature In
+        _machiningFeatures.OfType(Of ContourFeature)()
+
+                If contour.Path Is Nothing Then Continue For
+
+                Dim matches As Boolean = False
+                Dim hasLine As Boolean = False
+
+                If isReverseWindow Then
+
+                    ' Right-to-left: any line intersecting the window.
+                    For Each segment As IPathSegment In contour.Path.Segments
+
+                        Dim line As LineSegment2D =
+                    TryCast(segment, LineSegment2D)
+
+                        If line Is Nothing Then Continue For
+
+                        hasLine = True
+                        If IsGeoLineIntersectingWindow(line, worldRect) Then
+
+                            matches = True
+                            Exit For
+
+                        End If
+                    Next
+
+                Else
+
+                    ' Left-to-right: every line must be enclosed.
+                    matches = True
+
+                    For Each segment As IPathSegment In contour.Path.Segments
+
+                        Dim line As LineSegment2D =
+                    TryCast(segment, LineSegment2D)
+
+                        If line Is Nothing Then Continue For
+
+                        hasLine = True
+
+                        If Not worldRect.Contains(line.StartPoint) OrElse
+                   Not worldRect.Contains(line.EndPoint) Then
+
+                            matches = False
+                            Exit For
+
+                        End If
+
+                    Next
+
+                End If
+
+                If Not hasLine OrElse Not matches Then Continue For
+
+                If deselect Then
+                    ApplyDeselection(contour)
+                Else
+                    ApplySelection(contour)
+                End If
+
+            Next
+
+        End If
         '====================================================
         ' 3. MANUFACTURING MODEL HOLE WINDOW SELECTION
         '====================================================
@@ -1864,7 +1935,57 @@ Public Class SelectionManager
 
     End Function
 
+    Private Function IsGeoLineIntersectingWindow(
+    line As LineSegment2D,
+    worldRect As RectangleF) As Boolean
 
+        If line Is Nothing Then Return False
+
+        Dim x1 As Double = line.StartPoint.X
+        Dim y1 As Double = line.StartPoint.Y
+        Dim x2 As Double = line.EndPoint.X
+        Dim y2 As Double = line.EndPoint.Y
+
+        Dim dx As Double = x2 - x1
+        Dim dy As Double = y2 - y1
+
+        Dim tMin As Double = 0.0
+        Dim tMax As Double = 1.0
+
+        Dim p() As Double = {-dx, dx, -dy, dy}
+
+        Dim q() As Double = {
+        x1 - worldRect.Left,
+        worldRect.Right - x1,
+        y1 - worldRect.Top,
+        worldRect.Bottom - y1
+    }
+
+        For i As Integer = 0 To 3
+
+            If Math.Abs(p(i)) < 0.000000000001 Then
+
+                If q(i) < 0 Then Return False
+
+            Else
+
+                Dim t As Double = q(i) / p(i)
+
+                If p(i) < 0 Then
+                    tMin = Math.Max(tMin, t)
+                Else
+                    tMax = Math.Min(tMax, t)
+                End If
+
+                If tMin > tMax Then Return False
+
+            End If
+
+        Next
+
+        Return True
+
+    End Function
 
     Private Function IsGeoPointFullyInsideWindow(
     pt As GeoPoint,
@@ -2301,5 +2422,14 @@ Public Class SelectionManager
 
     End Function
 
+    Public Sub ClearHover()
 
+        If _nativeHovered Is Nothing Then Return
+
+        _nativeHovered.IsHovered = False
+        _nativeHovered = Nothing
+
+        RaiseEvent HoverChanged(Nothing)
+
+    End Sub
 End Class

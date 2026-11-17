@@ -1,8 +1,10 @@
-﻿Public MustInherit Class GeoEntity
+﻿Imports System.ComponentModel
+Public MustInherit Class GeoEntity
     Implements isSelectable
 
     Public Property ID As Integer
     Public Property Selected As Boolean
+    <TypeConverter(GetType(ExpandableObjectConverter))>
     Public Property Association As IGeoAssociation
 
     Public Property IsSelected As Boolean Implements isSelectable.IsSelected

@@ -3367,8 +3367,8 @@ Partial Class frmMain
         Me.defaultToolTipController1.SetAllowHtmlText(Me.ToolStripContainer1.TopToolStripPanel, DevExpress.Utils.DefaultBoolean.[Default])
         Me.ToolStripContainer1.TopToolStripPanel.BackColor = System.Drawing.SystemColors.ControlDark
         Me.ToolStripContainer1.TopToolStripPanel.Controls.Add(Me.tbView)
-        Me.ToolStripContainer1.TopToolStripPanel.Controls.Add(Me.tbSelect)
         Me.ToolStripContainer1.TopToolStripPanel.Controls.Add(Me.tbUndo)
+        Me.ToolStripContainer1.TopToolStripPanel.Controls.Add(Me.tbSelect)
         Me.ToolStripContainer1.TopToolStripPanel.MaximumSize = New System.Drawing.Size(0, 33)
         '
         'splitContainerControl
@@ -3917,6 +3917,11 @@ Partial Class frmMain
         '
         'vgCreateHoles
         '
+        Me.vgCreateHoles.Appearance.FocusedCell.BackColor = System.Drawing.Color.Transparent
+        Me.vgCreateHoles.Appearance.FocusedCell.BackColor2 = System.Drawing.Color.Transparent
+        Me.vgCreateHoles.Appearance.FocusedCell.Options.UseBackColor = True
+        Me.vgCreateHoles.Appearance.FocusedRecord.BackColor = System.Drawing.Color.FromArgb(CType(CType(224, Byte), Integer), CType(CType(224, Byte), Integer), CType(CType(224, Byte), Integer))
+        Me.vgCreateHoles.Appearance.FocusedRecord.Options.UseBackColor = True
         Me.vgCreateHoles.Location = New System.Drawing.Point(0, 29)
         Me.vgCreateHoles.Name = "vgCreateHoles"
         Me.vgCreateHoles.Size = New System.Drawing.Size(235, 454)

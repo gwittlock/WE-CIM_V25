@@ -391,6 +391,29 @@ Public Class ConfigurationManagerForm
             OrderBy(Function(s) s.NCCodeNumber).
             ToList()
 
+        ' --- Initialize preferred order for existing tools ---
+        Dim nextOrderID As Integer =
+    membersForSetup.
+        Where(Function(m) m.OrderID > 0 AndAlso m.OrderID < 9000).
+        Select(Function(m) m.OrderID).
+        DefaultIfEmpty(0).
+        Max() + 1
+
+        For Each member In membersForSetup.
+    Where(Function(m) m.OrderID = 0).
+    OrderBy(Function(m)
+                Dim station = AppData.Stations.FirstOrDefault(
+                    Function(s) s.ID = m.StationID)
+
+                Return If(station IsNot Nothing,
+                          station.NCCodeNumber,
+                          Integer.MaxValue)
+            End Function)
+
+            member.OrderID = nextOrderID
+            nextOrderID += 1
+
+        Next
         ' --- Build DataTable for the grid ---
         Dim dt As New DataTable()
 
@@ -400,6 +423,7 @@ Public Class ConfigurationManagerForm
         dt.Columns.Add("FixedStation", GetType(Boolean))
         dt.Columns.Add("StationID", GetType(Integer))
         dt.Columns.Add("ToolSetupMemberID", GetType(Integer))
+        dt.Columns.Add("OrderID", GetType(Integer))
 
         ' PrimaryCode and SecondaryCode are no longer
         ' hard-coded Tool Setup columns.
@@ -483,6 +507,8 @@ Public Class ConfigurationManagerForm
                 row("IndexAngle") = member.IndexAngle
                 row("FixedStation") = member.FixedStation
                 row("ToolSetupMemberID") = member.ID
+                row("OrderID") = member.OrderID
+
 
             Else
 
@@ -490,6 +516,7 @@ Public Class ConfigurationManagerForm
                 row("IndexAngle") = 0.0
                 row("FixedStation") = False
                 row("ToolSetupMemberID") = DBNull.Value
+                row("OrderID") = 9000
 
             End If
 
@@ -575,8 +602,11 @@ Public Class ConfigurationManagerForm
 
         Next
 
+        ' --- Sort by preferred tool order ---
+        dt.DefaultView.Sort = "OrderID ASC, NCCodeNumber ASC"
+
         ' --- Bind DataTable to grid ---
-        dgvToolSetup.DataSource = dt
+        dgvToolSetup.DataSource = dt.DefaultView
 
         ' --- Hide internal ID columns ---
         If dgvToolSetup.Columns.Contains("ToolSetupMemberID") Then
@@ -587,6 +617,9 @@ Public Class ConfigurationManagerForm
             dgvToolSetup.Columns("StationID").Visible = False
         End If
 
+        If dgvToolSetup.Columns.Contains("OrderID") Then
+            dgvToolSetup.Columns("OrderID").Visible = False
+        End If
         ' --- Apply UDP display names and visibility ---
         If AppData.ToolSetupUDPDefinitions IsNot Nothing Then
 
@@ -648,10 +681,10 @@ Public Class ConfigurationManagerForm
         e.CellStyle.ForeColor = toolColor
 
         ' Maintain material background.
-        e.CellStyle.BackColor = _MaterialDisplayColor
+        ' e.CellStyle.BackColor = _MaterialDisplayColor
 
         ' Preserve tool-colored text when selected.
-        e.CellStyle.SelectionForeColor = toolColor
+        ' e.CellStyle.SelectionForeColor = toolColor
 
         ' Choose readable text based on background brightness.
         Dim brightness As Double =
@@ -5104,7 +5137,7 @@ Public Class ConfigurationManagerForm
         ' Ignore standard and internal columns.
         Select Case columnName
             Case "NCCodeNumber", "ToolDescription", "IndexAngle",
-       "FixedStation", "StationID", "ToolSetupMemberID"
+         "FixedStation", "StationID", "ToolSetupMemberID"
                 Return
         End Select
 
@@ -5551,4 +5584,154 @@ Public Class ConfigurationManagerForm
 
     End Sub
 
+    Private Sub btnMoveToolUp_Click(sender As Object, e As EventArgs) Handles btnMoveToolUp.Click
+        If dgvToolSetup.CurrentRow Is Nothing Then Return
+
+        Dim currentRow As DataGridViewRow = dgvToolSetup.CurrentRow
+        Dim currentIndex As Integer = currentRow.Index
+
+        ' Cannot move the first tool upward.
+        If currentIndex <= 0 Then Return
+
+        ' Empty stations cannot be reordered.
+        If Convert.ToInt32(currentRow.Cells("OrderID").Value) = 9000 Then Return
+
+        Dim previousRow As DataGridViewRow =
+    dgvToolSetup.Rows(currentIndex - 1)
+
+        Dim currentOrder As Integer =
+            Convert.ToInt32(currentRow.Cells("OrderID").Value)
+
+        Dim previousOrder As Integer =
+            Convert.ToInt32(previousRow.Cells("OrderID").Value)
+
+        ' --- Identify both Tool Setup Members ---
+        Dim currentMemberID As Integer =
+            Convert.ToInt32(currentRow.Cells("ToolSetupMemberID").Value)
+
+        Dim previousMemberID As Integer =
+            Convert.ToInt32(previousRow.Cells("ToolSetupMemberID").Value)
+
+        Dim currentMember As ToolSetupMember =
+            AppData.ToolSetupMembers.FirstOrDefault(
+                Function(m) m.ID = currentMemberID)
+
+        Dim previousMember As ToolSetupMember =
+            AppData.ToolSetupMembers.FirstOrDefault(
+                Function(m) m.ID = previousMemberID)
+
+        If currentMember Is Nothing OrElse previousMember Is Nothing Then Return
+
+        ' --- Swap preferred tool order ---
+        currentMember.OrderID = previousOrder
+        previousMember.OrderID = currentOrder
+
+        ' --- Persist preferred tool order ---
+        SaveToolSetupMembers()
+
+        ' --- Refresh Tool Setup grid ---
+        LoadSelectedToolSetup(currenttoolSetupID, currentMachineID)
+
+        ' --- Restore selection to the moved tool ---
+        dgvToolSetup.ClearSelection()
+
+        For Each gridRow As DataGridViewRow In dgvToolSetup.Rows
+
+            If gridRow.IsNewRow Then Continue For
+
+            If Convert.ToInt32(
+                gridRow.Cells("ToolSetupMemberID").Value) = currentMemberID Then
+
+                gridRow.Selected = True
+                dgvToolSetup.CurrentCell =
+                    gridRow.Cells("NCCodeNumber")
+
+                Exit For
+            End If
+
+        Next
+
+
+
+
+    End Sub
+
+    Private Sub btnMoveToolDown_Click(sender As Object, e As EventArgs) Handles btnMoveToolDown.Click
+        If dgvToolSetup.CurrentRow Is Nothing Then Return
+
+        Dim currentRow As DataGridViewRow = dgvToolSetup.CurrentRow
+        Dim currentIndex As Integer = currentRow.Index
+
+        ' Cannot move beyond the last row.
+        If currentIndex >= dgvToolSetup.Rows.Count - 1 Then Return
+
+        ' Empty stations cannot be reordered.
+        If Convert.ToInt32(currentRow.Cells("OrderID").Value) = 9000 Then Return
+
+        Dim nextRow As DataGridViewRow =
+            dgvToolSetup.Rows(currentIndex + 1)
+
+        ' Do not move an installed tool into the empty stations.
+        If Convert.ToInt32(nextRow.Cells("OrderID").Value) = 9000 Then Return
+
+        Dim currentOrder As Integer =
+    Convert.ToInt32(currentRow.Cells("OrderID").Value)
+
+        Dim nextOrder As Integer =
+            Convert.ToInt32(nextRow.Cells("OrderID").Value)
+
+        Dim currentMemberID As Integer =
+            Convert.ToInt32(currentRow.Cells("ToolSetupMemberID").Value)
+
+        Dim nextMemberID As Integer =
+            Convert.ToInt32(nextRow.Cells("ToolSetupMemberID").Value)
+
+        Dim currentMember As ToolSetupMember =
+            AppData.ToolSetupMembers.FirstOrDefault(
+                Function(m) m.ID = currentMemberID)
+
+        Dim nextMember As ToolSetupMember =
+            AppData.ToolSetupMembers.FirstOrDefault(
+                Function(m) m.ID = nextMemberID)
+
+        If currentMember Is Nothing OrElse nextMember Is Nothing Then Return
+
+        ' --- Swap preferred tool order ---
+        currentMember.OrderID = nextOrder
+        nextMember.OrderID = currentOrder
+
+        ' --- Persist preferred tool order ---
+        SaveToolSetupMembers()
+
+        ' --- Refresh Tool Setup grid ---
+        LoadSelectedToolSetup(currenttoolSetupID, currentMachineID)
+
+        ' --- Restore selection to the moved tool ---
+        dgvToolSetup.ClearSelection()
+
+        For Each gridRow As DataGridViewRow In dgvToolSetup.Rows
+
+            If gridRow.IsNewRow Then Continue For
+
+            If gridRow.Cells("ToolSetupMemberID").Value Is DBNull.Value Then
+                Continue For
+            End If
+
+            If Convert.ToInt32(
+                gridRow.Cells("ToolSetupMemberID").Value) = currentMemberID Then
+
+                dgvToolSetup.CurrentCell =
+                    gridRow.Cells("NCCodeNumber")
+
+                gridRow.Selected = True
+
+                Exit For
+            End If
+
+        Next
+
+
+
+
+    End Sub
 End Class

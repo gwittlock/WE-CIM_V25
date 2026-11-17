@@ -1,8 +1,13 @@
-﻿
+﻿Imports System.ComponentModel
+
+
 Public Class GeoLine
-    Inherits GeoEntity
+        Inherits GeoEntity
 
-    Public Property StartPoint As GeoPoint
-    Public Property EndPoint As GeoPoint
+        <TypeConverter(GetType(ExpandableObjectConverter))>
+        Public Property StartPoint As GeoPoint
 
-End Class
+        <TypeConverter(GetType(ExpandableObjectConverter))>
+        Public Property EndPoint As GeoPoint
+
+    End Class

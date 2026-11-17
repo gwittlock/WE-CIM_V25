@@ -1,4 +1,5 @@
 ﻿Imports DevExpress.XtraGrid.Views.Base
+Imports DevExpress.XtraGrid.Views.Grid
 
 Public Class frmSelectTool
     Private Sub frmSelectTool_Load(
@@ -12,6 +13,7 @@ Public Class frmSelectTool
     End Sub
 
     Public Event ToolAssignmentRequested(toolSetupMemberID As Integer)
+    Public Event CurrentToolRequested(toolSetupMemberID As Integer)
 
     Private Sub LoadInstalledTools()
 
@@ -47,7 +49,8 @@ Public Class frmSelectTool
         If toolColor Is Nothing OrElse
        toolColor Is DBNull.Value Then Return
 
-        If TypeOf toolColor Is System.Drawing.Color Then
+        If TypeOf toolColor Is System.Drawing.Color AndAlso
+   CType(toolColor, System.Drawing.Color) <> System.Drawing.Color.Empty Then
 
             e.Appearance.ForeColor =
             CType(toolColor, System.Drawing.Color)
@@ -104,6 +107,18 @@ Public Class frmSelectTool
 
         End If
 
+
+        If selectedRow.IsEmptyStation Then
+            MessageBox.Show(
+        "The selected station does not contain a tool.",
+        "Assign Tool",
+        MessageBoxButtons.OK,
+        MessageBoxIcon.Information)
+            Return
+        End If
+
+
+
         Dim selectedMemberID As Integer = selectedRow.ID
 
         MessageBox.Show(
@@ -118,9 +133,34 @@ Public Class frmSelectTool
 
         RaiseEvent ToolAssignmentRequested(selectedMemberID)
 
+
+
     End Sub
 
-    Private Sub gViewToolLayer_RowCellDefaultAlignment(sender As Object, e As RowCellAlignmentEventArgs) Handles gViewToolLayer.RowCellDefaultAlignment
+    Private Sub sbSetCurrent_Click(sender As Object, e As EventArgs) Handles sbSetCurrent.Click
+
+        Dim selectedRow As ToolSelectionRow =
+        TryCast(gViewToolLayer.GetFocusedRow(), ToolSelectionRow)
+
+        If selectedRow Is Nothing Then
+            MessageBox.Show(
+            "Please select a tool.",
+            "Set Current Tool",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        If selectedRow.IsEmptyStation Then
+            MessageBox.Show(
+            "The selected station does not contain a tool.",
+            "Set Current Tool",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        RaiseEvent CurrentToolRequested(selectedRow.ID)
 
     End Sub
 End Class
@@ -132,5 +172,6 @@ Public Class ToolSelectionRow
     Public Property Description As String
     Public Property Color As System.Drawing.Color
     Public Property Show As Boolean = True
+    Public Property IsEmptyStation As Boolean = False
 
 End Class

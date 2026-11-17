@@ -22,9 +22,7 @@ Imports Formatting = Newtonsoft.Json.Formatting
 
 Imports System.Linq
 Imports FabV25_WIN8.ToolShapes
-
-
-
+Imports DevExpress.XtraVerticalGrid.Rows
 
 Public Class frmMain
     Inherits RibbonForm
@@ -153,6 +151,9 @@ Public Class frmMain
     Private _profileSelectionEnabled As Boolean = False
 
     Private _entityPropertiesForm As frmEntityProperties
+
+    Private _activeCreateOperation As String = ""
+    Private _activeAssociation As IGeoAssociation = Nothing
 
 
     Private _holeParameterValues As New Dictionary(Of String, HoleParameterValue)(StringComparer.OrdinalIgnoreCase)
@@ -1254,10 +1255,10 @@ Public Class frmMain
             Dim wzBrush As New SolidBrush(System.Drawing.Color.FromArgb(50, wzColor))
             Dim wzPen As New Pen(wzColor, 2)
 
-            Debug.WriteLine(
-    $"Drawing WorkZone {wz.Index + 1}: " &
-    $"XMin={wz.XMin}, XMax={wz.XMax}, " &
-    $"YMin={wz.YMin}, YMax={wz.YMax}")
+            '        Debug.WriteLine(
+            '$"Drawing WorkZone {wz.Index + 1}: " &
+            '$"XMin={wz.XMin}, XMax={wz.XMax}, " &
+            '$"YMin={wz.YMin}, YMax={wz.YMax}")
 
 
             ' Flip Y for workzone bottom-left origin
@@ -1848,6 +1849,7 @@ Public Class frmMain
 
     Private Sub pnlPicmodeler_MouseMove(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseMove
 
+
         ' --------------------------
         ' 1) Handle panning
         ' --------------------------
@@ -1914,6 +1916,9 @@ Public Class frmMain
             _snapScreenPoint = Nothing
             pnlPicmodeler.Cursor = Cursors.Default
         End If
+
+        Debug.Print($"Active snap is : {_activeSnap}")
+
         pnlPicmodeler.Invalidate()
 
 
@@ -2294,6 +2299,7 @@ Public Class frmMain
     End Function
     Private Sub pnlPicmodeler_MouseDown(sender As Object, e As MouseEventArgs) Handles pnlPicmodeler.MouseDown
 
+        Debug.Print("LET'S LOOK AT THIS CUZ! WE CAN SEE WHAT IT WAS ON THE MOUSE DOWN>")
         Debug.Print("MouseDown - SelectionEnabled = " & _selectionEnabled.ToString())
 
 
@@ -2321,10 +2327,20 @@ Public Class frmMain
 
         If e.Button = MouseButtons.Left AndAlso
    Not _selectionEnabled AndAlso
-   _currentTool = "None" AndAlso
-   TryReturnGraphicPointToHoleControl(e.Location) Then
+   _currentTool = "None" Then
 
-            Return
+            Select Case _activeCreateOperation
+
+                Case "Hole"
+                    If TryReturnGraphicPointToHoleControl(e.Location) Then
+                        Return
+                    End If
+
+                Case "Line"
+                    If TryReturnGraphicPointToLineControl(e.Location) Then
+                        Return
+                    End If
+            End Select
 
         End If
 
@@ -2517,11 +2533,18 @@ Public Class frmMain
             Dim deselect As Boolean = (Control.ModifierKeys And Keys.Control) = Keys.Control
 
             _selectionManager.SelectGeoByWindow(worldRect, _selectionFilter, isReverseWindow, deselect, _profileSelectionEnabled)
-            ' Keep Window Selection active for the next operation.
+            ' Window Selection is a single-use command.
+            _selectWindowActive = False
+
             _selectWindowStart = System.Drawing.Point.Empty
             _selectWindowEnd = System.Drawing.Point.Empty
 
-            pnlPicmodeler.Cursor = Cursors.Cross
+            Debug.WriteLine("Selection Enabled = " & _selectionEnabled.ToString())
+            Debug.WriteLine("Select Button Checked = " & tbSelect_Enable.Checked.ToString())
+            Debug.WriteLine("Current Tool Before Reset = [" & _currentTool & "]")
+
+            _currentTool = "None"
+
             pnlPicmodeler.Invalidate()
             Return
         End If
@@ -3244,16 +3267,14 @@ Public Class frmMain
     e As KeyEventArgs) Handles Me.KeyDown
 
         Select Case e.KeyCode
-
             Case Keys.Delete
 
-                If DeleteSelectedManufacturingFeatures() Then
+                If DeleteSelectedEntities() Then
                     e.Handled = True
                     e.SuppressKeyPress = True
                 End If
 
                 Return
-
             Case Keys.Escape
 
                 ' Preserve existing Inquire Mode behavior.
@@ -4430,6 +4451,16 @@ Public Class frmMain
         AddHandler frmSelectTool.ToolAssignmentRequested,
                    AddressOf HandleToolAssignmentRequested
 
+        ' --- Connect Set Current Tool event ---
+        RemoveHandler frmSelectTool.CurrentToolRequested,
+              AddressOf HandleCurrentToolRequested
+
+        AddHandler frmSelectTool.CurrentToolRequested,
+           AddressOf HandleCurrentToolRequested
+
+
+
+
         If frmSelectTool.Visible Then
             frmSelectTool.Activate()
             Return
@@ -4440,7 +4471,30 @@ Public Class frmMain
 
     End Sub
 
+    Private Sub HandleCurrentToolRequested(toolSetupMemberID As Integer)
 
+        Dim member As ToolSetupMember =
+        AppData.ToolSetupMembers.FirstOrDefault(
+            Function(m) m.ID = toolSetupMemberID AndAlso
+                m.ToolSetupID = CurrentJob.ToolSetupID)
+
+        If member Is Nothing Then Return
+
+        Dim selectedTool As Tool =
+        AppData.ToolCrib.FirstOrDefault(
+            Function(t) t.ID = member.ToolID)
+
+        If selectedTool Is Nothing Then Return
+
+        ' Set the active association for new geometry.
+        _activeAssociation = selectedTool
+
+        statusActiveLayer.Caption = "Active: Tool - " & selectedTool.Description
+
+        Debug.WriteLine(
+        "Active Tool: " & selectedTool.Description)
+
+    End Sub
 
     Private Sub TestSelectedCircles()
 
@@ -5215,8 +5269,31 @@ Public Class frmMain
         If CurrentProductionJob Is Nothing Then Return
 
         frmLayers.ProductionJob = CurrentProductionJob
+
+        RemoveHandler frmLayers.ActiveLayerChanged,
+        AddressOf OnActiveLayerChanged
+
+        AddHandler frmLayers.ActiveLayerChanged,
+        AddressOf OnActiveLayerChanged
+
         frmLayers.Show(Me)
+
     End Sub
+
+
+    Private Sub OnActiveLayerChanged(selectedLayer As Layer)
+
+        If selectedLayer Is Nothing Then Return
+
+        _activeAssociation = selectedLayer
+
+        statusActiveLayer.Caption = "Active: Layer - " & selectedLayer.Name
+
+        Debug.WriteLine(
+        "Active CAD Layer: " & selectedLayer.Name)
+
+    End Sub
+
 
     Private Sub BarButtonItem20_ItemClick(sender As Object, e As ItemClickEventArgs) Handles BarButtonItem20.ItemClick
         Dim points As List(Of CTGPoint) =
@@ -5403,6 +5480,32 @@ Public Class frmMain
                     End Select
 
                     Dim featureNode = tlEntityList.AppendNode(New Object() {displayName & " " & feature.ID.ToString()}, manufacturingGeoNode)
+
+
+                    '---------------------------------------------
+                    ' Add ManufacturingGeo profile segments
+                    '---------------------------------------------
+                    Dim contour As ContourFeature = TryCast(feature, ContourFeature)
+
+                    If contour IsNot Nothing AndAlso contour.Path IsNot Nothing Then
+
+                        For Each segment As IPathSegment In contour.Path.Segments
+
+                            If segment Is Nothing Then Continue For
+
+                            Dim segmentNode =
+            tlEntityList.AppendNode(
+                New Object() {segment.SegmentType.ToString()},
+                featureNode)
+
+                            ' Retain the actual manufacturing path segment.
+                            segmentNode.Tag = segment
+
+                        Next
+
+                    End If
+
+
 
                     ' Reference the actual machining feature
                     featureNode.Tag = feature
@@ -6028,6 +6131,41 @@ Public Class frmMain
 
         End If
 
+
+        '---------------------------------------------
+        ' ManufacturingGeo profile segment color
+        '---------------------------------------------
+        Dim pathSegment As IPathSegment =
+    TryCast(e.Node.Tag, IPathSegment)
+
+        If pathSegment IsNot Nothing Then
+
+            ' The parent profile owns the tool assignment.
+            If e.Node.ParentNode Is Nothing Then Return
+
+            Dim parentFeature As MachiningFeature =
+        TryCast(e.Node.ParentNode.Tag, MachiningFeature)
+
+            If parentFeature Is Nothing Then Return
+
+            Dim member = AppData.ToolSetupMembers.FirstOrDefault(
+        Function(m) m.ID = parentFeature.ToolSetupMemberID)
+
+            If member Is Nothing Then Return
+
+            Dim segmentTool = AppData.ToolCrib.FirstOrDefault(
+    Function(t) t.ID = member.ToolID)
+
+            If segmentTool Is Nothing Then Return
+
+            e.Appearance.ForeColor = segmentTool.Color
+
+            Return
+
+        End If
+
+
+
         Dim feature As MachiningFeature =
     TryCast(e.Node.Tag, MachiningFeature)
 
@@ -6537,7 +6675,7 @@ Public Class frmMain
         Next
 
 
-        Dim targetSheet As JobSheet = GetCurrentHoleJobSheet()
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
 
         If targetSheet Is Nothing Then
 
@@ -6687,8 +6825,29 @@ Public Class frmMain
         '    MessageBoxIcon.Information)
 
     End Sub
-
     Private Sub btnAcceptHole_Click(sender As Object, e As EventArgs) Handles btnAcceptHole.Click
+
+        If _activeCreateOperation = "Line" Then
+
+            Select Case _currentHoleArrangement.ID
+
+                Case 101
+                    AcceptLine2Pt()
+
+                Case Else
+                    MessageBox.Show(
+                "Line definition " &
+                _currentHoleArrangement.ID.ToString() &
+                " is not yet implemented.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information)
+
+            End Select
+
+            Return
+
+        End If
 
         If _currentHoleArrangement Is Nothing Then
             MessageBox.Show(
@@ -6706,6 +6865,7 @@ Public Class frmMain
 
             Case 302
                 AcceptRowInX()
+
             Case Else
                 MessageBox.Show(
                 "Hole arrangement SNCS " &
@@ -6719,8 +6879,126 @@ Public Class frmMain
 
     End Sub
 
+    Private Sub AcceptLine2Pt()
 
-    Private Function GetCurrentHoleJobSheet() As JobSheet
+        Dim requiredParameters As String() =
+        {"ps_x", "ps_y", "pe_x", "pe_y"}
+
+        For Each parameterName As String In requiredParameters
+
+            Dim parameterValue As HoleParameterValue = Nothing
+
+            If Not _holeParameterValues.TryGetValue(
+            parameterName, parameterValue) Then
+
+                MessageBox.Show(
+                "Missing required parameter: " & parameterName,
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+                Return
+            End If
+
+            If Not parameterValue.IsValid OrElse
+           parameterValue.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show(
+                "Please enter a valid value for " & parameterName,
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+                Return
+            End If
+
+        Next
+
+        Dim x1 As Double =
+        Convert.ToDouble(_holeParameterValues("ps_x").EvaluatedValue)
+
+        Dim y1 As Double =
+        Convert.ToDouble(_holeParameterValues("ps_y").EvaluatedValue)
+
+        Dim x2 As Double =
+        Convert.ToDouble(_holeParameterValues("pe_x").EvaluatedValue)
+
+        Dim y2 As Double =
+        Convert.ToDouble(_holeParameterValues("pe_y").EvaluatedValue)
+
+        'Reject zero-length lines.
+        If x1 = x2 AndAlso y1 = y2 Then
+
+            MessageBox.Show(
+            "Start Point and End Point cannot be identical.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Dim endPointRow = FindHoleGridRow("catHoleSection2")
+
+            If endPointRow IsNot Nothing Then
+                vgCreateHoles.FocusedRow = endPointRow
+                vgCreateHoles.Focus()
+            End If
+
+            Return
+        End If
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then
+
+            MessageBox.Show(
+            "A production job with exactly one sheet is required.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Return
+        End If
+
+        Dim mm As MM3 = targetSheet.ManufacturingModel
+
+        If mm Is Nothing Then
+            MessageBox.Show(
+            "The current sheet has no Manufacturing Model.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        'Create nominal geometry only.
+        Dim creator As New CreateGeo()
+
+        Dim newLine As GeoLine =
+    creator.CreateLine(x1, y1, x2, y2)
+
+        'Associate the new line with the active CAD layer or tool.
+        newLine.Association = _activeAssociation
+
+        mm.PartGeometry.Add(newLine)
+
+        'Register the new geometry for selection and snapping.
+        BuildDrawables()
+
+        RefreshEntityList()
+        pnlPicmodeler.Invalidate()
+
+        'Preserve coordinates and return to Start Pt.
+        Dim startPointRow = FindHoleGridRow("catHoleSection1")
+
+        If startPointRow IsNot Nothing Then
+            vgCreateHoles.FocusedRow = startPointRow
+            vgCreateHoles.Focus()
+        End If
+
+    End Sub
+
+
+
+    Private Function GetCurrentJobSheet() As JobSheet
 
         If CurrentProductionJob Is Nothing OrElse
        CurrentProductionJob.JobSheets Is Nothing Then
@@ -6847,7 +7125,7 @@ Public Class frmMain
 
         Next
 
-        Dim targetSheet As JobSheet = GetCurrentHoleJobSheet()
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
 
         If targetSheet Is Nothing Then
 
@@ -7107,12 +7385,302 @@ Public Class frmMain
 
     End Function
 
+
+    Private Function TryReturnGraphicPointToLineControl(
+    mouseScreen As Point) As Boolean
+
+        If _currentHoleArrangement Is Nothing Then
+            Return False
+        End If
+
+        Dim focusedRow As DevExpress.XtraVerticalGrid.Rows.BaseRow =
+        vgCreateHoles.FocusedRow
+
+        If focusedRow Is Nothing Then
+            Return False
+        End If
+
+        Dim xName As String = Nothing
+        Dim yName As String = Nothing
+
+        Select Case focusedRow.Name.ToLowerInvariant()
+
+            Case "ps_x"
+                xName = "ps_x"
+
+            Case "ps_y"
+                yName = "ps_y"
+
+            Case "pe_x"
+                xName = "pe_x"
+
+            Case "pe_y"
+                yName = "pe_y"
+
+            Case Else
+
+                If FindHoleGridRow(focusedRow, "ps_x") IsNot Nothing AndAlso
+               FindHoleGridRow(focusedRow, "ps_y") IsNot Nothing Then
+
+                    xName = "ps_x"
+                    yName = "ps_y"
+
+                ElseIf FindHoleGridRow(focusedRow, "pe_x") IsNot Nothing AndAlso
+                   FindHoleGridRow(focusedRow, "pe_y") IsNot Nothing Then
+
+                    xName = "pe_x"
+                    yName = "pe_y"
+
+                    'After picking the complete End Pt,
+                    'move keyboard focus to Accept.
+                    btnAcceptHole.Focus()
+
+
+                End If
+
+        End Select
+
+        If xName Is Nothing AndAlso yName Is Nothing Then
+            Return False
+        End If
+
+        Dim worldPoint As PointF =
+        If(_activeSnap.HasValue,
+           _activeSnap.Value.WorldPoint,
+           ScreenToWorld(
+               mouseScreen,
+               myTransform,
+               pnlPicmodeler.ClientSize.Height))
+
+        If xName IsNot Nothing Then
+            SetHoleCoordinateFromGraphic(xName, worldPoint.X)
+        End If
+
+        If yName IsNot Nothing Then
+            SetHoleCoordinateFromGraphic(yName, worldPoint.Y)
+        End If
+
+        'After picking the complete Start Pt,
+        'advance to End Pt.
+        If String.Equals(focusedRow.Name, "ps",
+                         StringComparison.OrdinalIgnoreCase) OrElse
+           (xName = "ps_x" AndAlso yName = "ps_y") Then
+
+            Dim endPointRow = FindHoleGridRow("catHoleSection2")
+
+            If endPointRow IsNot Nothing Then
+                vgCreateHoles.FocusedRow = endPointRow
+                vgCreateHoles.OptionsSelectionAndFocus.EnableAppearanceFocusedRow = True
+                vgCreateHoles.OptionsView.ShowFocusedFrame = True
+                vgCreateHoles.Focus()
+            End If
+
+        End If
+
+        pnlPicmodeler.Invalidate()
+
+        Return True
+    End Function
+
+
+
     Private Sub frmMain_KeyUp(sender As Object, e As KeyEventArgs) Handles Me.KeyUp
         If e.KeyCode = Keys.F7 Then
             dockPanelEntityList.Show()
 
         End If
     End Sub
+
+
+    Private Function DeleteSelectedEntities() As Boolean
+
+        If CurrentProductionJob Is Nothing Then Return False
+
+        Debug.WriteLine("========== DELETE START ==========")
+
+        For Each item As isSelectable In _selectionManager.Selected
+            Debug.WriteLine("Selected Type: " & item.GetType().Name)
+        Next
+
+        '====================================================
+        ' Capture the complete selection BEFORE deleting.
+        '====================================================
+
+        Dim selectedEntities As New HashSet(Of GeoEntity)(
+        _selectionManager.Selected.OfType(Of GeoEntity)())
+
+        Dim selectedProfiles As New HashSet(Of GeoProfile)(
+        _selectionManager.Selected.OfType(Of GeoProfile)())
+
+        Dim selectedFeatures As New HashSet(Of MachiningFeature)(
+        _selectionManager.Selected.OfType(Of MachiningFeature)())
+
+        'A selected profile means delete all its geometry.
+        For Each profile As GeoProfile In selectedProfiles
+
+            For Each entity As GeoEntity In profile.Entities
+                selectedEntities.Add(entity)
+            Next
+
+        Next
+
+        If selectedEntities.Count = 0 AndAlso
+       selectedProfiles.Count = 0 AndAlso
+       selectedFeatures.Count = 0 Then
+
+            Return False
+
+        End If
+        Debug.WriteLine("========== DELETE SELECTION ==========")
+
+        For Each item As isSelectable In _selectionManager.Selected
+            Debug.WriteLine(item.GetType().FullName)
+        Next
+
+        Debug.WriteLine("======================================")
+        Dim removedCount As Integer = 0
+
+        '====================================================
+        ' Process every production sheet.
+        '====================================================
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            If sheet Is Nothing Then Continue For
+
+            Dim mm As MM3 = sheet.ManufacturingModel
+
+            '================================================
+            ' Delete Manufacturing Geometry.
+            '================================================
+
+            For Each feature As MachiningFeature In selectedFeatures
+
+                If mm IsNot Nothing Then
+
+                    If mm.ManufacturingGeometry.Remove(feature) Then
+
+                        _selectionManager.UnregisterMachiningFeature(feature)
+
+                        removedCount += 1
+
+                    End If
+
+                End If
+
+            Next
+
+            '================================================
+            ' Delete Part Geometry.
+            '================================================
+
+            If mm IsNot Nothing Then
+
+                For Each entity As GeoEntity In selectedEntities
+
+                    If mm.PartGeometry.Remove(entity) Then
+                        removedCount += 1
+                    End If
+
+                Next
+
+            End If
+
+            '================================================
+            ' Update Parts and Profiles.
+            '================================================
+
+            For Each part As Part In sheet.Parts
+
+                If part Is Nothing Then Continue For
+
+                'Remove selected manufacturing features.
+                For Each feature As MachiningFeature In selectedFeatures
+                    part.Features.Remove(feature)
+                Next
+
+                'Remove selected PartGeo.
+                For Each entity As GeoEntity In selectedEntities
+                    part.Geometry.Remove(entity)
+                Next
+
+                'Remove explicitly selected profiles.
+                For Each profile As GeoProfile In selectedProfiles
+
+                    If part.GeoProfiles.Remove(profile) Then
+                        removedCount += 1
+                    End If
+
+                Next
+
+                'Update profiles affected by individual
+                'entity deletion.
+                For Each profile As GeoProfile In part.GeoProfiles
+
+                    Dim changed As Boolean = False
+
+                    For Each entity As GeoEntity In selectedEntities
+
+                        If profile.Entities.Remove(entity) Then
+                            changed = True
+                        End If
+
+                    Next
+
+                    profile.Segments.RemoveAll(
+                    Function(s) selectedEntities.Contains(s.Entity))
+
+                    If changed Then
+
+                        profile.IsClosed = False
+                        profile.SignedArea = 0
+
+                    End If
+
+                Next
+
+            Next
+
+            '================================================
+            ' Remove deleted objects from WorkZone assignments.
+            '================================================
+
+            If mm IsNot Nothing Then
+
+                mm.WorkZoneAssignments.RemoveAll(
+                Function(a) a IsNot Nothing AndAlso
+                    (selectedEntities.Contains(TryCast(a.Entity, GeoEntity)) OrElse
+                     selectedProfiles.Contains(TryCast(a.Entity, GeoProfile)) OrElse
+                     selectedFeatures.Contains(TryCast(a.Entity, MachiningFeature))))
+
+            End If
+
+        Next
+
+        If removedCount = 0 Then Return False
+
+        '====================================================
+        ' Clear selection and hover.
+        '====================================================
+
+        _selectionManager.ClearHover()
+        _selectionManager.Clear()
+
+        '====================================================
+        ' Rebuild the drawing and entity list.
+        '====================================================
+
+        BuildDrawables()
+        RefreshEntityList()
+        pnlPicmodeler.Invalidate()
+
+        Return True
+
+    End Function
+
+
+
+
 
     Private Function DeleteSelectedManufacturingFeatures() As Boolean
 
@@ -7138,6 +7706,7 @@ Public Class frmMain
                 For Each feature As MachiningFeature In selectedFeatures
 
                     If mm.ManufacturingGeometry.Remove(feature) Then
+                        _selectionManager.UnregisterMachiningFeature(feature)
                         removedCount += 1
                     End If
 
@@ -7508,7 +8077,7 @@ Public Class frmMain
 
         If zone Is Nothing Then Return
 
-        Dim sheet As JobSheet = GetCurrentHoleJobSheet()
+        Dim sheet As JobSheet = GetCurrentJobSheet()
 
         If sheet Is Nothing Then Return
 
@@ -7607,7 +8176,72 @@ Public Class frmMain
         _selectionManager.RegisterMachiningFeature(feature)
 
     End Sub
+    Private Sub iDelete_ItemClick(
+    sender As Object,
+    e As ItemClickEventArgs) Handles iDelete.ItemClick
 
+        DeleteSelectedEntities()
+
+    End Sub
+    Private Sub bbCreateLine_ItemClick(
+        sender As Object,
+        e As ItemClickEventArgs) Handles bbCreateLine.ItemClick
+
+        _activeCreateOperation = "Line"
+
+        dockPanelCreateHole.Show()
+
+        Dim filePath As String =
+            IO.Path.Combine(dataFolder, "LineDefinitions.json")
+
+        _holeArrangementDefinitions =
+            HoleArrangementDefinitionLoader.Load(filePath)
+
+        cbeHoleDefinition.Properties.Items.Clear()
+
+        For Each definition As HoleArrangementDefinition In
+            _holeArrangementDefinitions.Arrangements
+
+            cbeHoleDefinition.Properties.Items.Add(definition.Description)
+
+        Next
+
+        Dim lineDefinition As HoleArrangementDefinition =
+            _holeArrangementDefinitions.Arrangements.
+            FirstOrDefault(Function(a) a.ID = 101)
+
+        If lineDefinition Is Nothing Then
+            MessageBox.Show("Line 2 Pt definition not found.")
+            Return
+        End If
+
+        cbeHoleDefinition.SelectedIndex = 0
+
+        PopulateHoleArrangementGrid(lineDefinition)
+
+    End Sub
+
+    Private Sub vgCreateHoles_CustomDrawRowHeaderCell(sender As Object, e As CustomDrawRowHeaderCellEventArgs) Handles vgCreateHoles.CustomDrawRowHeaderCell
+        ' Only process category rows that currently have focus
+        If TypeOf e.Row Is CategoryRow AndAlso e.Focused Then
+
+            ' Optional: fill background first
+            e.Appearance.BackColor = Color.LightSkyBlue
+            e.Appearance.Options.UseBackColor = True
+            e.DefaultDraw()   ' or paint background yourself
+
+            ' Draw the focus rectangle
+            Dim rect As Rectangle = e.Bounds
+            rect.Width -= 1
+            rect.Height -= 1
+
+            Using pen As New Pen(Color.Black, 1)   ' or SystemColors.Highlight, Color.DodgerBlue, etc.
+                e.Cache.DrawRectangle(pen, rect)
+            End Using
+
+            e.Handled = True
+        End If
+    End Sub
 End Class
 
 
