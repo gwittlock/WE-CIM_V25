@@ -2495,7 +2495,12 @@ Public Class frmMain
 
         If _windowSelecting Then
             _windowSelecting = False
+
             ApplyViewWindow(_windowStart, _windowEnd)
+
+            ' View Window is a single-use command.
+            _currentTool = "None"
+
             pnlPicmodeler.Invalidate()
             Return
         End If
@@ -4839,14 +4844,16 @@ Public Class frmMain
                     toolPen.DashStyle = Drawing2D.DashStyle.Solid
 
                     DrawToolCuttingProfile(
-                        g,
-                        shape,
-                        CDbl(segment.StartPoint.X),
-                        CDbl(segment.StartPoint.Y),
-                        toolMember.IndexAngle,
-                        vt,
-                        panelHeight,
-                        toolPen)
+                            g,
+                            shape,
+                            CDbl(segment.StartPoint.X),
+                            CDbl(segment.StartPoint.Y),
+                            If(contour.ToolIndexAngle.HasValue,
+                               contour.ToolIndexAngle.Value,
+                               toolMember.IndexAngle),
+                            vt,
+                            panelHeight,
+                            toolPen)
 
                 End Using
             Next

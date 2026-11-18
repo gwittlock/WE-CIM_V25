@@ -4,6 +4,9 @@ Public Class ContourFeature
     Inherits MachiningFeature
 
     Public Property Path As IPath2D
+    ' Required tool orientation for this contour.
+    ' Nothing means use the configured ToolSetupMember.IndexAngle.
+    Public Property ToolIndexAngle As Double?
 
     ' Closure determined using the configured Gap Tolerance.
     ' Does not imply that endpoint coordinates are identical.

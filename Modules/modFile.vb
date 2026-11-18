@@ -579,12 +579,13 @@ Public Module modFile
                                     CSng(toolCenterY))))
 
                     Dim contour As New ContourFeature With {
-                            .ID = importedPart.GetNextFeatureID(),
-                            .Description = "Preferred Horizontal AutoTool",
-                            .ToolSetupMemberID = horizontalMember.ID,
-                            .Path = toolPath,
-                            .IsLogicallyClosed = False
-                        }
+                        .ID = importedPart.GetNextFeatureID(),
+                        .Description = "Preferred Horizontal AutoTool",
+                        .ToolSetupMemberID = horizontalMember.ID,
+                        .ToolIndexAngle = 0.0,
+                        .Path = toolPath,
+                        .IsLogicallyClosed = False
+                    }
 
                     importedPart.Features.Add(contour)
 
@@ -787,12 +788,13 @@ Public Module modFile
             CSng(toolEndY))))
 
                     Dim contour As New ContourFeature With {
-    .ID = importedPart.GetNextFeatureID(),
-    .Description = "Preferred Vertical AutoTool",
-    .ToolSetupMemberID = verticalMember.ID,
-    .Path = toolPath,
-    .IsLogicallyClosed = False
-}
+                    .ID = importedPart.GetNextFeatureID(),
+                    .Description = "Preferred Vertical AutoTool",
+                    .ToolSetupMemberID = verticalMember.ID,
+                    .ToolIndexAngle = 90.0,
+                    .Path = toolPath,
+                    .IsLogicallyClosed = False
+                }
 
                     importedPart.Features.Add(contour)
 
@@ -854,19 +856,61 @@ Public Module modFile
         Function(m) m.ID =
             activeToolSetup.PreferredHorizontalCuttingToolID)
 
+        Dim horizontalStation = Nothing
+
+        If context.HorizontalMember IsNot Nothing Then
+
+            horizontalStation =
+        AppData.StationsTable.Rows.FirstOrDefault(
+            Function(s) CInt(s("ID")) =
+                context.HorizontalMember.StationID)
+
+        End If
+
+
         context.VerticalMember =
     AppData.ToolSetupMembers.FirstOrDefault(
         Function(m) m.ID =
             activeToolSetup.PreferredVerticalCuttingToolID)
 
+        Dim verticalStation = Nothing
+
+        If context.VerticalMember IsNot Nothing Then
+
+            verticalStation =
+        AppData.StationsTable.Rows.FirstOrDefault(
+            Function(s) CInt(s("ID")) =
+                context.VerticalMember.StationID)
+
+        End If
+
+        Dim horizontalAutoIndex As Boolean = False
+
+        If horizontalStation IsNot Nothing Then
+            horizontalAutoIndex =
+        Not IsDBNull(horizontalStation("AutoIndex")) AndAlso
+        Convert.ToBoolean(horizontalStation("AutoIndex"))
+        End If
+
         context.HorizontalAngleValid =
     context.HorizontalMember IsNot Nothing AndAlso
-    (Math.Abs(context.HorizontalMember.IndexAngle - 0.0) < 0.001 OrElse
+    (horizontalAutoIndex OrElse
+     Math.Abs(context.HorizontalMember.IndexAngle - 0.0) < 0.001 OrElse
      Math.Abs(context.HorizontalMember.IndexAngle - 180.0) < 0.001)
+
+
+        Dim verticalAutoIndex As Boolean = False
+
+        If verticalStation IsNot Nothing Then
+            verticalAutoIndex =
+        Not IsDBNull(verticalStation("AutoIndex")) AndAlso
+        Convert.ToBoolean(verticalStation("AutoIndex"))
+        End If
 
         context.VerticalAngleValid =
     context.VerticalMember IsNot Nothing AndAlso
-    (Math.Abs(context.VerticalMember.IndexAngle - 90.0) < 0.001 OrElse
+    (verticalAutoIndex OrElse
+     Math.Abs(context.VerticalMember.IndexAngle - 90.0) < 0.001 OrElse
      Math.Abs(context.VerticalMember.IndexAngle - 270.0) < 0.001)
 
 
@@ -879,8 +923,7 @@ Public Module modFile
 
         End If
 
-        If context.HorizontalAngleValid AndAlso
-            context.VerticalAngleValid Then
+        If context.VerticalAngleValid Then
 
             ToolShapeResolver.TryResolve(
         context.VerticalMember.ID,

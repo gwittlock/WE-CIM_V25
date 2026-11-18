@@ -112,6 +112,7 @@ Partial Class frmSelectTool
         Me.Controls.Add(Me.sbHideAll)
         Me.Controls.Add(Me.sbShowAll)
         Me.Controls.Add(Me.grdToolLayer)
+        Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.SizableToolWindow
         Me.Icon = CType(resources.GetObject("$this.Icon"), System.Drawing.Icon)
         Me.Name = "frmSelectTool"
         Me.Text = "Select Tool"
