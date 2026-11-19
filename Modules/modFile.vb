@@ -212,13 +212,6 @@ Public Module modFile
         productionSheet.Parts.Add(importedPart)
 
         '============================================================
-        ' Create Imported Pattern
-        '============================================================
-        Dim importedPattern As New Pattern With {.Part = importedPart, .X = 0, .Y = 0, .Angle = 0}
-
-        productionSheet.Patterns.Add(importedPattern)
-
-        '============================================================
         ' Register Part and Manufacturing Geometry in MM3
         '============================================================
         productionSheet.ManufacturingModel.PartGeometry.AddRange(importedPart.Geometry)
@@ -234,7 +227,7 @@ Public Module modFile
 
         Next
 
-        Debug.WriteLine("The pattern Count Is <" & CurrentProductionJob.JobSheets(0).Patterns.Count & " > ")
+
         frmMain.InitializeEntityList()
         frmMain.RefreshEntityList()
 

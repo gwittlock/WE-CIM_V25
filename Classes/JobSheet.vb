@@ -10,7 +10,5 @@ Public Class JobSheet
 
     Public Property Parts As New List(Of Part)
 
-    Public Property Patterns As New List(Of Pattern)
-
     Public Property ManufacturingModel As New MM3()
 End Class

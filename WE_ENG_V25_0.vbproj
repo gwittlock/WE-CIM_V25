@@ -405,6 +405,7 @@
     <Compile Include="Classes\MM3WorkZoneAssignment.vb" />
     <Compile Include="Classes\Part.vb" />
     <Compile Include="Classes\Pattern.vb" />
+    <Compile Include="Classes\PatternInstance.vb" />
     <Compile Include="Classes\PierceHoleFeature.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
     <Compile Include="Classes\Profile.vb" />
@@ -469,6 +470,12 @@
       <DependentUpon>frmConvertCMDB.vb</DependentUpon>
     </Compile>
     <Compile Include="Forms\frmConvertCMDB.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmCreatePattern.Designer.vb">
+      <DependentUpon>frmCreatePattern.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmCreatePattern.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\frmEntityProperties.Designer.vb">
@@ -573,6 +580,15 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Compile Include="Persistence\GeoEntityRecord.vb" />
+    <Compile Include="Persistence\GeoProfileRecord.vb" />
+    <Compile Include="Persistence\GeoProfileSegmentRecord.vb" />
+    <Compile Include="Persistence\MachiningFeatureRecord.vb" />
+    <Compile Include="Persistence\MM3File.vb" />
+    <Compile Include="Persistence\PartRecord.vb" />
+    <Compile Include="Persistence\PatternInstanceRecord.vb" />
+    <Compile Include="Persistence\PatternRecord.vb" />
+    <Compile Include="Persistence\WorkZoneAssignmentRecord.vb" />
     <Compile Include="Reports\xrEntityList.Designer.vb">
       <DependentUpon>xrEntityList.vb</DependentUpon>
     </Compile>
@@ -652,6 +668,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmConvertCMDB.resx">
       <DependentUpon>frmConvertCMDB.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmCreatePattern.resx">
+      <DependentUpon>frmCreatePattern.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmEntityProperties.resx">
       <DependentUpon>frmEntityProperties.vb</DependentUpon>

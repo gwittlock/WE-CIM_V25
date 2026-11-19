@@ -11,6 +11,10 @@ Public Class MM3
 
     Public Property WorkZoneAssignments As New List(Of MM3WorkZoneAssignment)
 
+    Public Property Patterns As New List(Of Pattern)
+
+    Public Property PatternInstances As New List(Of PatternInstance)
+
 
     Public Function GetNextFeatureID() As Integer
 

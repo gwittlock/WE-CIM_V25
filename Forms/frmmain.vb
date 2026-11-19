@@ -170,6 +170,9 @@ Public Class frmMain
 
     Private _workZonesForm As frmWorkZones
 
+    Private _showInstanceText As Boolean = True
+    Private _showHandles As Boolean = True
+
     Private ReadOnly _workZoneAssignFlash As New HashSet(Of isSelectable)
     Private Declare Function LockWindowUpdate Lib "user32.dll" (ByVal hWndLock As IntPtr) As Boolean
 
@@ -1230,6 +1233,52 @@ Public Class frmMain
 
             Next
 
+            '---------------------------------------------
+            ' Draw Pattern Instances
+            '---------------------------------------------
+            For Each instance As PatternInstance In mm.PatternInstances
+
+                If instance Is Nothing Then Continue For
+
+                'Find the Pattern definition.
+                Dim pattern As Pattern =
+                    mm.Patterns.FirstOrDefault(
+                        Function(p) p.ID = instance.PatternID)
+
+                If pattern Is Nothing Then Continue For
+
+                'Draw lines belonging to this Instance.
+                For Each entity As GeoEntity In pattern.Geometry
+
+                    If TypeOf entity Is GeoLine Then
+
+                        DrawPatternInstanceLine(
+                            DirectCast(entity, GeoLine),
+                            instance,
+                            g,
+                            vt,
+                            panelHeight)
+
+                    End If
+
+                Next
+
+                'Draw the Pattern Instance anchor marker.
+                DrawPatternInstanceHandle(
+                    instance,
+                    g,
+                    vt,
+                    panelHeight)
+
+                DrawPatternInstanceText(
+                        pattern,
+                        instance,
+                        g,
+                        vt,
+                        panelHeight)
+
+            Next
+
         Next
 
     End Sub
@@ -1327,6 +1376,8 @@ Public Class frmMain
         Dim geoEntities As New List(Of GeoEntity)
         Dim geoProfiles As New List(Of GeoProfile)
         Dim machiningFeatures As New List(Of MachiningFeature)
+        Dim patternInstances As New List(Of PatternInstance)
+        Dim patterns As New List(Of Pattern)
 
         If CurrentProductionJob IsNot Nothing Then
 
@@ -1340,6 +1391,8 @@ Public Class frmMain
 
                     geoEntities.AddRange(mm.PartGeometry)
                     machiningFeatures.AddRange(mm.ManufacturingGeometry)
+                    patternInstances.AddRange(mm.PatternInstances)
+                    patterns.AddRange(mm.Patterns)
 
                 End If
 
@@ -1359,6 +1412,8 @@ Public Class frmMain
         _selectionManager.SetGeoEntities(geoEntities)
         _selectionManager.SetGeoProfiles(geoProfiles)
         _selectionManager.SetMachiningFeatures(machiningFeatures)
+        _selectionManager.SetPatternInstances(patternInstances)
+        _selectionManager.SetPatterns(patterns)
         _selectionManager.BuildGeoSpatialIndex()
 
         Debug.WriteLine(
@@ -5346,7 +5401,7 @@ Public Class frmMain
             '-----------------------------------------
             Dim patternNode =
             tlEntityList.AppendNode(
-                New Object() {"Pattern"},
+                New Object() {"Model"},
                 CType(Nothing, DevExpress.XtraTreeList.Nodes.TreeListNode))
 
             Dim partGeoNode =
@@ -7685,10 +7740,6 @@ Public Class frmMain
 
     End Function
 
-
-
-
-
     Private Function DeleteSelectedManufacturingFeatures() As Boolean
 
         Dim selectedFeatures As List(Of MachiningFeature) =
@@ -8249,6 +8300,464 @@ Public Class frmMain
             e.Handled = True
         End If
     End Sub
+
+
+    Private Sub bbCreatePattern_ItemClick(
+    sender As Object,
+    e As ItemClickEventArgs) Handles bbCreatePattern.ItemClick
+
+        If CurrentProductionJob Is Nothing Then Return
+
+        'Capture the current selection.
+        Dim selected = _selectionManager.SelectedObjects
+
+        If selected.Count = 0 Then
+            MessageBox.Show(
+            "Please select geometry or manufacturing features.",
+            "Create Pattern",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        Dim selectedEntities As New HashSet(Of GeoEntity)(
+        selected.OfType(Of GeoEntity)())
+
+        Dim selectedProfiles As New HashSet(Of GeoProfile)(
+        selected.OfType(Of GeoProfile)())
+
+        Dim selectedFeatures As New HashSet(Of MachiningFeature)(
+        selected.OfType(Of MachiningFeature)())
+
+        'Include geometry belonging to selected profiles.
+        For Each profile As GeoProfile In selectedProfiles
+            For Each entity As GeoEntity In profile.Entities
+                selectedEntities.Add(entity)
+            Next
+        Next
+
+        'Validate supported selection types.
+        If selectedEntities.Count = 0 AndAlso
+       selectedProfiles.Count = 0 AndAlso
+       selectedFeatures.Count = 0 Then
+
+            MessageBox.Show(
+            "Please select geometry, profiles, or manufacturing features.",
+            "Create Pattern",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then
+            MessageBox.Show(
+            "A production job with exactly one sheet is required.",
+            "Create Pattern",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        Dim mm As MM3 = targetSheet.ManufacturingModel
+
+        If mm Is Nothing Then
+            MessageBox.Show(
+            "The current sheet has no Manufacturing Model.",
+            "Create Pattern",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+            Return
+        End If
+
+        'Obtain Pattern information from the operator.
+        Dim patternName As String
+        Dim handleX As Double
+        Dim handleY As Double
+
+        Using dlg As New frmCreatePattern()
+
+            If dlg.ShowDialog(Me) <> DialogResult.OK Then
+                Return
+            End If
+
+            patternName = dlg.PatternName
+            handleX = dlg.HandleX
+            handleY = dlg.HandleY
+
+        End Using
+
+        'Create the Pattern definition.
+        Dim newPattern As New Pattern()
+
+        newPattern.ID =
+        If(mm.Patterns.Count = 0,
+           1,
+           mm.Patterns.Max(Function(p) p.ID) + 1)
+
+        newPattern.Description = patternName
+
+        'Transfer selected objects into the Pattern definition.
+        newPattern.Geometry.AddRange(selectedEntities)
+        newPattern.GeoProfiles.AddRange(selectedProfiles)
+        newPattern.Features.AddRange(selectedFeatures)
+
+        mm.Patterns.Add(newPattern)
+
+        'Remove WorkZone assignments belonging to
+        'the transferred objects.
+        mm.WorkZoneAssignments.RemoveAll(
+        Function(a) a IsNot Nothing AndAlso
+        (selectedEntities.Contains(TryCast(a.Entity, GeoEntity)) OrElse
+         selectedProfiles.Contains(TryCast(a.Entity, GeoProfile)) OrElse
+         selectedFeatures.Contains(TryCast(a.Entity, MachiningFeature))))
+
+        'Remove transferred nominal geometry from MM3.
+        For Each entity As GeoEntity In selectedEntities
+            mm.PartGeometry.Remove(entity)
+        Next
+
+        'Remove transferred manufacturing features from MM3.
+        For Each feature As MachiningFeature In selectedFeatures
+            mm.ManufacturingGeometry.Remove(feature)
+        Next
+
+        'Remove transferred objects from their original Parts.
+        For Each part As Part In targetSheet.Parts
+
+            If part Is Nothing Then Continue For
+
+            'Remove selected geometry.
+            For Each entity As GeoEntity In selectedEntities
+                part.Geometry.Remove(entity)
+            Next
+
+            'Remove selected manufacturing features.
+            For Each feature As MachiningFeature In selectedFeatures
+                part.Features.Remove(feature)
+            Next
+
+            'Remove complete selected profiles.
+            For Each profile As GeoProfile In selectedProfiles
+                part.GeoProfiles.Remove(profile)
+            Next
+
+            'Update remaining profiles affected by transferred geometry.
+            For Each profile As GeoProfile In part.GeoProfiles
+
+                Dim changed As Boolean = False
+
+                For Each selectedEntity As GeoEntity In selectedEntities
+
+                    If profile.Entities.Remove(selectedEntity) Then
+                        changed = True
+                    End If
+
+                Next
+
+                Dim removedSegments As Integer =
+                profile.Segments.RemoveAll(
+                    Function(s) selectedEntities.Contains(s.Entity))
+
+                If changed OrElse removedSegments > 0 Then
+                    profile.IsClosed = False
+                    profile.SignedArea = 0
+                End If
+
+            Next
+
+        Next
+
+        'Create the first Instance.
+        Dim newInstance As New PatternInstance()
+
+        newInstance.ID =
+        If(mm.PatternInstances.Count = 0,
+           1,
+           mm.PatternInstances.Max(Function(p) p.ID) + 1)
+
+        newInstance.PatternID = newPattern.ID
+
+        'Preserve V24 placement behavior.
+        newInstance.X = handleX
+        newInstance.Y = handleY
+        newInstance.Angle = 0
+
+        mm.PatternInstances.Add(newInstance)
+
+        'Clear the previous selection and hover.
+        _selectionManager.ClearHover()
+        _selectionManager.Clear()
+
+        'Rebuild selection registration and refresh the display.
+        BuildDrawables()
+        RefreshEntityList()
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+
+    Private Function TransformPatternPoint(
+    x As Double,
+    y As Double,
+    instance As PatternInstance) As PointF
+
+        Dim radians As Double =
+            instance.Angle * Math.PI / 180.0
+
+        Dim cosA As Double = Math.Cos(radians)
+        Dim sinA As Double = Math.Sin(radians)
+
+        Dim transformedX As Double =
+            x * cosA - y * sinA + instance.X
+
+        Dim transformedY As Double =
+            x * sinA + y * cosA + instance.Y
+
+        Return New PointF(
+            CSng(transformedX),
+            CSng(transformedY))
+
+    End Function
+
+    Private Sub DrawPatternInstanceLine(
+    line As GeoLine,
+    instance As PatternInstance,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If line Is Nothing OrElse
+           line.StartPoint Is Nothing OrElse
+           line.EndPoint Is Nothing Then
+            Return
+        End If
+
+        'Respect the original geometry's layer visibility.
+        Dim layer As Layer = TryCast(line.Association, Layer)
+
+        If layer IsNot Nothing AndAlso Not layer.Visible Then
+            Return
+        End If
+
+
+
+
+        'Transform the original geometry into Instance coordinates.
+        Dim worldStart As PointF =
+            TransformPatternPoint(
+                line.StartPoint.X,
+                line.StartPoint.Y,
+                instance)
+
+        Dim worldEnd As PointF =
+            TransformPatternPoint(
+                line.EndPoint.X,
+                line.EndPoint.Y,
+                instance)
+
+        'Convert transformed world coordinates to screen coordinates.
+        Dim screenStart As PointF =
+            WorldToScreen(worldStart.X, worldStart.Y, vt, panelHeight)
+
+        Dim screenEnd As PointF =
+            WorldToScreen(worldEnd.X, worldEnd.Y, vt, panelHeight)
+
+        'Selection belongs to the Instance, not the original line.
+        Dim drawColor As Color = line.Color
+
+        If instance.IsSelected Then
+            drawColor = Color.Red
+        ElseIf instance.IsHovered Then
+            drawColor = Color.Red
+        End If
+
+        Using pen As New Pen(drawColor, 1.0F)
+            g.DrawLine(pen, screenStart, screenEnd)
+        End Using
+
+    End Sub
+
+    Private Sub BarShowInstanceText_CheckedChanged(sender As Object, e As ItemClickEventArgs) Handles BarShowInstanceText.CheckedChanged
+
+        _showInstanceText = BarShowInstanceText.Checked
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Private Sub BarShowHandles_CheckedChanged(sender As Object, e As ItemClickEventArgs) Handles BarShowHandles.CheckedChanged
+
+        _showHandles = BarShowHandles.Checked
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Private Sub DrawPatternInstanceHandle(
+    instance As PatternInstance,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If instance Is Nothing Then Return
+
+        If Not _showHandles Then Return
+
+        'The Instance X/Y coordinates define its anchor.
+        Dim screenPoint As PointF =
+            WorldToScreen(
+                instance.X,
+                instance.Y,
+                vt,
+                panelHeight)
+
+        'Keep the marker a constant size on screen.
+        Using font As New Font("Arial", 10.0F, FontStyle.Bold)
+
+            Using brush As New SolidBrush(Color.White)
+
+                Dim textSize As SizeF =
+                    g.MeasureString("@", font)
+
+                Dim drawX As Single =
+                    screenPoint.X - textSize.Width / 2.0F
+
+                Dim drawY As Single =
+                    screenPoint.Y - textSize.Height / 2.0F
+
+                g.DrawString(
+                    "@",
+                    font,
+                    brush,
+                    drawX,
+                    drawY)
+
+            End Using
+
+        End Using
+
+    End Sub
+
+
+    Private Function GetPatternInstanceLineBounds(
+    pattern As Pattern,
+    instance As PatternInstance) As RectangleF?
+
+        If pattern Is Nothing OrElse instance Is Nothing Then
+            Return Nothing
+        End If
+
+        Dim minX As Double = Double.PositiveInfinity
+        Dim minY As Double = Double.PositiveInfinity
+        Dim maxX As Double = Double.NegativeInfinity
+        Dim maxY As Double = Double.NegativeInfinity
+
+        For Each entity As GeoEntity In pattern.Geometry
+
+            Dim line As GeoLine = TryCast(entity, GeoLine)
+
+            If line Is Nothing OrElse
+           line.StartPoint Is Nothing OrElse
+           line.EndPoint Is Nothing Then
+                Continue For
+            End If
+
+            Dim layer As Layer = TryCast(line.Association, Layer)
+
+            If layer IsNot Nothing AndAlso Not layer.Visible Then
+                Continue For
+            End If
+
+            Dim p1 As PointF =
+            TransformPatternPoint(
+                line.StartPoint.X,
+                line.StartPoint.Y,
+                instance)
+
+            Dim p2 As PointF =
+            TransformPatternPoint(
+                line.EndPoint.X,
+                line.EndPoint.Y,
+                instance)
+
+            minX = Math.Min(minX, Math.Min(p1.X, p2.X))
+            minY = Math.Min(minY, Math.Min(p1.Y, p2.Y))
+
+            maxX = Math.Max(maxX, Math.Max(p1.X, p2.X))
+            maxY = Math.Max(maxY, Math.Max(p1.Y, p2.Y))
+
+        Next
+
+        If Double.IsPositiveInfinity(minX) Then
+            Return Nothing
+        End If
+
+        Return New RectangleF(
+        CSng(minX),
+        CSng(minY),
+        CSng(maxX - minX),
+        CSng(maxY - minY))
+
+    End Function
+
+
+    Private Sub DrawPatternInstanceText(
+    pattern As Pattern,
+    instance As PatternInstance,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If pattern Is Nothing OrElse instance Is Nothing Then Return
+
+        If Not _showInstanceText Then Return
+
+        If String.IsNullOrWhiteSpace(pattern.Description) Then Return
+
+        'Get the transformed Instance bounding box.
+        Dim bounds As RectangleF? =
+        GetPatternInstanceLineBounds(pattern, instance)
+
+        If Not bounds.HasValue Then Return
+
+        'Calculate its center in world coordinates.
+        Dim centerX As Double =
+        bounds.Value.Left + bounds.Value.Width / 2.0
+
+        Dim centerY As Double =
+        bounds.Value.Top + bounds.Value.Height / 2.0
+
+        'Convert to screen coordinates.
+        Dim screenCenter As PointF =
+        WorldToScreen(centerX, centerY, vt, panelHeight)
+
+        'Draw centered, constant-size text.
+        Using font As New Font("Arial", 9.0F, FontStyle.Regular)
+
+            Using brush As New SolidBrush(Color.White)
+
+                Using format As New StringFormat()
+
+                    format.Alignment = StringAlignment.Center
+                    format.LineAlignment = StringAlignment.Center
+
+                    g.DrawString(
+                    pattern.Description,
+                    font,
+                    brush,
+                    screenCenter,
+                    format)
+
+                End Using
+
+            End Using
+
+        End Using
+
+    End Sub
+
+
+
 End Class
 
 

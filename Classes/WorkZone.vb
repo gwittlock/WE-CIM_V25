@@ -27,7 +27,6 @@ Public Class WorkZone
 
     ' Children
     Public Property Clamps As New List(Of Clamp)
-    Public Property Patterns As New List(Of Pattern)
 
     ' State
     Public Property IsActive As Boolean

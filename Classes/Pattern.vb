@@ -1,11 +1,13 @@
 ﻿Public Class Pattern
+    Public Property ID As Integer
 
-    Public Property Part As Part
+    Public Property Description As String
 
-    Public Property X As Double
+    Public Property Geometry As New List(Of GeoEntity)
 
-    Public Property Y As Double
+    Public Property GeoProfiles As New List(Of GeoProfile)
 
-    Public Property Angle As Double
+    Public Property Features As New List(Of MachiningFeature)
+
 
 End Class

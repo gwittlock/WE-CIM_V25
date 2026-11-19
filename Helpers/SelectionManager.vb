@@ -16,6 +16,9 @@ Public Enum SelectionFilter
     Hole = 1 << 6
     Contour = 1 << 7
 
+    ' Pattern Instances
+    PatternInstance = 1 << 8
+
     ' Part Geometry only
     AllGeometry = Line Or Circle Or Arc Or
                   Polyline Or Rectangle Or Point
@@ -30,6 +33,9 @@ Public Class SelectionManager
     Public Property SheetYExtent As Double
     Private _geoEntities As New List(Of GeoEntity)
     Private _machiningFeatures As New List(Of MachiningFeature)
+    Private _patternInstances As New List(Of PatternInstance)
+    Private _patterns As New List(Of Pattern)
+
     Public ReadOnly Property GeoEntities As IEnumerable(Of GeoEntity)
         Get
             Return _geoEntities
@@ -195,6 +201,115 @@ Public Class SelectionManager
         End If
 
     End Sub
+
+    Public Sub SetPatternInstances(instances As IEnumerable(Of PatternInstance))
+
+        If instances Is Nothing Then
+            _patternInstances = New List(Of PatternInstance)
+        Else
+            _patternInstances = instances.ToList()
+        End If
+
+    End Sub
+
+
+    Public Sub SetPatterns(patterns As IEnumerable(Of Pattern))
+
+        If patterns Is Nothing Then
+            _patterns = New List(Of Pattern)
+        Else
+            _patterns = patterns.ToList()
+        End If
+
+    End Sub
+
+    Private Function GetPatternForInstance(
+    instance As PatternInstance) As Pattern
+
+        If instance Is Nothing Then
+            Return Nothing
+        End If
+
+        Return _patterns.FirstOrDefault(
+        Function(p) p IsNot Nothing AndAlso
+                    p.ID = instance.PatternID)
+
+    End Function
+
+    Private Function WorldToPatternPoint(
+    ptWorld As PointF,
+    instance As PatternInstance) As PointF
+
+        'Remove the Instance translation.
+        Dim dx As Double = ptWorld.X - instance.X
+        Dim dy As Double = ptWorld.Y - instance.Y
+
+        'Apply the inverse rotation.
+        Dim radians As Double =
+        -instance.Angle * Math.PI / 180.0
+
+        Dim cosA As Double = Math.Cos(radians)
+        Dim sinA As Double = Math.Sin(radians)
+
+        Dim patternX As Double =
+        dx * cosA - dy * sinA
+
+        Dim patternY As Double =
+        dx * sinA + dy * cosA
+
+        Return New PointF(
+        CSng(patternX),
+        CSng(patternY))
+
+    End Function
+
+
+    Private Function HitTestPatternInstanceAtPoint(
+    ptWorld As PointF,
+    tolWorld As Single) As PatternInstance
+
+        If _patternInstances Is Nothing Then
+            Return Nothing
+        End If
+
+        For Each instance As PatternInstance In _patternInstances
+
+            If instance Is Nothing Then Continue For
+
+            'Find the Pattern definition.
+            Dim pattern As Pattern =
+            GetPatternForInstance(instance)
+
+            If pattern Is Nothing Then Continue For
+
+            'Convert the mouse position into Pattern coordinates.
+            Dim ptPattern As PointF =
+            WorldToPatternPoint(ptWorld, instance)
+
+            'Check the geometry belonging to the Pattern.
+            For Each entity As GeoEntity In pattern.Geometry
+
+                If entity Is Nothing Then Continue For
+
+                'For now, only test GeoLine geometry.
+                If Not TypeOf entity Is GeoLine Then Continue For
+
+                Dim distance As Single =
+                EvaluateDistance(entity, ptPattern)
+
+                If distance <= tolWorld Then
+                    Return instance
+                End If
+
+            Next
+
+        Next
+
+        Return Nothing
+
+    End Function
+
+
     Public Sub RegisterMachiningFeature(feature As MachiningFeature)
 
         If feature Is Nothing Then Return
@@ -264,6 +379,30 @@ Public Class SelectionManager
 
 
         Dim nativeHit As isSelectable = Nothing
+
+
+        '---------------------------------------------
+        ' Pattern Instance selection
+        '---------------------------------------------
+        If Not profileSelectionEnabled AndAlso
+   (selectionFilter And SelectionFilter.Line) <> SelectionFilter.None Then
+
+            Dim patternHit As PatternInstance =
+        HitTestPatternInstanceAtPoint(ptWorld, tolWorld)
+
+            If patternHit IsNot Nothing Then
+
+                If deselect Then
+                    ApplyDeselection(patternHit)
+                Else
+                    ApplySelection(patternHit)
+                End If
+
+                Return patternHit
+
+            End If
+
+        End If
 
         ' Manufacturing Model Hole selection.
         If (selectionFilter And SelectionFilter.Hole) <> SelectionFilter.None Then
@@ -578,6 +717,8 @@ Public Class SelectionManager
         Dim nativeHit As isSelectable =
         HitTestGeoAtPoint(ptWorld, tolWorld)
 
+
+
         ' Include Manufacturing Model holes.
         Dim holeHit As MachiningFeature =
     HitTestHoleAtPoint(ptWorld, tolWorld)
@@ -594,7 +735,15 @@ Public Class SelectionManager
             nativeHit = contourHit
         End If
 
+        '---------------------------------------------
+        ' Include Pattern Instances.
+        '---------------------------------------------
+        Dim patternHit As PatternInstance =
+    HitTestPatternInstanceAtPoint(ptWorld, tolWorld)
 
+        If patternHit IsNot Nothing Then
+            nativeHit = patternHit
+        End If
 
         ' Update native hover state.
         If Not Object.ReferenceEquals(nativeHit, _nativeHovered) Then
@@ -779,6 +928,22 @@ Public Class SelectionManager
 
         Next
 
+        'Select all Pattern Instances.
+        For Each instance As PatternInstance In _patternInstances
+
+            If instance Is Nothing Then
+                Continue For
+            End If
+
+            If Not _selected.Contains(instance) Then
+                _selected.Add(instance)
+            End If
+
+            instance.IsSelected = True
+
+        Next
+
+
         RaiseEvent SelectionChanged(_selected)
 
     End Sub
@@ -891,7 +1056,20 @@ Public Class SelectionManager
 
         End If
 
+        'Select all Pattern Instances.
+        For Each instance As PatternInstance In _patternInstances
 
+            If instance Is Nothing Then
+                Continue For
+            End If
+
+            If Not _selected.Contains(instance) Then
+                _selected.Add(instance)
+            End If
+
+            instance.IsSelected = True
+
+        Next
         '-----------------------------------------
         ' Report selection results
         '-----------------------------------------
