@@ -291,15 +291,63 @@ Public Class SelectionManager
 
                 If entity Is Nothing Then Continue For
 
-                'For now, only test GeoLine geometry.
-                If Not TypeOf entity Is GeoLine Then Continue For
 
-                Dim distance As Single =
-                EvaluateDistance(entity, ptPattern)
+                'Test lines and circles belonging to the Pattern.
+                If TypeOf entity Is GeoLine Then
 
-                If distance <= tolWorld Then
-                    Return instance
+                    Dim distance As Single =
+                        EvaluateDistance(entity, ptPattern)
+
+                    If distance <= tolWorld Then
+                        Return instance
+                    End If
+
+                ElseIf TypeOf entity Is GeoCircle Then
+
+                    Dim circle As GeoCircle = DirectCast(entity, GeoCircle)
+
+                    If circle.Center Is Nothing Then Continue For
+
+                    Dim dx As Double = ptPattern.X - circle.Center.X
+                    Dim dy As Double = ptPattern.Y - circle.Center.Y
+
+                    Dim distanceToCenter As Double =
+                        Math.Sqrt(dx * dx + dy * dy)
+
+                    'Hit-test the circle circumference.
+                    Dim distanceToCircle As Double =
+                        Math.Abs(distanceToCenter - circle.Radius)
+
+                    If distanceToCircle <= tolWorld Then
+                        Return instance
+                    End If
+
+
+                ElseIf TypeOf entity Is GeoArc Then
+
+                    Dim distance As Single =
+        EvaluateDistance(entity, ptPattern)
+
+                    If distance <= tolWorld Then
+                        Return instance
+                    End If
+
+
+                ElseIf TypeOf entity Is GeoPoint Then
+
+                    Dim point As GeoPoint = DirectCast(entity, GeoPoint)
+
+                    Dim dx As Double = ptPattern.X - point.X
+                    Dim dy As Double = ptPattern.Y - point.Y
+
+                    Dim distance As Double =
+                        Math.Sqrt(dx * dx + dy * dy)
+
+                    If distance <= tolWorld Then
+                        Return instance
+                    End If
                 End If
+
 
             Next
 
@@ -384,8 +432,12 @@ Public Class SelectionManager
         '---------------------------------------------
         ' Pattern Instance selection
         '---------------------------------------------
+
         If Not profileSelectionEnabled AndAlso
-   (selectionFilter And SelectionFilter.Line) <> SelectionFilter.None Then
+           ((selectionFilter And SelectionFilter.Line) <> SelectionFilter.None OrElse
+            (selectionFilter And SelectionFilter.Circle) <> SelectionFilter.None OrElse
+            (selectionFilter And SelectionFilter.Arc) <> SelectionFilter.None) Then
+
 
             Dim patternHit As PatternInstance =
         HitTestPatternInstanceAtPoint(ptWorld, tolWorld)

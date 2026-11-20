@@ -19,4 +19,8 @@
 
     Public Property AssociationID As Integer?
 
+    ' References LayerRecord.ReferenceID when
+    ' AssociationType = "Layer".
+    Public Property AssociationReferenceID As Integer?
+
 End Class

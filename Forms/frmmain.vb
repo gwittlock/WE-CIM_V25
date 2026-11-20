@@ -1253,7 +1253,35 @@ Public Class frmMain
                     If TypeOf entity Is GeoLine Then
 
                         DrawPatternInstanceLine(
-                            DirectCast(entity, GeoLine),
+            DirectCast(entity, GeoLine),
+            instance,
+            g,
+            vt,
+            panelHeight)
+
+                    ElseIf TypeOf entity Is GeoCircle Then
+
+                        DrawPatternInstanceCircle(
+                            DirectCast(entity, GeoCircle),
+                            instance,
+                            g,
+                            vt,
+                            panelHeight)
+
+
+                    ElseIf TypeOf entity Is GeoArc Then
+
+                        DrawPatternInstanceArc(
+                            DirectCast(entity, GeoArc),
+                            instance,
+                            g,
+                            vt,
+                            panelHeight)
+
+                    ElseIf TypeOf entity Is GeoPoint Then
+
+                        DrawPatternInstancePoint(
+                            DirectCast(entity, GeoPoint),
                             instance,
                             g,
                             vt,
@@ -1972,7 +2000,7 @@ Public Class frmMain
             pnlPicmodeler.Cursor = Cursors.Default
         End If
 
-        Debug.Print($"Active snap is : {_activeSnap}")
+        ' Debug.Print($"Active snap is : {_activeSnap}")
 
         pnlPicmodeler.Invalidate()
 
@@ -4758,7 +4786,28 @@ Public Class frmMain
 
     Private Sub PrintCrossData_ItemClick(sender As Object, e As ItemClickEventArgs) Handles PrintCrossData.ItemClick
         'TestSelectedCircles()
-        dockPanelEntityList.Close()
+        MachiningFeatureMapperTests.TestHoleFeatureRoundTrip()
+        MachiningFeatureMapperTests.TestHoleFeatureWithAssignedTool()
+        MachiningFeatureMapperTests.TestLineOfHolesRoundTrip()
+        MachiningFeatureMapperTests.TestLineOfHolesWithAssignedTool()
+        MachiningFeatureMapperTests.TestGridOfHolesRoundTrip()
+        MachiningFeatureMapperTests.TestGridOfHolesWithAssignedTool()
+        MachiningFeatureMapperTests.TestBoltHoleCircleRoundTrip()
+        MachiningFeatureMapperTests.TestBoltHoleCircleWithAssignedTool()
+        MachiningFeatureMapperTests.TestBarrierHoleRoundTrip()
+        MachiningFeatureMapperTests.TestBarrierHoleWithAssignedTool()
+        MachiningFeatureMapperTests.TestCommandFeatureRoundTrip()
+        MachiningFeatureMapperTests.TestCommandFeatureWithNullText()
+        MachiningFeatureMapperTests.TestContourFeatureRoundTrip()
+        MachiningFeatureMapperTests.TestContourFeatureWithEmptyPath()
+        MachiningFeatureMapperTests.TestContourFeatureWithNullPath()
+        MachiningFeatureMapperTests.TestLineOfHolesAtAngleNormalRoundTrip()
+        MachiningFeatureMapperTests.TestLineOfHolesAtAngleNormalWithAssignedTool()
+        MachiningFeatureMapperTests.TestLineOfHolesAtAngleParallelRoundTrip()
+        MachiningFeatureMapperTests.TestLineOfHolesAtAngleParallelWithAssignedTool()
+        MachiningFeatureMapperTests.TestRapidPointFeatureRoundTrip()
+        MachiningFeatureMapperTests.TestRapidPointFeatureWithAssignedTool()
+
     End Sub
 
     Private Sub DrawHoleFeature(
@@ -8541,9 +8590,6 @@ Public Class frmMain
             Return
         End If
 
-
-
-
         'Transform the original geometry into Instance coordinates.
         Dim worldStart As PointF =
             TransformPatternPoint(
@@ -8578,6 +8624,219 @@ Public Class frmMain
         End Using
 
     End Sub
+
+
+    Private Sub DrawPatternInstanceCircle(
+    c As GeoCircle,
+    instance As PatternInstance,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If c Is Nothing OrElse
+       c.Center Is Nothing OrElse
+       instance Is Nothing Then
+            Return
+        End If
+
+        'Respect the original geometry's layer visibility.
+        Dim layer As Layer = TryCast(c.Association, Layer)
+
+        If layer IsNot Nothing AndAlso Not layer.Visible Then
+            Return
+        End If
+
+        'Transform the circle center into Instance coordinates.
+        Dim worldCenter As PointF =
+        TransformPatternPoint(
+            c.Center.X,
+            c.Center.Y,
+            instance)
+
+        'Convert transformed center to screen coordinates.
+        Dim screenCenter As PointF =
+        WorldToScreen(
+            worldCenter.X,
+            worldCenter.Y,
+            vt,
+            panelHeight)
+
+        'Rotation does not change a circle's radius.
+        Dim radius As Single = CSng(c.Radius * vt.Scale)
+
+        Dim p1 As New PointF(
+        screenCenter.X - radius,
+        screenCenter.Y - radius)
+
+        Dim p2 As New PointF(
+        screenCenter.X + radius,
+        screenCenter.Y + radius)
+
+        Dim rect As RectangleF =
+        HelperFunctions.RectFromPoints(p1, p2)
+
+        'Selection and hover belong to the Instance.
+        Dim drawColor As Color = c.Color
+
+        If instance.IsSelected OrElse instance.IsHovered Then
+            drawColor = Color.Red
+        End If
+
+        Using pen As New Pen(drawColor, 1.0F)
+            g.DrawEllipse(pen, rect)
+        End Using
+
+    End Sub
+
+
+    Private Sub DrawPatternInstancePoint(
+    pt As GeoPoint,
+    instance As PatternInstance,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If pt Is Nothing OrElse instance Is Nothing Then Exit Sub
+
+        'Transform Pattern geometry into Instance coordinates.
+        Dim worldPt As PointF =
+        TransformPatternPoint(
+            pt.X,
+            pt.Y,
+            instance)
+
+        Dim screenPt As PointF =
+        WorldToScreen(
+            worldPt.X,
+            worldPt.Y,
+            vt,
+            panelHeight)
+
+        Const PointSize As Single = 6.0F
+
+        Dim rect As New RectangleF(
+        screenPt.X - PointSize / 2.0F,
+        screenPt.Y - PointSize / 2.0F,
+        PointSize,
+        PointSize)
+
+        Dim drawColor As Color = pt.Color
+        Dim drawWidth As Single = 1.0F
+
+        If instance.IsSelected OrElse instance.IsHovered Then
+            drawColor = Color.Red
+        End If
+
+        If instance.IsHovered Then
+            drawWidth = 2.0F
+        End If
+
+        Using pen As New Pen(drawColor, drawWidth)
+            g.DrawRectangle(pen, rect.X, rect.Y, rect.Width, rect.Height)
+        End Using
+
+    End Sub
+
+    Private Sub DrawPatternInstanceArc(
+    a As GeoArc,
+    instance As PatternInstance,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If a Is Nothing OrElse
+       a.Center Is Nothing OrElse
+       instance Is Nothing Then
+            Return
+        End If
+
+        'Respect the original geometry's layer visibility.
+        Dim layer As Layer = TryCast(a.Association, Layer)
+
+        If layer IsNot Nothing AndAlso Not layer.Visible Then
+            Return
+        End If
+
+        'Transform the arc center into Instance coordinates.
+        Dim worldCenter As PointF =
+        TransformPatternPoint(
+            a.Center.X,
+            a.Center.Y,
+            instance)
+
+        Dim centerScreen As PointF =
+        WorldToScreen(
+            worldCenter.X,
+            worldCenter.Y,
+            vt,
+            panelHeight)
+
+        'Rotation does not change the arc radius.
+        Dim r As Single = CSng(a.Radius * vt.Scale)
+
+        Dim p1 As New PointF(
+        centerScreen.X - r,
+        centerScreen.Y - r)
+
+        Dim p2 As New PointF(
+        centerScreen.X + r,
+        centerScreen.Y + r)
+
+        Dim rect As RectangleF =
+        HelperFunctions.RectFromPoints(p1, p2)
+
+        'Preserve the original arc sweep.
+        Dim sweep As Single
+
+        If a.IsClockwise Then
+
+            sweep = CSng(a.StartAngle - a.EndAngle)
+
+            If sweep < 0 Then
+                sweep += 360
+            End If
+
+        Else
+
+            sweep = CSng(a.EndAngle - a.StartAngle)
+
+            If sweep < 0 Then
+                sweep += 360
+            End If
+
+        End If
+
+        'Apply Instance rotation to the arc orientation.
+        Dim rotatedStartAngle As Double =
+        a.StartAngle + instance.Angle
+
+        'Convert world angles to screen angles.
+        Dim startAngle As Single =
+        CSng(-rotatedStartAngle)
+
+        Dim sweepAngle As Single
+
+        If a.IsClockwise Then
+            sweepAngle = sweep
+        Else
+            sweepAngle = -sweep
+        End If
+
+        'Selection and hover belong to the Instance.
+        Dim drawColor As Color = a.Color
+
+        If instance.IsSelected OrElse instance.IsHovered Then
+            drawColor = Color.Red
+        End If
+
+        Using pen As New Pen(drawColor, 1.0F)
+            g.DrawArc(pen, rect, startAngle, sweepAngle)
+        End Using
+
+    End Sub
+
+
+
 
     Private Sub BarShowInstanceText_CheckedChanged(sender As Object, e As ItemClickEventArgs) Handles BarShowInstanceText.CheckedChanged
 
@@ -8638,7 +8897,6 @@ Public Class frmMain
 
     End Sub
 
-
     Private Function GetPatternInstanceLineBounds(
     pattern As Pattern,
     instance As PatternInstance) As RectangleF?
@@ -8654,37 +8912,160 @@ Public Class frmMain
 
         For Each entity As GeoEntity In pattern.Geometry
 
-            Dim line As GeoLine = TryCast(entity, GeoLine)
+            If entity Is Nothing Then Continue For
 
-            If line Is Nothing OrElse
-           line.StartPoint Is Nothing OrElse
-           line.EndPoint Is Nothing Then
-                Continue For
-            End If
-
-            Dim layer As Layer = TryCast(line.Association, Layer)
+            'Respect the original geometry's layer visibility.
+            Dim layer As Layer = TryCast(entity.Association, Layer)
 
             If layer IsNot Nothing AndAlso Not layer.Visible Then
                 Continue For
             End If
 
-            Dim p1 As PointF =
-            TransformPatternPoint(
-                line.StartPoint.X,
-                line.StartPoint.Y,
-                instance)
+            If TypeOf entity Is GeoLine Then
 
-            Dim p2 As PointF =
-            TransformPatternPoint(
-                line.EndPoint.X,
-                line.EndPoint.Y,
-                instance)
+                Dim line As GeoLine = DirectCast(entity, GeoLine)
 
-            minX = Math.Min(minX, Math.Min(p1.X, p2.X))
-            minY = Math.Min(minY, Math.Min(p1.Y, p2.Y))
+                If line.StartPoint Is Nothing OrElse
+               line.EndPoint Is Nothing Then
+                    Continue For
+                End If
 
-            maxX = Math.Max(maxX, Math.Max(p1.X, p2.X))
-            maxY = Math.Max(maxY, Math.Max(p1.Y, p2.Y))
+                Dim p1 As PointF =
+                TransformPatternPoint(
+                    line.StartPoint.X,
+                    line.StartPoint.Y,
+                    instance)
+
+                Dim p2 As PointF =
+                TransformPatternPoint(
+                    line.EndPoint.X,
+                    line.EndPoint.Y,
+                    instance)
+
+                minX = Math.Min(minX, Math.Min(p1.X, p2.X))
+                minY = Math.Min(minY, Math.Min(p1.Y, p2.Y))
+
+                maxX = Math.Max(maxX, Math.Max(p1.X, p2.X))
+                maxY = Math.Max(maxY, Math.Max(p1.Y, p2.Y))
+
+            ElseIf TypeOf entity Is GeoCircle Then
+
+                Dim circle As GeoCircle = DirectCast(entity, GeoCircle)
+
+                If circle.Center Is Nothing Then
+                    Continue For
+                End If
+
+                'Transform the center into Instance coordinates.
+                Dim center As PointF =
+                TransformPatternPoint(
+                    circle.Center.X,
+                    circle.Center.Y,
+                    instance)
+
+                'Rotation does not change a circle's radius.
+                Dim radius As Double = circle.Radius
+
+                minX = Math.Min(minX, center.X - radius)
+                minY = Math.Min(minY, center.Y - radius)
+
+                maxX = Math.Max(maxX, center.X + radius)
+                maxY = Math.Max(maxY, center.Y + radius)
+
+
+            ElseIf TypeOf entity Is GeoArc Then
+
+                Dim arc As GeoArc = DirectCast(entity, GeoArc)
+
+                If arc.Center Is Nothing Then Continue For
+
+                'Transform the arc center into Instance coordinates.
+                Dim center As PointF =
+        TransformPatternPoint(
+            arc.Center.X,
+            arc.Center.Y,
+            instance)
+
+                Dim radius As Double = arc.Radius
+
+                'Calculate the rotated start and end angles.
+                Dim startAngle As Double =
+        arc.StartAngle + instance.Angle
+
+                Dim endAngle As Double =
+        arc.EndAngle + instance.Angle
+
+                'Determine the arc sweep in degrees.
+                Dim sweep As Double
+
+                If arc.IsClockwise Then
+                    sweep = (startAngle - endAngle + 360.0) Mod 360.0
+                Else
+                    sweep = (endAngle - startAngle + 360.0) Mod 360.0
+                End If
+
+                'Test endpoints and cardinal extrema.
+                Dim testAngles As Double() = {
+        startAngle,
+        endAngle,
+        0.0,
+        90.0,
+        180.0,
+        270.0
+    }
+
+                For Each angle As Double In testAngles
+
+                    Dim relativeAngle As Double
+
+                    If arc.IsClockwise Then
+                        relativeAngle =
+                (startAngle - angle + 360.0) Mod 360.0
+                    Else
+                        relativeAngle =
+                (angle - startAngle + 360.0) Mod 360.0
+                    End If
+
+                    If relativeAngle > sweep + 0.000001 Then
+                        Continue For
+                    End If
+
+                    Dim radians As Double = angle * Math.PI / 180.0
+
+                    Dim x As Double =
+            center.X + radius * Math.Cos(radians)
+
+                    Dim y As Double =
+            center.Y + radius * Math.Sin(radians)
+
+                    minX = Math.Min(minX, x)
+                    minY = Math.Min(minY, y)
+
+                    maxX = Math.Max(maxX, x)
+                    maxY = Math.Max(maxY, y)
+
+                Next
+
+
+            ElseIf TypeOf entity Is GeoPoint Then
+
+                Dim pt As GeoPoint = DirectCast(entity, GeoPoint)
+
+                'Transform the point into Instance coordinates.
+                Dim worldPt As PointF =
+        TransformPatternPoint(
+            pt.X,
+            pt.Y,
+            instance)
+
+                minX = Math.Min(minX, worldPt.X)
+                minY = Math.Min(minY, worldPt.Y)
+
+                maxX = Math.Max(maxX, worldPt.X)
+                maxY = Math.Max(maxY, worldPt.Y)
+
+
+            End If
 
         Next
 
@@ -8699,6 +9080,7 @@ Public Class frmMain
         CSng(maxY - minY))
 
     End Function
+
 
 
     Private Sub DrawPatternInstanceText(
@@ -8756,8 +9138,13 @@ Public Class frmMain
 
     End Sub
 
+    Private Sub iSave_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iSave.ItemClick
 
+    End Sub
 
+    Private Sub bbViewEntityList_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbViewEntityList.ItemClick
+        dockPanelEntityList.Show()
+    End Sub
 End Class
 
 

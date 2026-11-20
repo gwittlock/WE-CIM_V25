@@ -41,6 +41,8 @@ Partial Class ConfigurationManagerForm
         Me.tabToolSetup = New System.Windows.Forms.TabPage()
         Me.SplitContainer2 = New System.Windows.Forms.SplitContainer()
         Me.Panel1 = New System.Windows.Forms.Panel()
+        Me.btnMoveToolDown = New System.Windows.Forms.Button()
+        Me.btnMoveToolUp = New System.Windows.Forms.Button()
         Me.cmdAutoToolHelpers = New System.Windows.Forms.Button()
         Me.btnRemFromStation = New System.Windows.Forms.Button()
         Me.btnTSRemoveParameter = New System.Windows.Forms.Button()
@@ -98,8 +100,6 @@ Partial Class ConfigurationManagerForm
         Me.DeleteMaterialTypeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteMaterialSizeTSM = New System.Windows.Forms.ToolStripMenuItem()
         Me.DeleteLayerTSM = New System.Windows.Forms.ToolStripMenuItem()
-        Me.btnMoveToolUp = New System.Windows.Forms.Button()
-        Me.btnMoveToolDown = New System.Windows.Forms.Button()
         CType(Me.SplitContainer1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SplitContainer1.Panel1.SuspendLayout()
         Me.SplitContainer1.Panel2.SuspendLayout()
@@ -358,6 +358,26 @@ Partial Class ConfigurationManagerForm
         Me.Panel1.Name = "Panel1"
         Me.Panel1.Size = New System.Drawing.Size(639, 71)
         Me.Panel1.TabIndex = 4
+        '
+        'btnMoveToolDown
+        '
+        Me.btnMoveToolDown.AutoSize = True
+        Me.btnMoveToolDown.Location = New System.Drawing.Point(469, 10)
+        Me.btnMoveToolDown.Name = "btnMoveToolDown"
+        Me.btnMoveToolDown.Size = New System.Drawing.Size(99, 23)
+        Me.btnMoveToolDown.TabIndex = 9
+        Me.btnMoveToolDown.Text = "Move Tool Down"
+        Me.btnMoveToolDown.UseVisualStyleBackColor = True
+        '
+        'btnMoveToolUp
+        '
+        Me.btnMoveToolUp.AutoSize = True
+        Me.btnMoveToolUp.Location = New System.Drawing.Point(378, 10)
+        Me.btnMoveToolUp.Name = "btnMoveToolUp"
+        Me.btnMoveToolUp.Size = New System.Drawing.Size(85, 23)
+        Me.btnMoveToolUp.TabIndex = 8
+        Me.btnMoveToolUp.Text = "Move Tool Up"
+        Me.btnMoveToolUp.UseVisualStyleBackColor = True
         '
         'cmdAutoToolHelpers
         '
@@ -902,26 +922,6 @@ Partial Class ConfigurationManagerForm
         Me.DeleteLayerTSM.Name = "DeleteLayerTSM"
         Me.DeleteLayerTSM.Size = New System.Drawing.Size(196, 22)
         Me.DeleteLayerTSM.Text = "Delete Layer"
-        '
-        'btnMoveToolUp
-        '
-        Me.btnMoveToolUp.AutoSize = True
-        Me.btnMoveToolUp.Location = New System.Drawing.Point(378, 10)
-        Me.btnMoveToolUp.Name = "btnMoveToolUp"
-        Me.btnMoveToolUp.Size = New System.Drawing.Size(85, 23)
-        Me.btnMoveToolUp.TabIndex = 8
-        Me.btnMoveToolUp.Text = "Move Tool Up"
-        Me.btnMoveToolUp.UseVisualStyleBackColor = True
-        '
-        'btnMoveToolDown
-        '
-        Me.btnMoveToolDown.AutoSize = True
-        Me.btnMoveToolDown.Location = New System.Drawing.Point(469, 10)
-        Me.btnMoveToolDown.Name = "btnMoveToolDown"
-        Me.btnMoveToolDown.Size = New System.Drawing.Size(99, 23)
-        Me.btnMoveToolDown.TabIndex = 9
-        Me.btnMoveToolDown.Text = "Move Tool Down"
-        Me.btnMoveToolDown.UseVisualStyleBackColor = True
         '
         'ConfigurationManagerForm
         '

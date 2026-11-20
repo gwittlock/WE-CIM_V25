@@ -702,7 +702,7 @@ Public Class ConfigurationManagerForm
         e.CellStyle.SelectionForeColor = toolColor
 
         ' Preserve colors when the row is selected.
-        e.CellStyle.SelectionBackColor = toolColor
+        'e.CellStyle.SelectionBackColor = toolColor
         e.CellStyle.SelectionForeColor = e.CellStyle.ForeColor
 
     End Sub
@@ -5732,6 +5732,10 @@ Public Class ConfigurationManagerForm
 
 
 
+
+    End Sub
+
+    Private Sub dgvToolSetup_CellContentClick(sender As Object, e As DataGridViewCellEventArgs) Handles dgvToolSetup.CellContentClick
 
     End Sub
 End Class

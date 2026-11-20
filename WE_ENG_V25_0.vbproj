@@ -105,7 +105,7 @@
     </WarningsAsErrors>
     <DefineConstants>CCS_FAB=false,DIAMOND=0, Rittal =0, APIHeatTransfer=0</DefineConstants>
     <UseVSHostingProcess>false</UseVSHostingProcess>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
@@ -580,12 +580,25 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Compile Include="Persistence\ClaWorkZoneAssignmentMapperss1.vb" />
+    <Compile Include="Persistence\GeoEntityMapper.vb" />
     <Compile Include="Persistence\GeoEntityRecord.vb" />
     <Compile Include="Persistence\GeoProfileRecord.vb" />
     <Compile Include="Persistence\GeoProfileSegmentRecord.vb" />
+    <Compile Include="Persistence\LayerRecord.vb" />
+    <Compile Include="Persistence\MachiningFeatureMapper.vb" />
+    <Compile Include="Persistence\MachiningFeatureMapperTests.vb" />
     <Compile Include="Persistence\MachiningFeatureRecord.vb" />
     <Compile Include="Persistence\MM3File.vb" />
+    <Compile Include="Persistence\MM3FileHeader.vb" />
+    <Compile Include="Persistence\MM3JobInformation.vb" />
+    <Compile Include="Persistence\MM3ManufacturingEnvironment.vb" />
+    <Compile Include="Persistence\MM3NativeFile.vb" />
+    <Compile Include="Persistence\MM3NCCodeGeneration.vb" />
+    <Compile Include="Persistence\MM3ObjectReferences.vb" />
     <Compile Include="Persistence\PartRecord.vb" />
+    <Compile Include="Persistence\PathSegmentMapper.vb" />
+    <Compile Include="Persistence\PathSegmentRecord.vb" />
     <Compile Include="Persistence\PatternInstanceRecord.vb" />
     <Compile Include="Persistence\PatternRecord.vb" />
     <Compile Include="Persistence\WorkZoneAssignmentRecord.vb" />

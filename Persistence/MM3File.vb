@@ -14,6 +14,10 @@
 
     Public Property Geometry As New List(Of GeoEntityRecord)
 
+    Public Property GeometryPoints As New List(Of GeoEntityRecord)
+
+    Public Property Layers As New List(Of LayerRecord)
+
     Public Property GeoProfiles As New List(Of GeoProfileRecord)
 
     Public Property ManufacturingFeatures As New List(Of MachiningFeatureRecord)

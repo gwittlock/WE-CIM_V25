@@ -3,6 +3,8 @@
 Public Class JobSheet
 
     Public Property MaterialSheetID As Integer
+    Public Property MM3FilePath As String
+
     Public Property Length As Double
     Public Property Width As Double
 
@@ -11,4 +13,5 @@ Public Class JobSheet
     Public Property Parts As New List(Of Part)
 
     Public Property ManufacturingModel As New MM3()
+
 End Class
