@@ -25,6 +25,10 @@
     Public Property WorkZoneAssignments As New List(Of WorkZoneAssignmentRecord)
 
 
+    Public Property PartGeometryIDs As New List(Of Integer)
+
+    Public Property ManufacturingGeometryIDs As New List(Of Integer)
+
 
 
 End Class

@@ -1284,4 +1284,201 @@
     End Function
 
 
+    Public Shared Function RestoreFeature(
+    record As MachiningFeatureRecord,
+    savedTools As IEnumerable(Of WE_ENG_V25_0.Core.Models.Tool)
+) As MachiningFeature
+
+        If record Is Nothing Then
+            Throw New ArgumentNullException(NameOf(record))
+        End If
+
+        Select Case record.ConcreteType
+
+            Case NameOf(HoleFeature)
+                Return FromRecord(record, savedTools)
+
+            Case NameOf(LineOfHolesFeature)
+                Return FromLineOfHolesRecord(record, savedTools)
+
+            Case NameOf(GridOfHolesFeature)
+                Return FromGridOfHolesRecord(record, savedTools)
+
+            Case NameOf(BoltHoleCircleFeature)
+                Return FromBoltHoleCircleRecord(record, savedTools)
+
+            Case NameOf(BarrierHoleFeature)
+                Return FromBarrierHoleRecord(record, savedTools)
+
+            Case NameOf(CommandFeature)
+                Return FromCommandFeatureRecord(record)
+
+            Case NameOf(ContourFeature)
+                Return FromContourFeatureRecord(record)
+
+            Case NameOf(LineOfHolesAtAngleNormalFeature)
+                Return FromLineOfHolesAtAngleNormalRecord(
+                record, savedTools)
+
+            Case NameOf(LineOfHolesAtAngleParallelFeature)
+                Return FromLineOfHolesAtAngleParallelRecord(
+                record, savedTools)
+
+            Case NameOf(RapidPointFeature)
+                Return FromRapidPointRecord(record, savedTools)
+
+            Case Else
+                Throw New InvalidOperationException(
+                "Unsupported manufacturing feature type: " &
+                Convert.ToString(record.ConcreteType))
+
+        End Select
+
+    End Function
+
+
+    Public Shared Function RestoreManufacturingFeatures(
+    mm3File As MM3File,
+    savedTools As IEnumerable(Of WE_ENG_V25_0.Core.Models.Tool)
+) As Dictionary(Of Integer, MachiningFeature)
+
+        If mm3File Is Nothing Then
+            Throw New ArgumentNullException(NameOf(mm3File))
+        End If
+
+        If mm3File.ManufacturingFeatures Is Nothing Then
+            Throw New InvalidOperationException(
+            "MM3 ManufacturingFeatures collection is missing.")
+        End If
+
+        Dim featuresByID As New Dictionary(Of Integer, MachiningFeature)
+
+        For Each record As MachiningFeatureRecord In mm3File.ManufacturingFeatures
+
+            If record Is Nothing Then
+                Throw New InvalidOperationException(
+                "MM3 ManufacturingFeatures contains a null record.")
+            End If
+
+            Dim feature As MachiningFeature =
+            RestoreFeature(record, savedTools)
+
+            If feature Is Nothing Then
+                Throw New InvalidOperationException(
+                "Manufacturing feature restoration returned Nothing.")
+            End If
+
+            If featuresByID.ContainsKey(feature.ID) Then
+                Throw New InvalidOperationException(
+                "Duplicate manufacturing feature ID: " &
+                feature.ID.ToString())
+            End If
+
+            featuresByID.Add(feature.ID, feature)
+
+        Next
+
+        Return featuresByID
+
+    End Function
+
+
+    Public Shared Sub RestoreJobSheetManufacturingGeometry(
+    jobSheet As JobSheet,
+    mm3File As MM3File,
+    featuresByID As Dictionary(Of Integer, MachiningFeature)
+)
+
+        If jobSheet Is Nothing Then
+            Throw New ArgumentNullException(NameOf(jobSheet))
+        End If
+
+        If mm3File Is Nothing Then
+            Throw New ArgumentNullException(NameOf(mm3File))
+        End If
+
+        If featuresByID Is Nothing Then
+            Throw New ArgumentNullException(NameOf(featuresByID))
+        End If
+
+        If jobSheet.ManufacturingModel Is Nothing Then
+            Throw New InvalidOperationException(
+            "JobSheet ManufacturingModel is missing.")
+        End If
+
+        If mm3File.ManufacturingFeatures Is Nothing Then
+            Throw New InvalidOperationException(
+            "MM3 ManufacturingFeatures collection is missing.")
+        End If
+
+        Dim restoredFeatures As New List(Of MachiningFeature)
+
+        ' Preserve the original manufacturing feature order.
+
+        For Each featureID As Integer In mm3File.ManufacturingGeometryIDs
+
+            Dim feature As MachiningFeature = Nothing
+
+            If Not featuresByID.TryGetValue(featureID, feature) Then
+                Throw New InvalidOperationException(
+            "Manufacturing feature could not be resolved. ID=" &
+            featureID.ToString())
+            End If
+
+            restoredFeatures.Add(feature)
+
+        Next
+
+
+        jobSheet.ManufacturingModel.ManufacturingGeometry = restoredFeatures
+
+    End Sub
+
+
+    Public Shared Function SaveFeature(
+    feature As MachiningFeature
+) As MachiningFeatureRecord
+
+        If feature Is Nothing Then
+            Throw New ArgumentNullException(NameOf(feature))
+        End If
+
+        If TypeOf feature Is BarrierHoleFeature Then
+            Return ToRecord(DirectCast(feature, BarrierHoleFeature))
+
+        ElseIf TypeOf feature Is BoltHoleCircleFeature Then
+            Return ToRecord(DirectCast(feature, BoltHoleCircleFeature))
+
+        ElseIf TypeOf feature Is CommandFeature Then
+            Return ToRecord(DirectCast(feature, CommandFeature))
+
+        ElseIf TypeOf feature Is ContourFeature Then
+            Return ToRecord(DirectCast(feature, ContourFeature))
+
+        ElseIf TypeOf feature Is GridOfHolesFeature Then
+            Return ToRecord(DirectCast(feature, GridOfHolesFeature))
+
+        ElseIf TypeOf feature Is HoleFeature Then
+            Return ToRecord(DirectCast(feature, HoleFeature))
+
+        ElseIf TypeOf feature Is LineOfHolesAtAngleNormalFeature Then
+            Return ToRecord(DirectCast(feature, LineOfHolesAtAngleNormalFeature))
+
+        ElseIf TypeOf feature Is LineOfHolesAtAngleParallelFeature Then
+            Return ToRecord(DirectCast(feature, LineOfHolesAtAngleParallelFeature))
+
+        ElseIf TypeOf feature Is LineOfHolesFeature Then
+            Return ToRecord(DirectCast(feature, LineOfHolesFeature))
+
+        ElseIf TypeOf feature Is RapidPointFeature Then
+            Return ToRecord(DirectCast(feature, RapidPointFeature))
+
+        End If
+
+        Throw New NotSupportedException(
+        "Unsupported manufacturing feature type: " &
+        feature.GetType().FullName)
+
+    End Function
+
 End Class

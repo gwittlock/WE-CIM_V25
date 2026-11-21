@@ -1,4 +1,6 @@
-﻿Public Class MachiningFeatureMapperTests
+﻿Imports System.IO
+
+Public Class MachiningFeatureMapperTests
 
     Public Shared Sub TestHoleFeatureRoundTrip()
 

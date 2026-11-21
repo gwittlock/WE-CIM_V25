@@ -7682,22 +7682,6 @@ Public Class frmMain
             Next
 
             '================================================
-            ' Delete Part Geometry.
-            '================================================
-
-            If mm IsNot Nothing Then
-
-                For Each entity As GeoEntity In selectedEntities
-
-                    If mm.PartGeometry.Remove(entity) Then
-                        removedCount += 1
-                    End If
-
-                Next
-
-            End If
-
-            '================================================
             ' Update Parts and Profiles.
             '================================================
 
@@ -9144,6 +9128,10 @@ Public Class frmMain
 
     Private Sub bbViewEntityList_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbViewEntityList.ItemClick
         dockPanelEntityList.Show()
+    End Sub
+
+    Private Sub iSaveAs_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iSaveAs.ItemClick
+
     End Sub
 End Class
 

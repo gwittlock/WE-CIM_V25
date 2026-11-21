@@ -19,6 +19,28 @@ Public MustInherit Class GeoEntity
 
     Private Shared _nextID As Integer = 0
 
+
+    Public Shared Sub EnsureNextIDAbove(
+    existingID As Integer
+)
+
+        Dim currentID As Integer
+
+        Do
+            currentID = System.Threading.Volatile.Read(_nextID)
+
+            If currentID >= existingID Then
+                Exit Sub
+            End If
+
+        Loop While System.Threading.Interlocked.CompareExchange(
+        _nextID,
+        existingID,
+        currentID) <> currentID
+
+    End Sub
+
+
     Protected Sub New()
         ID = System.Threading.Interlocked.Increment(_nextID)
     End Sub

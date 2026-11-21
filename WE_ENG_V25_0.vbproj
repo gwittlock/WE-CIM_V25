@@ -580,9 +580,12 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <Compile Include="Persistence\ClaWorkZoneAssignmentMapperss1.vb" />
+    <Compile Include="Persistence\MM3NativeFileService.vb" />
+    <Compile Include="Persistence\PatternMapper.vb" />
+    <Compile Include="Persistence\WorkZoneAssignmentMapper.vb" />
     <Compile Include="Persistence\GeoEntityMapper.vb" />
     <Compile Include="Persistence\GeoEntityRecord.vb" />
+    <Compile Include="Persistence\GeoProfileMapper.vb" />
     <Compile Include="Persistence\GeoProfileRecord.vb" />
     <Compile Include="Persistence\GeoProfileSegmentRecord.vb" />
     <Compile Include="Persistence\LayerRecord.vb" />
@@ -596,6 +599,7 @@
     <Compile Include="Persistence\MM3NativeFile.vb" />
     <Compile Include="Persistence\MM3NCCodeGeneration.vb" />
     <Compile Include="Persistence\MM3ObjectReferences.vb" />
+    <Compile Include="Persistence\PartMapper.vb" />
     <Compile Include="Persistence\PartRecord.vb" />
     <Compile Include="Persistence\PathSegmentMapper.vb" />
     <Compile Include="Persistence\PathSegmentRecord.vb" />
