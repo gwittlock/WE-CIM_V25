@@ -9130,9 +9130,107 @@ Public Class frmMain
         dockPanelEntityList.Show()
     End Sub
 
-    Private Sub iSaveAs_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iSaveAs.ItemClick
+    Private Sub iSaveAs_ItemClick(
+    sender As Object,
+    e As ItemClickEventArgs) Handles iSaveAs.ItemClick
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then
+            MessageBox.Show(
+            "A production job with exactly one sheet is required.",
+            "Save As",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        Dim selectedPath As String =
+        SelectMM3SavePath(targetSheet.MM3FilePath)
+
+        If String.IsNullOrWhiteSpace(selectedPath) Then
+            Return
+        End If
+
+
+        If Not String.IsNullOrWhiteSpace(targetSheet.MM3FilePath) Then
+
+            Dim currentPath As String =
+        System.IO.Path.GetFullPath(targetSheet.MM3FilePath)
+
+            Dim destinationPath As String =
+        System.IO.Path.GetFullPath(selectedPath)
+
+            If String.Equals(
+        currentPath,
+        destinationPath,
+        StringComparison.OrdinalIgnoreCase) Then
+
+                MessageBox.Show(
+            "The selected filename is already the active model." &
+            Environment.NewLine &
+            "Use Save to update the existing model, or " &
+            "choose a different filename for Save As.",
+            "Save As",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+
+                Return
+
+            End If
+
+        End If
+
+        Try
+
+            Dim nativeFile As MM3NativeFile =
+            MM3NativeFileService.BuildNativeFile(
+                CurrentProductionJob,
+                targetSheet,
+                CurrentJob,
+                selectedPath,
+                "JobSheet",
+                True)
+
+            MM3NativeFileService.WriteNativeFile(
+            selectedPath,
+            nativeFile)
+
+            'Update the active filename only after a successful write.
+            targetSheet.MM3FilePath = selectedPath
+
+        Catch ex As Exception
+
+            MessageBox.Show(
+            "Unable to save MM3 file." &
+            Environment.NewLine &
+            ex.ToString(),
+            "Save As",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+
+        End Try
 
     End Sub
+
+    Private Function SelectMM3SavePath(
+        Optional suggestedPath As String = Nothing) As String
+
+        With dlgFileSaveDialog
+            .Title = "Save WE-CIM Model"
+            .FilterIndex = 1
+            .DefaultExt = "mm3"
+            .AddExtension = True
+            .FileName = If(suggestedPath, String.Empty)
+        End With
+
+        If dlgFileSaveDialog.ShowDialog(Me) <> DialogResult.OK Then
+            Return Nothing
+        End If
+
+        Return dlgFileSaveDialog.FileName
+
+    End Function
 End Class
 
 

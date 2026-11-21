@@ -1210,6 +1210,18 @@
 
                 Next
 
+                For Each existingLayer As Layer In layers
+
+                    If Object.ReferenceEquals(existingLayer, layer) Then
+                        alreadyAdded = True
+                        Exit For
+                    End If
+
+                Next
+
+                If Not alreadyAdded Then
+                    layers.Add(layer)
+                End If
 
             Next
 
@@ -1218,7 +1230,6 @@
         Return layers
 
     End Function
-
 
     Public Shared Function BuildLayerReferences(
     layers As IEnumerable(Of Layer)

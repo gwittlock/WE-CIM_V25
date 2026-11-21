@@ -3328,6 +3328,11 @@ Partial Class frmMain
         Me.NestingImageCollection.ImageStream = CType(resources.GetObject("NestingImageCollection.ImageStream"), DevExpress.Utils.ImageCollectionStreamer)
         Me.NestingImageCollection.Images.SetKeyName(0, ".Drawing16_90.png")
         '
+        'dlgFileSaveDialog
+        '
+        Me.dlgFileSaveDialog.Filter = "WE-CIM MM3 Files (*.mm3)|*.mm3|WE-CIM Nest Files (*.nst)|*.nst|WE-CIM CTG Files (" &
+    "*.ctg)|*.ctg"
+        '
         'DefaultLookAndFeel1
         '
         Me.DefaultLookAndFeel1.LookAndFeel.SkinName = "Dark Side"

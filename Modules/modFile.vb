@@ -109,6 +109,20 @@ Public Module modFile
         CurrentProductionJob = New Job With {.MachineID = SelectedMachineID, .ToolSetupID = SelectedToolSetupID, .LayerSetupID = SelectedLayerSetupID, .MaterialTypeID = _selectedMaterial.TypeID}
 
         '============================================================
+        ' Transfer pending Job information
+        '============================================================
+        CurrentProductionJob.UDPs("Customer") = PendingCustomerName
+        CurrentProductionJob.UDPs("PONumber") = PendingOrderPO
+        If PendingDueDate Is Nothing OrElse
+    PendingDueDate Is DBNull.Value Then
+
+            CurrentProductionJob.UDPs("DueDate") = Nothing
+
+        Else
+            CurrentProductionJob.UDPs("DueDate") =
+        Convert.ToDateTime(PendingDueDate)
+        End If
+        '============================================================
         ' Create Production Sheet
         '============================================================
         Dim productionSheet As New JobSheet With {.MaterialSheetID = _SelectedMaterialID, .Length = matLength, .Width = matWidth}

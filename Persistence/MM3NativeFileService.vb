@@ -185,10 +185,15 @@ Public Class MM3NativeFileService
 
     Public Shared Function BuildManufacturingEnvironment(
     job As Job,
+    jobSheet As JobSheet,
     context As JobContext) As MM3ManufacturingEnvironment
 
         If job Is Nothing Then
             Throw New ArgumentNullException(NameOf(job))
+        End If
+
+        If jobSheet Is Nothing Then
+            Throw New ArgumentNullException(NameOf(jobSheet))
         End If
 
         If context Is Nothing Then
@@ -304,7 +309,7 @@ Public Class MM3NativeFileService
     ToList()
 
         environment.Stations =
-    AppData.Stations.
+    AppData.StationList.
     Where(Function(s) referencedStationIDs.Contains(s.ID)).
     ToList()
 
@@ -313,10 +318,180 @@ Public Class MM3NativeFileService
         "One or more Stations referenced by the Tool Setup were not found.")
         End If
 
+        If environment.Stations.Any(
+    Function(s) s.MachineID <> job.MachineID) Then
+
+            Throw New InvalidDataException(
+        "One or more Stations referenced by the Tool Setup " &
+        "do not belong to the selected machine.")
+        End If
+
+        environment.ToolSetupUDPDefinitions =
+    AppData.ToolSetupUDPDefinitions.ToList()
+
+        Dim selectedMemberIDs =
+    environment.ToolSetupMembers.
+    Select(Function(m) m.ID).
+    ToList()
+
+        environment.ToolSetupUDPValues =
+    AppData.ToolSetupUDPValues.
+    Where(Function(v) v.ToolSetupID = selectedToolSetup.ID AndAlso
+          selectedMemberIDs.Contains(v.ToolSetupMemberID)).
+    ToList()
+
+        Dim referencedToolTypeIDs =
+    environment.Tools.
+    Select(Function(t) t.TypeID).
+    Distinct().
+    ToList()
+
+        environment.ToolTypes =
+    AppData.ToolTypes.
+    Where(Function(tt) referencedToolTypeIDs.Contains(tt.ID)).
+    ToList()
+
+        If environment.ToolTypes.Count <> referencedToolTypeIDs.Count Then
+            Throw New InvalidDataException(
+        "One or more Tool Types referenced by the Tools were not found.")
+        End If
+
+        environment.ToolTypeAttributes =
+    AppData.ToolTypeAttributes.
+    Where(Function(a) referencedToolTypeIDs.Contains(a.ToolTypeID)).
+    ToList()
+
+        Dim referencedAttributeTypeIDs =
+    environment.ToolTypeAttributes.
+    Select(Function(a) a.AttributeTypeID).
+    Distinct().
+    ToList()
+
+        environment.ToolAttributeTypes =
+    AppData.ToolAttributeTypes.
+    Where(Function(at) referencedAttributeTypeIDs.Contains(at.ID)).
+    ToList()
+
+        If environment.ToolAttributeTypes.Count <> referencedAttributeTypeIDs.Count Then
+            Throw New InvalidDataException(
+        "One or more Tool Attribute Types referenced by the Tool Types were not found.")
+        End If
+
+        Dim selectedMaterial As MaterialSheet =
+    AppData.MaterialSheets.FirstOrDefault(
+        Function(m) m.ID = jobSheet.MaterialSheetID)
+
+        If selectedMaterial Is Nothing Then
+            Throw New InvalidDataException(
+        "The JobSheet material was not found in configuration data.")
+        End If
+
+        environment.Material = selectedMaterial
+
+        Dim selectedMaterialType As MaterialType =
+    AppData.MaterialTypes.FirstOrDefault(
+        Function(mt) mt.ID = selectedMaterial.TypeID)
+
+        If selectedMaterialType Is Nothing Then
+            Throw New InvalidDataException(
+        "The Material Type referenced by the JobSheet material was not found.")
+        End If
+
+        environment.MaterialType = selectedMaterialType
+
+        If job.MaterialTypeID <> selectedMaterial.TypeID Then
+            Throw New InvalidDataException(
+        "The Job Material Type does not match " &
+        "the JobSheet material's TypeID.")
+        End If
+
+
+        Dim selectedLayerSetup As AppData.layersetup =
+    AppData.LayerSetups.FirstOrDefault(
+        Function(ls) ls.ID = job.LayerSetupID)
+
+        If selectedLayerSetup Is Nothing Then
+            Throw New InvalidDataException(
+        "The selected Layer Setup was not found in configuration data.")
+        End If
+
+        environment.LayerSetup = selectedLayerSetup
+
+        If selectedLayerSetup.MachineID <> job.MachineID Then
+            Throw New InvalidDataException(
+        "The selected Layer Setup does not belong to the job machine.")
+        End If
+
+        If selectedLayerSetup.ToolSetupID <> job.ToolSetupID Then
+            Throw New InvalidDataException(
+        "The selected Layer Setup does not belong to the job Tool Setup.")
+        End If
 
         Return environment
 
     End Function
+
+
+
+    Public Shared Function BuildJobInformation(
+    job As Job) As MM3JobInformation
+
+        If job Is Nothing Then
+            Throw New ArgumentNullException(NameOf(job))
+        End If
+
+        'Create the Job Information record first.
+        Dim info As New MM3JobInformation With {
+        .Description = job.Description
+    }
+
+        If job.UDPs Is Nothing Then
+            Return info
+        End If
+
+        'Populate dedicated Job Information fields.
+        Dim customer As Object = Nothing
+        Dim poNumber As Object = Nothing
+        Dim dueDate As Object = Nothing
+
+        If job.UDPs.TryGetValue("Customer", customer) AndAlso
+       customer IsNot Nothing Then
+
+            info.Customer = Convert.ToString(customer)
+        End If
+
+        If job.UDPs.TryGetValue("PONumber", poNumber) AndAlso
+       poNumber IsNot Nothing Then
+
+            info.PONumber = Convert.ToString(poNumber)
+        End If
+
+        If job.UDPs.TryGetValue("DueDate", dueDate) AndAlso
+       dueDate IsNot Nothing AndAlso
+       dueDate IsNot DBNull.Value Then
+
+            info.DueDate = Convert.ToDateTime(dueDate)
+        End If
+
+        'Preserve every Job UDP.
+        For Each entry In job.UDPs
+
+            Dim value As Object = entry.Value
+
+            info.UDPs.Add(New MM3JobUDP With {
+            .Name = entry.Key,
+            .DataType = If(value Is Nothing,
+                           "Null",
+                           value.GetType().FullName),
+            .Value = value
+        })
+
+        Next
+
+        Return info
+
+    End Function
+
 
     Public Shared Function BuildManufacturingModel(
     jobSheet As JobSheet
@@ -1007,11 +1182,197 @@ Public Class MM3NativeFileService
             nativeFile,
             Newtonsoft.Json.Formatting.Indented)
 
-        System.IO.File.WriteAllText(
-        filePath,
-        json,
-        System.Text.Encoding.UTF8)
+        Dim fullPath As String = Path.GetFullPath(filePath)
+
+        Dim directoryPath As String =
+        Path.GetDirectoryName(fullPath)
+
+        Dim tempPath As String = Path.Combine(
+        directoryPath,
+        Guid.NewGuid().ToString("N") & ".tmp")
+
+        Try
+
+            File.WriteAllText(
+            tempPath,
+            json,
+            System.Text.Encoding.UTF8)
+
+            If File.Exists(fullPath) Then
+
+                Dim backupPath As String = fullPath & ".bak"
+
+                File.Replace(
+                tempPath,
+                fullPath,
+                backupPath)
+
+            Else
+
+                File.Move(tempPath, fullPath)
+
+            End If
+
+        Finally
+
+            If File.Exists(tempPath) Then
+                File.Delete(tempPath)
+            End If
+
+        End Try
 
     End Sub
+
+
+    Public Shared Function BuildFileHeader(
+    filePath As String,
+    modelType As String) As MM3FileHeader
+
+        If modelType <> "JobSheet" AndAlso
+       modelType <> "Nest" Then
+
+            Throw New ArgumentException(
+            "Unsupported MM3 model type.",
+            NameOf(modelType))
+        End If
+
+        Dim now As DateTimeOffset = DateTimeOffset.Now
+        Dim appVersion As String = Application.ProductVersion
+
+        'New file.
+        If String.IsNullOrWhiteSpace(filePath) OrElse
+       Not System.IO.File.Exists(filePath) Then
+
+            Return New MM3FileHeader With {
+            .ModelGUID = Guid.NewGuid(),
+            .ModelType = modelType,
+            .CreatedWith = appVersion,
+            .LastSavedWith = appVersion,
+            .CreatedAt = now,
+            .LastSavedAt = now
+        }
+        End If
+
+        'Existing file.
+        Dim existingFile As MM3NativeFile =
+        ReadNativeFile(filePath)
+
+        Dim header As MM3FileHeader = existingFile.Header
+
+        If header.ModelGUID = Guid.Empty Then
+            Throw New InvalidDataException(
+            "Existing MM3 file has an invalid ModelGUID.")
+        End If
+
+        If header.ModelType <> modelType Then
+            Throw New InvalidDataException(
+            "Existing file ModelType does not match " &
+            "the requested ModelType.")
+        End If
+
+        'Preserve original identity and creation information.
+        header.LastSavedWith = appVersion
+        header.LastSavedAt = now
+
+        Return header
+
+    End Function
+
+
+    Public Shared Function BuildNativeFile(
+    job As Job,
+    jobSheet As JobSheet,
+    context As JobContext,
+    filePath As String,
+    modelType As String,
+    Optional isSaveAs As Boolean = False) As MM3NativeFile
+
+        If job Is Nothing Then
+            Throw New ArgumentNullException(NameOf(job))
+        End If
+
+        If jobSheet Is Nothing Then
+            Throw New ArgumentNullException(NameOf(jobSheet))
+        End If
+
+        If context Is Nothing Then
+            Throw New ArgumentNullException(NameOf(context))
+        End If
+
+        Dim header As MM3FileHeader
+
+        If isSaveAs Then
+            Dim sourceHeader As MM3FileHeader = Nothing
+
+            If Not String.IsNullOrWhiteSpace(jobSheet.MM3FilePath) Then
+
+                If Not System.IO.File.Exists(jobSheet.MM3FilePath) Then
+                    Throw New System.IO.FileNotFoundException(
+            "The current MM3 source file could not be found.",
+            jobSheet.MM3FilePath)
+                End If
+
+                sourceHeader =
+        ReadNativeFile(jobSheet.MM3FilePath).Header
+
+            End If
+
+            header = BuildSaveAsFileHeader(sourceHeader, modelType)
+        Else
+            header = BuildFileHeader(filePath, modelType)
+        End If
+
+        Dim nativeFile As New MM3NativeFile With {
+       .Header = header,
+        .JobInformation = BuildJobInformation(job),
+        .ManufacturingEnvironment =
+            BuildManufacturingEnvironment(job, jobSheet, context),
+        .ManufacturingModel =
+            BuildManufacturingModel(jobSheet)
+    }
+
+        Return nativeFile
+
+    End Function
+
+
+    Public Shared Function BuildSaveAsFileHeader(
+    sourceHeader As MM3FileHeader,
+    modelType As String) As MM3FileHeader
+
+        If modelType <> "JobSheet" AndAlso
+       modelType <> "Nest" Then
+
+            Throw New ArgumentException(
+            "Unsupported MM3 model type.",
+            NameOf(modelType))
+        End If
+
+        Dim now As DateTimeOffset = DateTimeOffset.Now
+        Dim appVersion As String = Application.ProductVersion
+
+        Dim header As New MM3FileHeader With {
+        .ModelGUID = Guid.NewGuid(),
+        .ModelType = modelType,
+        .CreatedWith = appVersion,
+        .LastSavedWith = appVersion,
+        .CreatedAt = now,
+        .LastSavedAt = now
+    }
+
+        If sourceHeader IsNot Nothing Then
+
+            If sourceHeader.ModelGUID = Guid.Empty Then
+                Throw New InvalidDataException(
+                "Source MM3 file has an invalid ModelGUID.")
+            End If
+
+            header.DerivedFromGUID = sourceHeader.ModelGUID
+
+        End If
+
+        Return header
+
+    End Function
 
 End Class

@@ -43,4 +43,6 @@ Public Class MM3ManufacturingEnvironment
 
     Public Property MachineAttributeTypes As New List(Of MachineAttributeType)
 
+
+
 End Class
