@@ -108,11 +108,15 @@ Public Class MM3NativeFileService
         Dim savedTools As IEnumerable(Of WE_ENG_V25_0.Core.Models.Tool) =
     nativeFile.ManufacturingEnvironment.Tools
 
+        Dim toolsByID As Dictionary(
+    Of Integer,
+    WE_ENG_V25_0.Core.Models.Tool) =
+    savedTools.ToDictionary(Function(t) t.ID)
 
         Dim entitiesByID As Dictionary(Of Integer, GeoEntity) =
     GeoEntityMapper.RestoreGeometryCollections(
         mm3File,
-        savedTools)
+        toolsByID)
 
 
         GeoEntityMapper.RestorePartGeometry(
@@ -180,6 +184,92 @@ Public Class MM3NativeFileService
 
 
         Return jobSheet
+
+    End Function
+
+
+    Public Shared Function RestoreJobInformation(
+    nativeFile As MM3NativeFile
+) As Job
+
+        If nativeFile Is Nothing Then
+            Throw New ArgumentNullException(NameOf(nativeFile))
+        End If
+
+        Dim info = nativeFile.JobInformation
+        Dim env = nativeFile.ManufacturingEnvironment
+
+        If info Is Nothing Then
+            Throw New InvalidDataException(
+            "MM3 Job Information section is missing.")
+        End If
+
+        If env Is Nothing OrElse
+       env.MachineConfiguration Is Nothing OrElse
+       env.ToolSetup Is Nothing OrElse
+       env.LayerSetup Is Nothing OrElse
+       env.MaterialType Is Nothing Then
+
+            Throw New InvalidDataException(
+            "MM3 Manufacturing Environment is incomplete.")
+        End If
+
+        Dim job As New Job With {
+        .Description = info.Description,
+        .MachineID = env.MachineConfiguration.ID,
+        .ToolSetupID = env.ToolSetup.ID,
+        .LayerSetupID = env.LayerSetup.ID,
+        .MaterialTypeID = env.MaterialType.ID
+    }
+
+        If info.UDPs IsNot Nothing Then
+
+            For Each udp As MM3JobUDP In info.UDPs
+
+                If String.IsNullOrWhiteSpace(udp.Name) Then
+                    Continue For
+                End If
+
+                Dim value As Object = udp.Value
+
+                Select Case udp.DataType
+
+                    Case "System.String"
+                        If value IsNot Nothing Then
+                            value = Convert.ToString(value)
+                        End If
+
+                    Case "System.Int32"
+                        If value IsNot Nothing Then
+                            value = Convert.ToInt32(value)
+                        End If
+
+                    Case "System.Double"
+                        If value IsNot Nothing Then
+                            value = Convert.ToDouble(value)
+                        End If
+
+                    Case "System.Boolean"
+                        If value IsNot Nothing Then
+                            value = Convert.ToBoolean(value)
+                        End If
+
+                    Case "System.DateTime"
+                        If value IsNot Nothing Then
+                            value = Convert.ToDateTime(value)
+                        End If
+
+                    Case "Null"
+                        value = Nothing
+
+                End Select
+
+                job.UDPs(udp.Name) = value
+
+            Next
+
+        End If
+        Return job
 
     End Function
 
@@ -1372,6 +1462,41 @@ Public Class MM3NativeFileService
         End If
 
         Return header
+
+    End Function
+
+    Public Shared Function RestoreManufacturingEnvironment(
+    nativeFile As MM3NativeFile
+) As JobContext
+
+        If nativeFile Is Nothing Then
+            Throw New ArgumentNullException(NameOf(nativeFile))
+        End If
+
+        Dim env = nativeFile.ManufacturingEnvironment
+
+        If env Is Nothing Then
+            Throw New InvalidDataException(
+                "MM3 Manufacturing Environment section is missing.")
+        End If
+
+        If env.Machine Is Nothing OrElse
+           env.ToolSetup Is Nothing OrElse
+           env.Material Is Nothing OrElse
+           env.LayerSetup Is Nothing Then
+
+            Throw New InvalidDataException(
+                "MM3 Manufacturing Environment is incomplete.")
+        End If
+
+        Dim context As New JobContext With {
+            .MachineDefinition = env.Machine,
+            .ToolSetupID = env.ToolSetup.ID,
+            .MaterialID = env.Material.ID,
+            .LayerSetupID = env.LayerSetup.ID
+        }
+
+        Return context
 
     End Function
 

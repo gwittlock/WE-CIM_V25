@@ -189,6 +189,216 @@ Public Class HelperFunctions
         Return RectangleF.FromLTRB(minX, minY, maxX, maxY)
 
     End Function
+
+    Public Shared Function GetGeoBounds(
+    entities As IEnumerable(Of GeoEntity)) As RectangleF
+
+        If entities Is Nothing Then Return RectangleF.Empty
+
+        Dim minX As Single = Single.MaxValue
+        Dim minY As Single = Single.MaxValue
+        Dim maxX As Single = Single.MinValue
+        Dim maxY As Single = Single.MinValue
+
+        For Each entity As GeoEntity In entities
+
+            If entity Is Nothing Then Continue For
+
+            If TypeOf entity Is GeoLine Then
+
+                Dim line = DirectCast(entity, GeoLine)
+
+                UpdateBounds(
+                New PointF(CSng(line.StartPoint.X),
+                           CSng(line.StartPoint.Y)),
+                minX, minY, maxX, maxY)
+
+                UpdateBounds(
+                New PointF(CSng(line.EndPoint.X),
+                           CSng(line.EndPoint.Y)),
+                minX, minY, maxX, maxY)
+
+            ElseIf TypeOf entity Is GeoCircle Then
+
+                Dim circle = DirectCast(entity, GeoCircle)
+                Dim r As Double = Math.Abs(circle.Radius)
+
+                UpdateBounds(
+                New PointF(CSng(circle.Center.X - r),
+                           CSng(circle.Center.Y - r)),
+                minX, minY, maxX, maxY)
+
+                UpdateBounds(
+                New PointF(CSng(circle.Center.X + r),
+                           CSng(circle.Center.Y + r)),
+                minX, minY, maxX, maxY)
+
+            ElseIf TypeOf entity Is GeoArc Then
+
+                Dim arc = DirectCast(entity, GeoArc)
+
+                Dim radius As Double = Math.Abs(arc.Radius)
+
+                Dim startAngle As Double =
+                arc.StartAngle Mod 360.0
+
+                Dim endAngle As Double =
+                arc.EndAngle Mod 360.0
+
+                If startAngle < 0 Then startAngle += 360.0
+                If endAngle < 0 Then endAngle += 360.0
+
+                ' Include the actual arc endpoints.
+                UpdateBounds(
+                New PointF(CSng(arc.StartPoint.X),
+                           CSng(arc.StartPoint.Y)),
+                minX, minY, maxX, maxY)
+
+                UpdateBounds(
+                New PointF(CSng(arc.EndPoint.X),
+                           CSng(arc.EndPoint.Y)),
+                minX, minY, maxX, maxY)
+
+                ' Include cardinal points within the arc sweep.
+                For Each cardinal As Double In
+                New Double() {0.0, 90.0, 180.0, 270.0}
+
+                    Dim sweep As Double
+                    Dim distance As Double
+
+                    If arc.IsClockwise Then
+
+                        sweep =
+                        (startAngle - endAngle + 360.0) Mod 360.0
+
+                        distance =
+                        (startAngle - cardinal + 360.0) Mod 360.0
+
+                    Else
+
+                        sweep =
+                        (endAngle - startAngle + 360.0) Mod 360.0
+
+                        distance =
+                        (cardinal - startAngle + 360.0) Mod 360.0
+
+                    End If
+
+                    If distance <= sweep + 0.0000001 Then
+
+                        Dim radians As Double =
+                        cardinal * Math.PI / 180.0
+
+                        UpdateBounds(
+                        New PointF(
+                            CSng(arc.Center.X +
+                                 radius * Math.Cos(radians)),
+                            CSng(arc.Center.Y +
+                                 radius * Math.Sin(radians))),
+                        minX, minY, maxX, maxY)
+
+                    End If
+
+                Next
+
+            ElseIf TypeOf entity Is GeoPoint Then
+
+                Dim point = DirectCast(entity, GeoPoint)
+
+                UpdateBounds(
+                New PointF(CSng(point.X), CSng(point.Y)),
+                minX, minY, maxX, maxY)
+
+            End If
+
+        Next
+
+        If minX = Single.MaxValue Then
+            Return RectangleF.Empty
+        End If
+
+        Return RectangleF.FromLTRB(
+        minX, minY, maxX, maxY)
+
+    End Function
+
+    Public Shared Function GetManufacturingBounds(
+    features As IEnumerable(Of MachiningFeature),
+    sheetXExtent As Double,
+    sheetYExtent As Double) As RectangleF
+
+        If features Is Nothing Then Return RectangleF.Empty
+
+        Dim minX As Single = Single.MaxValue
+        Dim minY As Single = Single.MaxValue
+        Dim maxX As Single = Single.MinValue
+        Dim maxY As Single = Single.MinValue
+
+        For Each feature As MachiningFeature In features
+
+            If feature Is Nothing Then Continue For
+
+            If TypeOf feature Is HoleFeature Then
+
+                Dim hole = DirectCast(feature, HoleFeature)
+
+                UpdateBounds(
+                New PointF(CSng(hole.X), CSng(hole.Y)),
+                minX, minY, maxX, maxY)
+
+            ElseIf TypeOf feature Is LineOfHolesFeature Then
+
+                Dim row = DirectCast(feature, LineOfHolesFeature)
+
+                For Each point As PointF In
+                HolePatternGeometry.GetLineOfHolesPoints(
+                    row,
+                    sheetXExtent,
+                    sheetYExtent)
+
+                    UpdateBounds(
+                    point,
+                    minX, minY, maxX, maxY)
+
+                Next
+
+            ElseIf TypeOf feature Is ContourFeature Then
+
+                Dim contour = DirectCast(feature, ContourFeature)
+
+                If contour.Path Is Nothing Then Continue For
+
+                Dim bounds As RectangleF = contour.Path.BoundingBox
+
+                If Not bounds.IsEmpty Then
+
+                    UpdateBounds(
+                    New PointF(bounds.Left, bounds.Top),
+                    minX, minY, maxX, maxY)
+
+                    UpdateBounds(
+                    New PointF(bounds.Right, bounds.Bottom),
+                    minX, minY, maxX, maxY)
+
+                End If
+
+            End If
+
+        Next
+
+        If minX = Single.MaxValue Then
+            Return RectangleF.Empty
+        End If
+
+        Return RectangleF.FromLTRB(
+        minX, minY, maxX, maxY)
+
+    End Function
+
+
+
+
+
     Private Shared Sub UpdateBounds(
     p As PointF,
     ByRef minX As Single, ByRef minY As Single,

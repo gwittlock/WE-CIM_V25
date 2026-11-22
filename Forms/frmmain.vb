@@ -1323,7 +1323,7 @@ Public Class frmMain
         Using materialBrush As New SolidBrush(_materialDisplayColor)
             g.FillRectangle(materialBrush, sheetRect)
         End Using
-        g.DrawRectangle(Pens.Black, sheetRect.X, sheetRect.Y, sheetRect.Width, sheetRect.Height)
+        g.DrawRectangle(Pens.Blue, sheetRect.X, sheetRect.Y, sheetRect.Width, sheetRect.Height)
 
         ' --- Draw workzones ---
         For i = 0 To CurrentJob.WorkZones.Count - 1
@@ -2749,29 +2749,89 @@ Public Class frmMain
         ZoomAtMouse(e.Location, zoomFactor)
 
     End Sub
-
     Public Sub ViewPart()
-        If _cadEntities Is Nothing OrElse _cadEntities.Count = 0 Then Exit Sub
+
+        If CurrentProductionJob Is Nothing Then Exit Sub
+
+        Dim bounds As RectangleF = RectangleF.Empty
+        Dim hasBounds As Boolean = False
+
+        For Each sheet As JobSheet In CurrentProductionJob.JobSheets
+
+            If sheet Is Nothing Then Continue For
+
+            Dim mm As MM3 = sheet.ManufacturingModel
+            If mm Is Nothing Then Continue For
+
+            ' Part Geometry
+            Dim partBounds As RectangleF =
+            HelperFunctions.GetGeoBounds(mm.PartGeometry)
+
+            If Not partBounds.IsEmpty Then
+
+                If hasBounds Then
+                    bounds = RectangleF.Union(bounds, partBounds)
+                Else
+                    bounds = partBounds
+                    hasBounds = True
+                End If
+
+            End If
+
+            ' Manufacturing Geometry
+            Dim manufacturingBounds As RectangleF =
+            HelperFunctions.GetManufacturingBounds(
+                mm.ManufacturingGeometry,
+                CDbl(sheet.Length),
+                CDbl(sheet.Width))
+
+            If Not manufacturingBounds.IsEmpty Then
+
+                If hasBounds Then
+                    bounds = RectangleF.Union(
+                    bounds,
+                    manufacturingBounds)
+                Else
+                    bounds = manufacturingBounds
+                    hasBounds = True
+                End If
+
+            End If
+
+        Next
+
+        If Not hasBounds Then Exit Sub
+
+        If bounds.Width <= 0 OrElse bounds.Height <= 0 Then
+            Exit Sub
+        End If
 
         SaveViewIfChanged()
 
-        Dim bounds As RectangleF = HelperFunctions.GetCadBounds(_cadEntities)
-        If bounds.IsEmpty Then Exit Sub
-
         Dim margin As Integer = 20
 
-        Dim scaleX As Double = (panelWidth - 2 * margin) / bounds.Width
-        Dim scaleY As Double = (panelHeight - 2 * margin) / bounds.Height
+        Dim scaleX As Double =
+        (panelWidth - 2 * margin) / bounds.Width
+
+        Dim scaleY As Double =
+        (panelHeight - 2 * margin) / bounds.Height
+
         Dim scale As Double = Math.Min(scaleX, scaleY)
 
-        Dim offsetX As Double = margin - bounds.X * scale
-        Dim offsetY As Double = panelHeight - (bounds.Y + bounds.Height) * scale - margin
+        Dim offsetX As Double =
+        margin - bounds.X * scale
+
+        Dim offsetY As Double =
+        panelHeight -
+        (bounds.Y + bounds.Height) * scale -
+        margin
 
         myTransform.Scale = scale
         myTransform.OffsetX = offsetX
         myTransform.OffsetY = offsetY
 
         RedrawAll()
+
     End Sub
 
 
@@ -5481,6 +5541,14 @@ Public Class frmMain
         ' No job sheets available
         If CurrentProductionJob.JobSheets Is Nothing OrElse
        CurrentProductionJob.JobSheets.Count = 0 Then Exit Sub
+
+        Debug.WriteLine("Entity List root count: " & tlEntityList.Nodes.Count)
+
+        If tlEntityList.Nodes.Count > 0 Then
+            Debug.WriteLine("First root child count: " &
+                    tlEntityList.Nodes(0).Nodes.Count)
+        End If
+
 
         ' We will populate the TreeList here.
         ' Make sure the root nodes exist

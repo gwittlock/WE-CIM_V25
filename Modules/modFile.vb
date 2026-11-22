@@ -972,6 +972,155 @@ Public Module modFile
                     Return Nothing
                 End If
 
+
+                Select Case dlg.SelectedFileType
+
+                    Case "MM3"
+
+                        Try
+                            Dim nativeFile As MM3NativeFile =
+            MM3NativeFileService.ReadNativeFile(dlg.SelectedFilePath)
+
+                            Dim restoredJob As Job =
+            MM3NativeFileService.RestoreJobInformation(nativeFile)
+
+                            Dim restoredContext As JobContext =
+            MM3NativeFileService.RestoreManufacturingEnvironment(nativeFile)
+
+                            Dim restoredSheet As JobSheet =
+            MM3NativeFileService.RestoreJobSheet(nativeFile)
+
+                            restoredJob.JobSheets.Add(restoredSheet)
+
+                            restoredContext.WorkZones = restoredSheet.WorkZones
+
+                            Dim mm = restoredSheet.ManufacturingModel
+
+                            Debug.WriteLine("===== MM3 RESTORED COLLECTIONS =====")
+                            Debug.WriteLine("Parts: " & restoredSheet.Parts.Count)
+
+                            Debug.WriteLine("PartGeometry: " &
+    If(mm.PartGeometry Is Nothing,
+       "Nothing",
+       mm.PartGeometry.Count.ToString()))
+
+                            Debug.WriteLine("ManufacturingGeometry: " &
+    If(mm.ManufacturingGeometry Is Nothing,
+       "Nothing",
+       mm.ManufacturingGeometry.Count.ToString()))
+
+                            Debug.WriteLine("WorkZones: " & restoredSheet.WorkZones.Count)
+
+                            Debug.WriteLine("WorkZoneAssignments: " &
+    restoredSheet.ManufacturingModel.WorkZoneAssignments.Count)
+
+                            ' Preserve the original MM3 filename.
+                            restoredSheet.MM3FilePath = dlg.SelectedFilePath
+
+                            ' Restore the saved sheet dimensions.
+                            matWidth = CDbl(restoredSheet.Width)
+                            matLength = CDbl(restoredSheet.Length)
+
+                            '---------------------------------------------
+                            ' Initialize the MM3 drawing view.
+                            '---------------------------------------------
+
+                            Dim panelWidth As Integer = frmMain.pnlPicmodeler.ClientSize.Width
+                            Dim panelHeight As Integer = frmMain.pnlPicmodeler.ClientSize.Height
+
+                            If matLength <= 0 OrElse matWidth <= 0 OrElse
+           panelWidth <= 40 OrElse panelHeight <= 40 Then
+
+                                Throw New InvalidDataException(
+                "Invalid MM3 sheet dimensions or drawing panel size.")
+                            End If
+
+                            Dim margin As Integer = 20
+
+                            Dim scaleX As Double =
+            (panelWidth - 2 * margin) / matLength
+
+                            Dim scaleY As Double =
+            (panelHeight - 2 * margin) / matWidth
+
+                            Dim scale As Double =
+            Math.Min(scaleX, scaleY)
+
+                            Dim offsetX As Double =
+            (panelWidth - matLength * scale) / 2
+
+                            Dim offsetY As Double =
+            panelHeight - (matWidth * scale) - margin
+
+                            myTransform = New ViewTransform With {
+            .Scale = scale,
+            .OffsetX = offsetX,
+            .OffsetY = offsetY
+        }
+
+                            '---------------------------------------------
+                            ' Activate the restored MM3 job.
+                            '---------------------------------------------
+
+                            CurrentProductionJob = restoredJob
+                            CurrentJob = restoredContext
+
+                            ' MM3 is already restored. Do not run DXF import.
+                            _DoPrepareUI = False
+                            _DoDrawUI = True
+
+                            ' Register restored MM3 geometry with SelectionManager.
+                            frmMain.BuildDrawables()
+
+                            frmMain.pnlPicmodeler.Invalidate()
+
+                            frmMain.RefreshEntityList()
+
+
+                            MessageBox.Show(
+            "MM3 restoration completed successfully.",
+            "Open Model",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+
+                        Catch ex As Exception
+
+                            MessageBox.Show(
+            "MM3 restoration failed:" &
+            Environment.NewLine &
+            ex.ToString(),
+            "Open Model",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+
+                        End Try
+
+                        Return Nothing
+
+                    Case "NST", "CTG"
+
+                        MessageBox.Show(
+            "Opening " & dlg.SelectedFileType &
+            " files is not connected yet." &
+            Environment.NewLine &
+            dlg.SelectedFilePath,
+            "Open Model",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+
+                        Return Nothing
+
+                    Case "DXF"
+                        ' Continue through the existing DXF workflow.
+
+                    Case Else
+                        MessageBox.Show("Unsupported file type.")
+                        Return Nothing
+
+                End Select
+
+
+
                 '-------------------------------------------------
                 ' Preserve Job-level UDP values.
                 ' PrePareUI() runs later during the Paint cycle.
@@ -1013,6 +1162,8 @@ Public Module modFile
                     frmMain.InitializeWorkZonesPanel()
 
                     frmMain.pnlPicmodeler.Invalidate()
+                    frmMain.RefreshEntityList()
+
 
                 End Using
 

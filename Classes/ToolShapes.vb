@@ -1731,6 +1731,81 @@ Namespace ToolShapes
 
         End Function
 
+
+        Public Shared Function ComputeTransformedBoundingBox(
+    segments As IEnumerable(Of IPathSegment),
+    centerX As Double,
+    centerY As Double,
+    angleDegrees As Double) As RectangleF
+
+            If segments Is Nothing Then
+                Return RectangleF.Empty
+            End If
+
+            Dim angleRadians As Double =
+        angleDegrees * Math.PI / 180.0
+
+            Dim cosA As Double = Math.Cos(angleRadians)
+            Dim sinA As Double = Math.Sin(angleRadians)
+
+            Dim transformedSegments As New List(Of IPathSegment)
+
+            For Each segment As IPathSegment In segments
+
+                If segment Is Nothing Then Continue For
+
+                If TypeOf segment Is LineSegment2D Then
+
+                    Dim x1 As Double =
+                segment.StartPoint.X * cosA -
+                segment.StartPoint.Y * sinA + centerX
+
+                    Dim y1 As Double =
+                segment.StartPoint.X * sinA +
+                segment.StartPoint.Y * cosA + centerY
+
+                    Dim x2 As Double =
+                segment.EndPoint.X * cosA -
+                segment.EndPoint.Y * sinA + centerX
+
+                    Dim y2 As Double =
+                segment.EndPoint.X * sinA +
+                segment.EndPoint.Y * cosA + centerY
+
+                    transformedSegments.Add(
+                New LineSegment2D(
+                    New PointF(CSng(x1), CSng(y1)),
+                    New PointF(CSng(x2), CSng(y2))))
+
+                ElseIf TypeOf segment Is ArcSegment2D Then
+
+                    Dim arc As ArcSegment2D =
+                DirectCast(segment, ArcSegment2D)
+
+                    Dim x As Double =
+                arc.Center.X * cosA -
+                arc.Center.Y * sinA + centerX
+
+                    Dim y As Double =
+                arc.Center.X * sinA +
+                arc.Center.Y * cosA + centerY
+
+                    transformedSegments.Add(
+                New ArcSegment2D(
+                    New PointF(CSng(x), CSng(y)),
+                    arc.Radius,
+                    arc.StartAngle + angleRadians,
+                    arc.EndAngle + angleRadians,
+                    arc.IsClockwise))
+
+                End If
+
+            Next
+
+            Return ComputeBoundingBox(transformedSegments)
+
+        End Function
+
         Public Shared Function IsAngleOnArc(
     angle As Double,
     startAngle As Double,

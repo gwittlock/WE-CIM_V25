@@ -11,6 +11,35 @@ Public Class DXFFileSelectionDialog
 
     Private _initialFolder As String
     Private _selectedDxfPath As String
+
+    Private _selectedFilePath As String
+
+    Public ReadOnly Property SelectedFilePath As String
+        Get
+            Return _selectedFilePath
+        End Get
+    End Property
+
+    Public ReadOnly Property SelectedFileType As String
+        Get
+            Select Case cboFileTypes.SelectedIndex
+                Case 0
+                    Return "MM3"
+
+                Case 1
+                    Return "NST"
+
+                Case 2
+                    Return "DXF"
+
+                Case 3
+                    Return "CTG"
+
+                Case Else
+                    Return String.Empty
+            End Select
+        End Get
+    End Property
     Private _previewDxf As DxfFile = Nothing
     Private _previewEntities As List(Of ImportedEntity)
     Private _suppressEvents As Boolean = False
@@ -48,6 +77,15 @@ Public Class DXFFileSelectionDialog
         InitializeFolderIcons()
         LoadRootFolders()
 
+        cboFileTypes.Items.Clear()
+
+        cboFileTypes.Items.Add("Model Files (*.mm3)")
+        cboFileTypes.Items.Add("Nested Files (*.nst)")
+        cboFileTypes.Items.Add("DXF Cad Files (*.dxf)")
+        cboFileTypes.Items.Add("CTG Files (*.ctg)")
+
+        cboFileTypes.SelectedIndex = 2
+
         'Debug.WriteLine("After LoadRootFolders: " &
         '        loadTimer.ElapsedMilliseconds & " ms")
 
@@ -73,7 +111,21 @@ Public Class DXFFileSelectionDialog
         '                loadTimer.ElapsedMilliseconds & " ms")
 
     End Sub
+    Private Sub cboFileTypes_SelectedIndexChanged(
+    sender As Object,
+    e As EventArgs
+) Handles cboFileTypes.SelectedIndexChanged
 
+        If tvFolders.SelectedNode Is Nothing Then Return
+
+        Dim folderPath As String =
+        TryCast(tvFolders.SelectedNode.Tag, String)
+
+        If String.IsNullOrWhiteSpace(folderPath) Then Return
+
+        LoadDxfFiles(folderPath)
+
+    End Sub
     Public Sub LoadRootFolders()
 
         tvFolders.Nodes.Clear()
@@ -147,7 +199,26 @@ Public Class DXFFileSelectionDialog
 
         Dim auto As New AutoCompleteStringCollection()
 
-        For Each file As String In Directory.GetFiles(folderPath, "*.dxf")
+        Dim filePattern As String
+
+        Select Case cboFileTypes.SelectedIndex
+            Case 0
+                filePattern = "*.mm3"
+
+            Case 1
+                filePattern = "*.nst"
+
+            Case 2
+                filePattern = "*.dxf"
+
+            Case 3
+                filePattern = "*.ctg"
+
+            Case Else
+                Return
+        End Select
+
+        For Each file As String In Directory.GetFiles(folderPath, filePattern)
             Dim name = Path.GetFileName(file)
 
             lstFiles.Items.Add(name)
@@ -179,7 +250,10 @@ Public Class DXFFileSelectionDialog
                 Path.Combine(tvFolders.SelectedNode.Tag.ToString(),
                              lstFiles.SelectedItem.ToString())
 
-            PreviewFile(_selectedDxfPath)
+            ' Only DXF files use the DXF preview routine.
+            If SelectedFileType = "DXF" Then
+                PreviewFile(_selectedDxfPath)
+            End If
 
         Catch ex As Exception
             _suppressEvents = False
@@ -315,6 +389,8 @@ Public Class DXFFileSelectionDialog
             MessageBox.Show("File does not exist.")
             Return
         End If
+
+        _selectedFilePath = full
 
         _selectedDxfPath = full
 

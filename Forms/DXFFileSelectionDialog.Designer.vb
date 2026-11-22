@@ -23,6 +23,16 @@ Partial Class DXFFileSelectionDialog
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
         Me.PanelControl1 = New DevExpress.XtraEditors.PanelControl()
+        Me.Label1 = New System.Windows.Forms.Label()
+        Me.cboFileTypes = New System.Windows.Forms.ComboBox()
+        Me.Panel1 = New System.Windows.Forms.Panel()
+        Me.tbCurveResolution = New System.Windows.Forms.TextBox()
+        Me.txtPreRotate = New System.Windows.Forms.TextBox()
+        Me.ltbCurveRes = New DevExpress.XtraEditors.LabelControl()
+        Me.chkRaw = New System.Windows.Forms.CheckBox()
+        Me.chkStripLayers = New System.Windows.Forms.CheckBox()
+        Me.chkAutoSave = New System.Windows.Forms.CheckBox()
+        Me.LabelControl1 = New DevExpress.XtraEditors.LabelControl()
         Me.txtFilename = New System.Windows.Forms.TextBox()
         Me.lblFilename = New System.Windows.Forms.Label()
         Me.btnCancel = New System.Windows.Forms.Button()
@@ -33,18 +43,9 @@ Partial Class DXFFileSelectionDialog
         Me.SplitContainer3 = New System.Windows.Forms.SplitContainer()
         Me.lstFiles = New System.Windows.Forms.ListBox()
         Me.pnlPreview = New System.Windows.Forms.Panel()
-        Me.Panel1 = New System.Windows.Forms.Panel()
-        Me.LabelControl1 = New DevExpress.XtraEditors.LabelControl()
-        Me.chkRaw = New System.Windows.Forms.CheckBox()
-        Me.chkStripLayers = New System.Windows.Forms.CheckBox()
-        Me.chkAutoSave = New System.Windows.Forms.CheckBox()
-        Me.ltbCurveRes = New DevExpress.XtraEditors.LabelControl()
-        Me.txtPreRotate = New System.Windows.Forms.TextBox()
-        Me.tbCurveResolution = New System.Windows.Forms.TextBox()
-        Me.ComboBox1 = New System.Windows.Forms.ComboBox()
-        Me.Label1 = New System.Windows.Forms.Label()
         CType(Me.PanelControl1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.PanelControl1.SuspendLayout()
+        Me.Panel1.SuspendLayout()
         CType(Me.PanelControl2, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.PanelControl2.SuspendLayout()
         CType(Me.SplitContainer2, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -55,13 +56,12 @@ Partial Class DXFFileSelectionDialog
         Me.SplitContainer3.Panel1.SuspendLayout()
         Me.SplitContainer3.Panel2.SuspendLayout()
         Me.SplitContainer3.SuspendLayout()
-        Me.Panel1.SuspendLayout()
         Me.SuspendLayout()
         '
         'PanelControl1
         '
         Me.PanelControl1.Controls.Add(Me.Label1)
-        Me.PanelControl1.Controls.Add(Me.ComboBox1)
+        Me.PanelControl1.Controls.Add(Me.cboFileTypes)
         Me.PanelControl1.Controls.Add(Me.Panel1)
         Me.PanelControl1.Controls.Add(Me.txtFilename)
         Me.PanelControl1.Controls.Add(Me.lblFilename)
@@ -72,6 +72,101 @@ Partial Class DXFFileSelectionDialog
         Me.PanelControl1.Name = "PanelControl1"
         Me.PanelControl1.Size = New System.Drawing.Size(1027, 91)
         Me.PanelControl1.TabIndex = 0
+        '
+        'Label1
+        '
+        Me.Label1.AutoSize = True
+        Me.Label1.Location = New System.Drawing.Point(6, 46)
+        Me.Label1.Name = "Label1"
+        Me.Label1.Size = New System.Drawing.Size(59, 13)
+        Me.Label1.TabIndex = 7
+        Me.Label1.Text = "File Types:"
+        '
+        'cboFileTypes
+        '
+        Me.cboFileTypes.FormattingEnabled = True
+        Me.cboFileTypes.Location = New System.Drawing.Point(71, 43)
+        Me.cboFileTypes.Name = "cboFileTypes"
+        Me.cboFileTypes.Size = New System.Drawing.Size(252, 21)
+        Me.cboFileTypes.TabIndex = 6
+        '
+        'Panel1
+        '
+        Me.Panel1.Controls.Add(Me.tbCurveResolution)
+        Me.Panel1.Controls.Add(Me.txtPreRotate)
+        Me.Panel1.Controls.Add(Me.ltbCurveRes)
+        Me.Panel1.Controls.Add(Me.chkRaw)
+        Me.Panel1.Controls.Add(Me.chkStripLayers)
+        Me.Panel1.Controls.Add(Me.chkAutoSave)
+        Me.Panel1.Controls.Add(Me.LabelControl1)
+        Me.Panel1.Location = New System.Drawing.Point(329, 15)
+        Me.Panel1.Name = "Panel1"
+        Me.Panel1.Size = New System.Drawing.Size(335, 66)
+        Me.Panel1.TabIndex = 5
+        '
+        'tbCurveResolution
+        '
+        Me.tbCurveResolution.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.tbCurveResolution.Location = New System.Drawing.Point(95, 29)
+        Me.tbCurveResolution.Name = "tbCurveResolution"
+        Me.tbCurveResolution.Size = New System.Drawing.Size(52, 21)
+        Me.tbCurveResolution.TabIndex = 21
+        Me.tbCurveResolution.WordWrap = False
+        '
+        'txtPreRotate
+        '
+        Me.txtPreRotate.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.txtPreRotate.Location = New System.Drawing.Point(95, 3)
+        Me.txtPreRotate.Name = "txtPreRotate"
+        Me.txtPreRotate.Size = New System.Drawing.Size(52, 21)
+        Me.txtPreRotate.TabIndex = 20
+        Me.txtPreRotate.WordWrap = False
+        '
+        'ltbCurveRes
+        '
+        Me.ltbCurveRes.Location = New System.Drawing.Point(3, 34)
+        Me.ltbCurveRes.Name = "ltbCurveRes"
+        Me.ltbCurveRes.Size = New System.Drawing.Size(86, 13)
+        Me.ltbCurveRes.TabIndex = 19
+        Me.ltbCurveRes.Text = "Curve Resolution:"
+        '
+        'chkRaw
+        '
+        Me.chkRaw.AutoSize = True
+        Me.chkRaw.Location = New System.Drawing.Point(283, 31)
+        Me.chkRaw.Name = "chkRaw"
+        Me.chkRaw.Size = New System.Drawing.Size(47, 17)
+        Me.chkRaw.TabIndex = 18
+        Me.chkRaw.Text = "Raw"
+        Me.chkRaw.UseVisualStyleBackColor = True
+        '
+        'chkStripLayers
+        '
+        Me.chkStripLayers.AutoSize = True
+        Me.chkStripLayers.Location = New System.Drawing.Point(166, 31)
+        Me.chkStripLayers.Name = "chkStripLayers"
+        Me.chkStripLayers.Size = New System.Drawing.Size(83, 17)
+        Me.chkStripLayers.TabIndex = 17
+        Me.chkStripLayers.Text = "Strip Layers"
+        Me.chkStripLayers.UseVisualStyleBackColor = True
+        '
+        'chkAutoSave
+        '
+        Me.chkAutoSave.AutoSize = True
+        Me.chkAutoSave.Location = New System.Drawing.Point(166, 6)
+        Me.chkAutoSave.Name = "chkAutoSave"
+        Me.chkAutoSave.Size = New System.Drawing.Size(164, 17)
+        Me.chkAutoSave.TabIndex = 16
+        Me.chkAutoSave.Text = "Auto Save ( in source folder)"
+        Me.chkAutoSave.UseVisualStyleBackColor = True
+        '
+        'LabelControl1
+        '
+        Me.LabelControl1.Location = New System.Drawing.Point(3, 5)
+        Me.LabelControl1.Name = "LabelControl1"
+        Me.LabelControl1.Size = New System.Drawing.Size(86, 13)
+        Me.LabelControl1.TabIndex = 15
+        Me.LabelControl1.Text = "Pre Rotate Angle:"
         '
         'txtFilename
         '
@@ -176,101 +271,6 @@ Partial Class DXFFileSelectionDialog
         Me.pnlPreview.Size = New System.Drawing.Size(357, 397)
         Me.pnlPreview.TabIndex = 0
         '
-        'Panel1
-        '
-        Me.Panel1.Controls.Add(Me.tbCurveResolution)
-        Me.Panel1.Controls.Add(Me.txtPreRotate)
-        Me.Panel1.Controls.Add(Me.ltbCurveRes)
-        Me.Panel1.Controls.Add(Me.chkRaw)
-        Me.Panel1.Controls.Add(Me.chkStripLayers)
-        Me.Panel1.Controls.Add(Me.chkAutoSave)
-        Me.Panel1.Controls.Add(Me.LabelControl1)
-        Me.Panel1.Location = New System.Drawing.Point(329, 15)
-        Me.Panel1.Name = "Panel1"
-        Me.Panel1.Size = New System.Drawing.Size(335, 66)
-        Me.Panel1.TabIndex = 5
-        '
-        'LabelControl1
-        '
-        Me.LabelControl1.Location = New System.Drawing.Point(3, 5)
-        Me.LabelControl1.Name = "LabelControl1"
-        Me.LabelControl1.Size = New System.Drawing.Size(86, 13)
-        Me.LabelControl1.TabIndex = 15
-        Me.LabelControl1.Text = "Pre Rotate Angle:"
-        '
-        'chkRaw
-        '
-        Me.chkRaw.AutoSize = True
-        Me.chkRaw.Location = New System.Drawing.Point(283, 31)
-        Me.chkRaw.Name = "chkRaw"
-        Me.chkRaw.Size = New System.Drawing.Size(47, 17)
-        Me.chkRaw.TabIndex = 18
-        Me.chkRaw.Text = "Raw"
-        Me.chkRaw.UseVisualStyleBackColor = True
-        '
-        'chkStripLayers
-        '
-        Me.chkStripLayers.AutoSize = True
-        Me.chkStripLayers.Location = New System.Drawing.Point(166, 31)
-        Me.chkStripLayers.Name = "chkStripLayers"
-        Me.chkStripLayers.Size = New System.Drawing.Size(83, 17)
-        Me.chkStripLayers.TabIndex = 17
-        Me.chkStripLayers.Text = "Strip Layers"
-        Me.chkStripLayers.UseVisualStyleBackColor = True
-        '
-        'chkAutoSave
-        '
-        Me.chkAutoSave.AutoSize = True
-        Me.chkAutoSave.Location = New System.Drawing.Point(166, 6)
-        Me.chkAutoSave.Name = "chkAutoSave"
-        Me.chkAutoSave.Size = New System.Drawing.Size(164, 17)
-        Me.chkAutoSave.TabIndex = 16
-        Me.chkAutoSave.Text = "Auto Save ( in source folder)"
-        Me.chkAutoSave.UseVisualStyleBackColor = True
-        '
-        'ltbCurveRes
-        '
-        Me.ltbCurveRes.Location = New System.Drawing.Point(3, 34)
-        Me.ltbCurveRes.Name = "ltbCurveRes"
-        Me.ltbCurveRes.Size = New System.Drawing.Size(86, 13)
-        Me.ltbCurveRes.TabIndex = 19
-        Me.ltbCurveRes.Text = "Curve Resolution:"
-        '
-        'txtPreRotate
-        '
-        Me.txtPreRotate.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
-        Me.txtPreRotate.Location = New System.Drawing.Point(95, 3)
-        Me.txtPreRotate.Name = "txtPreRotate"
-        Me.txtPreRotate.Size = New System.Drawing.Size(52, 21)
-        Me.txtPreRotate.TabIndex = 20
-        Me.txtPreRotate.WordWrap = False
-        '
-        'tbCurveResolution
-        '
-        Me.tbCurveResolution.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
-        Me.tbCurveResolution.Location = New System.Drawing.Point(95, 29)
-        Me.tbCurveResolution.Name = "tbCurveResolution"
-        Me.tbCurveResolution.Size = New System.Drawing.Size(52, 21)
-        Me.tbCurveResolution.TabIndex = 21
-        Me.tbCurveResolution.WordWrap = False
-        '
-        'ComboBox1
-        '
-        Me.ComboBox1.FormattingEnabled = True
-        Me.ComboBox1.Location = New System.Drawing.Point(71, 43)
-        Me.ComboBox1.Name = "ComboBox1"
-        Me.ComboBox1.Size = New System.Drawing.Size(252, 21)
-        Me.ComboBox1.TabIndex = 6
-        '
-        'Label1
-        '
-        Me.Label1.AutoSize = True
-        Me.Label1.Location = New System.Drawing.Point(6, 46)
-        Me.Label1.Name = "Label1"
-        Me.Label1.Size = New System.Drawing.Size(59, 13)
-        Me.Label1.TabIndex = 7
-        Me.Label1.Text = "File Types:"
-        '
         'DXFFileSelectionDialog
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
@@ -283,6 +283,8 @@ Partial Class DXFFileSelectionDialog
         CType(Me.PanelControl1, System.ComponentModel.ISupportInitialize).EndInit()
         Me.PanelControl1.ResumeLayout(False)
         Me.PanelControl1.PerformLayout()
+        Me.Panel1.ResumeLayout(False)
+        Me.Panel1.PerformLayout()
         CType(Me.PanelControl2, System.ComponentModel.ISupportInitialize).EndInit()
         Me.PanelControl2.ResumeLayout(False)
         Me.SplitContainer2.Panel1.ResumeLayout(False)
@@ -293,8 +295,6 @@ Partial Class DXFFileSelectionDialog
         Me.SplitContainer3.Panel2.ResumeLayout(False)
         CType(Me.SplitContainer3, System.ComponentModel.ISupportInitialize).EndInit()
         Me.SplitContainer3.ResumeLayout(False)
-        Me.Panel1.ResumeLayout(False)
-        Me.Panel1.PerformLayout()
         Me.ResumeLayout(False)
 
     End Sub
@@ -311,7 +311,7 @@ Partial Class DXFFileSelectionDialog
     Friend WithEvents txtFilename As TextBox
     Friend WithEvents lblFilename As Label
     Friend WithEvents Label1 As Label
-    Friend WithEvents ComboBox1 As Windows.Forms.ComboBox
+    Friend WithEvents cboFileTypes As Windows.Forms.ComboBox
     Friend WithEvents Panel1 As Panel
     Friend WithEvents tbCurveResolution As TextBox
     Friend WithEvents txtPreRotate As TextBox
