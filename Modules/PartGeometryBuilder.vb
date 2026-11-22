@@ -404,6 +404,10 @@
 
         Next
 
+        ' Retain only profiles containing multiple entities.
+        ' Single lines and arcs remain independent geometry.
+        profiles.RemoveAll(
+    Function(p) p.Entities.Count < 2)
 
         Return profiles
 

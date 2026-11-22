@@ -2412,6 +2412,9 @@ Public Class frmMain
    Not _selectionEnabled AndAlso
    _currentTool = "None" Then
 
+            Debug.Print("ACTIVE CREATE OPERATION = [" & _activeCreateOperation & "]")
+
+
             Select Case _activeCreateOperation
 
                 Case "Hole"
@@ -6640,12 +6643,19 @@ Public Class frmMain
 
                 If member IsNot Nothing Then
 
-                    'Debug.WriteLine(
-                    '    "ToolSetupMember.ID = " & member.ID.ToString())
+                    Dim station As Station = Nothing
 
-                    'Debug.WriteLine(
-                    '    "Configured Index Angle = " &
-                    '    member.IndexAngle.ToString())
+                    If AppData.StationList IsNot Nothing Then
+
+                        station = AppData.StationList.FirstOrDefault(
+                            Function(s) s.ID = member.StationID)
+
+                    End If
+
+                    Dim canAutoIndex As Boolean =
+                        station IsNot Nothing AndAlso
+                        station.AutoIndex.GetValueOrDefault(False)
+
 
 
                     Dim angleValue As HoleParameterValue = Nothing
@@ -6669,7 +6679,10 @@ Public Class frmMain
     FirstOrDefault(Function(r) r.Name = "toolang")
 
                             If angleRow IsNot Nothing Then
+
                                 angleRow.Properties.Value = member.IndexAngle
+                                angleRow.Properties.ReadOnly = Not canAutoIndex
+
                             End If
 
                         Finally
@@ -7256,6 +7269,8 @@ Public Class frmMain
         cbeHoleDefinition.SelectedIndex = 0
 
         PopulateHoleArrangementGrid(definition)
+
+        _activeCreateOperation = "Hole"
 
     End Sub
 
