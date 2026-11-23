@@ -262,8 +262,8 @@ Public Module PartGeometryBuilder
             GetProfileEndpoints(profile, gapTolerance)
 
             profile.IsClosed =
-            (profile.Entities.Count >= 3 AndAlso
-             endpoints.Count = 0)
+    (profile.Entities.Count >= 2 AndAlso
+     endpoints.Count = 0)
 
         Next
 
@@ -277,6 +277,11 @@ Public Module PartGeometryBuilder
             End If
 
             profile.IsClosed = profile.IsClosed AndAlso ordered AndAlso valid
+
+            If Not ordered OrElse Not valid Then
+                rejectedProfiles.Add(profile)
+                Continue For
+            End If
 
             ' Reject closed profiles containing overlapping lines.
 
@@ -294,6 +299,10 @@ Public Module PartGeometryBuilder
                         geometry,
                         0.000001) OrElse
                        HasCrossingProfileLineArcs(
+                        profile,
+                        geometry,
+                        0.000001) OrElse
+                       HasCrossingProfileArcs(
                         profile,
                         geometry,
                         0.000001) Then
@@ -447,6 +456,22 @@ Public Module PartGeometryBuilder
     Function(p) p.Entities.Count < 2 AndAlso
                 Not (p.Entities.Count = 1 AndAlso
                      TypeOf p.Entities(0) Is GeoCircle))
+
+        For Each p As GeoProfile In profiles
+
+            Debug.WriteLine(
+        "PROFILE " & p.ID &
+        " | Entities=" & p.Entities.Count &
+        " | Segments=" & p.Segments.Count &
+        " | Closed=" & p.IsClosed)
+
+            For Each entity As GeoEntity In p.Entities
+                Debug.WriteLine("    " & entity.GetType().Name)
+            Next
+
+        Next
+
+
         Return profiles
 
     End Function
@@ -1998,6 +2023,103 @@ Public Module PartGeometryBuilder
     End Function
 
 
+    Private Function DoArcSegmentsOverlap(
+    arcA As ArcSegment2D,
+    arcB As ArcSegment2D,
+    tolerance As Double) As Boolean
+
+        If arcA Is Nothing OrElse arcB Is Nothing Then
+            Return False
+        End If
+
+        If Not PointsWithinTolerance(
+        arcA.Center, arcB.Center, tolerance) Then
+            Return False
+        End If
+
+        If Math.Abs(arcA.Radius - arcB.Radius) > tolerance Then
+            Return False
+        End If
+
+        If arcA.Radius <= 0.0 Then Return False
+
+        Dim twoPi As Double = 2.0 * Math.PI
+        Dim angularTolerance As Double =
+        tolerance / arcA.Radius
+
+        Dim intervalsA As New List(Of Tuple(Of Double, Double))
+        Dim intervalsB As New List(Of Tuple(Of Double, Double))
+
+        For Each arc As ArcSegment2D In
+        New ArcSegment2D() {arcA, arcB}
+
+            Dim startAngle As Double =
+            If(arc.IsClockwise, arc.EndAngle, arc.StartAngle)
+
+            Dim endAngle As Double =
+            If(arc.IsClockwise, arc.StartAngle, arc.EndAngle)
+
+            Dim sweep As Double = endAngle - startAngle
+
+            While sweep < 0.0
+                sweep += twoPi
+            End While
+
+            While sweep > twoPi
+                sweep -= twoPi
+            End While
+
+            If sweep <= angularTolerance Then Continue For
+
+            Dim normalizedStart As Double =
+            startAngle Mod twoPi
+
+            If normalizedStart < 0.0 Then
+                normalizedStart += twoPi
+            End If
+
+            Dim target As List(Of Tuple(Of Double, Double)) =
+            If(Object.ReferenceEquals(arc, arcA),
+               intervalsA, intervalsB)
+
+            Dim normalizedEnd As Double =
+            normalizedStart + sweep
+
+            If normalizedEnd <= twoPi Then
+                target.Add(Tuple.Create(
+                normalizedStart, normalizedEnd))
+            Else
+                target.Add(Tuple.Create(
+                normalizedStart, twoPi))
+
+                target.Add(Tuple.Create(
+                0.0, normalizedEnd - twoPi))
+            End If
+
+        Next
+
+        For Each intervalA In intervalsA
+            For Each intervalB In intervalsB
+
+                Dim overlapStart As Double =
+                Math.Max(intervalA.Item1, intervalB.Item1)
+
+                Dim overlapEnd As Double =
+                Math.Min(intervalA.Item2, intervalB.Item2)
+
+                If overlapEnd - overlapStart >
+               angularTolerance Then
+                    Return True
+                End If
+
+            Next
+        Next
+
+        Return False
+
+    End Function
+
+
     Private Function HasCrossingProfileArcs(
     profile As GeoProfile,
     geometry As List(Of GeoEntity),
@@ -2040,8 +2162,10 @@ Public Module PartGeometryBuilder
 
                 If arcB Is Nothing Then Continue For
 
-                If DoArcSegmentsCross(
-                arcA, arcB, tolerance) Then
+                If DoArcSegmentsOverlap(
+                        arcA, arcB, tolerance) OrElse
+                       DoArcSegmentsCross(
+                        arcA, arcB, tolerance) Then
 
                     Return True
 
