@@ -5597,7 +5597,32 @@ Public Class frmMain
             For Each part As Part In sheet.Parts
 
                 If part Is Nothing Then Continue For
-                If part.GeoProfiles Is Nothing Then Continue For
+
+                Debug.WriteLine(
+    "ENTITY LIST: Part ID=" & part.ID &
+    " | Geometry=" &
+    If(part.Geometry Is Nothing, -1, part.Geometry.Count) &
+    " | Profiles=" &
+    If(part.GeoProfiles Is Nothing, -1, part.GeoProfiles.Count))
+
+                ' Track entities already displayed inside profiles.
+                Dim profiledEntities As New HashSet(Of GeoEntity)()
+
+                If part.GeoProfiles IsNot Nothing Then
+
+                    For Each profile As GeoProfile In part.GeoProfiles
+                        If profile Is Nothing OrElse profile.Entities Is Nothing Then
+                            Continue For
+                        End If
+
+                        For Each entity As GeoEntity In profile.Entities
+                            If entity IsNot Nothing Then
+                                profiledEntities.Add(entity)
+                            End If
+                        Next
+                    Next
+
+                End If
 
                 For Each profile As GeoProfile In part.GeoProfiles
 
@@ -5632,6 +5657,11 @@ Public Class frmMain
                             ' Retain the original geometry reference
                             entityNode.Tag = entity
 
+                            Debug.WriteLine(
+    "ADDED UNPROFILED ENTITY: " &
+    entity.GetType().Name &
+    " | PartGeo child count=" &
+    partGeoNode.Nodes.Count)
                         Next
 
                     End If
@@ -5639,6 +5669,36 @@ Public Class frmMain
 
 
                 Next
+
+
+
+                '---------------------------------------------
+                ' Display unprofiled Part Geometry
+                '---------------------------------------------
+                If part.Geometry IsNot Nothing Then
+
+                    For Each entity As GeoEntity In part.Geometry
+
+                        If entity Is Nothing Then Continue For
+
+                        If profiledEntities.Contains(entity) Then
+                            Continue For
+                        End If
+
+                        Dim entityNode =
+                            tlEntityList.AppendNode(
+                                New Object() {entity.GetType().Name},
+                                partGeoNode)
+
+                        entityNode.Tag = entity
+
+                        Debug.WriteLine(
+                            "ADDED UNPROFILED ENTITY: " &
+                            entity.GetType().Name)
+
+                    Next
+
+                End If
 
             Next
 
@@ -5654,6 +5714,20 @@ Public Class frmMain
 
                     Dim displayName As String = feature.FeatureType.ToString()
 
+                    Dim contour As ContourFeature = TryCast(feature, ContourFeature)
+
+                    If contour IsNot Nothing AndAlso contour.Path IsNot Nothing Then
+
+                        Dim pathSegments = contour.Path.Segments.ToList()
+
+                        If pathSegments.Count = 1 AndAlso TypeOf pathSegments(0) Is ToolShapes.LineSegment2D Then
+
+                            displayName = "Line"
+
+                        End If
+
+                    End If
+
                     Select Case feature.FeatureType
 
                         Case MachiningFeatureType.LineOfHoles
@@ -5667,7 +5741,7 @@ Public Class frmMain
                     '---------------------------------------------
                     ' Add ManufacturingGeo profile segments
                     '---------------------------------------------
-                    Dim contour As ContourFeature = TryCast(feature, ContourFeature)
+                    'Dim contour As ContourFeature = TryCast(feature, ContourFeature)
 
                     If contour IsNot Nothing AndAlso contour.Path IsNot Nothing Then
 
@@ -5826,6 +5900,19 @@ Public Class frmMain
                     If feature IsNot Nothing Then
 
                         Dim displayName As String = feature.FeatureType.ToString()
+                        Dim contour As ContourFeature = TryCast(feature, ContourFeature)
+
+                        If contour IsNot Nothing AndAlso contour.Path IsNot Nothing Then
+
+                            Dim pathSegments = contour.Path.Segments.ToList()
+
+                            If pathSegments.Count = 1 AndAlso TypeOf pathSegments(0) Is ToolShapes.LineSegment2D Then
+
+                                displayName = "Line"
+
+                            End If
+
+                        End If
 
                         Select Case feature.FeatureType
                             Case MachiningFeatureType.LineOfHoles

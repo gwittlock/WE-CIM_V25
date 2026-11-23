@@ -296,7 +296,7 @@ Namespace ToolShapes
                 cornerRadius,
                 startAngle,
                 endAngle,
-                True))
+                False))
 
             Next
 

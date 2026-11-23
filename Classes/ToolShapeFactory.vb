@@ -76,7 +76,7 @@ Namespace ToolShapes
 
                 Case 27
                     Return New HexagonToolShape(
-                        GetDouble(tool, "Diameter"))
+                        GetDouble(tool, "Across Flats"))
 
                 Case 29 ' Custom
 

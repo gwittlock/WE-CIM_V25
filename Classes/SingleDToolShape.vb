@@ -47,7 +47,7 @@ Namespace ToolShapes
             Dim flatDistance As Double =
             radius - removed
 
-            If flatDistance < 0 OrElse flatDistance > radius Then
+            If flatDistance < -radius OrElse flatDistance > radius Then
                 Throw New ArgumentException(
                 "Width produces an invalid Single-D profile.",
                 NameOf(width))

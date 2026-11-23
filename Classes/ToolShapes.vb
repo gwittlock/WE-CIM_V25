@@ -1244,16 +1244,15 @@ Namespace ToolShapes
 
         Public ReadOnly Property Width As Double
             Get
-                Return CuttingProfile.BoundingBox.Width
+                Return CuttingProfile.BoundingBox.Height
             End Get
         End Property
 
         Public ReadOnly Property Length As Double
             Get
-                Return CuttingProfile.BoundingBox.Height
+                Return CuttingProfile.BoundingBox.Width
             End Get
         End Property
-
         Public Overrides ReadOnly Property EffectiveDiameter As Double
             Get
                 Return Width
@@ -1346,8 +1345,9 @@ Namespace ToolShapes
                 Throw New ArgumentOutOfRangeException(NameOf(cornerRadius))
             End If
 
-            Dim halfWidth As Double = width / 2.0
-            Dim halfHeight As Double = height / 2.0
+            ' Length is along X; Width is along Y.
+            Dim halfWidth As Double = height / 2.0
+            Dim halfHeight As Double = width / 2.0
 
             Dim path As New Path2D()
 
@@ -1555,19 +1555,19 @@ Namespace ToolShapes
 
         Public ReadOnly Property Width As Double
             Get
-                Return CuttingProfile.BoundingBox.Width
+                Return CuttingProfile.BoundingBox.Height
             End Get
         End Property
 
-        Public ReadOnly Property Height As Double
+        Public ReadOnly Property Length As Double
             Get
-                Return CuttingProfile.BoundingBox.Height
+                Return CuttingProfile.BoundingBox.Width
             End Get
         End Property
 
         Public Overrides ReadOnly Property EffectiveDiameter As Double
             Get
-                Return Math.Min(Width, Height)
+                Return Math.Min(Width, Length)
             End Get
         End Property
 

@@ -7,23 +7,23 @@ Namespace ToolShapes
     Public Class HexagonToolShape
         Inherits ToolShape
 
-        Public Sub New(
-            diameter As Double)
+        Public Sub New(acrossFlats As Double)
 
             MyBase.New(
-                ToolShapeType.Hexagon,
-                CreateHexagonProfile(diameter))
+        ToolShapeType.Hexagon,
+        CreateHexagonProfile(acrossFlats))
+
         End Sub
 
         Private Shared Function CreateHexagonProfile(
-            diameter As Double) As IPath2D
+    acrossFlats As Double) As IPath2D
 
-            If diameter <= 0 Then
-                Throw New ArgumentOutOfRangeException(NameOf(diameter))
+            If acrossFlats <= 0 Then
+                Throw New ArgumentOutOfRangeException(NameOf(acrossFlats))
             End If
 
             Dim radius As Double =
-                diameter / 2.0
+        acrossFlats / Math.Sqrt(3.0)
 
             Dim path As New Path2D()
 
@@ -57,9 +57,9 @@ Namespace ToolShapes
             Return path
         End Function
 
-        Public ReadOnly Property Diameter As Double
+        Public ReadOnly Property AcrossFlats As Double
             Get
-                Return CuttingProfile.BoundingBox.Width
+                Return CuttingProfile.BoundingBox.Height
             End Get
         End Property
 
@@ -80,13 +80,13 @@ Namespace ToolShapes
 
         Public Overrides ReadOnly Property EffectiveDiameter As Double
             Get
-                Return Diameter
+                Return AcrossFlats * 2.0 / Math.Sqrt(3.0)
             End Get
         End Property
 
         Public Overrides ReadOnly Property EffectiveRadius As Double
             Get
-                Return Diameter / 2.0
+                Return AcrossFlats / Math.Sqrt(3.0)
             End Get
         End Property
 

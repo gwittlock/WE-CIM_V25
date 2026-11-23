@@ -1,4 +1,6 @@
-﻿Public Module PartGeometryBuilder
+﻿Imports FabV25_WIN8.ToolShapes
+
+Public Module PartGeometryBuilder
 
     Public Function CreatePartGeometry(
     cadEntities As List(Of CadEntity),
@@ -107,6 +109,8 @@
     gapTolerance As Double) As List(Of GeoProfile)
 
         Dim profiles As New List(Of GeoProfile)()
+
+        Dim rejectedProfiles As New HashSet(Of GeoProfile)
 
         If geometry Is Nothing OrElse geometry.Count = 0 Then
             Return profiles
@@ -274,6 +278,32 @@
 
             profile.IsClosed = profile.IsClosed AndAlso ordered AndAlso valid
 
+            ' Reject closed profiles containing overlapping lines.
+
+            '---------------------------------------------
+            ' Validate closed profile geometry.
+            '---------------------------------------------
+            If profile.IsClosed Then
+
+                If HasOverlappingProfileLines(
+                        profile,
+                        geometry,
+                        0.000001) OrElse
+                       HasCrossingProfileLines(
+                        profile,
+                        geometry,
+                        0.000001) OrElse
+                       HasCrossingProfileLineArcs(
+                        profile,
+                        geometry,
+                        0.000001) Then
+
+                    profile.IsClosed = False
+                    rejectedProfiles.Add(profile)
+
+                End If
+
+            End If
 
 
             '    Debug.WriteLine(
@@ -404,11 +434,19 @@
 
         Next
 
-        ' Retain only profiles containing multiple entities.
-        ' Single lines and arcs remain independent geometry.
+        ' Remove invalid profile groupings.
+        ' Original GeoEntity objects remain in Part.Geometry.
         profiles.RemoveAll(
-    Function(p) p.Entities.Count < 2)
+    Function(p) rejectedProfiles.Contains(p))
 
+        '    ' Retain only profiles containing multiple entities.
+        '    ' Single lines and arcs remain independent geometry.
+        '    profiles.RemoveAll(
+        'Function(p) p.Entities.Count < 2)
+        profiles.RemoveAll(
+    Function(p) p.Entities.Count < 2 AndAlso
+                Not (p.Entities.Count = 1 AndAlso
+                     TypeOf p.Entities(0) Is GeoCircle))
         Return profiles
 
     End Function
@@ -1713,6 +1751,538 @@
             Not isInsideProfile
 
         Return currentlyClockwise <> requiredClockwise
+
+    End Function
+
+
+    Private Function DoLineSegmentsOverlap(
+    lineA As LineSegment2D,
+    lineB As LineSegment2D,
+    tolerance As Double) As Boolean
+
+        If lineA Is Nothing OrElse lineB Is Nothing Then
+            Return False
+        End If
+
+        Dim ax As Double = CDbl(lineA.EndPoint.X) - lineA.StartPoint.X
+        Dim ay As Double = CDbl(lineA.EndPoint.Y) - lineA.StartPoint.Y
+
+        Dim bx As Double = CDbl(lineB.EndPoint.X) - lineB.StartPoint.X
+        Dim by As Double = CDbl(lineB.EndPoint.Y) - lineB.StartPoint.Y
+
+        Dim lengthA As Double = Math.Sqrt(ax * ax + ay * ay)
+        Dim lengthB As Double = Math.Sqrt(bx * bx + by * by)
+
+        If lengthA <= tolerance OrElse lengthB <= tolerance Then
+            Return False
+        End If
+
+        ' Check whether the directions are parallel.
+        Dim cross As Double = ax * by - ay * bx
+
+        If Math.Abs(cross) > tolerance * lengthA * lengthB Then
+            Return False
+        End If
+
+        ' Check whether B lies on the same infinite line as A.
+        Dim cx As Double = CDbl(lineB.StartPoint.X) - lineA.StartPoint.X
+        Dim cy As Double = CDbl(lineB.StartPoint.Y) - lineA.StartPoint.Y
+
+        Dim distance As Double =
+        Math.Abs(cx * ay - cy * ax) / lengthA
+
+        If distance > tolerance Then
+            Return False
+        End If
+
+        ' Project both segments onto A's unit direction.
+        Dim ux As Double = ax / lengthA
+        Dim uy As Double = ay / lengthA
+
+        Dim bStart As Double = cx * ux + cy * uy
+
+        Dim dx As Double = CDbl(lineB.EndPoint.X) - lineA.StartPoint.X
+        Dim dy As Double = CDbl(lineB.EndPoint.Y) - lineA.StartPoint.Y
+
+        Dim bEnd As Double = dx * ux + dy * uy
+
+        Dim overlapStart As Double = Math.Max(0.0, Math.Min(bStart, bEnd))
+        Dim overlapEnd As Double = Math.Min(lengthA, Math.Max(bStart, bEnd))
+
+        ' A shared endpoint alone is not an overlap.
+        Return (overlapEnd - overlapStart) > tolerance
+
+    End Function
+
+
+    Private Function DoLineSegmentsCross(
+    lineA As LineSegment2D,
+    lineB As LineSegment2D,
+    tolerance As Double) As Boolean
+
+        If lineA Is Nothing OrElse lineB Is Nothing Then
+            Return False
+        End If
+
+        Dim ax As Double =
+        CDbl(lineA.EndPoint.X) - lineA.StartPoint.X
+        Dim ay As Double =
+        CDbl(lineA.EndPoint.Y) - lineA.StartPoint.Y
+
+        Dim bx As Double =
+        CDbl(lineB.EndPoint.X) - lineB.StartPoint.X
+        Dim by As Double =
+        CDbl(lineB.EndPoint.Y) - lineB.StartPoint.Y
+
+        Dim cx As Double =
+        CDbl(lineB.StartPoint.X) - lineA.StartPoint.X
+        Dim cy As Double =
+        CDbl(lineB.StartPoint.Y) - lineA.StartPoint.Y
+
+        Dim denominator As Double = ax * by - ay * bx
+
+        Dim lengthA As Double = Math.Sqrt(ax * ax + ay * ay)
+        Dim lengthB As Double = Math.Sqrt(bx * bx + by * by)
+
+        If lengthA <= tolerance OrElse lengthB <= tolerance Then
+            Return False
+        End If
+
+        ' Parallel and collinear overlaps are handled separately.
+        If Math.Abs(denominator) <= tolerance * lengthA * lengthB Then
+            Return False
+        End If
+
+        Dim t As Double = (cx * by - cy * bx) / denominator
+        Dim u As Double = (cx * ay - cy * ax) / denominator
+
+        ' Intersection must lie on both finite segments.
+        Dim paramTolA As Double = tolerance / lengthA
+        Dim paramTolB As Double = tolerance / lengthB
+
+        If t < -paramTolA OrElse t > 1.0 + paramTolA OrElse
+       u < -paramTolB OrElse u > 1.0 + paramTolB Then
+
+            Return False
+        End If
+
+        ' Two segments meeting at their endpoints are allowed.
+        Dim atEndpointA As Boolean =
+        Math.Abs(t) <= paramTolA OrElse
+        Math.Abs(t - 1.0) <= paramTolA
+
+        Dim atEndpointB As Boolean =
+        Math.Abs(u) <= paramTolB OrElse
+        Math.Abs(u - 1.0) <= paramTolB
+
+        Return Not (atEndpointA AndAlso atEndpointB)
+
+    End Function
+
+
+    Private Function DoLineArcSegmentsCross(
+    line As ToolShapes.LineSegment2D,
+    arc As ToolShapes.ArcSegment2D,
+    tolerance As Double) As Boolean
+
+        If line Is Nothing OrElse arc Is Nothing Then
+            Return False
+        End If
+
+        Dim points As List(Of PointF) = Nothing
+        Dim uArc As List(Of Double) = Nothing
+        Dim uLine As List(Of Double) = Nothing
+
+        If Not ToolShapes.ConvexHullGeometry.TestIntersectArcLine(
+        arc,
+        line,
+        tolerance,
+        points,
+        uArc,
+        uLine) Then
+
+            Return False
+        End If
+
+        For Each intersection As PointF In points
+
+            Dim atLineEndpoint As Boolean =
+            PointsWithinTolerance(
+                intersection,
+                line.StartPoint,
+                tolerance) OrElse
+            PointsWithinTolerance(
+                intersection,
+                line.EndPoint,
+                tolerance)
+
+            Dim atArcEndpoint As Boolean =
+            PointsWithinTolerance(
+                intersection,
+                arc.StartPoint,
+                tolerance) OrElse
+            PointsWithinTolerance(
+                intersection,
+                arc.EndPoint,
+                tolerance)
+
+            ' A shared endpoint is a valid connection.
+            ' All other intersections invalidate the profile.
+            If Not (atLineEndpoint AndAlso atArcEndpoint) Then
+                Return True
+            End If
+
+        Next
+
+        Return False
+
+    End Function
+
+
+    Private Function DoArcSegmentsCross(
+    arcA As ToolShapes.ArcSegment2D,
+    arcB As ToolShapes.ArcSegment2D,
+    tolerance As Double) As Boolean
+
+        If arcA Is Nothing OrElse arcB Is Nothing Then
+            Return False
+        End If
+
+        Dim points As List(Of PointF) = Nothing
+        Dim uA As List(Of Double) = Nothing
+        Dim uB As List(Of Double) = Nothing
+
+        If Not ToolShapes.ConvexHullGeometry.TestIntersectArcArc(
+        arcA,
+        arcB,
+        tolerance,
+        points,
+        uA,
+        uB) Then
+
+            Return False
+        End If
+
+        For Each intersection As PointF In points
+
+            Dim atEndpointA As Boolean =
+            PointsWithinTolerance(
+                intersection,
+                arcA.StartPoint,
+                tolerance) OrElse
+            PointsWithinTolerance(
+                intersection,
+                arcA.EndPoint,
+                tolerance)
+
+            Dim atEndpointB As Boolean =
+            PointsWithinTolerance(
+                intersection,
+                arcB.StartPoint,
+                tolerance) OrElse
+            PointsWithinTolerance(
+                intersection,
+                arcB.EndPoint,
+                tolerance)
+
+            ' Shared endpoints are legitimate connections.
+            ' Other intersections invalidate the profile.
+            If Not (atEndpointA AndAlso atEndpointB) Then
+                Return True
+            End If
+
+        Next
+
+        Return False
+
+    End Function
+
+
+    Private Function HasCrossingProfileArcs(
+    profile As GeoProfile,
+    geometry As List(Of GeoEntity),
+    tolerance As Double) As Boolean
+
+        If profile Is Nothing OrElse geometry Is Nothing Then
+            Return False
+        End If
+
+        For Each profileEntity As GeoEntity In profile.Entities
+
+            Dim profileArc As GeoArc =
+            TryCast(profileEntity, GeoArc)
+
+            If profileArc Is Nothing Then Continue For
+
+            Dim arcA As ArcSegment2D =
+            CreateArcSegment(profileArc)
+
+            If arcA Is Nothing Then Continue For
+
+            For Each candidate As GeoEntity In geometry
+
+                If Object.ReferenceEquals(profileEntity, candidate) Then
+                    Continue For
+                End If
+
+                Dim candidateArc As GeoArc =
+                TryCast(candidate, GeoArc)
+
+                If candidateArc Is Nothing Then Continue For
+
+                If Not SameGeoAssociation(
+                profileEntity, candidate) Then
+                    Continue For
+                End If
+
+                Dim arcB As ArcSegment2D =
+                CreateArcSegment(candidateArc)
+
+                If arcB Is Nothing Then Continue For
+
+                If DoArcSegmentsCross(
+                arcA, arcB, tolerance) Then
+
+                    Return True
+
+                End If
+
+            Next
+
+        Next
+
+        Return False
+
+    End Function
+
+
+    Private Function HasOverlappingProfileLines(
+    profile As GeoProfile,
+    geometry As List(Of GeoEntity),
+    tolerance As Double) As Boolean
+
+        If profile Is Nothing OrElse
+       geometry Is Nothing Then
+
+            Return False
+        End If
+
+        For Each profileEntity As GeoEntity In profile.Entities
+
+            Dim profileLine As GeoLine =
+            TryCast(profileEntity, GeoLine)
+
+            If profileLine Is Nothing Then Continue For
+
+            Dim startA As GeoPoint = Nothing
+            Dim endA As GeoPoint = Nothing
+
+            If Not GetGeoEntityEndpoints(
+            profileLine, startA, endA) Then Continue For
+
+            Dim lineA As New LineSegment2D(
+            New PointF(CSng(startA.X), CSng(startA.Y)),
+            New PointF(CSng(endA.X), CSng(endA.Y)))
+
+            For Each candidate As GeoEntity In geometry
+
+                If Object.ReferenceEquals(
+                profileEntity, candidate) Then Continue For
+
+                If Not TypeOf candidate Is GeoLine Then
+                    Continue For
+                End If
+
+                If Not SameGeoAssociation(
+                profileEntity, candidate) Then Continue For
+
+                Dim startB As GeoPoint = Nothing
+                Dim endB As GeoPoint = Nothing
+
+                If Not GetGeoEntityEndpoints(
+                candidate, startB, endB) Then Continue For
+
+                Dim lineB As New LineSegment2D(
+                New PointF(CSng(startB.X), CSng(startB.Y)),
+                New PointF(CSng(endB.X), CSng(endB.Y)))
+
+                If DoLineSegmentsOverlap(
+                lineA, lineB, tolerance) Then
+
+                    Return True
+
+                End If
+
+            Next
+
+        Next
+
+        Return False
+
+    End Function
+
+
+    Private Function HasCrossingProfileLines(
+    profile As GeoProfile,
+    geometry As List(Of GeoEntity),
+    tolerance As Double) As Boolean
+
+        If profile Is Nothing OrElse
+       geometry Is Nothing Then Return False
+
+        For Each profileEntity As GeoEntity In profile.Entities
+
+            Dim profileLine As GeoLine =
+            TryCast(profileEntity, GeoLine)
+
+            If profileLine Is Nothing Then Continue For
+
+            Dim startA As GeoPoint = Nothing
+            Dim endA As GeoPoint = Nothing
+
+            If Not GetGeoEntityEndpoints(
+            profileLine, startA, endA) Then Continue For
+
+            Dim lineA As New LineSegment2D(
+            New PointF(CSng(startA.X), CSng(startA.Y)),
+            New PointF(CSng(endA.X), CSng(endA.Y)))
+
+            For Each candidate As GeoEntity In geometry
+
+                If Object.ReferenceEquals(
+                profileEntity, candidate) Then Continue For
+
+                If Not TypeOf candidate Is GeoLine Then Continue For
+
+                If Not SameGeoAssociation(
+                profileEntity, candidate) Then Continue For
+
+                Dim startB As GeoPoint = Nothing
+                Dim endB As GeoPoint = Nothing
+
+                If Not GetGeoEntityEndpoints(
+                candidate, startB, endB) Then Continue For
+
+                Dim lineB As New LineSegment2D(
+                New PointF(CSng(startB.X), CSng(startB.Y)),
+                New PointF(CSng(endB.X), CSng(endB.Y)))
+
+                If DoLineSegmentsCross(
+                lineA, lineB, tolerance) Then
+
+                    Return True
+
+                End If
+
+            Next
+
+        Next
+
+        Return False
+
+    End Function
+
+
+    Private Function HasCrossingProfileLineArcs(
+    profile As GeoProfile,
+    geometry As List(Of GeoEntity),
+    tolerance As Double) As Boolean
+
+        If profile Is Nothing OrElse geometry Is Nothing Then
+            Return False
+        End If
+
+        For Each profileEntity As GeoEntity In profile.Entities
+
+            If Not TypeOf profileEntity Is GeoLine AndAlso
+           Not TypeOf profileEntity Is GeoArc Then
+                Continue For
+            End If
+
+            For Each candidate As GeoEntity In geometry
+
+                If Object.ReferenceEquals(profileEntity, candidate) Then
+                    Continue For
+                End If
+
+                If Not SameGeoAssociation(profileEntity, candidate) Then
+                    Continue For
+                End If
+
+                Dim geoLine As GeoLine = Nothing
+                Dim geoArc As GeoArc = Nothing
+
+                If TypeOf profileEntity Is GeoLine AndAlso
+               TypeOf candidate Is GeoArc Then
+
+                    geoLine = DirectCast(profileEntity, GeoLine)
+                    geoArc = DirectCast(candidate, GeoArc)
+
+                ElseIf TypeOf profileEntity Is GeoArc AndAlso
+                   TypeOf candidate Is GeoLine Then
+
+                    geoLine = DirectCast(candidate, GeoLine)
+                    geoArc = DirectCast(profileEntity, GeoArc)
+
+                Else
+                    Continue For
+                End If
+
+                If geoLine.StartPoint Is Nothing OrElse
+               geoLine.EndPoint Is Nothing Then
+                    Continue For
+                End If
+
+                Dim line As New LineSegment2D(
+                New PointF(
+                    CSng(geoLine.StartPoint.X),
+                    CSng(geoLine.StartPoint.Y)),
+                New PointF(
+                    CSng(geoLine.EndPoint.X),
+                    CSng(geoLine.EndPoint.Y)))
+
+                Dim arc As ArcSegment2D =
+                CreateArcSegment(geoArc)
+
+                If arc Is Nothing Then Continue For
+
+                If DoLineArcSegmentsCross(
+                line, arc, tolerance) Then
+
+                    Return True
+
+                End If
+
+            Next
+
+        Next
+
+        Return False
+
+    End Function
+
+
+    Private Function CreateArcSegment(
+    arc As GeoArc) As ToolShapes.ArcSegment2D
+
+        If arc Is Nothing OrElse arc.Center Is Nothing Then
+            Return Nothing
+        End If
+
+        Dim startRadians As Double =
+        arc.StartAngle * Math.PI / 180.0
+
+        Dim endRadians As Double =
+        arc.EndAngle * Math.PI / 180.0
+
+        Return New ToolShapes.ArcSegment2D(
+        New PointF(
+            CSng(arc.Center.X),
+            CSng(arc.Center.Y)),
+        arc.Radius,
+        startRadians,
+        endRadians,
+        arc.IsClockwise)
 
     End Function
 
