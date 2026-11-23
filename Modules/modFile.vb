@@ -228,7 +228,7 @@ Public Module modFile
         '============================================================
         ' Register Part and Manufacturing Geometry in MM3
         '============================================================
-        productionSheet.ManufacturingModel.PartGeometry.AddRange(importedPart.Geometry)
+        ' productionSheet.ManufacturingModel.PartGeometry.AddRange(importedPart.Geometry)
 
         productionSheet.ManufacturingModel.ManufacturingGeometry.AddRange(importedPart.Features)
 
@@ -998,11 +998,17 @@ Public Module modFile
 
                             Debug.WriteLine("===== MM3 RESTORED COLLECTIONS =====")
                             Debug.WriteLine("Parts: " & restoredSheet.Parts.Count)
+                            Dim partGeometryCount As Integer = 0
 
-                            Debug.WriteLine("PartGeometry: " &
-    If(mm.PartGeometry Is Nothing,
-       "Nothing",
-       mm.PartGeometry.Count.ToString()))
+                            For Each part As Part In restoredSheet.Parts
+
+                                If part Is Nothing OrElse part.Geometry Is Nothing Then Continue For
+
+                                partGeometryCount += part.Geometry.Count
+
+                            Next
+
+                            Debug.WriteLine("PartGeometry: " & partGeometryCount.ToString())
 
                             Debug.WriteLine("ManufacturingGeometry: " &
     If(mm.ManufacturingGeometry Is Nothing,

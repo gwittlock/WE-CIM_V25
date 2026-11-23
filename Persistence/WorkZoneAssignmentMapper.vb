@@ -1,54 +1,68 @@
 ﻿
 Public Class WorkZoneAssignmentMapper
-
     Public Shared Function ToRecord(
-        assignment As MM3WorkZoneAssignment
-    ) As WorkZoneAssignmentRecord
-
+    assignment As MM3WorkZoneAssignment
+) As WorkZoneAssignmentRecord
 
         If assignment Is Nothing OrElse
-           assignment.Entity Is Nothing Then
+       assignment.Entity Is Nothing Then
 
             Throw New ArgumentException(
-                "WorkZone assignment has no entity.")
+            "WorkZone assignment has no entity.")
         End If
 
         Dim record As New WorkZoneAssignmentRecord With {
-            .WorkZoneIndex = assignment.WorkZoneIndex
-        }
+        .WorkZoneIndex = assignment.WorkZoneIndex
+    }
 
         If TypeOf assignment.Entity Is GeoEntity Then
 
-            Dim geo = DirectCast(assignment.Entity, GeoEntity)
+            Dim geo As GeoEntity =
+            DirectCast(assignment.Entity, GeoEntity)
 
             record.EntityType = "GeoEntity"
             record.EntityID = geo.ID
 
+        ElseIf TypeOf assignment.Entity Is GeoProfile Then
+
+            Dim profile As GeoProfile =
+            DirectCast(assignment.Entity, GeoProfile)
+
+            record.EntityType = "GeoProfile"
+            record.EntityID = profile.ID
+
         ElseIf TypeOf assignment.Entity Is MachiningFeature Then
 
-            Dim feature = DirectCast(
-                assignment.Entity,
-                MachiningFeature)
+            Dim feature As MachiningFeature =
+            DirectCast(assignment.Entity, MachiningFeature)
 
             record.EntityType = "MachiningFeature"
             record.EntityID = feature.ID
 
+        ElseIf TypeOf assignment.Entity Is PatternInstance Then
+
+            Dim instance As PatternInstance =
+            DirectCast(assignment.Entity, PatternInstance)
+
+            record.EntityType = "PatternInstance"
+            record.EntityID = instance.ID
+
         Else
 
             Throw New NotSupportedException(
-                "Unsupported WorkZone assignment entity type: " &
-                assignment.Entity.GetType().FullName)
+            "Unsupported WorkZone assignment entity type: " &
+            assignment.Entity.GetType().FullName)
 
         End If
 
         Return record
 
     End Function
-
-
     Public Shared Function FromRecord(
     record As WorkZoneAssignmentRecord,
-    model As MM3
+    model As MM3,
+    profilesByID As Dictionary(Of Integer, GeoProfile),
+    entitiesByID As Dictionary(Of Integer, GeoEntity)
 ) As MM3WorkZoneAssignment
 
         If record Is Nothing Then
@@ -65,13 +79,37 @@ Public Class WorkZoneAssignmentMapper
 
             Case "GeoEntity"
 
-                entity = model.PartGeometry.
-                FirstOrDefault(Function(g) g.ID = record.EntityID)
+                If entitiesByID Is Nothing Then
+                    Throw New ArgumentNullException(NameOf(entitiesByID))
+                End If
+
+                Dim geoEntity As GeoEntity = Nothing
+
+                If entitiesByID.TryGetValue(record.EntityID, geoEntity) Then
+                    entity = geoEntity
+                End If
+
+            Case "GeoProfile"
+
+                If profilesByID Is Nothing Then
+                    Throw New ArgumentNullException(NameOf(profilesByID))
+                End If
+
+                Dim profile As GeoProfile = Nothing
+
+                If profilesByID.TryGetValue(record.EntityID, profile) Then
+                    entity = profile
+                End If
 
             Case "MachiningFeature"
 
                 entity = model.ManufacturingGeometry.
                 FirstOrDefault(Function(f) f.ID = record.EntityID)
+
+            Case "PatternInstance"
+
+                entity = model.PatternInstances.
+                FirstOrDefault(Function(i) i.ID = record.EntityID)
 
             Case Else
 
@@ -93,11 +131,11 @@ Public Class WorkZoneAssignmentMapper
     }
 
     End Function
-
-
     Public Shared Sub RestoreWorkZoneAssignments(
     mm3File As MM3File,
-    model As MM3
+    model As MM3,
+    profilesByID As Dictionary(Of Integer, GeoProfile),
+    entitiesByID As Dictionary(Of Integer, GeoEntity)
 )
 
         If mm3File Is Nothing Then
@@ -123,7 +161,7 @@ Public Class WorkZoneAssignmentMapper
             End If
 
             Dim assignment As MM3WorkZoneAssignment =
-            FromRecord(record, model)
+            FromRecord(record, model, profilesByID, entitiesByID)
 
             restoredAssignments.Add(assignment)
 

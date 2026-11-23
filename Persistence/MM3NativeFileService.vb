@@ -70,7 +70,6 @@ Public Class MM3NativeFileService
 
     End Function
 
-
     Public Shared Function RestoreJobSheet(
     nativeFile As MM3NativeFile
 ) As JobSheet
@@ -92,101 +91,98 @@ Public Class MM3NativeFileService
         .Width = mm3File.Width
     }
 
-        WorkZoneAssignmentMapper.RestoreJobSheetWorkZones(jobSheet, mm3File)
-
+        ' Restore WorkZone definitions.
+        WorkZoneAssignmentMapper.RestoreJobSheetWorkZones(
+        jobSheet,
+        mm3File)
 
         If nativeFile.ManufacturingEnvironment Is Nothing Then
             Throw New InvalidDataException(
-        "MM3 Manufacturing Environment section is missing.")
+            "MM3 Manufacturing Environment section is missing.")
         End If
 
         If nativeFile.ManufacturingEnvironment.Tools Is Nothing Then
             Throw New InvalidDataException(
-        "MM3 saved tool collection is missing.")
+            "MM3 saved tool collection is missing.")
         End If
 
         Dim savedTools As IEnumerable(Of WE_ENG_V25_0.Core.Models.Tool) =
-    nativeFile.ManufacturingEnvironment.Tools
+        nativeFile.ManufacturingEnvironment.Tools
 
         Dim toolsByID As Dictionary(
-    Of Integer,
-    WE_ENG_V25_0.Core.Models.Tool) =
-    savedTools.ToDictionary(Function(t) t.ID)
+        Of Integer,
+        WE_ENG_V25_0.Core.Models.Tool) =
+        savedTools.ToDictionary(Function(t) t.ID)
 
+        ' Restore geometry definitions.
         Dim entitiesByID As Dictionary(Of Integer, GeoEntity) =
-    GeoEntityMapper.RestoreGeometryCollections(
-        mm3File,
-        toolsByID)
+        GeoEntityMapper.RestoreGeometryCollections(
+            mm3File,
+            toolsByID)
 
-
-        GeoEntityMapper.RestorePartGeometry(
-    jobSheet,
-    mm3File,
-    entitiesByID)
-
-
+        ' Restore profiles.
         Dim profilesByID As Dictionary(Of Integer, GeoProfile) =
-    GeoProfileMapper.RestoreProfiles(
-        mm3File,
-        entitiesByID)
+        GeoProfileMapper.RestoreProfiles(
+            mm3File,
+            entitiesByID)
 
-
+        ' Restore manufacturing features.
         Dim featuresByID As Dictionary(Of Integer, MachiningFeature) =
-    MachiningFeatureMapper.RestoreManufacturingFeatures(
-        mm3File,
-        savedTools)
-
+        MachiningFeatureMapper.RestoreManufacturingFeatures(
+            mm3File,
+            savedTools)
 
         MachiningFeatureMapper.RestoreJobSheetManufacturingGeometry(
-    jobSheet,
-    mm3File,
-    featuresByID)
-
-
-        Dim partsByID As Dictionary(Of Integer, Part) =
-    PartMapper.RestoreParts(
+        jobSheet,
         mm3File,
-        entitiesByID,
-        profilesByID,
         featuresByID)
+
+        ' Restore Parts and their nominal geometry.
+        Dim partsByID As Dictionary(Of Integer, Part) =
+        PartMapper.RestoreParts(
+            mm3File,
+            entitiesByID,
+            profilesByID,
+            featuresByID)
 
         PartMapper.RestoreJobSheetParts(
-    jobSheet,
-    mm3File,
-    partsByID)
-
-
-        WorkZoneAssignmentMapper.RestoreWorkZoneAssignments(
-    mm3File,
-    jobSheet.ManufacturingModel)
-
-
-        Dim patternsByID As Dictionary(Of Integer, Pattern) =
-    PatternMapper.RestorePatterns(
+        jobSheet,
         mm3File,
-        entitiesByID,
-        profilesByID,
-        featuresByID)
+        partsByID)
+
+        ' Restore Pattern definitions.
+        Dim patternsByID As Dictionary(Of Integer, Pattern) =
+        PatternMapper.RestorePatterns(
+            mm3File,
+            entitiesByID,
+            profilesByID,
+            featuresByID)
 
         PatternMapper.RestoreJobSheetPatterns(
-    jobSheet,
-    mm3File,
-    patternsByID)
-
-
-        Dim restoredInstances As List(Of PatternInstance) =
-    PatternMapper.RestorePatternInstances(
+        jobSheet,
         mm3File,
         patternsByID)
 
-        jobSheet.ManufacturingModel.PatternInstances =
-    restoredInstances
+        ' Restore Pattern Instances.
+        Dim restoredInstances As List(Of PatternInstance) =
+        PatternMapper.RestorePatternInstances(
+            mm3File,
+            patternsByID)
 
+        jobSheet.ManufacturingModel.PatternInstances =
+        restoredInstances
+
+        ' Restore WorkZone assignments last, after all
+        ' selectable geometry and Pattern Instances exist.
+        WorkZoneAssignmentMapper.RestoreWorkZoneAssignments(
+        mm3File,
+        jobSheet.ManufacturingModel,
+        profilesByID,
+        entitiesByID)
 
         Return jobSheet
 
     End Function
-
 
     Public Shared Function RestoreJobInformation(
     nativeFile As MM3NativeFile
@@ -376,6 +372,23 @@ Public Class MM3NativeFileService
     Where(Function(m) m.ToolSetupID = selectedToolSetup.ID).
     ToList()
 
+
+
+
+        For Each member In environment.ToolSetupMembers
+
+            If Not AppData.ToolCrib.Any(
+        Function(t) t.ID = member.ToolID) Then
+
+                Debug.WriteLine(
+            "UNRESOLVED TOOL SETUP MEMBER: " &
+            "MemberID=" & member.ID &
+            ", ToolID=" & member.ToolID &
+            ", StationID=" & member.StationID)
+
+            End If
+
+        Next
         Dim referencedToolIDs =
     environment.ToolSetupMembers.
     Select(Function(m) m.ToolID).
@@ -611,14 +624,22 @@ Public Class MM3NativeFileService
         Dim allGeometry As New List(Of GeoEntity)
         Dim geometryObjectsByID As New Dictionary(Of Integer, GeoEntity)
 
-        'Sheet-level nominal geometry.
-        For Each entity As GeoEntity In
-        jobSheet.ManufacturingModel.PartGeometry
+        'Sheet-level nominal geometry belongs to the Part.
+        For Each part As Part In jobSheet.Parts
 
-            RegisterGeometryForSave(
+            If part Is Nothing Then
+                Throw New InvalidOperationException(
+            "JobSheet contains a null Part.")
+            End If
+
+            For Each entity As GeoEntity In part.Geometry
+
+                RegisterGeometryForSave(
             entity,
             allGeometry,
             geometryObjectsByID)
+
+            Next
 
         Next
 
@@ -661,16 +682,24 @@ Public Class MM3NativeFileService
 
         Next
 
-        'Preserve explicit sheet-level geometry membership.
-        For Each entity As GeoEntity In
-        jobSheet.ManufacturingModel.PartGeometry
+        'Preserve sheet-level nominal geometry membership.
+        For Each part As Part In jobSheet.Parts
 
-            If entity Is Nothing Then
+            If part Is Nothing Then
                 Throw New InvalidOperationException(
-                "Sheet-level PartGeometry contains a null entity.")
+            "JobSheet contains a null Part.")
             End If
 
-            mm3File.PartGeometryIDs.Add(entity.ID)
+            For Each entity As GeoEntity In part.Geometry
+
+                If entity Is Nothing Then
+                    Throw New InvalidOperationException(
+                "Part contains a null geometry entity.")
+                End If
+
+                mm3File.PartGeometryIDs.Add(entity.ID)
+
+            Next
 
         Next
 
@@ -1123,12 +1152,31 @@ Public Class MM3NativeFileService
                     record.EntityID.ToString())
                     End If
 
+                Case "GeoProfile"
+
+                    If Not profileObjectsByID.ContainsKey(record.EntityID) Then
+                        Throw New InvalidOperationException(
+                            "WorkZone assignment references missing GeoProfile ID " &
+                            record.EntityID.ToString())
+                    End If
+
                 Case "MachiningFeature"
 
                     If Not featureObjectsByID.ContainsKey(record.EntityID) Then
                         Throw New InvalidOperationException(
                     "WorkZone assignment references missing MachiningFeature ID " &
                     record.EntityID.ToString())
+                    End If
+
+                Case "PatternInstance"
+
+                    If Not jobSheet.ManufacturingModel.PatternInstances.
+                        Any(Function(i) i.ID = record.EntityID) Then
+
+                        Throw New InvalidOperationException(
+                            "WorkZone assignment references missing PatternInstance ID " &
+                            record.EntityID.ToString())
+
                     End If
 
                 Case Else

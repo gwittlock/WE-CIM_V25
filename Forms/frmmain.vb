@@ -1183,11 +1183,18 @@ Public Class frmMain
             '---------------------------------------------
             ' Draw nominal Part Geometry from MM3
             '---------------------------------------------
-            DrawGeoEntities(
-            mm.PartGeometry,
-            g,
-            vt,
-            panelHeight)
+            'Draw nominal geometry from the owning Part.
+            For Each part As Part In sheet.Parts
+
+                If part Is Nothing Then Continue For
+
+                DrawGeoEntities(
+                    part.Geometry,
+                    g,
+                    vt,
+                    panelHeight)
+
+            Next
 
 
             _selectionManager.SheetXExtent = matLength
@@ -1350,6 +1357,9 @@ Public Class frmMain
 
         Next
     End Sub
+
+
+
     Public Sub BuildDrawables()
 
 
@@ -1417,7 +1427,14 @@ Public Class frmMain
 
                 If mm IsNot Nothing Then
 
-                    geoEntities.AddRange(mm.PartGeometry)
+                    For Each part As Part In jobSheet.Parts
+
+                        If part Is Nothing Then Continue For
+
+                        geoEntities.AddRange(part.Geometry)
+
+                    Next
+
                     machiningFeatures.AddRange(mm.ManufacturingGeometry)
                     patternInstances.AddRange(mm.PatternInstances)
                     patterns.AddRange(mm.Patterns)
@@ -2767,19 +2784,25 @@ Public Class frmMain
             If mm Is Nothing Then Continue For
 
             ' Part Geometry
-            Dim partBounds As RectangleF =
-            HelperFunctions.GetGeoBounds(mm.PartGeometry)
+            For Each part As Part In sheet.Parts
 
-            If Not partBounds.IsEmpty Then
+                If part Is Nothing Then Continue For
 
-                If hasBounds Then
-                    bounds = RectangleF.Union(bounds, partBounds)
-                Else
-                    bounds = partBounds
-                    hasBounds = True
+                Dim partBounds As RectangleF =
+        HelperFunctions.GetGeoBounds(part.Geometry)
+
+                If Not partBounds.IsEmpty Then
+
+                    If hasBounds Then
+                        bounds = RectangleF.Union(bounds, partBounds)
+                    Else
+                        bounds = partBounds
+                        hasBounds = True
+                    End If
+
                 End If
 
-            End If
+            Next
 
             ' Manufacturing Geometry
             Dim manufacturingBounds As RectangleF =
@@ -5589,7 +5612,7 @@ Public Class frmMain
 
             If mm Is Nothing Then Continue For
 
-            If mm.PartGeometry Is Nothing Then Continue For
+
 
             '---------------------------------------------
             ' Populate PartGeo profiles
@@ -5657,11 +5680,11 @@ Public Class frmMain
                             ' Retain the original geometry reference
                             entityNode.Tag = entity
 
-                            Debug.WriteLine(
-    "ADDED UNPROFILED ENTITY: " &
-    entity.GetType().Name &
-    " | PartGeo child count=" &
-    partGeoNode.Nodes.Count)
+                            '                        Debug.WriteLine(
+                            '"ADDED UNPROFILED ENTITY: " &
+                            'entity.GetType().Name &
+                            '" | PartGeo child count=" &
+                            'partGeoNode.Nodes.Count)
                         Next
 
                     End If
@@ -5692,9 +5715,9 @@ Public Class frmMain
 
                         entityNode.Tag = entity
 
-                        Debug.WriteLine(
-                            "ADDED UNPROFILED ENTITY: " &
-                            entity.GetType().Name)
+                        'Debug.WriteLine(
+                        '    "ADDED UNPROFILED ENTITY: " &
+                        '    entity.GetType().Name)
 
                     Next
 
@@ -5769,12 +5792,6 @@ Public Class frmMain
                 Next
 
             End If
-
-
-
-            'Debug.WriteLine(
-            '    "Entity List: PartGeo Count = " &
-            '    mm.PartGeometry.Count.ToString())
 
         Next
 
@@ -5932,13 +5949,13 @@ Public Class frmMain
 
                 Next
 
-                ' Do not show unused categories.
-                If zonePartGeoNode.Nodes.Count = 0 Then
-                    zonePartGeoNode.ParentNode.Nodes.Remove(zonePartGeoNode)
-                End If
 
-                If zonePartGeoNode.Nodes.Count = 0 Then
+                ' Do not show unused categories.
+                If zonePartGeoNode.Nodes.Count = 0 AndAlso
+                    zonePartGeoNode.ParentNode IsNot Nothing Then
+
                     zonePartGeoNode.ParentNode.Nodes.Remove(zonePartGeoNode)
+
                 End If
             Next
 
@@ -7248,6 +7265,22 @@ Public Class frmMain
             Return
         End If
 
+
+        If targetSheet.Parts Is Nothing OrElse
+   targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+        "The current sheet must contain exactly one Part.",
+        "Create Line",
+        MessageBoxButtons.OK,
+        MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
         'Create nominal geometry only.
         Dim creator As New CreateGeo()
 
@@ -7257,7 +7290,7 @@ Public Class frmMain
         'Associate the new line with the active CAD layer or tool.
         newLine.Association = _activeAssociation
 
-        mm.PartGeometry.Add(newLine)
+        targetPart.Geometry.Add(newLine)
 
         'Register the new geometry for selection and snapping.
         BuildDrawables()
@@ -7863,11 +7896,21 @@ Public Class frmMain
                 For Each feature As MachiningFeature In selectedFeatures
                     part.Features.Remove(feature)
                 Next
-
                 'Remove selected PartGeo.
                 For Each entity As GeoEntity In selectedEntities
-                    part.Geometry.Remove(entity)
+                    Dim removed As Boolean = part.Geometry.Remove(entity)
+
+                    Debug.WriteLine(
+    "PARTGEO DELETE | Entity ID=" & entity.ID &
+    " | Removed=" & removed &
+    " | Remaining=" & part.Geometry.Count)
+
+                    If removed Then
+                        removedCount += 1
+                    End If
+
                 Next
+
 
                 'Remove explicitly selected profiles.
                 For Each profile As GeoProfile In selectedProfiles
@@ -8255,15 +8298,18 @@ Public Class frmMain
         End With
 
     End Sub
-    Private Sub bbModZonesManage_ItemClick(sender As Object, e As ItemClickEventArgs) Handles bbModZonesManage.ItemClick
+    Private Sub bbModZonesManage_ItemClick(
+    sender As Object,
+    e As ItemClickEventArgs
+) Handles bbModZonesManage.ItemClick
 
-        If _workZonesForm IsNot Nothing AndAlso
-       Not _workZonesForm.IsDisposed Then
+        ' Ensure the WorkZones form exists.
+        InitializeWorkZonesPanel()
 
-            _workZonesForm.FillWorkZones()
+        ' Populate the grid.
+        _workZonesForm.FillWorkZones()
 
-        End If
-
+        ' Display the dock panel.
         dockPanelWorkZones.Show()
 
     End Sub
@@ -8334,6 +8380,7 @@ Public Class frmMain
         End Using
 
     End Sub
+
     Private Sub HandleAssignWorkZoneRequested(zone As WorkZone)
 
         If zone Is Nothing Then Return
@@ -8350,45 +8397,52 @@ Public Class frmMain
 
             Dim entity As isSelectable = selectedObject
 
-            ' If an individual geometric entity belongs to a profile,
-            ' assign the complete profile instead.
-            Dim geoEntity As GeoEntity = TryCast(selectedObject, GeoEntity)
+            ' Preserve V24 behavior:
+            ' If a selected line belongs to a profile,
+            ' assign the complete profile to the WorkZone.
+            Dim geoEntity As GeoEntity =
+            TryCast(selectedObject, GeoEntity)
 
             If geoEntity IsNot Nothing Then
+
                 Dim owningProfile As GeoProfile =
-            FindProfileForGeometry(geoEntity)
+                FindProfileForGeometry(geoEntity)
 
                 If owningProfile IsNot Nothing Then
                     entity = owningProfile
                 End If
+
             End If
 
             Dim assignment As MM3WorkZoneAssignment =
-                mm.WorkZoneAssignments.FirstOrDefault(
-                    Function(a) Object.ReferenceEquals(a.Entity, entity))
+            mm.WorkZoneAssignments.FirstOrDefault(
+                Function(a) Object.ReferenceEquals(a.Entity, entity))
 
             If assignment Is Nothing Then
 
                 mm.WorkZoneAssignments.Add(
-                    New MM3WorkZoneAssignment With {
-                        .Entity = entity,
-                        .WorkZoneIndex = zone.Index
-                    })
+                New MM3WorkZoneAssignment With {
+                    .Entity = entity,
+                    .WorkZoneIndex = zone.Index
+                })
 
             Else
 
                 assignment.WorkZoneIndex = zone.Index
 
             End If
+
         Next
 
-        ' Remember the assigned entities for one white confirmation redraw.
+        ' Preserve existing white confirmation flash.
         _workZoneAssignFlash.Clear()
 
         For Each entity As isSelectable In _selectionManager.Selected
+
             If entity IsNot Nothing Then
                 _workZoneAssignFlash.Add(entity)
             End If
+
         Next
 
         pnlPicmodeler.Invalidate()
@@ -8616,10 +8670,6 @@ Public Class frmMain
          selectedProfiles.Contains(TryCast(a.Entity, GeoProfile)) OrElse
          selectedFeatures.Contains(TryCast(a.Entity, MachiningFeature))))
 
-        'Remove transferred nominal geometry from MM3.
-        For Each entity As GeoEntity In selectedEntities
-            mm.PartGeometry.Remove(entity)
-        Next
 
         'Remove transferred manufacturing features from MM3.
         For Each feature As MachiningFeature In selectedFeatures
@@ -9291,8 +9341,63 @@ Public Class frmMain
         End Using
 
     End Sub
+    Private Sub iSave_ItemClick(
+    sender As Object,
+    e As ItemClickEventArgs) Handles iSave.ItemClick
 
-    Private Sub iSave_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iSave.ItemClick
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then
+            MessageBox.Show(
+            "A production job with exactly one sheet is required.",
+            "Save",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information)
+            Return
+        End If
+
+        Dim selectedPath As String = targetSheet.MM3FilePath
+
+        'If the sheet has never been saved, request a filename.
+        If String.IsNullOrWhiteSpace(selectedPath) Then
+
+            selectedPath = SelectMM3SavePath(Nothing)
+
+            If String.IsNullOrWhiteSpace(selectedPath) Then
+                Return
+            End If
+
+        End If
+
+        Try
+
+            Dim nativeFile As MM3NativeFile =
+            MM3NativeFileService.BuildNativeFile(
+                CurrentProductionJob,
+                targetSheet,
+                CurrentJob,
+                selectedPath,
+                "JobSheet",
+                True)
+
+            MM3NativeFileService.WriteNativeFile(
+            selectedPath,
+            nativeFile)
+
+            'Update the active filename only after successful save.
+            targetSheet.MM3FilePath = selectedPath
+
+        Catch ex As Exception
+
+            MessageBox.Show(
+            "Unable to save MM3 file." &
+            Environment.NewLine &
+            ex.ToString(),
+            "Save",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+
+        End Try
 
     End Sub
 
@@ -9401,6 +9506,10 @@ Public Class frmMain
         Return dlgFileSaveDialog.FileName
 
     End Function
+
+    Private Sub iNew_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iNew.ItemClick
+
+    End Sub
 End Class
 
 

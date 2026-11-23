@@ -1500,59 +1500,5 @@
     End Function
 
 
-    Public Shared Sub RestorePartGeometry(
-    jobSheet As JobSheet,
-    mm3File As MM3File,
-    entitiesByID As Dictionary(Of Integer, GeoEntity)
-)
-
-        If jobSheet Is Nothing Then
-            Throw New ArgumentNullException(NameOf(jobSheet))
-        End If
-
-        If mm3File Is Nothing Then
-            Throw New ArgumentNullException(NameOf(mm3File))
-        End If
-
-        If entitiesByID Is Nothing Then
-            Throw New ArgumentNullException(NameOf(entitiesByID))
-        End If
-
-        If jobSheet.ManufacturingModel Is Nothing Then
-            Throw New InvalidOperationException(
-            "JobSheet ManufacturingModel is missing.")
-        End If
-
-        If mm3File.Geometry Is Nothing Then
-            Throw New InvalidOperationException(
-            "MM3 Geometry collection is missing.")
-        End If
-
-        Dim geometry As New List(Of GeoEntity)
-
-        ' Preserve the original saved geometry order.
-        For Each record As GeoEntityRecord In mm3File.Geometry
-
-            If record Is Nothing Then
-                Throw New InvalidOperationException(
-                "MM3 Geometry contains a null record.")
-            End If
-
-            Dim entity As GeoEntity = Nothing
-
-            If Not entitiesByID.TryGetValue(record.ID, entity) Then
-                Throw New InvalidOperationException(
-                "PartGeometry entity could not be resolved: " &
-                record.ID.ToString())
-            End If
-
-            geometry.Add(entity)
-
-        Next
-
-        jobSheet.ManufacturingModel.PartGeometry = geometry
-
-    End Sub
-
 
 End Class
