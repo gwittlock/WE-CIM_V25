@@ -1454,6 +1454,7 @@ Public Class frmMain
 
         End If
 
+        _hotSpotManager = New HotSpotManager(geoEntities)
         _selectionManager.SetGeoEntities(geoEntities)
         _selectionManager.SetGeoProfiles(geoProfiles)
         _selectionManager.SetMachiningFeatures(machiningFeatures)
@@ -3836,78 +3837,7 @@ Public Class frmMain
         Return cadSnap
 
     End Function
-    '    Private Function TryEndpointSnap(
-    '    mouseWorld As PointF,
-    '    tolWorld As Single
-    ') As SnapResult
 
-    '        Dim best As SnapResult
-    '        best.Type = SnapType.None
-    '        best.Distance = Single.MaxValue
-
-    '        For Each ent In _cadEntities
-    '            If TypeOf ent Is CadLine Then
-    '                Dim l = DirectCast(ent, CadLine)
-
-    '                CheckPoint(l.StartPoint, ent)
-    '                CheckPoint(l.EndPoint, ent)
-    '            End If
-    '        Next
-
-    '        Return best
-    '    End Function
-
-
-
-    Private Function TryMidpointSnap(mouseWorld As PointF, tolWorld As Single) As SnapResult
-        For Each ent In _cadEntities
-            If TypeOf ent Is CadLine Then
-                Dim l = DirectCast(ent, CadLine)
-                Dim mid As New PointF(
-                (l.StartPoint.X + l.EndPoint.X) / 2.0F,
-                (l.StartPoint.Y + l.EndPoint.Y) / 2.0F)
-
-                If Distance(mid, mouseWorld) < tolWorld Then
-                    Return New SnapResult With {
-                    .Type = SnapType.Midpoint,
-                    .WorldPoint = mid,
-                    .Entity = ent
-                }
-                End If
-            End If
-        Next
-
-        Return Nothing
-    End Function
-
-    Private Function TryCenterSnap(mouseWorld As PointF, tolWorld As Single) As SnapResult
-
-        For Each ent In _cadEntities
-            If TypeOf ent Is CadCircle Then
-                Dim c = DirectCast(ent, CadCircle)
-                If Distance(c.Center, mouseWorld) < tolWorld Then
-                    Return New SnapResult With {
-                    .Type = SnapType.Center,
-                    .WorldPoint = c.Center,
-                    .Entity = ent
-                }
-                End If
-            End If
-
-            If TypeOf ent Is CadArc Then
-                Dim a = DirectCast(ent, CadArc)
-                If Distance(a.Center, mouseWorld) < tolWorld Then
-                    Return New SnapResult With {
-                    .Type = SnapType.Center,
-                    .WorldPoint = a.Center,
-                    .Entity = ent
-                }
-                End If
-            End If
-        Next
-
-        Return Nothing
-    End Function
 
     Private Sub tbSelect_HotDot_Click(sender As Object, e As EventArgs) Handles tbSelect_HotDot.Click
 
@@ -3925,57 +3855,6 @@ Public Class frmMain
         pnlPicmodeler.Invalidate()
 
     End Sub
-
-    Private Function GetSnapCandidates(ent As CadEntity) As IEnumerable(Of SnapResult)
-
-        Dim list As New List(Of SnapResult)
-
-        Select Case True
-
-            Case TypeOf ent Is CadLine
-                Dim l = DirectCast(ent, CadLine)
-
-                list.Add(New SnapResult With {
-                .Type = SnapType.Endpoint,
-                .WorldPoint = l.StartPoint,
-                .Entity = ent
-            })
-
-                list.Add(New SnapResult With {
-                .Type = SnapType.Endpoint,
-                .WorldPoint = l.EndPoint,
-                .Entity = ent
-            })
-
-                list.Add(New SnapResult With {
-                .Type = SnapType.Midpoint,
-                .WorldPoint = New PointF(
-                    (l.StartPoint.X + l.EndPoint.X) / 2.0F,
-                    (l.StartPoint.Y + l.EndPoint.Y) / 2.0F),
-                .Entity = ent
-            })
-
-            Case TypeOf ent Is CadCircle
-                Dim c = DirectCast(ent, CadCircle)
-
-                list.Add(New SnapResult With {
-                .Type = SnapType.Center,
-                .WorldPoint = c.Center,
-                .Entity = ent
-            })
-
-            Case TypeOf ent Is CadArc
-                Dim a = DirectCast(ent, CadArc)
-
-                list.Add(New SnapResult With {
-                .Type = SnapType.Center,
-                .WorldPoint = a.Center,
-                .Entity = ent
-            })
-        End Select
-
-        Return list
-    End Function
 
     Private Sub DrawMeasureLine(startPt As PointF, endPt As PointF, g As Graphics)
         ' Convert world → screen

@@ -5,7 +5,7 @@ Imports FabV25_WIN8
 
 Public Class HotSpotManager
 
-    Private _entities As List(Of CadEntity)
+    Private _entities As List(Of GeoEntity)
 
     Private _currentHotSpot As HotSpot
 
@@ -14,13 +14,13 @@ Public Class HotSpotManager
             Return _currentHotSpot
         End Get
     End Property
-
-    Public Sub New(entities As List(Of CadEntity))
+    Public Sub New(entities As List(Of GeoEntity))
 
         _entities = entities
         _currentHotSpot = Nothing
 
     End Sub
+
 
     Public Sub Clear()
 
@@ -40,7 +40,7 @@ Public Class HotSpotManager
 
         Dim bestDistance As Single = Single.MaxValue
 
-        For Each ent As CadEntity In _entities
+        For Each ent As GeoEntity In _entities
 
             If ent Is Nothing Then
                 Continue For
@@ -50,33 +50,30 @@ Public Class HotSpotManager
             ' Circle
             '==================================================
 
-            If ent.GeometryType = GeometryTypeEnum.Circle Then
+            If TypeOf ent Is GeoCircle Then
 
-                Dim cadcircle As CadEntity.CadCircle =
-        TryCast(ent, CadEntity.CadCircle)
+                Dim cadcircle As GeoCircle =
+        DirectCast(ent, GeoCircle)
 
                 If cadcircle IsNot Nothing Then
 
                     '----------------------------------------------
                     ' Center
                     '----------------------------------------------
-
                     Dim circleDistance As Single =
-            CalculateDistance(
-                worldPoint,
-                cadcircle.Center)
-
+    CalculateDistance(
+        worldPoint,
+        ToPointF(cadcircle.Center))
                     If circleDistance <= toleranceWorld AndAlso
            circleDistance < bestDistance Then
 
                         bestDistance = circleDistance
 
                         _currentHotSpot =
-                New HotSpot(
-                    HotSpotType.Center,
-                    cadcircle.Center,
-                    ent)
-
+                 New HotSpot(
+                     HotSpotType.Center,
+                     ToPointF(cadcircle.Center),
+                     ent)
                     End If
 
 
@@ -198,10 +195,9 @@ Public Class HotSpotManager
             ' Arc
             '==================================================
 
-            If ent.GeometryType = GeometryTypeEnum.Arc Then
+            If TypeOf ent Is GeoArc Then
 
-                Dim cadarc As CadEntity.CadArc =
-                TryCast(ent, CadEntity.CadArc)
+                Dim cadarc As GeoArc = DirectCast(ent, GeoArc)
 
                 If cadarc Is Nothing Then
                     Continue For
@@ -215,7 +211,7 @@ Public Class HotSpotManager
                 Dim arcDistance As Single =
                 CalculateDistance(
                     worldPoint,
-                    cadarc.Center)
+                    ToPointF(cadarc.Center))
 
                 If arcDistance <= toleranceWorld AndAlso
                arcDistance < bestDistance Then
@@ -225,7 +221,7 @@ Public Class HotSpotManager
                     _currentHotSpot =
                     New HotSpot(
                         HotSpotType.Center,
-                        cadarc.Center,
+                        ToPointF(cadarc.Center),
                         ent)
 
                 End If
@@ -368,13 +364,11 @@ Public Class HotSpotManager
             ' Line
             '==================================================
 
-            If ent.GeometryType <> GeometryTypeEnum.Line Then
+            If Not TypeOf ent Is GeoLine Then
                 Continue For
             End If
 
-
-            Dim cadline As CadEntity.CadLine =
-            TryCast(ent, CadEntity.CadLine)
+            Dim cadline As GeoLine = DirectCast(ent, GeoLine)
 
             If cadline Is Nothing Then
                 Continue For
@@ -388,7 +382,7 @@ Public Class HotSpotManager
             Dim spotDistance As Single =
             CalculateDistance(
                 worldPoint,
-                cadline.StartPoint)
+                ToPointF(cadline.StartPoint))
 
             If spotDistance <= toleranceWorld AndAlso
            spotDistance < bestDistance Then
@@ -398,7 +392,7 @@ Public Class HotSpotManager
                 _currentHotSpot =
                 New HotSpot(
                     HotSpotType.Endpoint,
-                    cadline.StartPoint,
+                    ToPointF(cadline.StartPoint),
                     ent)
 
             End If
@@ -411,7 +405,8 @@ Public Class HotSpotManager
             spotDistance =
             CalculateDistance(
                 worldPoint,
-                cadline.EndPoint)
+                ToPointF(cadline.EndPoint))
+
 
             If spotDistance <= toleranceWorld AndAlso
            spotDistance < bestDistance Then
@@ -421,7 +416,7 @@ Public Class HotSpotManager
                 _currentHotSpot =
                 New HotSpot(
                     HotSpotType.Endpoint,
-                    cadline.EndPoint,
+                    ToPointF(cadline.EndPoint),
                     ent)
 
             End If
@@ -463,8 +458,7 @@ Public Class HotSpotManager
 
             For i As Integer = 0 To _entities.Count - 1
 
-                Dim otherEntity As CadEntity =
-                _entities(i)
+                Dim otherEntity As GeoEntity = _entities(i)
 
                 If otherEntity Is Nothing Then
                     Continue For
@@ -474,18 +468,11 @@ Public Class HotSpotManager
                     Continue For
                 End If
 
-                If otherEntity.GeometryType <>
-               GeometryTypeEnum.Line Then
-
+                If Not TypeOf otherEntity Is GeoLine Then
                     Continue For
-
                 End If
 
-
-                Dim otherLine As CadEntity.CadLine =
-                TryCast(
-                    otherEntity,
-                    CadEntity.CadLine)
+                Dim otherLine As GeoLine = TryCast(otherEntity, GeoLine)
 
                 If otherLine Is Nothing Then
                     Continue For
@@ -532,25 +519,17 @@ Public Class HotSpotManager
 
             For i As Integer = 0 To _entities.Count - 1
 
-                Dim otherEntity As CadEntity =
-                _entities(i)
+                Dim otherEntity As GeoEntity = _entities(i)
 
                 If otherEntity Is Nothing Then
                     Continue For
                 End If
 
-                If otherEntity.GeometryType <>
-               GeometryTypeEnum.Circle Then
-
+                If Not TypeOf otherEntity Is GeoCircle Then
                     Continue For
-
                 End If
 
-
-                Dim otherCircle As CadEntity.CadCircle =
-                TryCast(
-                    otherEntity,
-                    CadEntity.CadCircle)
+                Dim otherCircle As GeoCircle = DirectCast(otherEntity, GeoCircle)
 
                 If otherCircle Is Nothing Then
                     Continue For
@@ -632,10 +611,9 @@ Public Class HotSpotManager
 
     End Function
 
-
     Private Function FindLineCircleIntersections(
-    line As CadEntity.CadLine,
-    circle As CadEntity.CadCircle,
+    line As GeoLine,
+    circle As GeoCircle,
     ByRef intersection1 As PointF,
     ByRef intersection2 As PointF) As Integer
 
@@ -788,10 +766,9 @@ Public Class HotSpotManager
 
     End Function
 
-
     Private Function FindLineLineIntersection(
-    line1 As CadEntity.CadLine,
-    line2 As CadEntity.CadLine,
+    line1 As GeoLine,
+    line2 As GeoLine,
     ByRef intersection As PointF) As Boolean
 
         Dim x1 As Double = line1.StartPoint.X
@@ -882,12 +859,12 @@ Public Class HotSpotManager
 
     Public Sub DebugTestLineHotSpots()
 
-        Dim testLine As New CadEntity.CadLine()
+        Dim testLine As New GeoLine()
 
-        testLine.StartPoint = New PointF(0.0F, 0.0F)
-        testLine.EndPoint = New PointF(100.0F, 0.0F)
+        testLine.StartPoint = ToGeoPoint(New PointF(0.0F, 0.0F))
+        testLine.EndPoint = ToGeoPoint(New PointF(100.0F, 0.0F))
 
-        Dim testEntities As New List(Of CadEntity)
+        Dim testEntities As New List(Of GeoEntity)
         testEntities.Add(testLine)
 
         Dim testManager As New HotSpotManager(testEntities)
@@ -912,7 +889,7 @@ Public Class HotSpotManager
             "Start endpoint returned incorrect HotSpotType.")
 
         Debug.Assert(
-            result.WorldPoint = testLine.StartPoint,
+           result.WorldPoint = ToPointF(testLine.StartPoint),
             "Start endpoint returned incorrect WorldPoint.")
 
         '--------------------------------------------------
@@ -947,7 +924,7 @@ Public Class HotSpotManager
             "End endpoint returned incorrect HotSpotType.")
 
         Debug.Assert(
-            result.WorldPoint = testLine.EndPoint,
+            result.WorldPoint = ToPointF(testLine.EndPoint),
             "End endpoint returned incorrect WorldPoint.")
 
         '--------------------------------------------------
@@ -990,7 +967,7 @@ Public Class HotSpotManager
             "Closest-candidate test returned incorrect type.")
 
         Debug.Assert(
-            result.WorldPoint = testLine.StartPoint,
+            result.WorldPoint = ToPointF(testLine.StartPoint),
             "Closest-candidate test did not select start endpoint.")
 
         '--------------------------------------------------
@@ -1006,11 +983,11 @@ Public Class HotSpotManager
         ' Circle center
         '--------------------------------------------------
 
-        Dim testCircle As New CadEntity.CadCircle()
-        testCircle.Center = New PointF(25.0F, 25.0F)
+        Dim testCircle As New GeoCircle()
+        testCircle.Center = ToGeoPoint(New PointF(25.0F, 25.0F))
         testCircle.Radius = 10.0F
 
-        Dim circleEntities As New List(Of CadEntity)
+        Dim circleEntities As New List(Of GeoEntity)
         circleEntities.Add(testCircle)
 
         Dim circleManager As New HotSpotManager(circleEntities)
@@ -1046,14 +1023,14 @@ Public Class HotSpotManager
         ' Arc center
         '--------------------------------------------------
 
-        Dim testArc As New CadEntity.CadArc()
-        testArc.Center = New PointF(50.0F, 50.0F)
+        Dim testArc As New GeoArc()
+        testArc.Center = ToGeoPoint(New PointF(50.0F, 50.0F))
         testArc.Radius = 20.0F
         testArc.StartAngle = 0.0F
         testArc.EndAngle = 90.0F
         testArc.IsClockwise = False
 
-        Dim arcEntities As New List(Of CadEntity)
+        Dim arcEntities As New List(Of GeoEntity)
         arcEntities.Add(testArc)
 
 
@@ -1119,14 +1096,14 @@ Public Class HotSpotManager
         ' Clockwise arc midpoint
         '--------------------------------------------------
 
-        Dim clockwiseArc As New CadEntity.CadArc()
-        clockwiseArc.Center = New PointF(50.0F, 50.0F)
+        Dim clockwiseArc As New GeoArc()
+        clockwiseArc.Center = ToGeoPoint(New PointF(50.0F, 50.0F))
         clockwiseArc.Radius = 20.0F
         clockwiseArc.StartAngle = 90.0F
         clockwiseArc.EndAngle = 0.0F
         clockwiseArc.IsClockwise = True
 
-        Dim clockwiseEntities As New List(Of CadEntity)
+        Dim clockwiseEntities As New List(Of GeoEntity)
         clockwiseEntities.Add(clockwiseArc)
 
         Dim clockwiseManager As New HotSpotManager(clockwiseEntities)
@@ -1153,14 +1130,14 @@ Public Class HotSpotManager
         ' CW arc crossing zero
         '--------------------------------------------------
 
-        Dim cwWrapArc As New CadEntity.CadArc()
-        cwWrapArc.Center = New PointF(50.0F, 50.0F)
+        Dim cwWrapArc As New GeoArc()
+        cwWrapArc.Center = ToGeoPoint(New PointF(50.0F, 50.0F))
         cwWrapArc.Radius = 20.0F
         cwWrapArc.StartAngle = 10.0F
         cwWrapArc.EndAngle = 350.0F
         cwWrapArc.IsClockwise = True
 
-        Dim cwWrapEntities As New List(Of CadEntity)
+        Dim cwWrapEntities As New List(Of GeoEntity)
         cwWrapEntities.Add(cwWrapArc)
 
         Dim cwWrapManager As New HotSpotManager(cwWrapEntities)
@@ -1189,15 +1166,15 @@ Public Class HotSpotManager
         ' Midpoint should be 0°
         '--------------------------------------------------
 
-        Dim ccwWrapArc As New CadEntity.CadArc()
+        Dim ccwWrapArc As New GeoArc()
 
-        ccwWrapArc.Center = New PointF(50.0F, 50.0F)
+        ccwWrapArc.Center = ToGeoPoint(New PointF(50.0F, 50.0F))
         ccwWrapArc.Radius = 20.0F
         ccwWrapArc.StartAngle = 350.0F
         ccwWrapArc.EndAngle = 10.0F
         ccwWrapArc.IsClockwise = False
 
-        Dim ccwWrapEntities As New List(Of CadEntity)
+        Dim ccwWrapEntities As New List(Of GeoEntity)
 
         ccwWrapEntities.Add(ccwWrapArc)
 
@@ -1232,24 +1209,24 @@ Public Class HotSpotManager
         ' Expected intersection: (50,50)
         '--------------------------------------------------
 
-        Dim intersectionLine1 As New CadEntity.CadLine()
+        Dim intersectionLine1 As New GeoLine()
 
         intersectionLine1.StartPoint =
-    New PointF(0.0F, 0.0F)
+    ToGeoPoint(New PointF(0.0F, 0.0F))
 
         intersectionLine1.EndPoint =
-    New PointF(80.0F, 100.0F)
+    ToGeoPoint(New PointF(80.0F, 100.0F))
 
 
-        Dim intersectionLine2 As New CadEntity.CadLine()
+        Dim intersectionLine2 As New GeoLine()
 
         intersectionLine2.StartPoint =
-    New PointF(0.0F, 100.0F)
+    ToGeoPoint(New PointF(0.0F, 100.0F))
 
         intersectionLine2.EndPoint =
-    New PointF(100.0F, 0.0F)
+    ToGeoPoint(New PointF(100.0F, 0.0F))
 
-        Dim intersectionEntities As New List(Of CadEntity)
+        Dim intersectionEntities As New List(Of GeoEntity)
 
         intersectionEntities.Add(intersectionLine1)
         intersectionEntities.Add(intersectionLine2)
@@ -1288,25 +1265,25 @@ Public Class HotSpotManager
         ' Expected result: Nothing
         '--------------------------------------------------
 
-        Dim parallelLine1 As New CadEntity.CadLine()
+        Dim parallelLine1 As New GeoLine()
 
         parallelLine1.StartPoint =
-    New PointF(0.0F, 0.0F)
+    ToGeoPoint(New PointF(0.0F, 0.0F))
 
         parallelLine1.EndPoint =
-    New PointF(100.0F, 0.0F)
+    ToGeoPoint(New PointF(100.0F, 0.0F))
 
 
-        Dim parallelLine2 As New CadEntity.CadLine()
+        Dim parallelLine2 As New GeoLine()
 
         parallelLine2.StartPoint =
-    New PointF(0.0F, 20.0F)
+    ToGeoPoint(New PointF(0.0F, 20.0F))
 
         parallelLine2.EndPoint =
-    New PointF(100.0F, 20.0F)
+    ToGeoPoint(New PointF(100.0F, 20.0F))
 
 
-        Dim parallelEntities As New List(Of CadEntity)
+        Dim parallelEntities As New List(Of GeoEntity)
 
         parallelEntities.Add(parallelLine1)
         parallelEntities.Add(parallelLine2)
@@ -1335,25 +1312,25 @@ Public Class HotSpotManager
         ' Expected result: Nothing
         '--------------------------------------------------
 
-        Dim outsideLine1 As New CadEntity.CadLine()
+        Dim outsideLine1 As New GeoLine()
 
         outsideLine1.StartPoint =
-    New PointF(0.0F, 0.0F)
+    ToGeoPoint(New PointF(0.0F, 0.0F))
 
         outsideLine1.EndPoint =
-    New PointF(10.0F, 10.0F)
+    ToGeoPoint(New PointF(10.0F, 10.0F))
 
 
-        Dim outsideLine2 As New CadEntity.CadLine()
+        Dim outsideLine2 As New GeoLine()
 
         outsideLine2.StartPoint =
-    New PointF(20.0F, 0.0F)
+    ToGeoPoint(New PointF(20.0F, 0.0F))
 
         outsideLine2.EndPoint =
-    New PointF(30.0F, 10.0F)
+    ToGeoPoint(New PointF(30.0F, 10.0F))
 
 
-        Dim outsideEntities As New List(Of CadEntity)
+        Dim outsideEntities As New List(Of GeoEntity)
 
         outsideEntities.Add(outsideLine1)
         outsideEntities.Add(outsideLine2)
@@ -1384,19 +1361,19 @@ Public Class HotSpotManager
         '   (70,50)
         '--------------------------------------------------
 
-        Dim lineCircleLine As New CadEntity.CadLine()
+        Dim lineCircleLine As New GeoLine()
 
         lineCircleLine.StartPoint =
-    New PointF(0.0F, 50.0F)
+    ToGeoPoint(New PointF(0.0F, 50.0F))
 
         lineCircleLine.EndPoint =
-    New PointF(100.0F, 50.0F)
+    ToGeoPoint(New PointF(100.0F, 50.0F))
 
 
-        Dim lineCircleCircle As New CadEntity.CadCircle()
+        Dim lineCircleCircle As New GeoCircle()
 
         lineCircleCircle.Center =
-    New PointF(50.0F, 50.0F)
+    ToGeoPoint(New PointF(50.0F, 50.0F))
 
         lineCircleCircle.Radius = 20.0F
 
@@ -1453,5 +1430,18 @@ Public Class HotSpotManager
     End Sub
 
 #End If
+    Private Shared Function ToPointF(p As GeoPoint) As PointF
 
+        Return New PointF(CSng(p.X), CSng(p.Y))
+
+    End Function
+
+    Private Shared Function ToGeoPoint(p As PointF) As GeoPoint
+
+        Return New GeoPoint With {
+            .X = CDbl(p.X),
+            .Y = CDbl(p.Y)
+        }
+
+    End Function
 End Class

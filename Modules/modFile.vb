@@ -176,7 +176,6 @@ Public Module modFile
         '============================================================
         ' Initialize Hot Spot Manager
         '============================================================
-        _hotSpotManager = New HotSpotManager(_cadEntities)
 
         _visibleEntities = _cadEntities.ToList()
 
@@ -197,6 +196,7 @@ Public Module modFile
         ' TEST - Native Part Geometry Conversion
         '============================================================
         Dim importedPart As Part = PartGeometryBuilder.CreatePartGeometry(_cadEntities, _selectedLayerSetup)
+
 
         ProcessRoundPunchAutoTool(importedPart, machineDef)
 

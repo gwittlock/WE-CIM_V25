@@ -16,10 +16,8 @@ Public Class HotSpot
     Public Property WorldPoint As PointF
 
     Public Property ScreenPoint As PointF
-
-    Public Property Entity1 As CadEntity
-
-    Public Property Entity2 As CadEntity
+    Public Property Entity1 As GeoEntity
+    Public Property Entity2 As GeoEntity
 
     Public Sub New()
 
@@ -33,7 +31,7 @@ Public Class HotSpot
     Public Sub New(
     spotType As HotSpotType,
     worldPoint As PointF,
-    entity1 As CadEntity)
+    entity1 As GeoEntity)
 
         Me.Type = spotType
         Me.WorldPoint = worldPoint
@@ -46,8 +44,8 @@ Public Class HotSpot
     Public Sub New(
     spotType As HotSpotType,
     worldPoint As PointF,
-    entity1 As CadEntity,
-    entity2 As CadEntity)
+    entity1 As GeoEntity,
+    entity2 As GeoEntity)
 
         Me.Type = spotType
         Me.WorldPoint = worldPoint

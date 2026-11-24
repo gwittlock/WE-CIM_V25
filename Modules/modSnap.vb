@@ -14,7 +14,7 @@ Module modSnap
     Public Structure SnapResult
         Public Type As SnapType
         Public WorldPoint As PointF
-        Public Entity As CadEntity
+        Public Entity As GeoEntity
         Public Distance As Single   ' world distance
     End Structure
 
