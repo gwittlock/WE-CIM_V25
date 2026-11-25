@@ -62,111 +62,15 @@ Public Module modFile
     Public PendingOrderPO As String
     Public PendingDueDate As Object
 
-
     Public Sub PrePareUI(sFilename As String)
 
+        Dim productionSheet As JobSheet = Nothing
+        Dim machineDef As MachineDefinition = Nothing
 
-        '============================================================
-        ' Material Dimensions
-        '============================================================
-        matWidth = GetMaterialWidth(
-        MaterialSheets,
-        _SelectedMaterialID)
-
-        matLength = GetMaterialLength(
-        MaterialSheets,
-        _SelectedMaterialID)
-
-        '============================================================
-        ' Calculate Initial View
-        '============================================================
-        Dim margin As Integer = 20
-
-        Dim scaleX As Double =
-        (panelWidth - 2 * margin) / matLength
-
-        Dim scaleY As Double =
-        (panelHeight - 2 * margin) / matWidth
-
-        Dim scale As Double =
-        Math.Min(scaleX, scaleY)
-
-        Dim offsetX As Double =
-        (panelWidth - matLength * scale) / 2
-
-        Dim offsetY As Double =
-        panelHeight - (matWidth * scale) - margin
-
-        myTransform = New ViewTransform With {
-        .Scale = scale,
-        .OffsetX = offsetX,
-        .OffsetY = offsetY
-    }
-
-        '============================================================
-        ' Create Production Job
-        '============================================================
-        CurrentProductionJob = New Job With {.MachineID = SelectedMachineID, .ToolSetupID = SelectedToolSetupID, .LayerSetupID = SelectedLayerSetupID, .MaterialTypeID = _selectedMaterial.TypeID}
-
-        '============================================================
-        ' Transfer pending Job information
-        '============================================================
-        CurrentProductionJob.UDPs("Customer") = PendingCustomerName
-        CurrentProductionJob.UDPs("PONumber") = PendingOrderPO
-        If PendingDueDate Is Nothing OrElse
-    PendingDueDate Is DBNull.Value Then
-
-            CurrentProductionJob.UDPs("DueDate") = Nothing
-
-        Else
-            CurrentProductionJob.UDPs("DueDate") =
-        Convert.ToDateTime(PendingDueDate)
-        End If
-        '============================================================
-        ' Create Production Sheet
-        '============================================================
-        Dim productionSheet As New JobSheet With {.MaterialSheetID = _SelectedMaterialID, .Length = matLength, .Width = matWidth}
-
-        CurrentProductionJob.JobSheets.Add(productionSheet)
-
-        '============================================================
-        ' Load Machine Definition
-        '===========================================================
-        Dim machineDef As MachineDefinition = MachineLoader.LoadMachineDefinition(CurrentProductionJob.MachineID)
-
-        If machineDef Is Nothing Then
-
-            MessageBox.Show("Unable to load the selected machine definition.", "Machine Definition", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-
+        If Not InitializeProductionJob(productionSheet, machineDef) Then
             Return
-
         End If
 
-        '============================================================
-        ' Create Current Job Context
-        '============================================================
-        CurrentJob = New JobContext()
-
-        CurrentJob.MachineDefinition = machineDef
-
-        CurrentJob.ToolSetupID = SelectedToolSetupID
-        CurrentJob.MaterialID = SelectedMaterialID
-        CurrentJob.LayerSetupID = SelectedLayerSetupID
-
-        RestoreAndDrawJob()
-
-        productionSheet.WorkZones = CurrentJob.WorkZones
-
-        productionSheet.ManufacturingModel.WorkZones = productionSheet.WorkZones
-
-        '============================================================
-        ' Set Selected Machine Configuration
-        '============================================================
-        machineDef.SelectedToolSetupID = SelectedToolSetupID
-
-        machineDef.SelectedLayerSetupID = SelectedLayerSetupID
-
-        machineDef.SelectedMaterialID = SelectedMaterialID
         'IDxfImporter
         '============================================================
         ' Import DXF
@@ -224,6 +128,33 @@ Public Module modFile
         importedPart.Description = Path.GetFileNameWithoutExtension(_selectedDxfPath)
 
         productionSheet.Parts.Add(importedPart)
+
+        ' Establish the initial active CAD Layer.
+        Dim initialLayer As Layer =
+    importedPart.Layers.FirstOrDefault(
+        Function(layer) String.Equals(
+            layer.Name,
+            "Layer_1",
+            StringComparison.OrdinalIgnoreCase))
+
+        If initialLayer Is Nothing Then
+            initialLayer = importedPart.Layers.FirstOrDefault()
+        End If
+
+        If initialLayer Is Nothing Then
+
+            initialLayer = New Layer With {
+        .ID = 1,
+        .Name = "Layer_1",
+        .Color = System.Drawing.Color.White,
+        .Visible = True
+    }
+
+            importedPart.Layers.Add(initialLayer)
+
+        End If
+
+        frmMain.OnActiveLayerChanged(initialLayer)
 
         '============================================================
         ' Register Part and Manufacturing Geometry in MM3
@@ -987,10 +918,42 @@ Public Module modFile
                             Dim restoredContext As JobContext =
             MM3NativeFileService.RestoreManufacturingEnvironment(nativeFile)
 
-                            Dim restoredSheet As JobSheet =
-            MM3NativeFileService.RestoreJobSheet(nativeFile)
+                            Dim restoredActiveLayer As Layer = Nothing
+
+                            Dim restoredSheet As JobSheet = MM3NativeFileService.RestoreJobSheet(nativeFile, restoredActiveLayer)
 
                             restoredJob.JobSheets.Add(restoredSheet)
+
+                            ' Establish an active Layer for older MM3 files.
+                            If restoredActiveLayer Is Nothing Then
+
+                                If restoredSheet.Parts.Count <> 1 Then
+                                    Throw New InvalidDataException(
+            "The restored JobSheet must contain exactly one Part.")
+                                End If
+
+                                Dim restoredPart As Part = restoredSheet.Parts(0)
+
+                                restoredActiveLayer =
+        restoredPart.Layers.FirstOrDefault(
+            Function(layer) String.Equals(
+                layer.Name,
+                "Layer_1",
+                StringComparison.OrdinalIgnoreCase))
+
+                                If restoredActiveLayer Is Nothing Then
+                                    restoredActiveLayer = restoredPart.Layers.FirstOrDefault()
+                                End If
+
+                                If restoredActiveLayer Is Nothing Then
+
+                                    restoredActiveLayer = New Layer With {.ID = 1, .Name = "Layer_1", .Color = System.Drawing.Color.White, .Visible = True}
+
+                                    restoredPart.Layers.Add(restoredActiveLayer)
+
+                                End If
+
+                            End If
 
                             restoredContext.WorkZones = restoredSheet.WorkZones
 
@@ -1082,12 +1045,55 @@ Public Module modFile
 
                             frmMain.RefreshEntityList()
 
+                            ' TEMPORARY: Active production job preview isolation test.
 
-                            MessageBox.Show(
-            "MM3 restoration completed successfully.",
-            "Open Model",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information)
+                            Dim jobBefore As Job = CurrentProductionJob
+                            Dim contextBefore As JobContext = CurrentJob
+                            Dim sheetBefore As JobSheet = CurrentProductionJob.JobSheets(0)
+                            Dim transformBefore As ViewTransform = myTransform
+
+                            Dim lengthBefore As Double = matLength
+                            Dim widthBefore As Double = matWidth
+
+
+                            '                        MM3NativeFileService.TestPreviewIsolation("C:\Program Files (x86)\WE-CIM\25.0\CAD\DXFDemo\defdemo3A.mm3")
+
+                            '                        Debug.WriteLine("----- ACTIVE COLLECTION ISOLATION -----")
+
+                            '                        Debug.WriteLine($"Part Geometry Unchanged: {geometryBefore.SequenceEqual(sheetBefore.Parts(0).Geometry)}")
+
+                            '                        Debug.WriteLine($"Manufacturing Geometry Unchanged: {featuresBefore.SequenceEqual(sheetBefore.ManufacturingModel.ManufacturingGeometry)}")
+
+                            '                        Debug.WriteLine($"GeoProfiles Unchanged: {profilesBefore.SequenceEqual(sheetBefore.Parts(0).GeoProfiles)}")
+
+                            '                        Debug.WriteLine("---------------------------------------")
+
+                            '                        Debug.WriteLine("----- ACTIVE JOB ISOLATION -----")
+
+                            '                        Debug.WriteLine($"Production Job Unchanged: {Object.ReferenceEquals(jobBefore, CurrentProductionJob)}")
+
+                            '                        Debug.WriteLine($"Job Context Unchanged: {Object.ReferenceEquals(contextBefore, CurrentJob)}")
+
+                            '                        Debug.WriteLine($"JobSheet Unchanged: {Object.ReferenceEquals(sheetBefore, CurrentProductionJob.JobSheets(0))}")
+
+                            '                        Dim transformUnchanged As Boolean =
+                            'transformBefore.Scale = myTransform.Scale AndAlso
+                            'transformBefore.OffsetX = myTransform.OffsetX AndAlso
+                            'transformBefore.OffsetY = myTransform.OffsetY
+
+                            '                        Debug.WriteLine($"View Transform Unchanged: {transformUnchanged}")
+
+                            '                        Debug.WriteLine($"Sheet Length Unchanged: {lengthBefore = matLength}")
+
+                            '                        Debug.WriteLine($"Sheet Width Unchanged: {widthBefore = matWidth}")
+
+                            '                        Debug.WriteLine("--------------------------------")
+
+                            '                        MessageBox.Show(
+                            '        "MM3 restoration completed successfully.",
+                            '        "Open Model",
+                            '        MessageBoxButtons.OK,
+                            '        MessageBoxIcon.Information)
 
                         Catch ex As Exception
 
@@ -2533,380 +2539,210 @@ Public Module modFile
 
     End Function
 
+    Private Function InitializeProductionJob(
+    ByRef productionSheet As JobSheet,
+    ByRef machineDef As MachineDefinition) As Boolean
 
-    ''-----------------------------------------
-    '' Create a nominal Profile from an ordered
-    '' imported entity group.
-    ''-----------------------------------------
+        '============================================================
+        ' Material Dimensions
+        '============================================================
+        matWidth = GetMaterialWidth(
+        MaterialSheets,
+        _SelectedMaterialID)
 
-    'Public Function CreateProfileFromEntities(
-    '    profileEntities As List(Of ImportedEntity),
-    '    tolerance As Double,
-    '    side As ProfileSide) As Profile
+        matLength = GetMaterialLength(
+        MaterialSheets,
+        _SelectedMaterialID)
 
-    '    If profileEntities Is Nothing OrElse
-    '       profileEntities.Count = 0 Then
+        If matLength <= 0 OrElse matWidth <= 0 Then
 
-    '        Return Nothing
+            MessageBox.Show("Invalid material dimensions.",
+                        "Material",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+
+            Return False
 
-    '    End If
+        End If
+
+        '============================================================
+        ' Load Machine Definition
+        '============================================================
+        machineDef = MachineLoader.LoadMachineDefinition(
+        SelectedMachineID)
+
+        If machineDef Is Nothing Then
+
+            MessageBox.Show(
+            "Unable to load the selected machine definition.",
+            "Machine Definition",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
 
+            Return False
 
-    '    Dim orderedEntities As List(Of ImportedEntity) =
-    '        OrderProfileEntities(
-    '            profileEntities,
-    '            tolerance)
+        End If
 
-    '    If orderedEntities.Count = 0 Then
-    '        Return Nothing
-    '    End If
+        '============================================================
+        ' Calculate Initial View
+        '============================================================
+        Dim margin As Integer = 20
 
+        Dim scaleX As Double =
+        (panelWidth - 2 * margin) / matLength
 
-    '    Dim path As IPath2D =
-    '        BuildProfilePath(
-    '            orderedEntities)
+        Dim scaleY As Double =
+        (panelHeight - 2 * margin) / matWidth
 
-    '    If path Is Nothing OrElse
-    '       path.Segments Is Nothing Then
+        Dim scale As Double =
+        Math.Min(scaleX, scaleY)
 
-    '        Return Nothing
+        Dim offsetX As Double =
+        (panelWidth - matLength * scale) / 2
 
-    '    End If
+        Dim offsetY As Double =
+        panelHeight - (matWidth * scale) - margin
 
+        myTransform = New ViewTransform With {
+        .Scale = scale,
+        .OffsetX = offsetX,
+        .OffsetY = offsetY
+    }
 
-    '    Return New Profile(path, side, Nothing)
+        '============================================================
+        ' Create Production Job
+        '============================================================
+        CurrentProductionJob = New Job With {
+        .MachineID = SelectedMachineID,
+        .ToolSetupID = SelectedToolSetupID,
+        .LayerSetupID = SelectedLayerSetupID,
+        .MaterialTypeID = _selectedMaterial.TypeID
+    }
 
-    'End Function
+        '============================================================
+        ' Transfer Pending Job Information
+        '============================================================
+        CurrentProductionJob.UDPs("Customer") =
+        PendingCustomerName
 
+        CurrentProductionJob.UDPs("PONumber") =
+        PendingOrderPO
 
-    'Public Function BuildProfilesFromEntities(
-    '    entities As List(Of ImportedEntity),
-    '    gapTolerance As Double) _
-    '    As List(Of ProfileBuildResult)
+        If PendingDueDate Is Nothing OrElse
+       PendingDueDate Is DBNull.Value Then
 
-    '    Dim profiles As New List(Of ProfileBuildResult)()
+            CurrentProductionJob.UDPs("DueDate") = Nothing
 
+        Else
 
-    '    If entities Is Nothing OrElse
-    '       entities.Count = 0 Then
+            CurrentProductionJob.UDPs("DueDate") =
+            Convert.ToDateTime(PendingDueDate)
 
-    '        Return profiles
+        End If
 
-    '    End If
+        '============================================================
+        ' Create Production Sheet
+        '============================================================
+        productionSheet = New JobSheet With {
+        .MaterialSheetID = _SelectedMaterialID,
+        .Length = matLength,
+        .Width = matWidth
+    }
 
+        CurrentProductionJob.JobSheets.Add(productionSheet)
 
-    '    Dim profileGroups As List(Of List(Of ImportedEntity)) =
-    '        BuildProfiles(
-    '            entities,
-    '            gapTolerance)
+        '============================================================
+        ' Create Current Job Context
+        '============================================================
+        CurrentJob = New JobContext()
 
+        CurrentJob.MachineDefinition = machineDef
+        CurrentJob.ToolSetupID = SelectedToolSetupID
+        CurrentJob.MaterialID = SelectedMaterialID
+        CurrentJob.LayerSetupID = SelectedLayerSetupID
 
-    '    ' Item1 = CAD layer
-    '    ' Item2 = Profile path
-    '    ' Item3 = DirectiveID
+        '============================================================
+        ' Set Selected Machine Configuration
+        '============================================================
+        machineDef.SelectedToolSetupID = SelectedToolSetupID
+        machineDef.SelectedLayerSetupID = SelectedLayerSetupID
+        machineDef.SelectedMaterialID = SelectedMaterialID
 
-    '    Dim profileData As New List(
-    'Of Tuple(Of String, IPath2D, Integer, List(Of ImportedEntity)))()
+        '============================================================
+        ' Initialize WorkZones
+        '============================================================
+        RestoreAndDrawJob()
 
+        productionSheet.WorkZones = CurrentJob.WorkZones
 
-    '    ' Build all profile paths and retain the CAD layer
-    '    ' and DirectiveID for later feature creation.
+        productionSheet.ManufacturingModel.WorkZones =
+        productionSheet.WorkZones
 
-    '    For Each profileEntities As List(Of ImportedEntity) _
-    '        In profileGroups
+        Return True
 
-    '        If profileEntities Is Nothing OrElse
-    '           profileEntities.Count = 0 Then
+    End Function
 
-    '            Continue For
+    Public Function CreateNewProductionJob() As Boolean
 
-    '        End If
+        Dim productionSheet As JobSheet = Nothing
+        Dim machineDef As MachineDefinition = Nothing
 
+        If Not InitializeProductionJob(productionSheet, machineDef) Then
+            Return False
+        End If
 
-    '        Dim orderedEntities As List(Of ImportedEntity) =
-    '            OrderProfileEntities(
-    '                profileEntities,
-    '                gapTolerance)
+        '============================================================
+        ' Create Empty Part
+        '============================================================
+        Dim newPart As New Part With {
+            .ID = 0,
+            .Description = "Untitled"
+        }
 
-    '        If orderedEntities.Count = 0 Then
-    '            Continue For
-    '        End If
 
+        '============================================================
+        ' Initialize Project Layers from selected Layer Setup
+        '============================================================
+        Dim layerNames As New HashSet(Of String)(
+    StringComparer.OrdinalIgnoreCase)
 
-    '        Dim path As IPath2D =
-    '            BuildProfilePath(
-    '                orderedEntities)
+        '============================================================
+        ' Create Standard Project Layers
+        '============================================================
+        newPart.Layers.Add(New Layer With {.ID = 1, .Name = "Layer_1", .Color = System.Drawing.Color.Orange, .Visible = True})
 
-    '        If path Is Nothing OrElse
-    '           path.Segments Is Nothing Then
+        newPart.Layers.Add(New Layer With {.ID = 2, .Name = "Part_Outline", .Color = System.Drawing.Color.Yellow, .Visible = True})
 
-    '            Continue For
+        layerNames.Add("Layer_1")
+        layerNames.Add("Part_Outline")
 
-    '        End If
+        For Each directive In _selectedLayerSetup.Layers
 
+            If String.IsNullOrWhiteSpace(directive.CAMLayer) Then
+                Continue For
+            End If
 
-    '        Dim cadLayer As String = Nothing
-    '        Dim directiveID As Integer = 0
+            If Not layerNames.Add(directive.CAMLayer) Then
+                Continue For
+            End If
 
+            Dim newLayer As New Layer With {
+        .ID = newPart.Layers.Count + 1,
+        .Name = directive.CAMLayer,
+        .Color = directive.DisplayColor,
+        .Visible = True
+    }
 
-    '        For Each entity As ImportedEntity _
-    '            In orderedEntities
+            newPart.Layers.Add(newLayer)
 
-    '            If entity IsNot Nothing Then
+        Next
 
-    '                If entity.CadEntity IsNot Nothing AndAlso
-    '                   cadLayer Is Nothing Then
 
-    '                    cadLayer =
-    '                        entity.CadEntity.LayerName
+        productionSheet.Parts.Add(newPart)
 
-    '                End If
+        Return True
 
-
-    '                directiveID =
-    '                    entity.DirectiveID
-
-    '                Exit For
-
-    '            End If
-
-    '        Next
-
-
-    '        profileData.Add(
-    'Tuple.Create(
-    '    cadLayer,
-    '    path,
-    '    directiveID,
-    '    orderedEntities))
-
-    '    Next
-
-
-    '    ' Create the final profiles. Containment is evaluated
-    '    ' only against profiles on the same CAD layer.
-
-    '    For Each item In profileData
-
-    '        Dim currentLayer As String =
-    '            item.Item1
-
-    '        Dim currentPath As IPath2D =
-    '            item.Item2
-
-    '        Dim directiveID As Integer =
-    '            item.Item3
-    '        Dim sourceEntities As List(Of ImportedEntity) =
-    '            item.Item4
-
-    '        Debug.Print(
-    '"PROFILE SOURCE COUNT = " &
-    'If(sourceEntities Is Nothing, 0, sourceEntities.Count))
-
-    '        If sourceEntities IsNot Nothing Then
-
-    '            For Each sourceEntity As ImportedEntity In sourceEntities
-
-    '                If sourceEntity Is Nothing Then Continue For
-
-    '                Debug.Print(
-    '        "  Geometry=" &
-    '        sourceEntity.GeometryType.ToString() &
-    '        ", CadEntity=" &
-    '        If(sourceEntity.CadEntity Is Nothing,
-    '           "Nothing",
-    '           sourceEntity.CadEntity.GetType().Name))
-
-    '            Next
-
-    '        End If
-
-    '        Dim sameLayerPaths As New List(Of IPath2D)()
-
-
-    '        For Each candidate In profileData
-
-    '            If String.Equals(
-    '                currentLayer,
-    '                candidate.Item1,
-    '                StringComparison.OrdinalIgnoreCase) Then
-
-    '                sameLayerPaths.Add(
-    '                    candidate.Item2)
-
-    '            End If
-
-    '        Next
-
-
-    '        Dim side As ProfileSide =
-    '            DetermineProfileSide(
-    '                currentPath,
-    '                sameLayerPaths)
-
-
-    '        profiles.Add(
-    '            New ProfileBuildResult With {
-    '                .Profile =
-    '                   New Profile(
-    '                    currentPath,
-    '                    side,
-    '                    sourceEntities),
-    '                .DirectiveID =
-    '                    directiveID
-    '            })
-    '    Next
-
-
-    '    Return profiles
-
-    'End Function
-
-
-    'Private Function DetermineProfileSide(
-    '    profilePath As IPath2D,
-    '    otherPaths As List(Of IPath2D)) _
-    '    As ProfileSide
-
-    '    If profilePath Is Nothing OrElse
-    '       otherPaths Is Nothing Then
-
-    '        Return ProfileSide.Outside
-
-    '    End If
-
-
-    '    If Not profilePath.IsClosed Then
-    '        Return ProfileSide.Outside
-    '    End If
-
-
-    '    Dim containmentDepth As Integer = 0
-
-
-    '    For Each otherPath As IPath2D _
-    '        In otherPaths
-
-    '        If otherPath Is Nothing Then
-    '            Continue For
-    '        End If
-
-
-    '        If Object.ReferenceEquals(
-    '            profilePath,
-    '            otherPath) Then
-
-    '            Continue For
-
-    '        End If
-
-
-    '        If Not otherPath.IsClosed Then
-    '            Continue For
-    '        End If
-
-
-    '        If Geometry2D.IsPathInsidePath(
-    '            profilePath,
-    '            otherPath) Then
-
-    '            containmentDepth += 1
-
-    '        End If
-
-    '    Next
-
-
-    '    If (containmentDepth Mod 2) = 0 Then
-
-    '        Return ProfileSide.Outside
-
-    '    Else
-
-    '        Return ProfileSide.Inside
-
-    '    End If
-
-    'End Function
-
-
-    'Public Function BuildProfiles(
-    '    entities As List(Of ImportedEntity),
-    '    gapTol As Double) _
-    '    As List(Of List(Of ImportedEntity))
-
-    '    Dim profiles As New List(Of List(Of ImportedEntity))()
-
-    '    Dim visited As New HashSet(Of ImportedEntity)()
-
-
-    '    Dim gapPairs As List(Of Tuple(Of ImportedEntity, ImportedEntity)) =
-    '        ComputeGapPairs(
-    '            entities,
-    '            gapTol)
-
-
-    '    For Each entity As ImportedEntity _
-    '        In entities
-
-    '        If visited.Contains(entity) Then
-    '            Continue For
-    '        End If
-
-
-    '        Dim profile As New List(Of ImportedEntity)()
-
-    '        Dim stack As New Stack(Of ImportedEntity)()
-
-    '        stack.Push(entity)
-
-
-    '        While stack.Count > 0
-
-    '            Dim current As ImportedEntity =
-    '                stack.Pop()
-
-
-    '            If visited.Contains(current) Then
-    '                Continue While
-    '            End If
-
-
-    '            visited.Add(current)
-
-    '            profile.Add(current)
-
-
-    '            For Each pair As Tuple(Of ImportedEntity, ImportedEntity) _
-    '                In gapPairs
-
-    '                If pair.Item1 Is current AndAlso
-    '                   Not visited.Contains(pair.Item2) Then
-
-    '                    stack.Push(pair.Item2)
-
-
-    '                ElseIf pair.Item2 Is current AndAlso
-    '                       Not visited.Contains(pair.Item1) Then
-
-    '                    stack.Push(pair.Item1)
-
-    '                End If
-
-    '            Next
-
-    '        End While
-
-
-    '        profiles.Add(profile)
-
-    '    Next
-
-
-    '    Return profiles
-
-    'End Function
-
+    End Function
 
 End Module
 

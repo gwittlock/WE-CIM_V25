@@ -3,8 +3,14 @@
 
 Public Class GeoLine
         Inherits GeoEntity
+    Public Sub New()
+        MyBase.New()
+    End Sub
 
-        <TypeConverter(GetType(ExpandableObjectConverter))>
+    Friend Sub New(existingID As Integer)
+        MyBase.New(existingID)
+    End Sub
+    <TypeConverter(GetType(ExpandableObjectConverter))>
         Public Property StartPoint As GeoPoint
 
     <TypeConverter(GetType(ExpandableObjectConverter))>

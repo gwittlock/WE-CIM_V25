@@ -18,6 +18,11 @@ Public MustInherit Class GeoEntity
 
 
     Private Shared _nextID As Integer = 0
+    Friend Shared ReadOnly Property CurrentIDCounter As Integer
+        Get
+            Return System.Threading.Volatile.Read(_nextID)
+        End Get
+    End Property
 
 
     Public Shared Sub EnsureNextIDAbove(
@@ -43,6 +48,10 @@ Public MustInherit Class GeoEntity
 
     Protected Sub New()
         ID = System.Threading.Interlocked.Increment(_nextID)
+    End Sub
+
+    Protected Sub New(existingID As Integer)
+        ID = existingID
     End Sub
 
     Public Property IsHovered As Boolean Implements isSelectable.IsHovered

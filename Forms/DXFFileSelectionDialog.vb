@@ -5,6 +5,8 @@ Imports IxMilia.Dxf.Entities
 Imports System.IO
 Imports System.Windows.Forms
 Imports System.Linq
+Imports FabV25_WIN8.ToolShapes
+Imports FabV25_WIN8.WE_ENG_V25_0.Core.Models
 
 Public Class DXFFileSelectionDialog
     Inherits Form
@@ -40,8 +42,11 @@ Public Class DXFFileSelectionDialog
             End Select
         End Get
     End Property
-    Private _previewDxf As DxfFile = Nothing
-    Private _previewEntities As List(Of ImportedEntity)
+
+
+    Private _previewGeoEntities As New List(Of GeoEntity)
+    Private _previewJobSheet As JobSheet = Nothing
+    Private _previewEnvironment As MM3ManufacturingEnvironment = Nothing
     Private _suppressEvents As Boolean = False
     Private nMyMaterialID As Integer
     Private sMyMaterial As String
@@ -84,27 +89,38 @@ Public Class DXFFileSelectionDialog
         cboFileTypes.Items.Add("DXF Cad Files (*.dxf)")
         cboFileTypes.Items.Add("CTG Files (*.ctg)")
 
-        cboFileTypes.SelectedIndex = 2
+        txtFilename.AutoCompleteMode = AutoCompleteMode.SuggestAppend
+        txtFilename.AutoCompleteSource = AutoCompleteSource.CustomSource
+
+
+        'Restore the last successfully opened file type.
+        Dim lastFileType As String =
+    RegGetString("Fabrication\FileOpen", "LastEXT", "DXF")
+
+        Select Case lastFileType.ToUpperInvariant()
+
+            Case "MM3"
+                cboFileTypes.SelectedIndex = 0
+
+            Case "NST"
+                cboFileTypes.SelectedIndex = 1
+
+            Case "DXF"
+                cboFileTypes.SelectedIndex = 2
+
+            Case "CTG"
+                cboFileTypes.SelectedIndex = 3
+
+            Case Else
+                cboFileTypes.SelectedIndex = 2
+
+        End Select
 
         'Debug.WriteLine("After LoadRootFolders: " &
         '        loadTimer.ElapsedMilliseconds & " ms")
 
         nMyMaterialID = RegGetInt("Global", "MaterialID", 5)
         sMyMaterial = RegGetString("Global", "Material", "ALUM .250 X 96 X 48")
-
-        txtFilename.AutoCompleteMode = AutoCompleteMode.SuggestAppend
-        txtFilename.AutoCompleteSource = AutoCompleteSource.CustomSource
-
-        Dim defPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
-        _initialFolder = RegGetString("Fabrication\FileOpen", "LastDXF", defPath)
-
-        If Directory.Exists(_initialFolder) Then
-            SelectFolderInTree(_initialFolder)
-            Debug.WriteLine("After SelectFolderInTree: " &
-                loadTimer.ElapsedMilliseconds & " ms")
-        End If
-
-        AddHandler pnlPreview.Paint, AddressOf pnlPreview_Paint
 
         loadTimer.Stop()
         'Debug.WriteLine("DXF Dialog Load Time: " &
@@ -116,16 +132,60 @@ Public Class DXFFileSelectionDialog
     e As EventArgs
 ) Handles cboFileTypes.SelectedIndexChanged
 
-        If tvFolders.SelectedNode Is Nothing Then Return
+        pnlDxfOptions.Visible = (SelectedFileType = "DXF")
+
+        If _suppressEvents Then Return
+
+        Dim registryKey As String = GetFolderRegistryKey()
+
+        If String.IsNullOrWhiteSpace(registryKey) Then Return
+
+        Dim defPath As String =
+        Environment.GetFolderPath(
+            Environment.SpecialFolder.MyDocuments)
 
         Dim folderPath As String =
-        TryCast(tvFolders.SelectedNode.Tag, String)
+        RegGetString("Fabrication\FileOpen", registryKey, defPath)
 
-        If String.IsNullOrWhiteSpace(folderPath) Then Return
+        If Not Directory.Exists(folderPath) Then
+            folderPath = defPath
+        End If
 
-        LoadDxfFiles(folderPath)
+        'Clear the previous file selection and preview.
+        txtFilename.Clear()
+        txtAddress.Clear()
+
+        _selectedDxfPath = String.Empty
+        ClearPreview()
+
+        'Navigate to the folder associated with this file type.
+        Try
+
+            _suppressEvents = True
+
+            SelectFolderInTree(folderPath)
+
+        Finally
+
+            _suppressEvents = False
+
+        End Try
+
+        'Refresh even if the selected folder has not changed.
+        If tvFolders.SelectedNode IsNot Nothing Then
+
+            Dim selectedFolder As String =
+            TryCast(tvFolders.SelectedNode.Tag, String)
+
+            If Not String.IsNullOrWhiteSpace(selectedFolder) Then
+                LoadFiles(selectedFolder)
+            End If
+
+        End If
 
     End Sub
+
+
     Public Sub LoadRootFolders()
 
         tvFolders.Nodes.Clear()
@@ -141,13 +201,12 @@ Public Class DXFFileSelectionDialog
 
             tvFolders.Nodes.Add(driveNode)
 
-            ' Load folders only when the drive is expanded.
+            'Load folders only when the drive is expanded.
             driveNode.Nodes.Add("Loading...")
 
         Next
 
     End Sub
-
     '-------------------------------
     ' Populate child folders
     '-------------------------------
@@ -184,16 +243,34 @@ Public Class DXFFileSelectionDialog
         Next
     End Sub
 
-    Private Sub tvFolders_AfterSelect(sender As Object, e As TreeViewEventArgs) Handles tvFolders.AfterSelect
-        LoadDxfFiles(e.Node.Tag.ToString())
+    Private Sub tvFolders_AfterSelect(
+    sender As Object,
+    e As TreeViewEventArgs
+) Handles tvFolders.AfterSelect
+
+        If _suppressEvents Then Return
+
+        Dim folderPath As String =
+        TryCast(e.Node.Tag, String)
+
+        If String.IsNullOrWhiteSpace(folderPath) Then Return
+
+        LoadFiles(folderPath)
+
     End Sub
 
-    Private Sub LoadDxfFiles(folderPath As String)
+    Private Sub LoadFiles(folderPath As String)
 
-        lstFiles.Items.Clear()
-        _previewDxf = Nothing
-        _previewEntities = Nothing
-        pnlPreview.Invalidate()
+        'Clear the previous file selection.
+        lvFiles.Items.Clear()
+
+        txtFilename.Clear()
+        txtAddress.Clear()
+
+        _selectedDxfPath = String.Empty
+
+        'Clear the previous graphical preview.
+        ClearPreview()
 
         If Not Directory.Exists(folderPath) Then Return
 
@@ -218,160 +295,261 @@ Public Class DXFFileSelectionDialog
                 Return
         End Select
 
-        For Each file As String In Directory.GetFiles(folderPath, filePattern)
-            Dim name = Path.GetFileName(file)
+        lvFiles.BeginUpdate()
 
-            lstFiles.Items.Add(name)
-            auto.Add(name)
-        Next
+        Try
+
+            For Each file As String In Directory.GetFiles(folderPath, filePattern)
+
+                Dim info As New FileInfo(file)
+
+                Dim item As New ListViewItem(info.Name)
+
+                'Store the complete file path.
+                item.Tag = info.FullName
+
+                'File size.
+                Dim sizeKB As Long =
+            CLng(Math.Ceiling(info.Length / 1024.0))
+
+                item.SubItems.Add(sizeKB.ToString("N0") & " KB")
+
+                'File type.
+                item.SubItems.Add(
+            info.Extension.TrimStart("."c).ToUpperInvariant() & " File")
+
+                'Date modified.
+                item.SubItems.Add(
+            info.LastWriteTime.ToString("M/d/yyyy h:mm tt"))
+
+                lvFiles.Items.Add(item)
+
+                auto.Add(info.Name)
+
+            Next
+
+        Finally
+
+            lvFiles.EndUpdate()
+
+        End Try
 
         txtFilename.AutoCompleteCustomSource = auto
 
     End Sub
 
-
-    '-------------------------------
-    ' DXF selection changed
-    '-------------------------------
-    Private Sub lstFiles_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstFiles.SelectedIndexChanged
-
-        If _suppressEvents Then Return
-
-        If lstFiles.SelectedItem Is Nothing OrElse tvFolders.SelectedNode Is Nothing Then
-            Return
-        End If
-
-        Try
-            _suppressEvents = True
-
-            txtFilename.Text = lstFiles.SelectedItem.ToString()
-
-            _selectedDxfPath =
-                Path.Combine(tvFolders.SelectedNode.Tag.ToString(),
-                             lstFiles.SelectedItem.ToString())
-
-            ' Only DXF files use the DXF preview routine.
-            If SelectedFileType = "DXF" Then
-                PreviewFile(_selectedDxfPath)
-            End If
-
-        Catch ex As Exception
-            _suppressEvents = False
-            MessageBox.Show("Failed to load DXF: " & _selectedDxfPath & ".  " & ex.Message, "DXF Preview", MessageBoxButtons.OK, MessageBoxIcon.Error)
-        End Try
-        _suppressEvents = False
-    End Sub
-
-
-
     '-------------------------------
     ' Import entities for preview
     '-------------------------------
-    Private Function ImportDxfForPreview(dxf As DxfFile, bg As System.Drawing.Color) As List(Of ImportedEntity)
-        Dim results As New List(Of ImportedEntity)
-
-        For Each ent As DxfEntity In dxf.Entities
-            Dim displayColor As Color = Color.Yellow
-
-            If ent.Color IsNot Nothing Then
-                displayColor = DxfColorToDrawingColor(ent.Color, pnlPreview.BackColor)
-            Else
-                Dim layer As DxfLayer = dxf.Layers.FirstOrDefault(Function(l) l.Name = ent.Layer)
-                If layer IsNot Nothing AndAlso layer.Color IsNot Nothing Then
-                    displayColor = DxfColorToDrawingColor(layer.Color, pnlPreview.BackColor)
-                End If
-            End If
-
-            Dim imported As New ImportedEntity()
-            imported.DisplayColor = displayColor
-
-            ' Correct classification: Arc before Circle
-            If TypeOf ent Is DxfArc Then
-                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
-                imported.Arc = DirectCast(ent, DxfArc)
-
-            ElseIf TypeOf ent Is DxfCircle Then
-                If TypeOf ent Is DxfArc Then
-                    imported.GeometryType = ImportedEntity.GeometryTypeEnum.Arc
-                    imported.Arc = DirectCast(ent, DxfArc)
-                ElseIf TypeOf ent Is DxfCircle Then
-                    imported.GeometryType = ImportedEntity.GeometryTypeEnum.Circle
-                    imported.Circle = DirectCast(ent, DxfCircle)
-                End If
-
-            ElseIf TypeOf ent Is DxfLine Then
-                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Line
-                imported.Line = DirectCast(ent, DxfLine)
-
-            Else
-                imported.GeometryType = ImportedEntity.GeometryTypeEnum.Unknown
-            End If
-
-            results.Add(imported)
-        Next
-
-        Return results
-    End Function
 
     '-------------------------------
     ' Paint preview panel
     '-------------------------------
-    Private Sub pnlPreview_Paint(sender As Object, e As PaintEventArgs) Handles pnlPreview.Paint
-        ' e.Graphics.Clear(Color.White)
+    Private Sub pnlPreview_Paint(
+    sender As Object,
+    e As PaintEventArgs) Handles pnlPreview.Paint
 
-        If _previewEntities Is Nothing OrElse _previewEntities.Count = 0 Then Return
+        e.Graphics.Clear(Color.Black)
+        If _previewGeoEntities Is Nothing OrElse
+   _previewGeoEntities.Count = 0 Then
 
-        ' Calculate bounding box
-        Dim minX = _previewEntities.Min(Function(ent) ent.MinX)
-        Dim minY = _previewEntities.Min(Function(ent) ent.MinY)
-        Dim maxX = _previewEntities.Max(Function(ent) ent.MaxX)
-        Dim maxY = _previewEntities.Max(Function(ent) ent.MaxY)
+            lblPartExtents.Text = "Model extents:"
+            Return
 
-        Dim panelWidth = pnlPreview.ClientSize.Width
-        Dim panelHeight = pnlPreview.ClientSize.Height
+        End If
 
-        Dim scaleX = panelWidth / (maxX - minX)
-        Dim scaleY = panelHeight / (maxY - minY)
-        Dim scale = Math.Min(scaleX, scaleY) * 0.9 ' padding
+        Dim bounds As RectangleF =
+    HelperFunctions.GetGeoBounds(_previewGeoEntities)
 
-        Dim offsetX = (panelWidth - (maxX - minX) * scale) / 2
-        Dim offsetY = (panelHeight - (maxY - minY) * scale) / 2
+        lblPartExtents.Text =
+    $"Model extents: X={bounds.Width:F4}, Y={bounds.Height:F4}"
 
-        ' Draw each entity
-        For Each ent As ImportedEntity In _previewEntities
-            Using pen As New Pen(ent.DisplayColor, 1)
-                Select Case ent.GeometryType
-                    Case ImportedEntity.GeometryTypeEnum.Line
-                        Dim x1 = (ent.Line.P1.X - minX) * scale + offsetX
-                        Dim y1 = panelHeight - ((ent.Line.P1.Y - minY) * scale) - offsetY
-                        Dim x2 = (ent.Line.P2.X - minX) * scale + offsetX
-                        Dim y2 = panelHeight - ((ent.Line.P2.Y - minY) * scale) - offsetY
-                        e.Graphics.DrawLine(pen, CSng(x1), CSng(y1), CSng(x2), CSng(y2))
+        Dim panelWidth As Integer = pnlPreview.ClientSize.Width
+        Dim panelHeight As Integer = pnlPreview.ClientSize.Height
 
-                    Case ImportedEntity.GeometryTypeEnum.Circle
-                        Dim cx = (ent.Circle.Center.X - minX) * scale + offsetX
-                        Dim cy = panelHeight - ((ent.Circle.Center.Y - minY) * scale) - offsetY
-                        Dim r = ent.Circle.Radius * scale
-                        e.Graphics.DrawEllipse(pen, CSng(cx - r), CSng(cy - r), CSng(r * 2), CSng(r * 2))
+        If panelWidth <= 0 OrElse panelHeight <= 0 Then Return
 
-                    Case ImportedEntity.GeometryTypeEnum.Arc
-                        Dim cx = (ent.Arc.Center.X - minX) * scale + offsetX
-                        Dim cy = panelHeight - ((ent.Arc.Center.Y - minY) * scale) - offsetY
-                        Dim r = ent.Arc.Radius * scale
+        '---------------------------------------------
+        ' Calculate preview scale
+        '---------------------------------------------
+        Dim scaleX As Double = Double.MaxValue
+        Dim scaleY As Double = Double.MaxValue
 
-                        Dim startAngle As Single = CSng(-ent.Arc.StartAngle)
+        If bounds.Width > 0 Then
+            scaleX = panelWidth / CDbl(bounds.Width)
+        End If
 
-                        Dim sweep As Double = ent.Arc.EndAngle - ent.Arc.StartAngle
-                        If sweep < 0 Then sweep += 360
+        If bounds.Height > 0 Then
+            scaleY = panelHeight / CDbl(bounds.Height)
+        End If
 
-                        Dim sweepAngle As Single = CSng(-sweep)
+        Dim scale As Double = Math.Min(scaleX, scaleY)
 
-                        e.Graphics.DrawArc(pen, CSng(cx - r), CSng(cy - r), CSng(r * 2), CSng(r * 2), CSng(startAngle), CSng(sweepAngle))
-                End Select
-            End Using
-        Next
+        If scale = Double.MaxValue Then scale = 1.0
+
+        scale *= 0.9
+
+        '---------------------------------------------
+        ' Center geometry within preview
+        '---------------------------------------------
+        Dim offsetX As Double =
+        (panelWidth - bounds.Width * scale) / 2.0 -
+        bounds.X * scale
+
+        Dim offsetY As Double =
+        (panelHeight - bounds.Height * scale) / 2.0 -
+        bounds.Y * scale
+
+        '---------------------------------------------
+        ' Draw native geometry
+        '---------------------------------------------
+        Using pen As New Pen(Color.Yellow, 1.0F)
+
+            For Each entity As GeoEntity In _previewGeoEntities
+
+                If entity Is Nothing Then Continue For
+
+                If TypeOf entity Is GeoLine Then
+
+                    Dim line = DirectCast(entity, GeoLine)
+
+                    Dim x1 As Double =
+                    line.StartPoint.X * scale + offsetX
+
+                    Dim y1 As Double =
+                    panelHeight -
+                    (line.StartPoint.Y * scale + offsetY)
+
+                    Dim x2 As Double =
+                    line.EndPoint.X * scale + offsetX
+
+                    Dim y2 As Double =
+                    panelHeight -
+                    (line.EndPoint.Y * scale + offsetY)
+
+                    e.Graphics.DrawLine(
+                    pen,
+                    CSng(x1), CSng(y1),
+                    CSng(x2), CSng(y2))
+
+                ElseIf TypeOf entity Is GeoCircle Then
+
+                    Dim circle = DirectCast(entity, GeoCircle)
+
+                    Dim cx As Double =
+                    circle.Center.X * scale + offsetX
+
+                    Dim cy As Double =
+                    panelHeight -
+                    (circle.Center.Y * scale + offsetY)
+
+                    Dim r As Double =
+                    Math.Abs(circle.Radius) * scale
+
+                    If r <= 0 Then Continue For
+
+                    e.Graphics.DrawEllipse(
+                    pen,
+                    CSng(cx - r),
+                    CSng(cy - r),
+                    CSng(r * 2),
+                    CSng(r * 2))
+
+                ElseIf TypeOf entity Is GeoArc Then
+
+                    Dim arc = DirectCast(entity, GeoArc)
+
+                    Dim cx As Double =
+                    arc.Center.X * scale + offsetX
+
+                    Dim cy As Double =
+                    panelHeight -
+                    (arc.Center.Y * scale + offsetY)
+
+                    Dim r As Double =
+                    Math.Abs(arc.Radius) * scale
+
+                    If r <= 0 Then Continue For
+
+                    Dim sweep As Double
+
+                    If arc.IsClockwise Then
+
+                        sweep =
+                        ((arc.StartAngle - arc.EndAngle) Mod
+                         360.0 + 360.0) Mod 360.0
+
+                    Else
+
+                        sweep =
+                        -(((arc.EndAngle - arc.StartAngle) Mod
+                           360.0 + 360.0) Mod 360.0)
+
+                    End If
+
+                    e.Graphics.DrawArc(
+                    pen,
+                    CSng(cx - r),
+                    CSng(cy - r),
+                    CSng(r * 2),
+                    CSng(r * 2),
+                    CSng(-arc.StartAngle),
+                    CSng(sweep))
+
+                ElseIf TypeOf entity Is GeoPoint Then
+
+                    Dim pt = DirectCast(entity, GeoPoint)
+
+                    Dim x As Single =
+                    CSng(pt.X * scale + offsetX)
+
+                    Dim y As Single =
+                    CSng(panelHeight -
+                         (pt.Y * scale + offsetY))
+
+                    e.Graphics.DrawLine(
+                    pen, x - 2, y, x + 2, y)
+
+                    e.Graphics.DrawLine(
+                    pen, x, y - 2, x, y + 2)
+
+                End If
+
+            Next
+
+        End Using
+
+        '---------------------------------------------
+        ' Draw native Manufacturing Geometry.
+        '---------------------------------------------
+        If _previewJobSheet IsNot Nothing AndAlso
+           _previewJobSheet.ManufacturingModel IsNot Nothing Then
+
+            Dim vt As New ViewTransform With {
+                .Scale = scale,
+                .OffsetX = offsetX,
+                .OffsetY = offsetY
+            }
+
+            For Each feature As MachiningFeature In
+                _previewJobSheet.ManufacturingModel.ManufacturingGeometry
+
+                If TypeOf feature Is HoleFeature Then
+
+                    DrawPreviewHoleFeature(
+                        DirectCast(feature, HoleFeature),
+                        e.Graphics,
+                        vt,
+                        panelHeight)
+
+                End If
+
+            Next
+
+        End If
+
+
     End Sub
-
     Private Sub btnOK_Click(sender As Object, e As EventArgs) Handles btnOK.Click
 
         If String.IsNullOrWhiteSpace(txtFilename.Text) Then
@@ -394,10 +572,19 @@ Public Class DXFFileSelectionDialog
 
         _selectedDxfPath = full
 
-        ' Remember last folder
-        If Directory.Exists(folder) Then
-            RegPutString("Fabrication\FileOpen", "LastDXF", folder)
+
+        'Remember the folder independently for each file type.
+        Dim registryKey As String = GetFolderRegistryKey()
+
+        If Not String.IsNullOrWhiteSpace(registryKey) AndAlso
+            Directory.Exists(folder) Then
+
+            RegPutString("Fabrication\FileOpen", registryKey, folder)
+
         End If
+
+        'Remember the last selected file type.
+        RegPutString("Fabrication\FileOpen", "LastEXT", SelectedFileType)
 
         Me.DialogResult = DialogResult.OK
         Me.Close()
@@ -491,85 +678,252 @@ Public Class DXFFileSelectionDialog
             Case Else : Return Color.Black
         End Select
     End Function
-
-    Private Sub txtFileName_TextChanged(sender As Object, e As EventArgs) Handles txtFilename.TextChanged
+    Private Sub txtFileName_TextChanged(
+    sender As Object,
+    e As EventArgs
+) Handles txtFilename.TextChanged
 
         If _suppressEvents Then Return
 
+        'Clear the previous file preview.
+        _selectedDxfPath = String.Empty
+        txtAddress.Clear()
+
+        ClearPreview()
+
+    End Sub
+
+    Private Sub txtFileName_KeyDown(
+    sender As Object,
+    e As KeyEventArgs
+) Handles txtFilename.KeyDown
+
+        If e.KeyCode <> Keys.Enter Then Return
+
+        e.SuppressKeyPress = True
+
         If tvFolders.SelectedNode Is Nothing Then Return
 
-        Dim folder = tvFolders.SelectedNode.Tag.ToString()
+        If String.IsNullOrWhiteSpace(txtFilename.Text) Then Return
 
-        If Not Directory.Exists(folder) Then Return
+        Dim folder As String =
+        TryCast(tvFolders.SelectedNode.Tag, String)
 
-        Dim pattern = "*" & txtFilename.Text & "*.dxf"
+        If String.IsNullOrWhiteSpace(folder) Then Return
 
-        Dim auto As New AutoCompleteStringCollection()
+        Dim full As String =
+        Path.Combine(folder, txtFilename.Text.Trim())
 
-        Try
-            _suppressEvents = True
+        If Not File.Exists(full) Then Return
 
-            lstFiles.Items.Clear()
+        _selectedDxfPath = full
+        txtAddress.Text = full
 
-            For Each file As String In Directory.GetFiles(folder, pattern)
-                Dim name = Path.GetFileName(file)
+        ClearPreview()
 
-                lstFiles.Items.Add(name)
-                auto.Add(name)
-            Next
+        Select Case Path.GetExtension(full).ToLowerInvariant()
 
-            txtFilename.AutoCompleteCustomSource = auto
-
-        Finally
-            _suppressEvents = False
-        End Try
-
-    End Sub
-
-
-    Private Sub txtFileName_KeyDown(sender As Object, e As KeyEventArgs) Handles txtFilename.KeyDown
-
-        If e.KeyCode = Keys.Enter Then
-
-            If tvFolders.SelectedNode Is Nothing Then Return
-
-            Dim full = Path.Combine(
-                tvFolders.SelectedNode.Tag.ToString(),
-                txtFilename.Text)
-
-            If File.Exists(full) Then
-                _selectedDxfPath = full
+            Case ".dxf"
                 PreviewFile(full)
-            End If
 
-            e.SuppressKeyPress = True
+            Case ".mm3", ".nst"
+                PreviewNativeFile(full)
 
-        End If
+            Case ".ctg"
+                'CTG preview to be implemented.
+
+        End Select
 
     End Sub
-
     Private Sub PreviewFile(path As String)
 
         Try
-            _previewDxf = DxfFile.Load(path)
 
-            _previewEntities =
-            ImportDxfForPreview(_previewDxf, pnlPreview.BackColor)
+            Dim cadEntities As List(Of CadEntity) =
+                DxfImport.ImportDxf(path)
+
+            _previewGeoEntities =
+                PartGeometryBuilder.CreatePreviewGeometry(cadEntities)
 
             pnlPreview.Invalidate()
 
         Catch ex As Exception
 
-            _previewDxf = Nothing
-            _previewEntities = Nothing
-            pnlPreview.Invalidate()
+            ClearPreview()
 
-            MessageBox.Show("Failed to load DXF: " & ex.Message,
-                        "DXF Preview",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error)
+            MessageBox.Show(
+                "Failed to load DXF: " & ex.Message,
+                "DXF Preview",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error)
+
         End Try
 
     End Sub
+
+    Private Sub PreviewNativeFile(filePath As String)
+
+        ClearPreview()
+
+        Try
+
+            _previewJobSheet = MM3NativeFileService.LoadPreviewJobSheet(filePath, _previewEnvironment)
+
+            For Each part As Part In _previewJobSheet.Parts
+
+                _previewGeoEntities.AddRange(part.Geometry)
+
+            Next
+
+            pnlPreview.Invalidate()
+
+        Catch ex As Exception
+
+            ClearPreview()
+
+            MessageBox.Show(
+            "Failed to load native file preview: " & ex.Message,
+            "Native File Preview",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+
+        End Try
+
+    End Sub
+
+    Private Sub SplitContainer2_Panel1_Paint(sender As Object, e As PaintEventArgs) Handles SplitContainer2.Panel1.Paint
+
+    End Sub
+
+    Private Sub lvFiles_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lvFiles.SelectedIndexChanged
+
+
+        If _suppressEvents Then Return
+
+        If lvFiles.SelectedItems.Count = 0 Then Return
+
+        Dim item As ListViewItem = lvFiles.SelectedItems(0)
+
+        Dim filePath As String = TryCast(item.Tag, String)
+
+        If String.IsNullOrWhiteSpace(filePath) Then Return
+
+        Try
+
+            _suppressEvents = True
+
+            txtFilename.Text = item.Text
+            txtAddress.Text = filePath
+
+            _selectedDxfPath = filePath
+
+            'Clear the previous preview.
+            ClearPreview()
+
+            Select Case SelectedFileType
+
+                Case "DXF"
+                    PreviewFile(filePath)
+
+                Case "MM3", "NST"
+                    PreviewNativeFile(filePath)
+
+            End Select
+
+        Catch ex As Exception
+
+            MessageBox.Show(
+            "Failed to preview file: " & ex.Message,
+            "File Preview",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error)
+
+        Finally
+
+            _suppressEvents = False
+
+        End Try
+
+
+    End Sub
+
+    Private Function GetFolderRegistryKey() As String
+
+        Select Case SelectedFileType
+
+            Case "MM3"
+                Return "LastMM3"
+
+            Case "NST"
+                Return "LastNST"
+
+            Case "DXF"
+                Return "LastDXF"
+
+            Case "CTG"
+                Return "LastCTG"
+
+            Case Else
+                Return String.Empty
+
+        End Select
+
+    End Function
+    Private Sub ClearPreview()
+
+        _previewGeoEntities.Clear()
+        _previewJobSheet = Nothing
+        _previewEnvironment = Nothing
+
+        lblPartExtents.Text = "Model extents:"
+
+        pnlPreview.Invalidate()
+
+    End Sub
+
+    Private Sub DrawPreviewHoleFeature(
+    hole As HoleFeature,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If hole Is Nothing OrElse
+           _previewEnvironment Is Nothing Then Return
+
+        Dim tool As Tool = Nothing
+        Dim shape As ToolShape = Nothing
+
+        If Not ToolShapeResolver.TryResolve(
+            hole.ToolSetupMemberID,
+            _previewEnvironment.ToolSetupMembers,
+            _previewEnvironment.Tools,
+            tool,
+            shape) Then
+
+            Return
+
+        End If
+
+        Dim drawColor As Color =
+            GetVisibleColor(tool.Color, Color.Black)
+
+        Using pen As New Pen(drawColor, 1.0F)
+
+            pen.DashStyle = DashStyle.Dash
+
+            ToolProfileRenderer.DrawToolCuttingProfile(
+                g,
+                shape,
+                hole,
+                vt,
+                panelHeight,
+                pen)
+
+        End Using
+
+    End Sub
+
+
+
 
 End Class

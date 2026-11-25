@@ -7,33 +7,49 @@ Public NotInheritable Class ToolShapeResolver
 
     Private Sub New()
     End Sub
+    Public Shared Function TryResolve(
+    toolSetupMemberID As Integer,
+    ByRef tool As Tool,
+    ByRef shape As ToolShape) As Boolean
+
+        Return TryResolve(
+        toolSetupMemberID,
+        AppData.ToolSetupMembers,
+        AppData.ToolCrib,
+        tool,
+        shape)
+
+    End Function
 
     Public Shared Function TryResolve(
-        toolSetupMemberID As Integer,
-        ByRef tool As Tool,
-        ByRef shape As ToolShape) As Boolean
+    toolSetupMemberID As Integer,
+    members As IEnumerable(Of ToolSetupMember),
+    tools As IEnumerable(Of Tool),
+    ByRef tool As Tool,
+    ByRef shape As ToolShape) As Boolean
 
         tool = Nothing
         shape = Nothing
 
         If toolSetupMemberID <= 0 Then Return False
 
-        If AppData.ToolSetupMembers Is Nothing OrElse
-           AppData.ToolCrib Is Nothing Then
+        If members Is Nothing OrElse
+           tools Is Nothing Then
             Return False
         End If
 
-        Dim member = AppData.ToolSetupMembers.
+        Dim member = members.
             FirstOrDefault(Function(m) m.ID = toolSetupMemberID)
 
         If member Is Nothing Then Return False
 
-        Dim resolvedTool = AppData.ToolCrib.
+        Dim resolvedTool = tools.
             FirstOrDefault(Function(t) t.ID = member.ToolID)
 
         If resolvedTool Is Nothing Then Return False
 
         Try
+
             Dim resolvedShape As ToolShape =
                 ToolShapeFactory.Create(resolvedTool)
 
@@ -48,12 +64,13 @@ Public NotInheritable Class ToolShapeResolver
             Return True
 
         Catch ex As Exception
+
             System.Diagnostics.Debug.WriteLine(
                 "ToolShapeResolver: " & ex.Message)
 
             Return False
+
         End Try
 
     End Function
-
 End Class

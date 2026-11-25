@@ -11,6 +11,7 @@ Public Class Part
 
     Public Property Features As New List(Of MachiningFeature)
 
+    Public Property Layers As New List(Of Layer)
 
     Public Function GetNextFeatureID() As Integer
 
@@ -21,14 +22,9 @@ Public Class Part
         Return Features.Max(Function(f) f.ID) + 1
 
     End Function
-
     Public Function GetLayers() As List(Of Layer)
 
-        Return Geometry.
-            Where(Function(ent) ent IsNot Nothing).
-            Select(Function(ent) TryCast(ent.Association, Layer)).
-            Where(Function(layer) layer IsNot Nothing).
-            Distinct().
+        Return Layers.
             OrderBy(Function(layer) layer.Name).
             ToList()
 

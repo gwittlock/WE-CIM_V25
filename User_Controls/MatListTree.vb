@@ -2,6 +2,7 @@
 Imports DevExpress.XtraTreeList.Nodes
 
 Public Class MatListTree
+    Public Event MaterialSelected As EventHandler
 
     ' Public property to get selected material sheet
     Public Property SelectedMaterial As MaterialSheet
@@ -41,11 +42,19 @@ Public Class MatListTree
 
     ' Handle node selection
     Private Sub tl_FocusedNodeChanged(sender As Object, e As DevExpress.XtraTreeList.FocusedNodeChangedEventArgs) Handles tl.FocusedNodeChanged
+
         If e.Node IsNot Nothing AndAlso TypeOf e.Node.Tag Is MaterialSheet Then
+
             SelectedMaterial = DirectCast(e.Node.Tag, MaterialSheet)
+
             popupContainerEdit1.EditValue = SelectedMaterial.Description
+
             popupContainerEdit1.ClosePopup()
+
+            RaiseEvent MaterialSelected(Me, EventArgs.Empty)
+
         End If
+
     End Sub
 
     ' Ensure popup points to TreeList
@@ -75,10 +84,24 @@ Public Class MatListTree
                     Dim sheet = TryCast(sheetNode.Tag, MaterialSheet)
 
                     If sheet IsNot Nothing AndAlso sheet.ID = materialID Then
-                        tl.FocusedNode = sheetNode
-                        SelectedMaterial = sheet
-                        popupContainerEdit1.EditValue = sheet.Description
+
+                        If tl.FocusedNode IsNot sheetNode Then
+
+                            ' FocusedNodeChanged will raise MaterialSelected.
+                            tl.FocusedNode = sheetNode
+
+                        Else
+
+                            ' Node already focused. Notify explicitly.
+                            SelectedMaterial = sheet
+                            popupContainerEdit1.EditValue = sheet.Description
+
+                            RaiseEvent MaterialSelected(Me, EventArgs.Empty)
+
+                        End If
+
                         Return
+
                     End If
 
                 Next

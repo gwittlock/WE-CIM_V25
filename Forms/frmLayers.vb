@@ -4,6 +4,9 @@ Public Class frmLayers
 
     Public Property ProductionJob As Job
     Public Event ActiveLayerChanged(selectedLayer As Layer)
+
+    Public Event LayerVisibilityChanged()
+
     Dim sLayerName As String
     Dim lLayerColor As System.Drawing.Color
     Private edit As RepositoryItemCheckEdit
@@ -183,6 +186,10 @@ Public Class frmLayers
 
         gViewToolLayer.PopulateColumns()
 
+        gViewToolLayer.Columns("Color").ColumnEdit = repColorEdit
+        gViewToolLayer.Columns("Color").VisibleIndex = 2
+        gViewToolLayer.Columns("Color").OptionsColumn.AllowEdit = False
+
         gViewToolLayer.Columns("ID").Visible = False
 
         gViewToolLayer.Columns("Name").Caption = "Layer Name"
@@ -280,47 +287,22 @@ Public Class frmLayers
         e.Appearance.ForeColor = layer.Color
     End Sub
 
-    Private Sub sbHideAll_Click(sender As Object, e As EventArgs) Handles sbHideAll.Click
-        'Dim ni As Long
-        'Dim nLayerid As Long
+    Private Sub sbHideAll_Click(
+    sender As Object,
+    e As EventArgs
+) Handles sbHideAll.Click
 
-        'Try
-        '    For ni = 0 To gViewToolLayer.RowCount - 1
-        '        nLayerid = gViewToolLayer.GetRowCellValue(ni, gViewToolLayer.Columns("ToolNumber"))
+        SetAllLayersVisibility(False)
 
-        '        lReturn = PortalExecute("entity:hide:id=" & nLayerid)
-        '    Next
-
-        '    modView.ViewRegen()
-        '    LoadLayersListview()
-
-
-        'Catch ex As Exception
-
-        '    MessageBox.Show("sbHideAll: " & ex.Message)
-
-        'End Try
     End Sub
 
-    Private Sub sbShowAll_Click(sender As Object, e As EventArgs) Handles sbShowAll.Click
-        'Dim ni As Long
-        'Dim nLayerid As Long
+    Private Sub sbShowAll_Click(
+    sender As Object,
+    e As EventArgs
+) Handles sbShowAll.Click
 
-        'Try
-        '    For ni = 0 To gViewToolLayer.RowCount - 1
-        '        nLayerid = gViewToolLayer.GetRowCellValue(ni, gViewToolLayer.Columns("ToolNumber"))
+        SetAllLayersVisibility(True)
 
-        '        lReturn = PortalExecute("entity:show:id=" & nLayerid)
-        '    Next
-
-        '    modView.ViewRegen()
-        '    LoadLayersListview()
-
-        'Catch ex As Exception
-
-        '    MessageBox.Show("sbHideAll: " & ex.Message)
-
-        'End Try
     End Sub
 
     Private Sub sbSetCurrent_Click(sender As Object, e As EventArgs) Handles sbSetCurrent.Click
@@ -346,5 +328,128 @@ Public Class frmLayers
 
     Private Sub btnAddLayer_Click(sender As Object, e As EventArgs) Handles btnAddLayer.Click
 
+
+        If ProductionJob Is Nothing Then Return
+
+        If ProductionJob.JobSheets.Count <> 1 Then Return
+
+        Dim sheet As JobSheet = ProductionJob.JobSheets(0)
+
+        If sheet.Parts.Count <> 1 Then Return
+
+        Dim part As Part = sheet.Parts(0)
+
+        Dim layerName As String = txtLayerNmae.Text.Trim()
+
+        If String.IsNullOrWhiteSpace(layerName) Then
+
+            MessageBox.Show("Please enter a Layer Name.")
+            txtLayerNmae.Focus()
+            Return
+
+        End If
+
+        ' Prevent duplicate Layer names.
+        If part.Layers.Any(
+        Function(layer) String.Equals(
+            layer.Name,
+            layerName,
+            StringComparison.OrdinalIgnoreCase)) Then
+
+            MessageBox.Show("A Layer with this name already exists.")
+            txtLayerNmae.Focus()
+            Return
+
+        End If
+
+        ' Determine the next available Layer ID.
+        Dim nextID As Integer = 1
+
+        If part.Layers.Count > 0 Then
+            nextID = part.Layers.Max(Function(layer) layer.ID) + 1
+        End If
+
+        ' Create the new project Layer.
+        Dim newLayer As New Layer With {
+        .ID = nextID,
+        .Name = layerName,
+        .Color = ColorPickEdit2.Color,
+        .Visible = True
+    }
+
+        part.Layers.Add(newLayer)
+
+        ' Refresh the Layer grid.
+        LoadLayersListview()
+
+        txtLayerNmae.Clear()
+        txtLayerNmae.Focus()
+
     End Sub
+
+    Private Sub SetAllLayersVisibility(visible As Boolean)
+
+        If ProductionJob Is Nothing Then Return
+
+        For Each sheet As JobSheet In ProductionJob.JobSheets
+
+            For Each part As Part In sheet.Parts
+
+                If part Is Nothing Then Continue For
+
+                For Each layer As Layer In part.Layers
+
+                    layer.Visible = visible
+
+                Next
+
+            Next
+
+        Next
+
+        gViewToolLayer.RefreshData()
+
+        RaiseEvent LayerVisibilityChanged()
+    End Sub
+
+    Private Sub gViewToolLayer_CellValueChanged(
+    sender As Object,
+    e As DevExpress.XtraGrid.Views.Base.CellValueChangedEventArgs
+) Handles gViewToolLayer.CellValueChanged
+
+        If e.Column.FieldName <> "Visible" Then Return
+
+        RaiseEvent LayerVisibilityChanged()
+
+    End Sub
+
+    Private Sub gViewToolLayer_ShownEditor(
+    sender As Object,
+    e As EventArgs
+) Handles gViewToolLayer.ShownEditor
+
+        If gViewToolLayer.FocusedColumn.FieldName <> "Visible" Then Return
+
+        Dim editor = gViewToolLayer.ActiveEditor
+
+        If editor Is Nothing Then Return
+
+        RemoveHandler editor.EditValueChanged,
+            AddressOf VisibilityEditor_EditValueChanged
+
+        AddHandler editor.EditValueChanged,
+            AddressOf VisibilityEditor_EditValueChanged
+
+    End Sub
+
+    Private Sub VisibilityEditor_EditValueChanged(
+    sender As Object,
+    e As EventArgs
+)
+
+        gViewToolLayer.PostEditor()
+
+    End Sub
+
+
 End Class

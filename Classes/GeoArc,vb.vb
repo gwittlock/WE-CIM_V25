@@ -2,6 +2,14 @@
 Public Class GeoArc
     Inherits GeoEntity
 
+    Public Sub New()
+        MyBase.New()
+    End Sub
+
+    Friend Sub New(existingID As Integer)
+        MyBase.New(existingID)
+    End Sub
+
     Public Property StartPoint As GeoPoint
     Public Property EndPoint As GeoPoint
     Public Property Center As GeoPoint

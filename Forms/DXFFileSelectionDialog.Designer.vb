@@ -22,10 +22,12 @@ Partial Class DXFFileSelectionDialog
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
+        Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(DXFFileSelectionDialog))
         Me.PanelControl1 = New DevExpress.XtraEditors.PanelControl()
+        Me.lblPartExtents = New System.Windows.Forms.Label()
         Me.Label1 = New System.Windows.Forms.Label()
         Me.cboFileTypes = New System.Windows.Forms.ComboBox()
-        Me.Panel1 = New System.Windows.Forms.Panel()
+        Me.pnlDxfOptions = New System.Windows.Forms.Panel()
         Me.tbCurveResolution = New System.Windows.Forms.TextBox()
         Me.txtPreRotate = New System.Windows.Forms.TextBox()
         Me.ltbCurveRes = New DevExpress.XtraEditors.LabelControl()
@@ -41,11 +43,19 @@ Partial Class DXFFileSelectionDialog
         Me.SplitContainer2 = New System.Windows.Forms.SplitContainer()
         Me.tvFolders = New System.Windows.Forms.TreeView()
         Me.SplitContainer3 = New System.Windows.Forms.SplitContainer()
-        Me.lstFiles = New System.Windows.Forms.ListBox()
+        Me.lvFiles = New System.Windows.Forms.ListView()
+        Me.colName = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
+        Me.colSize = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
+        Me.colType = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
+        Me.colDateModified = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.pnlPreview = New System.Windows.Forms.Panel()
+        Me.pnlAddress = New System.Windows.Forms.Panel()
+        Me.txtAddress = New System.Windows.Forms.TextBox()
+        Me.lblAddress = New System.Windows.Forms.Label()
+        Me.Panel2 = New System.Windows.Forms.Panel()
         CType(Me.PanelControl1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.PanelControl1.SuspendLayout()
-        Me.Panel1.SuspendLayout()
+        Me.pnlDxfOptions.SuspendLayout()
         CType(Me.PanelControl2, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.PanelControl2.SuspendLayout()
         CType(Me.SplitContainer2, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -56,13 +66,15 @@ Partial Class DXFFileSelectionDialog
         Me.SplitContainer3.Panel1.SuspendLayout()
         Me.SplitContainer3.Panel2.SuspendLayout()
         Me.SplitContainer3.SuspendLayout()
+        Me.pnlAddress.SuspendLayout()
         Me.SuspendLayout()
         '
         'PanelControl1
         '
+        Me.PanelControl1.Controls.Add(Me.lblPartExtents)
         Me.PanelControl1.Controls.Add(Me.Label1)
         Me.PanelControl1.Controls.Add(Me.cboFileTypes)
-        Me.PanelControl1.Controls.Add(Me.Panel1)
+        Me.PanelControl1.Controls.Add(Me.pnlDxfOptions)
         Me.PanelControl1.Controls.Add(Me.txtFilename)
         Me.PanelControl1.Controls.Add(Me.lblFilename)
         Me.PanelControl1.Controls.Add(Me.btnCancel)
@@ -72,6 +84,15 @@ Partial Class DXFFileSelectionDialog
         Me.PanelControl1.Name = "PanelControl1"
         Me.PanelControl1.Size = New System.Drawing.Size(1027, 91)
         Me.PanelControl1.TabIndex = 0
+        '
+        'lblPartExtents
+        '
+        Me.lblPartExtents.AutoSize = True
+        Me.lblPartExtents.Location = New System.Drawing.Point(685, 12)
+        Me.lblPartExtents.Name = "lblPartExtents"
+        Me.lblPartExtents.Size = New System.Drawing.Size(82, 13)
+        Me.lblPartExtents.TabIndex = 8
+        Me.lblPartExtents.Text = "Model Extents: "
         '
         'Label1
         '
@@ -90,19 +111,19 @@ Partial Class DXFFileSelectionDialog
         Me.cboFileTypes.Size = New System.Drawing.Size(252, 21)
         Me.cboFileTypes.TabIndex = 6
         '
-        'Panel1
+        'pnlDxfOptions
         '
-        Me.Panel1.Controls.Add(Me.tbCurveResolution)
-        Me.Panel1.Controls.Add(Me.txtPreRotate)
-        Me.Panel1.Controls.Add(Me.ltbCurveRes)
-        Me.Panel1.Controls.Add(Me.chkRaw)
-        Me.Panel1.Controls.Add(Me.chkStripLayers)
-        Me.Panel1.Controls.Add(Me.chkAutoSave)
-        Me.Panel1.Controls.Add(Me.LabelControl1)
-        Me.Panel1.Location = New System.Drawing.Point(329, 15)
-        Me.Panel1.Name = "Panel1"
-        Me.Panel1.Size = New System.Drawing.Size(335, 66)
-        Me.Panel1.TabIndex = 5
+        Me.pnlDxfOptions.Controls.Add(Me.tbCurveResolution)
+        Me.pnlDxfOptions.Controls.Add(Me.txtPreRotate)
+        Me.pnlDxfOptions.Controls.Add(Me.ltbCurveRes)
+        Me.pnlDxfOptions.Controls.Add(Me.chkRaw)
+        Me.pnlDxfOptions.Controls.Add(Me.chkStripLayers)
+        Me.pnlDxfOptions.Controls.Add(Me.chkAutoSave)
+        Me.pnlDxfOptions.Controls.Add(Me.LabelControl1)
+        Me.pnlDxfOptions.Location = New System.Drawing.Point(329, 15)
+        Me.pnlDxfOptions.Name = "pnlDxfOptions"
+        Me.pnlDxfOptions.Size = New System.Drawing.Size(335, 66)
+        Me.pnlDxfOptions.TabIndex = 5
         '
         'tbCurveResolution
         '
@@ -186,7 +207,7 @@ Partial Class DXFFileSelectionDialog
         '
         'btnCancel
         '
-        Me.btnCancel.Location = New System.Drawing.Point(924, 6)
+        Me.btnCancel.Location = New System.Drawing.Point(921, 36)
         Me.btnCancel.Name = "btnCancel"
         Me.btnCancel.Size = New System.Drawing.Size(75, 23)
         Me.btnCancel.TabIndex = 1
@@ -195,7 +216,7 @@ Partial Class DXFFileSelectionDialog
         '
         'btnOK
         '
-        Me.btnOK.Location = New System.Drawing.Point(843, 5)
+        Me.btnOK.Location = New System.Drawing.Point(840, 35)
         Me.btnOK.Name = "btnOK"
         Me.btnOK.Size = New System.Drawing.Size(75, 23)
         Me.btnOK.TabIndex = 0
@@ -205,6 +226,7 @@ Partial Class DXFFileSelectionDialog
         'PanelControl2
         '
         Me.PanelControl2.Controls.Add(Me.SplitContainer2)
+        Me.PanelControl2.Controls.Add(Me.pnlAddress)
         Me.PanelControl2.Dock = System.Windows.Forms.DockStyle.Fill
         Me.PanelControl2.Location = New System.Drawing.Point(0, 0)
         Me.PanelControl2.Name = "PanelControl2"
@@ -214,7 +236,7 @@ Partial Class DXFFileSelectionDialog
         'SplitContainer2
         '
         Me.SplitContainer2.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.SplitContainer2.Location = New System.Drawing.Point(2, 2)
+        Me.SplitContainer2.Location = New System.Drawing.Point(2, 38)
         Me.SplitContainer2.Name = "SplitContainer2"
         '
         'SplitContainer2.Panel1
@@ -224,16 +246,15 @@ Partial Class DXFFileSelectionDialog
         'SplitContainer2.Panel2
         '
         Me.SplitContainer2.Panel2.Controls.Add(Me.SplitContainer3)
-        Me.SplitContainer2.Size = New System.Drawing.Size(1023, 397)
-        Me.SplitContainer2.SplitterDistance = 341
+        Me.SplitContainer2.Size = New System.Drawing.Size(1023, 361)
+        Me.SplitContainer2.SplitterDistance = 257
         Me.SplitContainer2.TabIndex = 0
         '
         'tvFolders
         '
-        Me.tvFolders.Dock = System.Windows.Forms.DockStyle.Fill
         Me.tvFolders.Location = New System.Drawing.Point(0, 0)
         Me.tvFolders.Name = "tvFolders"
-        Me.tvFolders.Size = New System.Drawing.Size(341, 397)
+        Me.tvFolders.Size = New System.Drawing.Size(250, 361)
         Me.tvFolders.TabIndex = 0
         '
         'SplitContainer3
@@ -244,23 +265,49 @@ Partial Class DXFFileSelectionDialog
         '
         'SplitContainer3.Panel1
         '
-        Me.SplitContainer3.Panel1.Controls.Add(Me.lstFiles)
+        Me.SplitContainer3.Panel1.Controls.Add(Me.lvFiles)
         '
         'SplitContainer3.Panel2
         '
         Me.SplitContainer3.Panel2.Controls.Add(Me.pnlPreview)
-        Me.SplitContainer3.Size = New System.Drawing.Size(678, 397)
-        Me.SplitContainer3.SplitterDistance = 317
+        Me.SplitContainer3.Size = New System.Drawing.Size(762, 361)
+        Me.SplitContainer3.SplitterDistance = 405
         Me.SplitContainer3.TabIndex = 0
         '
-        'lstFiles
+        'lvFiles
         '
-        Me.lstFiles.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.lstFiles.FormattingEnabled = True
-        Me.lstFiles.Location = New System.Drawing.Point(0, 0)
-        Me.lstFiles.Name = "lstFiles"
-        Me.lstFiles.Size = New System.Drawing.Size(317, 397)
-        Me.lstFiles.TabIndex = 0
+        Me.lvFiles.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.colName, Me.colSize, Me.colType, Me.colDateModified})
+        Me.lvFiles.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.lvFiles.FullRowSelect = True
+        Me.lvFiles.HideSelection = False
+        Me.lvFiles.Location = New System.Drawing.Point(0, 0)
+        Me.lvFiles.MultiSelect = False
+        Me.lvFiles.Name = "lvFiles"
+        Me.lvFiles.Size = New System.Drawing.Size(405, 361)
+        Me.lvFiles.TabIndex = 1
+        Me.lvFiles.UseCompatibleStateImageBehavior = False
+        Me.lvFiles.View = System.Windows.Forms.View.Details
+        '
+        'colName
+        '
+        Me.colName.Text = "Name"
+        Me.colName.Width = 145
+        '
+        'colSize
+        '
+        Me.colSize.Text = "Size"
+        Me.colSize.TextAlign = System.Windows.Forms.HorizontalAlignment.Right
+        Me.colSize.Width = 65
+        '
+        'colType
+        '
+        Me.colType.Text = "Type"
+        Me.colType.Width = 85
+        '
+        'colDateModified
+        '
+        Me.colDateModified.Text = "Date Modified"
+        Me.colDateModified.Width = 135
         '
         'pnlPreview
         '
@@ -268,8 +315,42 @@ Partial Class DXFFileSelectionDialog
         Me.pnlPreview.Dock = System.Windows.Forms.DockStyle.Fill
         Me.pnlPreview.Location = New System.Drawing.Point(0, 0)
         Me.pnlPreview.Name = "pnlPreview"
-        Me.pnlPreview.Size = New System.Drawing.Size(357, 397)
+        Me.pnlPreview.Size = New System.Drawing.Size(353, 361)
         Me.pnlPreview.TabIndex = 0
+        '
+        'pnlAddress
+        '
+        Me.pnlAddress.Controls.Add(Me.txtAddress)
+        Me.pnlAddress.Controls.Add(Me.lblAddress)
+        Me.pnlAddress.Controls.Add(Me.Panel2)
+        Me.pnlAddress.Dock = System.Windows.Forms.DockStyle.Top
+        Me.pnlAddress.Location = New System.Drawing.Point(2, 2)
+        Me.pnlAddress.Name = "pnlAddress"
+        Me.pnlAddress.Size = New System.Drawing.Size(1023, 36)
+        Me.pnlAddress.TabIndex = 1
+        '
+        'txtAddress
+        '
+        Me.txtAddress.Location = New System.Drawing.Point(60, 3)
+        Me.txtAddress.Name = "txtAddress"
+        Me.txtAddress.Size = New System.Drawing.Size(953, 21)
+        Me.txtAddress.TabIndex = 2
+        '
+        'lblAddress
+        '
+        Me.lblAddress.AutoSize = True
+        Me.lblAddress.Location = New System.Drawing.Point(4, 7)
+        Me.lblAddress.Name = "lblAddress"
+        Me.lblAddress.Size = New System.Drawing.Size(50, 13)
+        Me.lblAddress.TabIndex = 1
+        Me.lblAddress.Text = "Address:"
+        '
+        'Panel2
+        '
+        Me.Panel2.Location = New System.Drawing.Point(67, 41)
+        Me.Panel2.Name = "Panel2"
+        Me.Panel2.Size = New System.Drawing.Size(8, 8)
+        Me.Panel2.TabIndex = 0
         '
         'DXFFileSelectionDialog
         '
@@ -278,13 +359,14 @@ Partial Class DXFFileSelectionDialog
         Me.ClientSize = New System.Drawing.Size(1027, 492)
         Me.Controls.Add(Me.PanelControl2)
         Me.Controls.Add(Me.PanelControl1)
+        Me.Icon = CType(resources.GetObject("$this.Icon"), System.Drawing.Icon)
         Me.Name = "DXFFileSelectionDialog"
-        Me.Text = "DXFFileSelectionDialog"
+        Me.Text = "Open Model"
         CType(Me.PanelControl1, System.ComponentModel.ISupportInitialize).EndInit()
         Me.PanelControl1.ResumeLayout(False)
         Me.PanelControl1.PerformLayout()
-        Me.Panel1.ResumeLayout(False)
-        Me.Panel1.PerformLayout()
+        Me.pnlDxfOptions.ResumeLayout(False)
+        Me.pnlDxfOptions.PerformLayout()
         CType(Me.PanelControl2, System.ComponentModel.ISupportInitialize).EndInit()
         Me.PanelControl2.ResumeLayout(False)
         Me.SplitContainer2.Panel1.ResumeLayout(False)
@@ -295,6 +377,8 @@ Partial Class DXFFileSelectionDialog
         Me.SplitContainer3.Panel2.ResumeLayout(False)
         CType(Me.SplitContainer3, System.ComponentModel.ISupportInitialize).EndInit()
         Me.SplitContainer3.ResumeLayout(False)
+        Me.pnlAddress.ResumeLayout(False)
+        Me.pnlAddress.PerformLayout()
         Me.ResumeLayout(False)
 
     End Sub
@@ -304,7 +388,6 @@ Partial Class DXFFileSelectionDialog
     Friend WithEvents SplitContainer2 As SplitContainer
     Friend WithEvents tvFolders As TreeView
     Friend WithEvents SplitContainer3 As SplitContainer
-    Friend WithEvents lstFiles As ListBox
     Friend WithEvents btnCancel As Button
     Friend WithEvents btnOK As Button
     Friend WithEvents pnlPreview As Panel
@@ -312,7 +395,7 @@ Partial Class DXFFileSelectionDialog
     Friend WithEvents lblFilename As Label
     Friend WithEvents Label1 As Label
     Friend WithEvents cboFileTypes As Windows.Forms.ComboBox
-    Friend WithEvents Panel1 As Panel
+    Friend WithEvents pnlDxfOptions As Panel
     Friend WithEvents tbCurveResolution As TextBox
     Friend WithEvents txtPreRotate As TextBox
     Friend WithEvents ltbCurveRes As LabelControl
@@ -320,4 +403,14 @@ Partial Class DXFFileSelectionDialog
     Friend WithEvents chkStripLayers As CheckBox
     Friend WithEvents chkAutoSave As CheckBox
     Friend WithEvents LabelControl1 As LabelControl
+    Friend WithEvents pnlAddress As Panel
+    Friend WithEvents Panel2 As Panel
+    Friend WithEvents lblPartExtents As Label
+    Friend WithEvents txtAddress As TextBox
+    Friend WithEvents lblAddress As Label
+    Friend WithEvents lvFiles As ListView
+    Friend WithEvents colName As ColumnHeader
+    Friend WithEvents colSize As ColumnHeader
+    Friend WithEvents colType As ColumnHeader
+    Friend WithEvents colDateModified As ColumnHeader
 End Class

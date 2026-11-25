@@ -586,6 +586,15 @@ Public Class SelectionManager
 
         For Each ent As GeoEntity In candidates
 
+            'Exclude geometry on hidden layers.
+            If TypeOf ent.Association Is Layer Then
+
+                If Not DirectCast(ent.Association, Layer).Visible Then
+                    Continue For
+                End If
+
+            End If
+
             If Not IsGeoSelectionModeMatch(ent, selectionMode) Then
                 Continue For
             End If
@@ -2662,4 +2671,26 @@ Public Class SelectionManager
         RaiseEvent HoverChanged(Nothing)
 
     End Sub
+
+    Public Function HitTestTangentEntity(
+    ptWorld As PointF,
+    tolWorld As Single) As GeoEntity
+
+        Dim hit As isSelectable =
+            HitTestGeoAtPoint(
+                ptWorld,
+                tolWorld,
+                Nothing,
+                SelectionFilter.Circle Or SelectionFilter.Arc)
+
+        If TypeOf hit Is GeoCircle OrElse
+           TypeOf hit Is GeoArc Then
+
+            Return DirectCast(hit, GeoEntity)
+
+        End If
+
+        Return Nothing
+
+    End Function
 End Class

@@ -441,6 +441,10 @@ Public Class frmOpenProject
     Private Sub popupContainerEdit1_QueryDisplayText(sender As Object, e As QueryDisplayTextEventArgs) Handles popupContainerEdit1.QueryDisplayText
         e.DisplayText = If(e.EditValue IsNot Nothing, e.EditValue.ToString(), "")
     End Sub
+
+    Private Sub cboToolSetup_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cboToolSetup.SelectedIndexChanged
+
+    End Sub
 End Class
 
 

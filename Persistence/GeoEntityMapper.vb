@@ -1,4 +1,6 @@
-﻿Public Class GeoEntityMapper
+﻿Imports System.IO
+
+Public Class GeoEntityMapper
 
 
     Public Shared Function ToPointRecord(
@@ -17,10 +19,9 @@
     }
 
     End Function
-
-
     Public Shared Function FromPointRecord(
-    record As GeoEntityRecord
+    record As GeoEntityRecord,
+    Optional isPreview As Boolean = False
 ) As GeoPoint
 
         If record Is Nothing Then
@@ -32,17 +33,23 @@
             "Record is not a GeoPoint.")
         End If
 
+        Dim point As GeoPoint
 
-        Dim point As New GeoPoint With {
-            .ID = record.ID,
-            .X = record.X,
-            .Y = record.Y
-        }
+        If isPreview Then
+            point = New GeoPoint(record.ID)
+        Else
+            point = New GeoPoint()
+            point.ID = record.ID
+        End If
 
-        GeoEntity.EnsureNextIDAbove(point.ID)
+        point.X = record.X
+        point.Y = record.Y
+
+        If Not isPreview Then
+            GeoEntity.EnsureNextIDAbove(point.ID)
+        End If
 
         Return point
-
 
     End Function
 
@@ -71,10 +78,10 @@
 
     End Function
 
-
     Public Shared Function FromLineRecord(
     record As GeoEntityRecord,
-    pointsByID As Dictionary(Of Integer, GeoPoint)
+    pointsByID As Dictionary(Of Integer, GeoPoint),
+    Optional isPreview As Boolean = False
 ) As GeoLine
 
         If record Is Nothing Then
@@ -115,16 +122,22 @@
         End If
 
 
-        Dim line As New GeoLine With {
-            .ID = record.ID,
-            .StartPoint = startPoint,
-            .EndPoint = endPoint
-        }
+        Dim line As GeoLine
 
-        GeoEntity.EnsureNextIDAbove(line.ID)
+        If isPreview Then
+            line = New GeoLine(record.ID)
+        Else
+            line = New GeoLine()
+            line.ID = record.ID
+        End If
+
+        line.StartPoint = startPoint
+        line.EndPoint = endPoint
+        If Not isPreview Then
+            GeoEntity.EnsureNextIDAbove(line.ID)
+        End If
 
         Return line
-
 
     End Function
 
@@ -143,18 +156,19 @@
         End If
 
         Return New GeoEntityRecord With {
-        .ID = circle.ID,
-        .GeometryType = "GeoCircle",
-        .CenterPointID = circle.Center.ID,
-        .Radius = circle.Radius
-    }
+    .ID = circle.ID,
+    .GeometryType = "GeoCircle",
+    .CenterPointID = circle.Center.ID,
+    .Radius = circle.Radius,
+    .IsClockwise = circle.IsClockwise
+}
 
     End Function
 
-
     Public Shared Function FromCircleRecord(
     record As GeoEntityRecord,
-    pointsByID As Dictionary(Of Integer, GeoPoint)
+    pointsByID As Dictionary(Of Integer, GeoPoint),
+    Optional isPreview As Boolean = False
 ) As GeoCircle
 
         If record Is Nothing Then
@@ -190,13 +204,23 @@
         End If
 
 
-        Dim circle As New GeoCircle With {
-            .ID = record.ID,
-            .Center = centerPoint,
-            .Radius = record.Radius.Value
-        }
+        Dim circle As GeoCircle
 
-        GeoEntity.EnsureNextIDAbove(circle.ID)
+        If isPreview Then
+            circle = New GeoCircle(record.ID)
+        Else
+            circle = New GeoCircle()
+            circle.ID = record.ID
+        End If
+
+        circle.Center = centerPoint
+        circle.Radius = record.Radius.Value
+        circle.IsClockwise = record.IsClockwise.GetValueOrDefault(True)
+
+        If Not isPreview Then
+            GeoEntity.EnsureNextIDAbove(circle.ID)
+        End If
+
 
         Return circle
 
@@ -234,10 +258,10 @@
 
     End Function
 
-
     Public Shared Function FromArcRecord(
     record As GeoEntityRecord,
-    pointsByID As Dictionary(Of Integer, GeoPoint)
+    pointsByID As Dictionary(Of Integer, GeoPoint),
+    Optional isPreview As Boolean = False
 ) As GeoArc
 
         If record Is Nothing Then
@@ -296,18 +320,26 @@
         End If
 
 
-        Dim arc As New GeoArc With {
-            .ID = record.ID,
-            .StartPoint = startPoint,
-            .EndPoint = endPoint,
-            .Center = centerPoint,
-            .Radius = record.Radius.Value,
-            .StartAngle = record.StartAngle.Value,
-            .EndAngle = record.EndAngle.Value,
-            .IsClockwise = record.IsClockwise.Value
-        }
+        Dim arc As GeoArc
 
-        GeoEntity.EnsureNextIDAbove(arc.ID)
+        If isPreview Then
+            arc = New GeoArc(record.ID)
+        Else
+            arc = New GeoArc()
+            arc.ID = record.ID
+        End If
+
+        arc.StartPoint = startPoint
+        arc.EndPoint = endPoint
+        arc.Center = centerPoint
+        arc.Radius = record.Radius.Value
+        arc.StartAngle = record.StartAngle.Value
+        arc.EndAngle = record.EndAngle.Value
+        arc.IsClockwise = record.IsClockwise.Value
+
+        If Not isPreview Then
+            GeoEntity.EnsureNextIDAbove(arc.ID)
+        End If
 
         Return arc
 
@@ -649,10 +681,10 @@
 
     End Function
 
-
     Public Shared Function FromRecord(
     record As GeoEntityRecord,
-    pointsByID As Dictionary(Of Integer, GeoPoint)
+    pointsByID As Dictionary(Of Integer, GeoPoint),
+    Optional isPreview As Boolean = False
 ) As GeoEntity
 
         If record Is Nothing Then
@@ -663,25 +695,30 @@
 
             Case "GeoPoint"
 
-                Return FromPointRecord(record)
+                Return FromPointRecord(
+                record,
+                isPreview)
 
             Case "GeoLine"
 
                 Return FromLineRecord(
                 record,
-                pointsByID)
+                pointsByID,
+                isPreview)
 
             Case "GeoCircle"
 
                 Return FromCircleRecord(
                 record,
-                pointsByID)
+                pointsByID,
+                isPreview)
 
             Case "GeoArc"
 
                 Return FromArcRecord(
                 record,
-                pointsByID)
+                pointsByID,
+                isPreview)
 
             Case Else
 
@@ -821,9 +858,9 @@
         layersByReferenceID As Dictionary(Of Integer, Layer),
         toolsByID As Dictionary(
             Of Integer,
-            FabV25_WIN8.WE_ENG_V25_0.Core.Models.Tool)
+            FabV25_WIN8.WE_ENG_V25_0.Core.Models.Tool),
+        Optional isPreview As Boolean = False
     ) As Dictionary(Of Integer, GeoPoint)
-
 
         If mm3File Is Nothing Then
             Throw New ArgumentNullException(NameOf(mm3File))
@@ -838,7 +875,7 @@
 
         For Each record As GeoEntityRecord In mm3File.GeometryPoints
 
-            Dim point As GeoPoint = FromPointRecord(record)
+            Dim point As GeoPoint = FromPointRecord(record, isPreview)
 
 
             RestoreAssociation(
@@ -926,8 +963,9 @@
     layersByReferenceID As Dictionary(Of Integer, Layer),
     toolsByID As Dictionary(
         Of Integer,
-        FabV25_WIN8.WE_ENG_V25_0.Core.Models.Tool)
-) As Dictionary(Of Integer, GeoEntity)
+        FabV25_WIN8.WE_ENG_V25_0.Core.Models.Tool),
+        Optional isPreview As Boolean = False
+        ) As Dictionary(Of Integer, GeoEntity)
 
         If mm3File Is Nothing Then
             Throw New ArgumentNullException(NameOf(mm3File))
@@ -1028,7 +1066,7 @@
 
                 ' Restore the geometry using its saved IDs
                 ' and previously restored point references.
-                entity = FromRecord(record, pointsByID)
+                entity = FromRecord(record, pointsByID, isPreview)
 
             End If
 
@@ -1167,10 +1205,10 @@
 
     End Sub
 
-
     Public Shared Function CollectLayers(
-        entities As IEnumerable(Of GeoEntity)
-    ) As List(Of Layer)
+    entities As IEnumerable(Of GeoEntity),
+    Optional registeredLayers As IEnumerable(Of Layer) = Nothing
+) As List(Of Layer)
 
         If entities Is Nothing Then
             Throw New ArgumentNullException(NameOf(entities))
@@ -1178,49 +1216,59 @@
 
         Dim layers As New List(Of Layer)
 
+        ' Collect explicitly registered layers, including
+        ' layers that contain no geometry.
+        If registeredLayers IsNot Nothing Then
+
+            For Each layer As Layer In registeredLayers
+
+                If layer Is Nothing Then
+                    Throw New InvalidOperationException(
+                    "Layer collection contains a null Layer.")
+                End If
+
+                If Not layers.Any(
+                Function(existingLayer)
+                    Return Object.ReferenceEquals(existingLayer, layer)
+                End Function) Then
+
+                    layers.Add(layer)
+
+                End If
+
+            Next
+
+        End If
+
+        ' Collect layers referenced by geometry and its points.
         For Each entity As GeoEntity In entities
 
             If entity Is Nothing Then
                 Throw New InvalidOperationException(
-                    "Geometry collection contains a null entity.")
+                "Geometry collection contains a null entity.")
             End If
 
             Dim allEntities As New List(Of GeoEntity)
+
             allEntities.Add(entity)
             allEntities.AddRange(GetReferencedPoints(entity))
 
             For Each item As GeoEntity In allEntities
 
                 Dim layer As Layer =
-                    TryCast(item.Association, Layer)
+                TryCast(item.Association, Layer)
 
                 If layer Is Nothing Then
                     Continue For
                 End If
 
+                If Not layers.Any(
+                Function(existingLayer)
+                    Return Object.ReferenceEquals(existingLayer, layer)
+                End Function) Then
 
-                Dim alreadyAdded As Boolean = False
-
-                For Each existingLayer As Layer In layers
-
-                    If Object.ReferenceEquals(existingLayer, layer) Then
-                        alreadyAdded = True
-                        Exit For
-                    End If
-
-                Next
-
-                For Each existingLayer As Layer In layers
-
-                    If Object.ReferenceEquals(existingLayer, layer) Then
-                        alreadyAdded = True
-                        Exit For
-                    End If
-
-                Next
-
-                If Not alreadyAdded Then
                     layers.Add(layer)
+
                 End If
 
             Next
@@ -1361,11 +1409,11 @@
         layerReferenceID)
 
     End Sub
-
-
     Public Shared Sub SaveGeometryCollections(
     entities As IEnumerable(Of GeoEntity),
-    mm3File As MM3File
+    mm3File As MM3File,
+    Optional registeredLayers As IEnumerable(Of Layer) = Nothing,
+    Optional activeLayer As Layer = Nothing
 )
 
         If entities Is Nothing Then
@@ -1383,9 +1431,10 @@
         ' Validate all runtime geometry IDs.
         ValidateRuntimeGeometryIDs(geometry)
 
-        ' Collect distinct Layer objects.
+        ' Collect registered and geometry-referenced Layer objects.
         Dim layers As List(Of Layer) =
-        CollectLayers(geometry)
+    CollectLayers(geometry, registeredLayers)
+
 
         ' Assign file-level Layer reference IDs.
         Dim layersByReferenceID As Dictionary(Of Integer, Layer) =
@@ -1393,7 +1442,31 @@
 
         ' Save the Layer definitions.
         SaveLayers(layersByReferenceID, mm3File)
+        ' Save the active Layer reference.
+        mm3File.ActiveLayerReferenceID = Nothing
 
+        If activeLayer IsNot Nothing Then
+
+            For Each entry In layersByReferenceID
+
+                If Object.ReferenceEquals(entry.Value, activeLayer) Then
+
+                    mm3File.ActiveLayerReferenceID = entry.Key
+
+                    Exit For
+
+                End If
+
+            Next
+
+            If Not mm3File.ActiveLayerReferenceID.HasValue Then
+
+                Throw New InvalidDataException(
+            "The active layer does not belong to the saved layer collection.")
+
+            End If
+
+        End If
         ' Save referenced endpoints and center points.
         SaveReferencedPoints(
         geometry,
@@ -1410,13 +1483,13 @@
         ValidateGeometryIDs(mm3File)
 
     End Sub
-
-
     Public Shared Function RestoreGeometryCollections(
     mm3File As MM3File,
     toolsByID As Dictionary(
         Of Integer,
-        FabV25_WIN8.WE_ENG_V25_0.Core.Models.Tool)
+        FabV25_WIN8.WE_ENG_V25_0.Core.Models.Tool),
+    Optional ByRef layersByReferenceID As Dictionary(Of Integer, Layer) = Nothing,
+    Optional isPreview As Boolean = False
 ) As Dictionary(Of Integer, GeoEntity)
 
         If mm3File Is Nothing Then
@@ -1431,24 +1504,23 @@
         ValidateGeometryIDs(mm3File)
 
         ' Restore original Layer objects.
-        Dim layersByReferenceID As Dictionary(Of Integer, Layer) =
-        RestoreLayers(mm3File)
+        layersByReferenceID = RestoreLayers(mm3File)
 
         ' Restore shared endpoints and center points.
         Dim pointsByID As Dictionary(Of Integer, GeoPoint) =
-        RestoreReferencedPoints(
-            mm3File,
-            layersByReferenceID,
-            toolsByID)
+    RestoreReferencedPoints(
+        mm3File,
+        layersByReferenceID,
+        toolsByID,
+        isPreview)
 
-        ' Restore drawing geometry and associations.
         Dim entitiesByID As Dictionary(Of Integer, GeoEntity) =
-        RestoreGeometry(
-            mm3File,
-            pointsByID,
-            layersByReferenceID,
-            toolsByID)
-
+    RestoreGeometry(
+        mm3File,
+        pointsByID,
+        layersByReferenceID,
+        toolsByID,
+        isPreview)
         Return entitiesByID
 
     End Function

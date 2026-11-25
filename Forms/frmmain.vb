@@ -301,6 +301,7 @@ Public Class frmMain
 
             Logging.Log("AppState loaded successfully.")
 
+
         Catch ex As Exception
             MessageBox.Show($"Error loading application data: {ex.Message}", "Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
             Logging.Log($"Startup error: {ex.ToString()}")
@@ -2444,6 +2445,12 @@ Public Class frmMain
                     If TryReturnGraphicPointToLineControl(e.Location) Then
                         Return
                     End If
+
+                Case "Arc"
+                    If TryReturnGraphicPointToArcControl(e.Location) Then
+                        Return
+                    End If
+
             End Select
 
         End If
@@ -4931,7 +4938,6 @@ Public Class frmMain
 
     End Sub
 
-
     Private Sub DrawToolCuttingProfile(
     g As Graphics,
     shape As ToolShape,
@@ -4940,138 +4946,15 @@ Public Class frmMain
     panelHeight As Integer,
     pen As Pen)
 
-        If shape Is Nothing OrElse
-       shape.CuttingProfile Is Nothing Then
-            Exit Sub
-        End If
-
-        Dim angleRadians As Double =
-    hole.Angle * Math.PI / 180.0
-
-        Dim cosA As Double = Math.Cos(angleRadians)
-        Dim sinA As Double = Math.Sin(angleRadians)
-
-        '    Debug.WriteLine(
-        '$"HOLE ROTATION: Angle={hole.Angle}, Cos={cosA}, Sin={sinA}")
-
-
-        For Each segment As IPathSegment In
-        shape.CuttingProfile.Segments
-
-            '        Debug.WriteLine(
-            '$"HOLE {hole.ID}: SegmentType = {segment.SegmentType}")
-            If segment Is Nothing Then Continue For
-
-            Select Case segment.SegmentType
-
-                Case PathSegmentType.Line
-
-                    'Rotate the start point around the tool center.
-                    Dim x1 As Double =
-                        segment.StartPoint.X * cosA -
-                        segment.StartPoint.Y * sinA
-
-                    Dim y1 As Double =
-                    segment.StartPoint.X * sinA +
-                    segment.StartPoint.Y * cosA
-
-                    'Rotate the end point around the tool center.
-                    Dim x2 As Double =
-                        segment.EndPoint.X * cosA -
-                        segment.EndPoint.Y * sinA
-
-                    Dim y2 As Double =
-                        segment.EndPoint.X * sinA +
-                        segment.EndPoint.Y * cosA
-
-
-                    'Convert rotated coordinates to screen coordinates.
-                    Dim p1 As PointF =
-                        WorldToScreen(
-                            hole.X + x1,
-                            hole.Y + y1,
-                            vt,
-                            panelHeight)
-
-                    Dim p2 As PointF =
-                        WorldToScreen(
-                            hole.X + x2,
-                            hole.Y + y2,
-                            vt,
-                            panelHeight)
-
-                    g.DrawLine(pen, p1, p2)
-
-                Case PathSegmentType.Arc
-
-                    Dim arc As ArcSegment2D =
-                    DirectCast(segment, ArcSegment2D)
-
-                    'Rotate the arc center around the tool origin.
-                    Dim rotatedCenterX As Double =
-                    arc.Center.X * cosA -
-                    arc.Center.Y * sinA
-
-                    Dim rotatedCenterY As Double =
-                    arc.Center.X * sinA +
-                    arc.Center.Y * cosA
-
-                    Dim center As PointF =
-                    WorldToScreen(
-                        hole.X + rotatedCenterX,
-                        hole.Y + rotatedCenterY,
-                        vt,
-                        panelHeight)
-
-                    Dim radius As Single =
-                    CSng(arc.Radius * vt.Scale)
-
-                    Dim rect As New RectangleF(
-                    center.X - radius,
-                    center.Y - radius,
-                    radius * 2.0F,
-                    radius * 2.0F)
-
-                    Dim startAngle As Single =
-                    CSng(-(arc.StartAngle + angleRadians) *
-                         180.0 / Math.PI)
-                    Dim sweepRadians As Double =
-                    arc.EndAngle - arc.StartAngle
-
-                    If arc.IsClockwise Then
-                        If sweepRadians > 0 Then
-                            sweepRadians -= 2.0 * Math.PI
-                        End If
-                    Else
-                        If sweepRadians < 0 Then
-                            sweepRadians += 2.0 * Math.PI
-                        End If
-                    End If
-
-                    Dim sweepAngle As Single =
-                    CSng(-sweepRadians * 180.0 / Math.PI)
-
-                    If Math.Abs(sweepRadians) >=
-                   (2.0 * Math.PI - 0.000001) Then
-
-                        g.DrawEllipse(pen, rect)
-
-                    Else
-
-                        g.DrawArc(
-                        pen,
-                        rect,
-                        startAngle,
-                        sweepAngle)
-
-                    End If
-
-            End Select
-
-        Next
+        ToolProfileRenderer.DrawToolCuttingProfile(
+        g,
+        shape,
+        hole,
+        vt,
+        panelHeight,
+        pen)
 
     End Sub
-
     Private Sub DrawToolCuttingProfile(
     g As Graphics,
     shape As ToolShape,
@@ -5082,22 +4965,17 @@ Public Class frmMain
     panelHeight As Integer,
     pen As Pen)
 
-        Dim displayHole As New HoleFeature With {
-        .X = centerX,
-        .Y = centerY,
-        .Angle = angle
-    }
-
-        DrawToolCuttingProfile(
+        ToolProfileRenderer.DrawToolCuttingProfile(
         g,
         shape,
-        displayHole,
+        centerX,
+        centerY,
+        angle,
         vt,
         panelHeight,
         pen)
 
     End Sub
-
     Private Sub DrawLineOfHolesFeature(
     row As LineOfHolesFeature,
     g As Graphics,
@@ -5352,12 +5230,23 @@ Public Class frmMain
         AddHandler frmLayers.ActiveLayerChanged,
         AddressOf OnActiveLayerChanged
 
+        RemoveHandler frmLayers.LayerVisibilityChanged,
+        AddressOf OnLayerVisibilityChanged
+
+        AddHandler frmLayers.LayerVisibilityChanged,
+        AddressOf OnLayerVisibilityChanged
+
         frmLayers.Show(Me)
 
     End Sub
 
+    Private Sub OnLayerVisibilityChanged()
 
-    Private Sub OnActiveLayerChanged(selectedLayer As Layer)
+        pnlPicmodeler.Invalidate()
+
+    End Sub
+
+    Public Sub OnActiveLayerChanged(selectedLayer As Layer)
 
         If selectedLayer Is Nothing Then Return
 
@@ -5553,7 +5442,7 @@ Public Class frmMain
 
                             Dim entityNode =
                                 tlEntityList.AppendNode(
-                                    New Object() {entity.GetType().Name},
+                                    New Object() {GetGeometryDisplayName(entity)},
                                     profileNode)
 
                             ' Retain the original geometry reference
@@ -5589,7 +5478,7 @@ Public Class frmMain
 
                         Dim entityNode =
                             tlEntityList.AppendNode(
-                                New Object() {entity.GetType().Name},
+                                New Object() {GetGeometryDisplayName(entity)},
                                 partGeoNode)
 
                         entityNode.Tag = entity
@@ -5761,7 +5650,7 @@ Public Class frmMain
 
                                 Dim entityNode =
                             tlEntityList.AppendNode(
-                                New Object() {segment.Entity.GetType().Name},
+                                New Object() {GetGeometryDisplayName(segment.Entity)},
                                 profileNode)
 
                                 entityNode.Tag = segment.Entity
@@ -5781,7 +5670,7 @@ Public Class frmMain
 
                         Dim entityNode =
                     tlEntityList.AppendNode(
-                        New Object() {entity.GetType().Name},
+                        New Object() {GetGeometryDisplayName(entity)},
                         zonePartGeoNode)
 
                         entityNode.Tag = entity
@@ -6461,12 +6350,11 @@ Public Class frmMain
                     editorRow.Name = parameter.Name
                     editorRow.Properties.Caption = parameter.Display
 
-                    If parameter.Editor = "Double" Then
+                    If parameter.Editor = "Double" OrElse
+                         parameter.Editor = "Length" OrElse
+                        parameter.Editor = "Angle" Then
 
-                        editorRow.Properties.Value =
-        If(parameter.Default Is Nothing,
-           "",
-           parameter.Default.ToString())
+                        editorRow.Properties.Value = If(parameter.Default Is Nothing, "", parameter.Default.ToString())
 
                     Else
 
@@ -6525,7 +6413,37 @@ Public Class frmMain
 
                     End If
 
-                    If parameter.Editor = "Double" Then
+                    If parameter.Editor = "Direction" Then
+
+                        Dim directionEditor As New DevExpress.XtraEditors.Repository.RepositoryItemComboBox()
+
+                        directionEditor.Items.Add("CW")
+                        directionEditor.Items.Add("CCW")
+
+                        directionEditor.TextEditStyle =
+        DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+
+                        editorRow.Properties.RowEdit = directionEditor
+
+                    End If
+
+                    If parameter.Editor = "Solution" Then
+
+                        Dim solutionEditor As New DevExpress.XtraEditors.Repository.RepositoryItemComboBox()
+
+                        solutionEditor.Items.Add("Small")
+                        solutionEditor.Items.Add("Large")
+
+                        solutionEditor.TextEditStyle =
+        DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+
+                        editorRow.Properties.RowEdit = solutionEditor
+
+                    End If
+
+                    If parameter.Editor = "Double" OrElse
+                        parameter.Editor = "Length" OrElse
+                        parameter.Editor = "Angle" Then
 
                         Dim textEditor As New DevExpress.XtraEditors.Repository.RepositoryItemTextEdit()
 
@@ -6578,8 +6496,16 @@ Public Class frmMain
         runtimeValue.EnteredValue =
     If(e.Value Is Nothing, "", e.Value.ToString())
 
-        If parameterName = "ps_x" OrElse
-   parameterName = "ps_y" Then
+        Dim parameterDefinition As HoleParameterDefinition =
+        _currentHoleArrangement.Parameters.FirstOrDefault(
+            Function(p) p.Name = parameterName AndAlso
+                        p.Editor <> "Category")
+
+        If parameterDefinition Is Nothing Then Return
+
+        If parameterDefinition.Editor = "Double" OrElse
+           parameterDefinition.Editor = "Length" OrElse
+           parameterDefinition.Editor = "Angle" Then
 
             Dim result As Double = 0
 
@@ -7000,59 +6926,201 @@ Public Class frmMain
         '    MessageBoxIcon.Information)
 
     End Sub
-    Private Sub btnAcceptHole_Click(sender As Object, e As EventArgs) Handles btnAcceptHole.Click
-
-        If _activeCreateOperation = "Line" Then
-
-            Select Case _currentHoleArrangement.ID
-
-                Case 101
-                    AcceptLine2Pt()
-
-                Case Else
-                    MessageBox.Show(
-                "Line definition " &
-                _currentHoleArrangement.ID.ToString() &
-                " is not yet implemented.",
-                "Create Line",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information)
-
-            End Select
-
-            Return
-
-        End If
+    Private Sub btnAcceptHole_Click(
+    sender As Object,
+    e As EventArgs
+) Handles btnAcceptHole.Click
 
         If _currentHoleArrangement Is Nothing Then
+
             MessageBox.Show(
-            "No hole arrangement is selected.",
-            "Create Hole",
+            "No creation definition is selected.",
+            "Create Geometry",
             MessageBoxButtons.OK,
             MessageBoxIcon.Warning)
+
             Return
+
         End If
 
-        Select Case _currentHoleArrangement.ID
+        'Validate the active CAD layer for nominal geometry creation.
+        If _activeCreateOperation = "Line" OrElse
+   _activeCreateOperation = "Arc" Then
 
-            Case 301
-                AcceptSingleHole()
+            Dim targetSheet As JobSheet = GetCurrentJobSheet()
 
-            Case 302
-                AcceptRowInX()
+            If targetSheet Is Nothing OrElse
+       targetSheet.Parts Is Nothing OrElse
+       targetSheet.Parts.Count <> 1 Then
 
-            Case Else
                 MessageBox.Show(
-                "Hole arrangement SNCS " &
-                _currentHoleArrangement.ID.ToString() &
-                " is not yet implemented.",
-                "Create Hole",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information)
+            "A production job with exactly one sheet and one Part is required.",
+            "Create Geometry",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+                Return
+
+            End If
+
+            Dim activeLayer As Layer = Nothing
+
+            If Not TryGetActiveLayer(targetSheet.Parts(0), activeLayer) Then
+
+                MessageBox.Show(
+            "Please select a valid active CAD layer.",
+            "Create Geometry",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+                Return
+
+            End If
+
+
+            'Validate tangent entity references required by this definition.
+            For Each parameter In _currentHoleArrangement.Parameters
+
+                If parameter.Editor <> "TangentEntitySelector" Then
+                    Continue For
+                End If
+
+                Dim parameterValue As HoleParameterValue = Nothing
+
+                If Not _holeParameterValues.TryGetValue(
+                    parameter.Name, parameterValue) Then
+
+                    MessageBox.Show(
+                        "Please select the required tangent entity.",
+                        "Create Geometry",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+
+                    Return
+
+                End If
+
+                Dim selection As TangentSelection =
+                    TryCast(parameterValue.EvaluatedValue, TangentSelection)
+
+                If Not IsValidTangentSelection(
+                    selection, targetSheet.Parts(0)) Then
+
+                    MessageBox.Show(
+                        "The selected tangent entity is no longer valid." &
+                        Environment.NewLine &
+                        "Please select the tangent entity again.",
+                        "Create Geometry",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+
+                    Return
+
+                End If
+
+            Next
+
+        End If
+
+
+
+        Select Case _activeCreateOperation
+
+            Case "Line"
+
+                Select Case _currentHoleArrangement.ID
+
+                    Case 101
+                        AcceptLine2Pt()
+
+                    Case 102
+                        AcceptLineLengthAngle()
+
+                    Case 103
+                        AcceptLineStartPtEndTan()
+
+                    Case 104
+                        AcceptLineStartTanEndPt()
+
+                    Case 105
+                        AcceptLineStartTanEndTan()
+
+                    Case Else
+                        MessageBox.Show(
+                        "Line definition " &
+                        _currentHoleArrangement.ID.ToString() &
+                        " is not yet implemented.",
+                        "Create Line",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information)
+
+                End Select
+
+            Case "Arc"
+
+                Select Case _currentHoleArrangement.ID
+
+                    Case 201
+                        AcceptCircleCenterRadius()
+
+                    Case 202
+                        AcceptArcThreePoints()
+
+                    Case 203
+                        AcceptArcStartEndRadius()
+
+                    Case 204
+                        AcceptArcStartCenterAngle()
+
+                    Case 205
+                        AcceptArcStartCenterEnd()
+
+                    Case 206
+                        AcceptArcStartPointEndTangent()
+
+                    Case 207
+                        AcceptArcStartTangentEndPoint()
+
+                    Case 208
+                        AcceptArcStartTangentEndTangent()
+
+                    Case Else
+                        MessageBox.Show(
+                        "Arc definition " &
+                        _currentHoleArrangement.ID.ToString() &
+                        " is not yet implemented.",
+                        "Create Arc",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information)
+
+                End Select
+
+            Case "Hole"
+
+                Select Case _currentHoleArrangement.ID
+
+                    Case 301
+                        AcceptSingleHole()
+
+                    Case 302
+                        AcceptRowInX()
+
+                    Case Else
+                        MessageBox.Show(
+                        "Hole arrangement SNCS " &
+                        _currentHoleArrangement.ID.ToString() &
+                        " is not yet implemented.",
+                        "Create Hole",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information)
+
+                End Select
 
         End Select
 
     End Sub
+
+
 
     Private Sub AcceptLine2Pt()
 
@@ -7166,6 +7234,17 @@ Public Class frmMain
         Dim newLine As GeoLine =
     creator.CreateLine(x1, y1, x2, y2)
 
+        If newLine Is Nothing Then
+
+            MessageBox.Show(
+        "The specified parameters do not produce a valid line.",
+        "Create Line",
+        MessageBoxButtons.OK,
+        MessageBoxIcon.Warning)
+
+            Return
+
+        End If
         'Associate the new line with the active CAD layer or tool.
         newLine.Association = _activeAssociation
 
@@ -7187,6 +7266,276 @@ Public Class frmMain
 
     End Sub
 
+    Private Sub AcceptLineLengthAngle()
+
+        Dim requiredParameters As String() =
+        {"ps_x", "ps_y", "length", "angle"}
+
+        For Each parameterName As String In requiredParameters
+
+            Dim parameterValue As HoleParameterValue = Nothing
+
+            If Not _holeParameterValues.TryGetValue(
+            parameterName, parameterValue) Then
+
+                MessageBox.Show(
+                "Missing required parameter: " & parameterName,
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+                Return
+            End If
+
+            If Not parameterValue.IsValid OrElse
+           parameterValue.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show(
+                "Please enter a valid value for " & parameterName,
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+                Return
+            End If
+
+        Next
+
+        Dim x1 As Double =
+        Convert.ToDouble(_holeParameterValues("ps_x").EvaluatedValue)
+
+        Dim y1 As Double =
+        Convert.ToDouble(_holeParameterValues("ps_y").EvaluatedValue)
+
+        Dim length As Double =
+        Convert.ToDouble(_holeParameterValues("length").EvaluatedValue)
+
+        Dim angle As Double =
+        Convert.ToDouble(_holeParameterValues("angle").EvaluatedValue)
+
+        If length = 0 Then
+
+            MessageBox.Show(
+            "Line Length cannot be zero.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        'Convert degrees to radians.
+        Dim radians As Double = angle * Math.PI / 180.0
+
+        'Calculate End Point.
+        Dim x2 As Double = x1 + length * Math.Cos(radians)
+        Dim y2 As Double = y1 + length * Math.Sin(radians)
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then
+
+            MessageBox.Show(
+            "A production job with exactly one sheet is required.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        If targetSheet.Parts Is Nothing OrElse
+       targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+            "The current sheet must contain exactly one Part.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo()
+
+        Dim newLine As GeoLine =
+        creator.CreateLine(x1, y1, x2, y2)
+
+        If newLine Is Nothing Then
+
+            MessageBox.Show(
+        "The specified parameters do not produce a valid line.",
+        "Create Line",
+        MessageBoxButtons.OK,
+        MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+        newLine.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newLine)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+        pnlPicmodeler.Invalidate()
+
+        'Return focus to Start Pt.
+        Dim startPointRow = FindHoleGridRow("catHoleSection1")
+
+        If startPointRow IsNot Nothing Then
+            vgCreateHoles.FocusedRow = startPointRow
+            vgCreateHoles.Focus()
+        End If
+
+    End Sub
+
+
+    Private Sub AcceptLineStartPtEndTan()
+
+        Dim requiredParameters As String() =
+        {"ps_x", "ps_y", "etan"}
+
+        For Each parameterName As String In requiredParameters
+
+            Dim parameterValue As HoleParameterValue = Nothing
+
+            If Not _holeParameterValues.TryGetValue(
+            parameterName, parameterValue) Then
+
+                MessageBox.Show(
+                "Missing required parameter: " & parameterName,
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+                Return
+
+            End If
+
+            If Not parameterValue.IsValid OrElse
+           parameterValue.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show(
+                "Please enter a valid value for " & parameterName,
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+                Return
+
+            End If
+
+        Next
+
+        Dim x1 As Double =
+        Convert.ToDouble(_holeParameterValues("ps_x").EvaluatedValue)
+
+        Dim y1 As Double =
+        Convert.ToDouble(_holeParameterValues("ps_y").EvaluatedValue)
+
+        Dim tangent As TangentSelection =
+        TryCast(_holeParameterValues("etan").EvaluatedValue,
+                TangentSelection)
+
+        If tangent Is Nothing Then
+
+            MessageBox.Show(
+            "Please select an End Tan entity.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim x2 As Double
+        Dim y2 As Double
+
+        If Not TangentGeometry.TryGetTangentPoint(
+        x1, y1, tangent, x2, y2) Then
+
+            MessageBox.Show(
+            "No valid tangent solution exists.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then
+
+            MessageBox.Show(
+            "A production job with exactly one sheet is required.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        If targetSheet.Parts Is Nothing OrElse
+       targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+            "The current sheet must contain exactly one Part.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo()
+
+        Dim newLine As GeoLine =
+        creator.CreateLine(x1, y1, x2, y2)
+
+        If newLine Is Nothing Then
+
+            MessageBox.Show(
+        "The specified parameters do not produce a valid line.",
+        "Create Line",
+        MessageBoxButtons.OK,
+        MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        newLine.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newLine)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+        pnlPicmodeler.Invalidate()
+
+        'Return focus to Start Pt.
+        Dim startPointRow = FindHoleGridRow("catHoleSection1")
+
+        If startPointRow IsNot Nothing Then
+            vgCreateHoles.FocusedRow = startPointRow
+            vgCreateHoles.Focus()
+        End If
+
+    End Sub
 
 
     Private Function GetCurrentJobSheet() As JobSheet
@@ -7589,8 +7938,36 @@ Public Class frmMain
         Dim focusedRow As DevExpress.XtraVerticalGrid.Rows.BaseRow =
         vgCreateHoles.FocusedRow
 
-        If focusedRow Is Nothing Then
-            Return False
+        'Handle graphical tangent entity selection.
+        Dim tangentParameterName As String = Nothing
+
+        Select Case focusedRow.Name.ToLowerInvariant()
+
+            Case "stan"
+                tangentParameterName = "stan"
+
+            Case "etan"
+                tangentParameterName = "etan"
+
+            Case Else
+
+                If FindHoleGridRow(focusedRow, "stan") IsNot Nothing Then
+
+                    tangentParameterName = "stan"
+
+                ElseIf FindHoleGridRow(focusedRow, "etan") IsNot Nothing Then
+
+                    tangentParameterName = "etan"
+
+                End If
+
+        End Select
+
+        If tangentParameterName IsNot Nothing Then
+
+            Return TryReturnTangentEntityToControl(
+        tangentParameterName, mouseScreen)
+
         End If
 
         Dim xName As String = Nothing
@@ -7674,9 +8051,208 @@ Public Class frmMain
 
         Return True
     End Function
+    Private Function TryReturnGraphicPointToArcControl(
+    mouseScreen As Point) As Boolean
+
+        If _currentHoleArrangement Is Nothing Then
+            Return False
+        End If
+
+        Dim focusedRow As DevExpress.XtraVerticalGrid.Rows.BaseRow =
+        vgCreateHoles.FocusedRow
+
+        If focusedRow Is Nothing Then Return False
+
+        Dim tangentParameterName As String = Nothing
+
+        Select Case focusedRow.Name.ToLowerInvariant()
+
+            Case "stan"
+                tangentParameterName = "stan"
+
+            Case "etan"
+                tangentParameterName = "etan"
+
+            Case Else
+
+                If FindHoleGridRow(focusedRow, "stan") IsNot Nothing Then
+
+                    tangentParameterName = "stan"
+
+                ElseIf FindHoleGridRow(focusedRow, "etan") IsNot Nothing Then
+
+                    tangentParameterName = "etan"
+
+                End If
+
+        End Select
+
+        If tangentParameterName IsNot Nothing Then
+
+            Return TryReturnTangentEntityToControl(
+        tangentParameterName,
+        mouseScreen)
+
+        End If
 
 
 
+        Dim xName As String = Nothing
+        Dim yName As String = Nothing
+
+        Select Case focusedRow.Name.ToLowerInvariant()
+
+            Case "pc_x", "ps_x", "pe_x", "pi_x"
+                xName = focusedRow.Name.ToLowerInvariant()
+
+            Case "pc_y", "ps_y", "pe_y", "pi_y"
+                yName = focusedRow.Name.ToLowerInvariant()
+
+            Case Else
+
+                For Each prefix As String In New String() {
+                "pc", "ps", "pe", "pi"}
+
+                    If FindHoleGridRow(focusedRow, prefix & "_x") IsNot Nothing AndAlso
+                   FindHoleGridRow(focusedRow, prefix & "_y") IsNot Nothing Then
+
+                        xName = prefix & "_x"
+                        yName = prefix & "_y"
+
+                        Exit For
+
+                    End If
+
+                Next
+
+        End Select
+
+        If xName Is Nothing AndAlso yName Is Nothing Then
+            Return False
+        End If
+
+        Dim worldPoint As PointF =
+        If(_activeSnap.HasValue,
+           _activeSnap.Value.WorldPoint,
+           ScreenToWorld(
+               mouseScreen,
+               myTransform,
+               pnlPicmodeler.ClientSize.Height))
+
+        If xName IsNot Nothing Then
+            SetHoleCoordinateFromGraphic(xName, worldPoint.X)
+        End If
+
+        If yName IsNot Nothing Then
+            SetHoleCoordinateFromGraphic(yName, worldPoint.Y)
+        End If
+
+        'Advance focus after picking a complete coordinate pair.
+        If xName IsNot Nothing AndAlso yName IsNot Nothing Then
+
+            Dim nextRowName As String = Nothing
+
+            Select Case _currentHoleArrangement.ID
+
+                Case 201
+
+                    If xName = "pc_x" Then
+                        nextRowName = "catHoleSection2"
+                    End If
+
+                Case 202
+
+                    Select Case xName
+
+                        Case "ps_x"
+                            nextRowName = "catHoleSection2"
+
+                        Case "pe_x"
+                            nextRowName = "catHoleSection3"
+
+                        Case "pi_x"
+                            btnAcceptHole.Focus()
+
+                    End Select
+
+
+                Case 203
+
+                    Select Case xName
+
+                        Case "ps_x"
+                            nextRowName = "catHoleSection2"
+
+                        Case "pe_x"
+                            nextRowName = "catHoleSection3"
+
+                    End Select
+
+                Case 204
+
+                    Select Case xName
+
+                        Case "ps_x"
+                            nextRowName = "catHoleSection2"
+
+                        Case "pc_x"
+                            nextRowName = "catHoleSection3"
+
+                    End Select
+
+                Case 205
+
+                    Select Case xName
+
+                        Case "ps_x"
+                            nextRowName = "catHoleSection2"
+
+                        Case "pc_x"
+                            nextRowName = "catHoleSection3"
+
+                        Case "pe_x"
+                            nextRowName = "catHoleSection4"
+
+                    End Select
+
+                Case 206
+
+                    If xName = "ps_x" Then
+                        nextRowName = "catHoleSection2"
+                    End If
+
+                Case 207
+                    If xName = "pe_x" Then
+                        nextRowName = "catHoleSection3"
+                    End If
+            End Select
+
+            If nextRowName IsNot Nothing Then
+
+                Dim nextRow = FindHoleGridRow(nextRowName)
+
+                If nextRow IsNot Nothing Then
+
+                    vgCreateHoles.FocusedRow = nextRow
+
+                    vgCreateHoles.OptionsSelectionAndFocus.
+                    EnableAppearanceFocusedRow = True
+
+                    vgCreateHoles.OptionsView.ShowFocusedFrame = True
+
+                    vgCreateHoles.Focus()
+
+                End If
+
+            End If
+
+        End If
+
+        pnlPicmodeler.Invalidate()
+
+        Return True
+
+    End Function
     Private Sub frmMain_KeyUp(sender As Object, e As KeyEventArgs) Handles Me.KeyUp
         If e.KeyCode = Keys.F7 Then
             dockPanelEntityList.Show()
@@ -9250,14 +9826,31 @@ Public Class frmMain
 
         Try
 
+            Dim activeLayer As Layer =
+    TryCast(_activeAssociation, Layer)
+
+            If activeLayer IsNot Nothing Then
+
+                If Not targetSheet.Parts.Any(
+        Function(part) part.Layers.Any(
+            Function(layer) Object.ReferenceEquals(layer, activeLayer))) Then
+
+                    Throw New System.IO.InvalidDataException(
+            "The active layer does not belong to the current JobSheet.")
+
+                End If
+
+            End If
+
             Dim nativeFile As MM3NativeFile =
-            MM3NativeFileService.BuildNativeFile(
-                CurrentProductionJob,
-                targetSheet,
-                CurrentJob,
-                selectedPath,
-                "JobSheet",
-                True)
+    MM3NativeFileService.BuildNativeFile(
+        CurrentProductionJob,
+        targetSheet,
+        CurrentJob,
+        selectedPath,
+        "JobSheet",
+        True,
+        activeLayer)
 
             MM3NativeFileService.WriteNativeFile(
             selectedPath,
@@ -9337,14 +9930,32 @@ Public Class frmMain
 
         Try
 
+
+            Dim activeLayer As Layer =
+    TryCast(_activeAssociation, Layer)
+
+            If activeLayer IsNot Nothing Then
+
+                If Not targetSheet.Parts.Any(
+        Function(part) part.Layers.Any(
+            Function(layer) Object.ReferenceEquals(layer, activeLayer))) Then
+
+                    Throw New System.IO.InvalidDataException(
+            "The active layer does not belong to the current JobSheet.")
+
+                End If
+
+            End If
+
             Dim nativeFile As MM3NativeFile =
-            MM3NativeFileService.BuildNativeFile(
-                CurrentProductionJob,
-                targetSheet,
-                CurrentJob,
-                selectedPath,
-                "JobSheet",
-                True)
+    MM3NativeFileService.BuildNativeFile(
+        CurrentProductionJob,
+        targetSheet,
+        CurrentJob,
+        selectedPath,
+        "JobSheet",
+        True,
+        activeLayer)
 
             MM3NativeFileService.WriteNativeFile(
             selectedPath,
@@ -9386,9 +9997,1613 @@ Public Class frmMain
 
     End Function
 
+    Private Function GetGeometryDisplayName(entity As GeoEntity) As String
+
+        If entity Is Nothing Then Return String.Empty
+
+        If TypeOf entity Is GeoLine Then
+            Return "Line"
+
+        ElseIf TypeOf entity Is GeoCircle Then
+            Return "Circle"
+
+        ElseIf TypeOf entity Is GeoArc Then
+            Return "Arc"
+
+        ElseIf TypeOf entity Is GeoPoint Then
+            Return "Point"
+
+        End If
+
+        Return entity.GetType().Name
+
+    End Function
+
+
     Private Sub iNew_ItemClick(sender As Object, e As ItemClickEventArgs) Handles iNew.ItemClick
 
+        Using frm As New frmNewProject()
+
+            If frm.ShowDialog() <> DialogResult.OK Then
+                Return
+            End If
+
+
+            ' Preserve Job-level information.
+            PendingCustomerName = frm.CustomerName
+            PendingOrderPO = frm.OrderPO
+            PendingDueDate = frm.DueDate
+
+            ' Create the new production job.
+            If Not CreateNewProductionJob() Then
+                Return
+            End If
+
+            ' Establish the initial active layer.
+            Dim initialLayer As Layer =
+    CurrentProductionJob.JobSheets(0).Parts(0).Layers.
+    First(Function(layer) String.Equals(
+        layer.Name,
+        "Layer_1",
+        StringComparison.OrdinalIgnoreCase))
+
+            OnActiveLayerChanged(initialLayer)
+
+            ' Clear previous selection.
+            _selectionManager.Clear()
+
+            ' Clear legacy CAD collections.
+            _cadEntities = New List(Of CadEntity)
+            _visibleEntities = New List(Of CadEntity)
+
+            ' Clear the previous DXF filename.
+            _selectedDxfPath = String.Empty
+
+            ' File New does not require DXF preparation.
+            _DoPrepareUI = False
+            _DoDrawUI = True
+            _sceneReady = True
+
+            ' Rebuild geometry and selection registration.
+            BuildDrawables()
+
+            ' Refresh the user interface.
+            InitializeWorkZonesPanel()
+            InitializeEntityList()
+            RefreshEntityList()
+
+            pnlPicmodeler.Invalidate()
+
+        End Using
+
     End Sub
+
+    Private Function TryReturnTangentEntityToControl(
+        parameterName As String,
+        mouseScreen As Point) As Boolean
+
+        Dim runtimeValue As HoleParameterValue = Nothing
+
+        If Not _holeParameterValues.TryGetValue(
+            parameterName, runtimeValue) Then
+
+            Return False
+
+        End If
+
+        'Use the actual mouse location, not the snapped point.
+        Dim worldPoint As PointF =
+            ScreenToWorld(
+                mouseScreen,
+                myTransform,
+                pnlPicmodeler.ClientSize.Height)
+
+        Dim scale As Single =
+            Math.Max(CSng(myTransform.Scale), 0.0001F)
+
+        Dim tolWorld As Single =
+            Math.Max(HitTolerancePx / scale, 0.1F)
+
+        Dim entity As GeoEntity =
+            _selectionManager.HitTestTangentEntity(
+                worldPoint, tolWorld)
+
+        If entity Is Nothing Then Return False
+
+        Dim tangent As New TangentSelection With {
+            .Entity = entity,
+            .PickPoint = worldPoint
+        }
+
+        runtimeValue.EnteredValue = entity.ID.ToString()
+        runtimeValue.EvaluatedValue = tangent
+        runtimeValue.IsValid = True
+
+        Dim tangentRow = FindHoleGridRow(parameterName)
+
+        If tangentRow IsNot Nothing Then
+
+            _updatingHoleGrid = True
+
+            Try
+                tangentRow.Properties.Value = entity.ID.ToString()
+            Finally
+                _updatingHoleGrid = False
+            End Try
+
+        End If
+
+        If parameterName = "stan" Then
+
+            'Advance to End Pt or End Tan.
+            Dim nextRow = FindHoleGridRow("catHoleSection2")
+
+            If nextRow IsNot Nothing Then
+
+                vgCreateHoles.FocusedRow = nextRow
+                vgCreateHoles.Focus()
+
+            End If
+
+        ElseIf parameterName = "etan" Then
+
+            Select Case _activeCreateOperation
+
+                Case "Arc"
+
+                    'Advance to Radius.
+                    Dim nextRow = FindHoleGridRow("catHoleSection3")
+
+                    If nextRow IsNot Nothing Then
+
+                        vgCreateHoles.FocusedRow = nextRow
+                        vgCreateHoles.Focus()
+
+                    End If
+
+                Case Else
+
+                    'All graphical input is complete.
+                    btnAcceptHole.Focus()
+
+            End Select
+
+        End If
+
+        pnlPicmodeler.Invalidate()
+
+        Return True
+
+    End Function
+
+    Private Sub AcceptLineStartTanEndPt()
+
+        Dim requiredParameters As String() =
+            {"stan", "pe_x", "pe_y"}
+
+        For Each parameterName As String In requiredParameters
+
+            Dim parameterValue As HoleParameterValue = Nothing
+
+            If Not _holeParameterValues.TryGetValue(
+                parameterName, parameterValue) Then
+
+                MessageBox.Show(
+                    "Missing required parameter: " & parameterName,
+                    "Create Line",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning)
+
+                Return
+
+            End If
+
+            If Not parameterValue.IsValid OrElse
+               parameterValue.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show(
+                    "Please enter a valid value for " & parameterName,
+                    "Create Line",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning)
+
+                Return
+
+            End If
+
+        Next
+
+        Dim x2 As Double =
+            Convert.ToDouble(_holeParameterValues("pe_x").EvaluatedValue)
+
+        Dim y2 As Double =
+            Convert.ToDouble(_holeParameterValues("pe_y").EvaluatedValue)
+
+        Dim tangent As TangentSelection =
+            TryCast(_holeParameterValues("stan").EvaluatedValue,
+                    TangentSelection)
+
+        If tangent Is Nothing Then
+
+            MessageBox.Show(
+                "Please select a Start Tan entity.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim x1 As Double
+        Dim y1 As Double
+
+        If Not TangentGeometry.TryGetTangentPoint(
+            x2, y2, tangent, x1, y1) Then
+
+            MessageBox.Show(
+                "No valid tangent solution exists.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then
+
+            MessageBox.Show(
+                "A production job with exactly one sheet is required.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        If targetSheet.Parts Is Nothing OrElse
+           targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo()
+
+        Dim newLine As GeoLine =
+            creator.CreateLine(x1, y1, x2, y2)
+
+        If newLine Is Nothing Then
+
+            MessageBox.Show(
+        "The specified parameters do not produce a valid line.",
+        "Create Line",
+        MessageBoxButtons.OK,
+        MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+        newLine.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newLine)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+        pnlPicmodeler.Invalidate()
+
+        'Return focus to Start Tan.
+        Dim startTangentRow = FindHoleGridRow("catHoleSection1")
+
+        If startTangentRow IsNot Nothing Then
+            vgCreateHoles.FocusedRow = startTangentRow
+            vgCreateHoles.Focus()
+        End If
+
+    End Sub
+
+
+
+    Private Sub AcceptLineStartTanEndTan()
+
+        Dim startValue As HoleParameterValue = Nothing
+        Dim endValue As HoleParameterValue = Nothing
+
+        If Not _holeParameterValues.TryGetValue(
+            "stan", startValue) OrElse
+           Not _holeParameterValues.TryGetValue(
+            "etan", endValue) Then
+
+            MessageBox.Show(
+                "Missing required tangent parameters.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim startTangent As TangentSelection =
+            TryCast(startValue.EvaluatedValue, TangentSelection)
+
+        Dim endTangent As TangentSelection =
+            TryCast(endValue.EvaluatedValue, TangentSelection)
+
+        If Not startValue.IsValid OrElse
+           startTangent Is Nothing Then
+
+            MessageBox.Show(
+                "Please select a Start Tan entity.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        If Not endValue.IsValid OrElse
+           endTangent Is Nothing Then
+
+            MessageBox.Show(
+                "Please select an End Tan entity.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim x1 As Double
+        Dim y1 As Double
+        Dim x2 As Double
+        Dim y2 As Double
+
+        If Not TangentGeometry.TryGetCommonTangent(
+            startTangent,
+            endTangent,
+            x1, y1,
+            x2, y2) Then
+
+            MessageBox.Show(
+                "No valid common tangent solution exists.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then
+
+            MessageBox.Show(
+                "A production job with exactly one sheet is required.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        If targetSheet.Parts Is Nothing OrElse
+           targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.",
+                "Create Line",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo()
+
+        Dim newLine As GeoLine =
+            creator.CreateLine(x1, y1, x2, y2)
+
+        If newLine Is Nothing Then
+
+            MessageBox.Show(
+        "The specified parameters do not produce a valid line.",
+        "Create Line",
+        MessageBoxButtons.OK,
+        MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        newLine.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newLine)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+        pnlPicmodeler.Invalidate()
+
+        'Return focus to Start Tan.
+        Dim startTangentRow = FindHoleGridRow("catHoleSection1")
+
+        If startTangentRow IsNot Nothing Then
+            vgCreateHoles.FocusedRow = startTangentRow
+            vgCreateHoles.Focus()
+        End If
+
+    End Sub
+    Private Sub bbCreateArc_ItemClick(
+    sender As Object,
+    e As ItemClickEventArgs
+) Handles bbCreateArc.ItemClick
+
+        _activeCreateOperation = "Arc"
+
+        dockPanelCreateHole.Show()
+
+        Dim filePath As String =
+        IO.Path.Combine(
+            dataFolder,
+            "ArcDefinitions.json")
+
+        _holeArrangementDefinitions =
+        HoleArrangementDefinitionLoader.Load(filePath)
+
+        Dim definitions As HoleArrangementDefinitions =
+        _holeArrangementDefinitions
+
+        cbeHoleDefinition.Properties.Items.Clear()
+
+        For Each arrangement As HoleArrangementDefinition In definitions.Arrangements
+
+            cbeHoleDefinition.Properties.Items.Add(
+            arrangement.Description)
+
+        Next
+
+        Dim definition As HoleArrangementDefinition =
+        definitions.Arrangements.FirstOrDefault(
+            Function(a) a.ID = 201)
+
+        If definition Is Nothing Then
+
+            MessageBox.Show(
+            "Center Pt / Radius definition not found.")
+
+            Return
+
+        End If
+
+        cbeHoleDefinition.SelectedIndex = 0
+
+        PopulateHoleArrangementGrid(definition)
+
+    End Sub
+
+    Private Sub AcceptCircleCenterRadius()
+
+        Dim requiredParameters As String() = {
+            "pc_x",
+            "pc_y",
+            "radius",
+            "direction"
+        }
+
+        For Each parameterName As String In requiredParameters
+
+            Dim parameterValue As HoleParameterValue = Nothing
+
+            If Not _holeParameterValues.TryGetValue(
+                parameterName, parameterValue) OrElse
+               Not parameterValue.IsValid OrElse
+               parameterValue.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show(
+                    "Invalid or missing parameter: " & parameterName,
+                    "Create Circle",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning)
+
+                Return
+
+            End If
+
+        Next
+
+        Dim centerX As Double =
+            CDbl(_holeParameterValues("pc_x").EvaluatedValue)
+
+        Dim centerY As Double =
+            CDbl(_holeParameterValues("pc_y").EvaluatedValue)
+
+        Dim radius As Double =
+            CDbl(_holeParameterValues("radius").EvaluatedValue)
+
+        Dim direction As String =
+            Convert.ToString(
+                _holeParameterValues("direction").EvaluatedValue)
+
+        If radius <= 0.0 OrElse
+           Double.IsNaN(radius) OrElse
+           Double.IsInfinity(radius) Then
+
+            MessageBox.Show(
+                "Radius must be greater than zero.",
+                "Create Circle",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        If direction <> "CW" AndAlso direction <> "CCW" Then
+
+            MessageBox.Show(
+                "Invalid Circle direction.",
+                "Create Circle",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        Dim isClockwise As Boolean = (direction = "CW")
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then
+
+            MessageBox.Show(
+                "A production job with exactly one sheet is required.")
+
+            Return
+
+        End If
+
+        If targetSheet.Parts Is Nothing OrElse
+           targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.")
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo()
+
+        Dim newCircle As GeoCircle =
+    creator.CreateCircle(
+        centerX,
+        centerY,
+        radius,
+        isClockwise)
+
+        If newCircle Is Nothing Then
+
+            MessageBox.Show(
+        "The specified parameters do not produce a valid circle.",
+        "Create Circle",
+        MessageBoxButtons.OK,
+        MessageBoxIcon.Warning)
+
+            Return
+
+        End If
+
+        newCircle.Association = _activeAssociation
+
+        newCircle.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newCircle)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+
+        pnlPicmodeler.Invalidate()
+
+        'Return focus to Center Pt.
+        Dim centerPointRow = FindHoleGridRow("catHoleSection1")
+
+        If centerPointRow IsNot Nothing Then
+
+            vgCreateHoles.FocusedRow = centerPointRow
+            vgCreateHoles.Focus()
+
+        End If
+
+    End Sub
+
+    Private Sub AcceptArcThreePoints()
+
+        Dim requiredParameters As String() = {
+            "ps_x", "ps_y",
+            "pe_x", "pe_y",
+            "pi_x", "pi_y"
+        }
+
+        For Each parameterName As String In requiredParameters
+
+            If Not _holeParameterValues.ContainsKey(parameterName) Then
+                MessageBox.Show("Missing parameter: " & parameterName)
+                Return
+            End If
+
+            Dim parameter = _holeParameterValues(parameterName)
+
+            If Not parameter.IsValid OrElse
+               parameter.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show("Invalid parameter: " & parameterName)
+                Return
+
+            End If
+
+        Next
+
+        Dim startX As Double =
+            CDbl(_holeParameterValues("ps_x").EvaluatedValue)
+
+        Dim startY As Double =
+            CDbl(_holeParameterValues("ps_y").EvaluatedValue)
+
+        Dim endX As Double =
+            CDbl(_holeParameterValues("pe_x").EvaluatedValue)
+
+        Dim endY As Double =
+            CDbl(_holeParameterValues("pe_y").EvaluatedValue)
+
+        Dim intX As Double =
+            CDbl(_holeParameterValues("pi_x").EvaluatedValue)
+
+        Dim intY As Double =
+            CDbl(_holeParameterValues("pi_y").EvaluatedValue)
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then Return
+
+        If targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.")
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo
+
+        Dim newArc As GeoArc =
+            creator.CreateArcThreePoints(
+                startX,
+                startY,
+                endX,
+                endY,
+                intX,
+                intY)
+
+        If newArc Is Nothing Then
+
+            MessageBox.Show(
+                "Cannot create an Arc from the specified points." &
+                vbCrLf &
+                "The points are coincident or collinear.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        newArc.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newArc)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+
+        pnlPicmodeler.Invalidate()
+
+        Dim startRow = FindHoleGridRow("catHoleSection1")
+
+        If startRow IsNot Nothing Then
+
+            vgCreateHoles.FocusedRow = startRow
+
+            vgCreateHoles.OptionsSelectionAndFocus.
+                EnableAppearanceFocusedRow = True
+
+            vgCreateHoles.OptionsView.ShowFocusedFrame = True
+
+            vgCreateHoles.Focus()
+
+        End If
+
+    End Sub
+
+    Private Sub AcceptArcStartEndRadius()
+
+        Dim requiredParameters As String() = {
+            "ps_x", "ps_y",
+            "pe_x", "pe_y",
+            "radius", "direction", "solution"
+        }
+
+        For Each parameterName As String In requiredParameters
+
+            If Not _holeParameterValues.ContainsKey(parameterName) Then
+                MessageBox.Show("Missing parameter: " & parameterName)
+                Return
+            End If
+
+            Dim parameter = _holeParameterValues(parameterName)
+
+            If Not parameter.IsValid OrElse
+               parameter.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show("Invalid parameter: " & parameterName)
+                Return
+
+            End If
+
+        Next
+
+        Dim startX As Double =
+            CDbl(_holeParameterValues("ps_x").EvaluatedValue)
+
+        Dim startY As Double =
+            CDbl(_holeParameterValues("ps_y").EvaluatedValue)
+
+        Dim endX As Double =
+            CDbl(_holeParameterValues("pe_x").EvaluatedValue)
+
+        Dim endY As Double =
+            CDbl(_holeParameterValues("pe_y").EvaluatedValue)
+
+        Dim radius As Double =
+            CDbl(_holeParameterValues("radius").EvaluatedValue)
+
+        Dim direction As String =
+            Convert.ToString(
+                _holeParameterValues("direction").EvaluatedValue)
+
+        Dim solution As String =
+            Convert.ToString(
+                _holeParameterValues("solution").EvaluatedValue)
+
+        If direction <> "CW" AndAlso direction <> "CCW" Then
+
+            MessageBox.Show("Invalid Arc Direction.", "Create Arc")
+            Return
+
+        End If
+
+        If solution <> "Small" AndAlso solution <> "Large" Then
+
+            MessageBox.Show("Invalid Arc Solution.", "Create Arc")
+            Return
+
+        End If
+
+        Dim isClockwise As Boolean = (direction = "CW")
+        Dim isLarge As Boolean = (solution = "Large")
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then Return
+
+        If targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.")
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo
+
+        Dim newArc As GeoArc =
+            creator.CreateArcStartEndRadius(
+                startX,
+                startY,
+                endX,
+                endY,
+                radius,
+                isClockwise,
+                isLarge)
+
+        If newArc Is Nothing Then
+
+            MessageBox.Show(
+                "Cannot create an Arc from the specified parameters." &
+                vbCrLf &
+                "Verify the Start Point, End Point and Radius.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        newArc.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newArc)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+
+        pnlPicmodeler.Invalidate()
+
+        Dim startRow = FindHoleGridRow("catHoleSection1")
+
+        If startRow IsNot Nothing Then
+
+            vgCreateHoles.FocusedRow = startRow
+
+            vgCreateHoles.OptionsSelectionAndFocus.
+                EnableAppearanceFocusedRow = True
+
+            vgCreateHoles.OptionsView.ShowFocusedFrame = True
+
+            vgCreateHoles.Focus()
+
+        End If
+
+    End Sub
+
+    Private Sub AcceptArcStartCenterAngle()
+
+        Dim requiredParameters As String() = {
+            "ps_x", "ps_y",
+            "pc_x", "pc_y",
+            "angle", "direction"
+        }
+
+        For Each parameterName As String In requiredParameters
+
+            If Not _holeParameterValues.ContainsKey(parameterName) Then
+                MessageBox.Show("Missing parameter: " & parameterName)
+                Return
+            End If
+
+            Dim parameter = _holeParameterValues(parameterName)
+
+            If Not parameter.IsValid OrElse
+               parameter.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show("Invalid parameter: " & parameterName)
+                Return
+
+            End If
+
+        Next
+
+        Dim startX As Double =
+            CDbl(_holeParameterValues("ps_x").EvaluatedValue)
+
+        Dim startY As Double =
+            CDbl(_holeParameterValues("ps_y").EvaluatedValue)
+
+        Dim centerX As Double =
+            CDbl(_holeParameterValues("pc_x").EvaluatedValue)
+
+        Dim centerY As Double =
+            CDbl(_holeParameterValues("pc_y").EvaluatedValue)
+
+        Dim angle As Double =
+            CDbl(_holeParameterValues("angle").EvaluatedValue)
+
+        Dim direction As String =
+            Convert.ToString(
+                _holeParameterValues("direction").EvaluatedValue)
+
+        If direction <> "CW" AndAlso direction <> "CCW" Then
+
+            MessageBox.Show("Invalid Arc Direction.", "Create Arc")
+            Return
+
+        End If
+
+        Dim isClockwise As Boolean = (direction = "CW")
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then Return
+
+        If targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.")
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo
+
+        Dim newEntity As GeoEntity =
+            creator.CreateArcStartCenterAngle(
+                startX,
+                startY,
+                centerX,
+                centerY,
+                angle,
+                isClockwise)
+
+        If newEntity Is Nothing Then
+
+            MessageBox.Show(
+                "Cannot create geometry from the specified parameters." &
+                vbCrLf &
+                "Verify the Start Point, Center Point and Angle.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        newEntity.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newEntity)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+
+        pnlPicmodeler.Invalidate()
+
+        Dim startRow = FindHoleGridRow("catHoleSection1")
+
+        If startRow IsNot Nothing Then
+
+            vgCreateHoles.FocusedRow = startRow
+
+            vgCreateHoles.OptionsSelectionAndFocus.
+                EnableAppearanceFocusedRow = True
+
+            vgCreateHoles.OptionsView.ShowFocusedFrame = True
+
+            vgCreateHoles.Focus()
+
+        End If
+
+    End Sub
+
+    Private Sub AcceptArcStartCenterEnd()
+
+        Dim requiredParameters As String() = {
+            "ps_x", "ps_y",
+            "pc_x", "pc_y",
+            "pe_x", "pe_y",
+            "direction"
+        }
+
+        For Each parameterName As String In requiredParameters
+
+            If Not _holeParameterValues.ContainsKey(parameterName) Then
+                MessageBox.Show("Missing parameter: " & parameterName)
+                Return
+            End If
+
+            Dim parameter = _holeParameterValues(parameterName)
+
+            If Not parameter.IsValid OrElse
+               parameter.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show("Invalid parameter: " & parameterName)
+                Return
+
+            End If
+
+        Next
+
+        Dim startX As Double =
+            CDbl(_holeParameterValues("ps_x").EvaluatedValue)
+
+        Dim startY As Double =
+            CDbl(_holeParameterValues("ps_y").EvaluatedValue)
+
+        Dim centerX As Double =
+            CDbl(_holeParameterValues("pc_x").EvaluatedValue)
+
+        Dim centerY As Double =
+            CDbl(_holeParameterValues("pc_y").EvaluatedValue)
+
+        Dim endX As Double =
+            CDbl(_holeParameterValues("pe_x").EvaluatedValue)
+
+        Dim endY As Double =
+            CDbl(_holeParameterValues("pe_y").EvaluatedValue)
+
+        Dim direction As String =
+            Convert.ToString(
+                _holeParameterValues("direction").EvaluatedValue)
+
+        If direction <> "CW" AndAlso direction <> "CCW" Then
+
+            MessageBox.Show("Invalid Arc Direction.", "Create Arc")
+            Return
+
+        End If
+
+        Dim isClockwise As Boolean = (direction = "CW")
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then Return
+
+        If targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.")
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo
+
+        Dim newArc As GeoArc =
+            creator.CreateArcStartCenterEnd(
+                startX,
+                startY,
+                centerX,
+                centerY,
+                endX,
+                endY,
+                isClockwise)
+
+        If newArc Is Nothing Then
+
+            MessageBox.Show(
+                "Cannot create an Arc from the specified points." &
+                vbCrLf &
+                "Start and End Points must be distinct and lie " &
+                "on the same circumference with a nonzero Radius.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        newArc.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newArc)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+
+        pnlPicmodeler.Invalidate()
+
+        Dim startRow = FindHoleGridRow("catHoleSection1")
+
+        If startRow IsNot Nothing Then
+
+            vgCreateHoles.FocusedRow = startRow
+
+            vgCreateHoles.OptionsSelectionAndFocus.
+                EnableAppearanceFocusedRow = True
+
+            vgCreateHoles.OptionsView.ShowFocusedFrame = True
+
+            vgCreateHoles.Focus()
+
+        End If
+
+    End Sub
+
+
+    Private Sub AcceptArcStartPointEndTangent()
+
+        Dim requiredParameters As String() = {
+            "ps_x", "ps_y",
+            "etan", "radius", "direction"
+        }
+
+        For Each parameterName As String In requiredParameters
+
+            If Not _holeParameterValues.ContainsKey(parameterName) Then
+                MessageBox.Show("Missing parameter: " & parameterName)
+                Return
+            End If
+
+            Dim parameter = _holeParameterValues(parameterName)
+
+            If Not parameter.IsValid OrElse
+               parameter.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show("Invalid parameter: " & parameterName)
+                Return
+
+            End If
+
+        Next
+
+        Dim startX As Double =
+            CDbl(_holeParameterValues("ps_x").EvaluatedValue)
+
+        Dim startY As Double =
+            CDbl(_holeParameterValues("ps_y").EvaluatedValue)
+
+        Dim radius As Double =
+            CDbl(_holeParameterValues("radius").EvaluatedValue)
+
+        Dim direction As String =
+            Convert.ToString(
+                _holeParameterValues("direction").EvaluatedValue)
+
+        Dim tangent As TangentSelection =
+            TryCast(
+                _holeParameterValues("etan").EvaluatedValue,
+                TangentSelection)
+
+        If tangent Is Nothing OrElse tangent.Entity Is Nothing Then
+
+            MessageBox.Show(
+                "Select an End Tan entity.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        If direction <> "CW" AndAlso direction <> "CCW" Then
+
+            MessageBox.Show("Invalid Arc Direction.", "Create Arc")
+            Return
+
+        End If
+
+        Dim isClockwise As Boolean = (direction = "CW")
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then Return
+
+        If targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.")
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo
+
+        Dim newArc As GeoArc =
+            creator.CreateArcStartPointEndTangent(
+                startX,
+                startY,
+                tangent,
+                radius,
+                isClockwise)
+
+        If newArc Is Nothing Then
+
+            MessageBox.Show(
+                "No valid tangent Arc solution exists." &
+                vbCrLf &
+                "Verify the Start Point, tangent entity and Radius.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        newArc.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newArc)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+
+        pnlPicmodeler.Invalidate()
+
+        Dim startRow = FindHoleGridRow("catHoleSection1")
+
+        If startRow IsNot Nothing Then
+
+            vgCreateHoles.FocusedRow = startRow
+
+            vgCreateHoles.OptionsSelectionAndFocus.
+                EnableAppearanceFocusedRow = True
+
+            vgCreateHoles.OptionsView.ShowFocusedFrame = True
+
+            vgCreateHoles.Focus()
+
+        End If
+
+    End Sub
+
+    Private Sub AcceptArcStartTangentEndPoint()
+
+        Dim requiredParameters As String() = {
+            "stan", "pe_x", "pe_y",
+            "radius", "direction"
+        }
+
+        For Each parameterName As String In requiredParameters
+
+            If Not _holeParameterValues.ContainsKey(parameterName) Then
+                MessageBox.Show("Missing parameter: " & parameterName)
+                Return
+            End If
+
+            Dim parameter = _holeParameterValues(parameterName)
+
+            If Not parameter.IsValid OrElse
+               parameter.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show("Invalid parameter: " & parameterName)
+                Return
+
+            End If
+
+        Next
+
+        Dim endX As Double =
+            CDbl(_holeParameterValues("pe_x").EvaluatedValue)
+
+        Dim endY As Double =
+            CDbl(_holeParameterValues("pe_y").EvaluatedValue)
+
+        Dim radius As Double =
+            CDbl(_holeParameterValues("radius").EvaluatedValue)
+
+        Dim direction As String =
+            Convert.ToString(
+                _holeParameterValues("direction").EvaluatedValue)
+
+        Dim tangent As TangentSelection =
+            TryCast(
+                _holeParameterValues("stan").EvaluatedValue,
+                TangentSelection)
+
+        If tangent Is Nothing OrElse tangent.Entity Is Nothing Then
+
+            MessageBox.Show(
+                "Select a Start Tan entity.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        If direction <> "CW" AndAlso direction <> "CCW" Then
+
+            MessageBox.Show("Invalid Arc Direction.", "Create Arc")
+            Return
+
+        End If
+
+        Dim isClockwise As Boolean = (direction = "CW")
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then Return
+
+        If targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.")
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo
+
+        Dim newArc As GeoArc =
+            creator.CreateArcStartTangentEndPoint(
+                tangent,
+                endX,
+                endY,
+                radius,
+                isClockwise)
+
+        If newArc Is Nothing Then
+
+            MessageBox.Show(
+                "No valid tangent Arc solution exists." &
+                vbCrLf &
+                "Verify the tangent entity, End Point and Radius.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        newArc.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newArc)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+
+        pnlPicmodeler.Invalidate()
+
+        Dim startRow = FindHoleGridRow("catHoleSection1")
+
+        If startRow IsNot Nothing Then
+
+            vgCreateHoles.FocusedRow = startRow
+
+            vgCreateHoles.OptionsSelectionAndFocus.
+                EnableAppearanceFocusedRow = True
+
+            vgCreateHoles.OptionsView.ShowFocusedFrame = True
+
+            vgCreateHoles.Focus()
+
+        End If
+
+    End Sub
+
+    Private Sub AcceptArcStartTangentEndTangent()
+
+        Dim requiredParameters As String() = {
+            "stan", "etan",
+            "radius", "direction", "solution"
+        }
+
+        For Each parameterName As String In requiredParameters
+
+            If Not _holeParameterValues.ContainsKey(parameterName) Then
+                MessageBox.Show("Missing parameter: " & parameterName)
+                Return
+            End If
+
+            Dim parameter = _holeParameterValues(parameterName)
+
+            If Not parameter.IsValid OrElse
+               parameter.EvaluatedValue Is Nothing Then
+
+                MessageBox.Show("Invalid parameter: " & parameterName)
+                Return
+
+            End If
+
+        Next
+
+        Dim startTangent As TangentSelection =
+            TryCast(
+                _holeParameterValues("stan").EvaluatedValue,
+                TangentSelection)
+
+        Dim endTangent As TangentSelection =
+            TryCast(
+                _holeParameterValues("etan").EvaluatedValue,
+                TangentSelection)
+
+        Dim radius As Double =
+            CDbl(_holeParameterValues("radius").EvaluatedValue)
+
+        Dim direction As String =
+            Convert.ToString(
+                _holeParameterValues("direction").EvaluatedValue)
+
+        Dim solution As String =
+            Convert.ToString(
+                _holeParameterValues("solution").EvaluatedValue)
+
+        If startTangent Is Nothing OrElse
+           startTangent.Entity Is Nothing Then
+
+            MessageBox.Show(
+                "Select a Start Tan entity.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        If endTangent Is Nothing OrElse
+           endTangent.Entity Is Nothing Then
+
+            MessageBox.Show(
+                "Select an End Tan entity.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        If direction <> "CW" AndAlso direction <> "CCW" Then
+
+            MessageBox.Show("Invalid Arc Direction.", "Create Arc")
+            Return
+
+        End If
+
+        If solution <> "Small" AndAlso solution <> "Large" Then
+
+            MessageBox.Show("Invalid Arc Solution.", "Create Arc")
+            Return
+
+        End If
+
+        Dim isClockwise As Boolean = (direction = "CW")
+        Dim isLarge As Boolean = (solution = "Large")
+
+        Dim targetSheet As JobSheet = GetCurrentJobSheet()
+
+        If targetSheet Is Nothing Then Return
+
+        If targetSheet.Parts.Count <> 1 Then
+
+            MessageBox.Show(
+                "The current sheet must contain exactly one Part.")
+
+            Return
+
+        End If
+
+        Dim targetPart As Part = targetSheet.Parts(0)
+
+        Dim creator As New CreateGeo
+
+        Dim newArc As GeoArc =
+            creator.CreateArcStartTangentEndTangent(
+                startTangent,
+                endTangent,
+                radius,
+                isClockwise,
+                isLarge)
+
+        If newArc Is Nothing Then
+
+            MessageBox.Show(
+                "No valid tangent Arc solution exists." &
+                vbCrLf &
+                "Verify the tangent entities, Radius, " &
+                "Direction and Solution.",
+                "Create Arc")
+
+            Return
+
+        End If
+
+        newArc.Association = _activeAssociation
+
+        targetPart.Geometry.Add(newArc)
+
+        BuildDrawables()
+
+        RefreshEntityList()
+
+        pnlPicmodeler.Invalidate()
+
+        Dim startRow = FindHoleGridRow("catHoleSection1")
+
+        If startRow IsNot Nothing Then
+
+            vgCreateHoles.FocusedRow = startRow
+
+            vgCreateHoles.OptionsSelectionAndFocus.
+                EnableAppearanceFocusedRow = True
+
+            vgCreateHoles.OptionsView.ShowFocusedFrame = True
+
+            vgCreateHoles.Focus()
+
+        End If
+
+    End Sub
+
+    Private Function TryGetActiveLayer(
+        targetPart As Part,
+        ByRef activeLayer As Layer
+    ) As Boolean
+
+        activeLayer = Nothing
+
+        If targetPart Is Nothing OrElse
+           targetPart.Layers Is Nothing Then
+
+            Return False
+
+        End If
+
+        Dim selectedLayer As Layer =
+            TryCast(_activeAssociation, Layer)
+
+        If selectedLayer Is Nothing Then
+            Return False
+        End If
+
+        If Not targetPart.Layers.Any(
+            Function(layer) Object.ReferenceEquals(
+                layer, selectedLayer)) Then
+
+            Return False
+
+        End If
+
+        activeLayer = selectedLayer
+
+        Return True
+
+    End Function
+
+    Private Function IsValidTangentSelection(
+        selection As TangentSelection,
+        targetPart As Part
+    ) As Boolean
+
+        If selection Is Nothing OrElse
+           selection.Entity Is Nothing Then
+
+            Return False
+
+        End If
+
+        If targetPart Is Nothing OrElse
+           targetPart.Geometry Is Nothing Then
+
+            Return False
+
+        End If
+
+        If Not (TypeOf selection.Entity Is GeoCircle OrElse
+                TypeOf selection.Entity Is GeoArc) Then
+
+            Return False
+
+        End If
+
+        Return targetPart.Geometry.Any(
+            Function(entity) Object.ReferenceEquals(
+                entity, selection.Entity))
+
+    End Function
+
+
 End Class
 
 

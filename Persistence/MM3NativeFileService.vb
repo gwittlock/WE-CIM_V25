@@ -71,7 +71,9 @@ Public Class MM3NativeFileService
     End Function
 
     Public Shared Function RestoreJobSheet(
-    nativeFile As MM3NativeFile
+    nativeFile As MM3NativeFile,
+    Optional ByRef activeLayer As Layer = Nothing,
+    Optional isPreview As Boolean = False
 ) As JobSheet
 
         If nativeFile Is Nothing Then
@@ -114,11 +116,15 @@ Public Class MM3NativeFileService
         WE_ENG_V25_0.Core.Models.Tool) =
         savedTools.ToDictionary(Function(t) t.ID)
 
-        ' Restore geometry definitions.
+        ' Restore geometry definitions and shared Layer objects.
+        Dim layersByReferenceID As Dictionary(Of Integer, Layer) = Nothing
+
         Dim entitiesByID As Dictionary(Of Integer, GeoEntity) =
-        GeoEntityMapper.RestoreGeometryCollections(
-            mm3File,
-            toolsByID)
+    GeoEntityMapper.RestoreGeometryCollections(
+        mm3File,
+        toolsByID,
+        layersByReferenceID,
+        isPreview)
 
         ' Restore profiles.
         Dim profilesByID As Dictionary(Of Integer, GeoProfile) =
@@ -149,6 +155,31 @@ Public Class MM3NativeFileService
         jobSheet,
         mm3File,
         partsByID)
+
+
+        ' Restore the authoritative Part Layer collection.
+        For Each part As Part In jobSheet.Parts
+
+            part.Layers = layersByReferenceID.Values.ToList()
+
+        Next
+
+
+        ' Restore the saved active Layer reference.
+        activeLayer = Nothing
+
+        If mm3File.ActiveLayerReferenceID.HasValue Then
+
+            If Not layersByReferenceID.TryGetValue(
+        mm3File.ActiveLayerReferenceID.Value,
+        activeLayer) Then
+
+                Throw New InvalidDataException(
+            "The saved active layer reference could not be resolved.")
+
+            End If
+
+        End If
 
         ' Restore Pattern definitions.
         Dim patternsByID As Dictionary(Of Integer, Pattern) =
@@ -595,10 +626,11 @@ Public Class MM3NativeFileService
 
     End Function
 
-
     Public Shared Function BuildManufacturingModel(
-    jobSheet As JobSheet
-) As MM3File
+        jobSheet As JobSheet,
+        Optional activeLayer As Layer = Nothing
+    ) As MM3File
+
 
         If jobSheet Is Nothing Then
             Throw New ArgumentNullException(NameOf(jobSheet))
@@ -832,9 +864,16 @@ Public Class MM3NativeFileService
         ' SERIALIZE GEOMETRY DEFINITIONS
         '==================================================
 
+        Dim registeredLayers As List(Of Layer) =
+    jobSheet.Parts.
+    SelectMany(Function(part) part.Layers).
+    ToList()
+
         GeoEntityMapper.SaveGeometryCollections(
-        allGeometry,
-        mm3File)
+    allGeometry,
+    mm3File,
+    registeredLayers,
+    activeLayer)
 
         '==================================================
         ' COLLECT PART MANUFACTURING FEATURES
@@ -1416,14 +1455,15 @@ Public Class MM3NativeFileService
 
     End Function
 
-
     Public Shared Function BuildNativeFile(
     job As Job,
     jobSheet As JobSheet,
     context As JobContext,
     filePath As String,
     modelType As String,
-    Optional isSaveAs As Boolean = False) As MM3NativeFile
+    Optional isSaveAs As Boolean = False,
+    Optional activeLayer As Layer = Nothing
+) As MM3NativeFile
 
         If job Is Nothing Then
             Throw New ArgumentNullException(NameOf(job))
@@ -1465,8 +1505,8 @@ Public Class MM3NativeFileService
         .JobInformation = BuildJobInformation(job),
         .ManufacturingEnvironment =
             BuildManufacturingEnvironment(job, jobSheet, context),
-        .ManufacturingModel =
-            BuildManufacturingModel(jobSheet)
+       .ManufacturingModel =
+    BuildManufacturingModel(jobSheet, activeLayer)
     }
 
         Return nativeFile
@@ -1547,5 +1587,30 @@ Public Class MM3NativeFileService
         Return context
 
     End Function
+
+    Public Shared Function LoadPreviewJobSheet(
+    filePath As String,
+    Optional ByRef previewEnvironment As MM3ManufacturingEnvironment = Nothing
+) As JobSheet
+
+        previewEnvironment = Nothing
+
+        Dim nativeFile As MM3NativeFile =
+        ReadNativeFile(filePath)
+
+        Dim previewActiveLayer As Layer = Nothing
+
+        Dim previewSheet As JobSheet =
+        RestoreJobSheet(
+            nativeFile,
+            previewActiveLayer,
+            isPreview:=True)
+
+        previewEnvironment = nativeFile.ManufacturingEnvironment
+
+        Return previewSheet
+
+    End Function
+
 
 End Class

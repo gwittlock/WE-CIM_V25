@@ -99,6 +99,7 @@ Public Module PartGeometryBuilder
 
         part.Geometry = geometry
         part.GeoProfiles = geoProfiles
+        part.Layers = layers.Values.ToList()
 
         Return part
 
@@ -2410,5 +2411,55 @@ Public Module PartGeometryBuilder
 
     End Function
 
+    Public Function CreatePreviewGeometry(
+    cadEntities As List(Of CadEntity)) As List(Of GeoEntity)
 
+        Dim geometry As New List(Of GeoEntity)
+
+        Dim points As New Dictionary(Of (Double, Double), GeoPoint)
+
+        If cadEntities Is Nothing Then Return geometry
+
+        For Each cad As CadEntity In cadEntities
+
+            If TypeOf cad Is CadEntity.CadLine Then
+
+                geometry.Add(
+                    ConvertCadLine(
+                        DirectCast(cad, CadEntity.CadLine),
+                        Nothing,
+                        points))
+
+            ElseIf TypeOf cad Is CadEntity.CadArc Then
+
+                geometry.Add(
+                    ConvertCadArc(
+                        DirectCast(cad, CadEntity.CadArc),
+                        Nothing,
+                        points))
+
+            ElseIf TypeOf cad Is CadEntity.CadCircle Then
+
+                geometry.Add(
+                    ConvertCadCircle(
+                        DirectCast(cad, CadEntity.CadCircle),
+                        Nothing,
+                        points))
+
+            ElseIf TypeOf cad Is CadPoint Then
+
+                Dim cp As CadPoint = DirectCast(cad, CadPoint)
+
+                geometry.Add(New GeoPoint With {
+                    .X = CDbl(cp.Position.X),
+                    .Y = CDbl(cp.Position.Y)
+                })
+
+            End If
+
+        Next
+
+        Return geometry
+
+    End Function
 End Module

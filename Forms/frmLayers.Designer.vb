@@ -33,14 +33,16 @@ Partial Class frmLayers
         Me.cbfAddLayer = New FabV25_WIN8.WindowsApplication234.ChkBoxFrame()
         Me.btnAddLayer = New System.Windows.Forms.Button()
         Me.ColorPickEdit2 = New DevExpress.XtraEditors.ColorPickEdit()
-        Me.TextBox1 = New System.Windows.Forms.TextBox()
+        Me.txtLayerNmae = New System.Windows.Forms.TextBox()
         Me.lblLayerColor = New System.Windows.Forms.Label()
         Me.lblLayerName = New System.Windows.Forms.Label()
+        Me.repColorEdit = New DevExpress.XtraEditors.Repository.RepositoryItemColorEdit()
         CType(Me.grdToolLayer, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.gViewToolLayer, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.ColorPickEdit1.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.cbfAddLayer.SuspendLayout()
         CType(Me.ColorPickEdit2.Properties, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.repColorEdit, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
         '
         'sbSetCurrent
@@ -75,6 +77,7 @@ Partial Class frmLayers
         Me.grdToolLayer.Location = New System.Drawing.Point(12, 38)
         Me.grdToolLayer.MainView = Me.gViewToolLayer
         Me.grdToolLayer.Name = "grdToolLayer"
+        Me.grdToolLayer.RepositoryItems.AddRange(New DevExpress.XtraEditors.Repository.RepositoryItem() {Me.repColorEdit})
         Me.grdToolLayer.Size = New System.Drawing.Size(272, 248)
         Me.grdToolLayer.TabIndex = 111
         Me.grdToolLayer.ViewCollection.AddRange(New DevExpress.XtraGrid.Views.Base.BaseView() {Me.gViewToolLayer})
@@ -142,7 +145,7 @@ Partial Class frmLayers
         Me.cbfAddLayer.Checked = False
         Me.cbfAddLayer.Controls.Add(Me.btnAddLayer)
         Me.cbfAddLayer.Controls.Add(Me.ColorPickEdit2)
-        Me.cbfAddLayer.Controls.Add(Me.TextBox1)
+        Me.cbfAddLayer.Controls.Add(Me.txtLayerNmae)
         Me.cbfAddLayer.Controls.Add(Me.lblLayerColor)
         Me.cbfAddLayer.Controls.Add(Me.lblLayerName)
         Me.cbfAddLayer.Location = New System.Drawing.Point(19, 292)
@@ -170,12 +173,12 @@ Partial Class frmLayers
         Me.ColorPickEdit2.Size = New System.Drawing.Size(94, 20)
         Me.ColorPickEdit2.TabIndex = 4
         '
-        'TextBox1
+        'txtLayerNmae
         '
-        Me.TextBox1.Location = New System.Drawing.Point(53, 27)
-        Me.TextBox1.Name = "TextBox1"
-        Me.TextBox1.Size = New System.Drawing.Size(95, 21)
-        Me.TextBox1.TabIndex = 3
+        Me.txtLayerNmae.Location = New System.Drawing.Point(53, 27)
+        Me.txtLayerNmae.Name = "txtLayerNmae"
+        Me.txtLayerNmae.Size = New System.Drawing.Size(95, 21)
+        Me.txtLayerNmae.TabIndex = 3
         '
         'lblLayerColor
         '
@@ -194,6 +197,12 @@ Partial Class frmLayers
         Me.lblLayerName.Size = New System.Drawing.Size(38, 13)
         Me.lblLayerName.TabIndex = 1
         Me.lblLayerName.Text = "Name:"
+        '
+        'repColorEdit
+        '
+        Me.repColorEdit.AutoHeight = False
+        Me.repColorEdit.Buttons.AddRange(New DevExpress.XtraEditors.Controls.EditorButton() {New DevExpress.XtraEditors.Controls.EditorButton(DevExpress.XtraEditors.Controls.ButtonPredefines.Combo)})
+        Me.repColorEdit.Name = "repColorEdit"
         '
         'frmLayers
         '
@@ -217,6 +226,7 @@ Partial Class frmLayers
         Me.cbfAddLayer.ResumeLayout(False)
         Me.cbfAddLayer.PerformLayout()
         CType(Me.ColorPickEdit2.Properties, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.repColorEdit, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ResumeLayout(False)
 
     End Sub
@@ -234,7 +244,8 @@ Partial Class frmLayers
     Friend WithEvents cbfAddLayer As WindowsApplication234.ChkBoxFrame
     Friend WithEvents btnAddLayer As Button
     Friend WithEvents ColorPickEdit2 As ColorPickEdit
-    Friend WithEvents TextBox1 As TextBox
+    Friend WithEvents txtLayerNmae As TextBox
     Friend WithEvents lblLayerColor As Label
     Friend WithEvents lblLayerName As Label
+    Friend WithEvents repColorEdit As Repository.RepositoryItemColorEdit
 End Class

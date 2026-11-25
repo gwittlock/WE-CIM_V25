@@ -18,6 +18,8 @@
 
     Public Property Layers As New List(Of LayerRecord)
 
+    Public Property ActiveLayerReferenceID As Integer?
+
     Public Property GeoProfiles As New List(Of GeoProfileRecord)
 
     Public Property ManufacturingFeatures As New List(Of MachiningFeatureRecord)
