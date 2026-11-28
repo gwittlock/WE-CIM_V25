@@ -13,7 +13,12 @@ Public Class frmSelectTool
     End Sub
 
     Public Event ToolAssignmentRequested(toolSetupMemberID As Integer)
-    Public Event CurrentToolRequested(toolSetupMemberID As Integer)
+    Public Event CurrentToolRequested(
+    toolSetupMemberID As Integer,
+    cutSide As String,
+    overlap As Double,
+    dOff As Integer,
+    distance As Double)
 
     Private Sub LoadInstalledTools()
 
@@ -27,6 +32,9 @@ Public Class frmSelectTool
         grdToolLayer.DataSource = installedTools
 
         gViewToolLayer.RefreshData()
+
+        InitializeProcessParameters()
+
 
 
     End Sub
@@ -159,9 +167,73 @@ Public Class frmSelectTool
             MessageBoxIcon.Information)
             Return
         End If
+        vgProcessParameters.PostEditor()
 
-        RaiseEvent CurrentToolRequested(selectedRow.ID)
+        Dim cutSide As String =
+    CStr(vgProcessParameters.Rows("rowCutSide").Properties.Value)
 
+        Dim overlap As Double =
+    CDbl(vgProcessParameters.Rows("rowOverlap").Properties.Value)
+
+        Dim dOff As Integer =
+    CInt(vgProcessParameters.Rows("rowDOff").Properties.Value)
+
+        Dim distance As Double =
+    CDbl(vgProcessParameters.Rows("rowDistance").Properties.Value)
+
+        RaiseEvent CurrentToolRequested(
+    selectedRow.ID,
+    cutSide,
+    overlap,
+    dOff,
+    distance)
+        Me.Dispose()
+        Me.Close()
+
+    End Sub
+
+    Private Sub InitializeProcessParameters()
+
+        vgProcessParameters.Rows.Clear()
+
+        Dim rowCutSide As New DevExpress.XtraVerticalGrid.Rows.EditorRow()
+        rowCutSide.Name = "rowCutSide"
+        rowCutSide.Properties.Caption = "Cut Side"
+
+        Dim cboCutSide As New DevExpress.XtraEditors.Repository.RepositoryItemComboBox()
+        cboCutSide.Items.AddRange(New Object() {"Center", "Left", "Right"})
+        cboCutSide.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+
+        vgProcessParameters.RepositoryItems.Add(cboCutSide)
+
+        rowCutSide.Properties.RowEdit = cboCutSide
+        rowCutSide.Properties.Value = "Center"
+
+        vgProcessParameters.Rows.Add(rowCutSide)
+
+        Dim rowOverlap As New DevExpress.XtraVerticalGrid.Rows.EditorRow()
+        rowOverlap.Name = "rowOverlap"
+        rowOverlap.Properties.Caption = "OverLap"
+        rowOverlap.Properties.Value = 0.02R
+
+        vgProcessParameters.Rows.Add(rowOverlap)
+
+        Dim rowDOff As New DevExpress.XtraVerticalGrid.Rows.EditorRow()
+        rowDOff.Name = "rowDOff"
+        rowDOff.Properties.Caption = "DOff"
+        rowDOff.Properties.Value = 0
+
+        vgProcessParameters.Rows.Add(rowDOff)
+
+        Dim rowDistance As New DevExpress.XtraVerticalGrid.Rows.EditorRow()
+        rowDistance.Name = "rowDistance"
+        rowDistance.Properties.Caption = "Distance"
+        rowDistance.Properties.Value = 0.0R
+
+        vgProcessParameters.Rows.Add(rowDistance)
+
+        Debug.WriteLine("Process Parameter Rows: " &
+                vgProcessParameters.Rows.Count.ToString())
     End Sub
 End Class
 

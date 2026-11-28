@@ -28,9 +28,7 @@ Partial Class DXFFileSelectionDialog
         Me.Label1 = New System.Windows.Forms.Label()
         Me.cboFileTypes = New System.Windows.Forms.ComboBox()
         Me.pnlDxfOptions = New System.Windows.Forms.Panel()
-        Me.tbCurveResolution = New System.Windows.Forms.TextBox()
         Me.txtPreRotate = New System.Windows.Forms.TextBox()
-        Me.ltbCurveRes = New DevExpress.XtraEditors.LabelControl()
         Me.chkRaw = New System.Windows.Forms.CheckBox()
         Me.chkStripLayers = New System.Windows.Forms.CheckBox()
         Me.chkAutoSave = New System.Windows.Forms.CheckBox()
@@ -113,9 +111,7 @@ Partial Class DXFFileSelectionDialog
         '
         'pnlDxfOptions
         '
-        Me.pnlDxfOptions.Controls.Add(Me.tbCurveResolution)
         Me.pnlDxfOptions.Controls.Add(Me.txtPreRotate)
-        Me.pnlDxfOptions.Controls.Add(Me.ltbCurveRes)
         Me.pnlDxfOptions.Controls.Add(Me.chkRaw)
         Me.pnlDxfOptions.Controls.Add(Me.chkStripLayers)
         Me.pnlDxfOptions.Controls.Add(Me.chkAutoSave)
@@ -125,15 +121,6 @@ Partial Class DXFFileSelectionDialog
         Me.pnlDxfOptions.Size = New System.Drawing.Size(335, 66)
         Me.pnlDxfOptions.TabIndex = 5
         '
-        'tbCurveResolution
-        '
-        Me.tbCurveResolution.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
-        Me.tbCurveResolution.Location = New System.Drawing.Point(95, 29)
-        Me.tbCurveResolution.Name = "tbCurveResolution"
-        Me.tbCurveResolution.Size = New System.Drawing.Size(52, 21)
-        Me.tbCurveResolution.TabIndex = 21
-        Me.tbCurveResolution.WordWrap = False
-        '
         'txtPreRotate
         '
         Me.txtPreRotate.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
@@ -142,14 +129,6 @@ Partial Class DXFFileSelectionDialog
         Me.txtPreRotate.Size = New System.Drawing.Size(52, 21)
         Me.txtPreRotate.TabIndex = 20
         Me.txtPreRotate.WordWrap = False
-        '
-        'ltbCurveRes
-        '
-        Me.ltbCurveRes.Location = New System.Drawing.Point(3, 34)
-        Me.ltbCurveRes.Name = "ltbCurveRes"
-        Me.ltbCurveRes.Size = New System.Drawing.Size(86, 13)
-        Me.ltbCurveRes.TabIndex = 19
-        Me.ltbCurveRes.Text = "Curve Resolution:"
         '
         'chkRaw
         '
@@ -396,9 +375,7 @@ Partial Class DXFFileSelectionDialog
     Friend WithEvents Label1 As Label
     Friend WithEvents cboFileTypes As Windows.Forms.ComboBox
     Friend WithEvents pnlDxfOptions As Panel
-    Friend WithEvents tbCurveResolution As TextBox
     Friend WithEvents txtPreRotate As TextBox
-    Friend WithEvents ltbCurveRes As LabelControl
     Friend WithEvents chkRaw As CheckBox
     Friend WithEvents chkStripLayers As CheckBox
     Friend WithEvents chkAutoSave As CheckBox

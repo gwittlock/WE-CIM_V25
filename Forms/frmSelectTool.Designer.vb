@@ -28,6 +28,7 @@ Partial Class frmSelectTool
         Me.sbShowAll = New DevExpress.XtraEditors.SimpleButton()
         Me.sbAssign = New DevExpress.XtraEditors.SimpleButton()
         Me.vgProcessParameters = New DevExpress.XtraVerticalGrid.VGridControl()
+        Me.sbChangeTool = New DevExpress.XtraEditors.SimpleButton()
         CType(Me.grdToolLayer, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.gViewToolLayer, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.vgProcessParameters, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -61,7 +62,7 @@ Partial Class frmSelectTool
         '
         'sbSetCurrent
         '
-        Me.sbSetCurrent.Location = New System.Drawing.Point(204, 12)
+        Me.sbSetCurrent.Location = New System.Drawing.Point(398, 12)
         Me.sbSetCurrent.Name = "sbSetCurrent"
         Me.sbSetCurrent.Size = New System.Drawing.Size(75, 23)
         Me.sbSetCurrent.TabIndex = 111
@@ -85,7 +86,7 @@ Partial Class frmSelectTool
         '
         'sbAssign
         '
-        Me.sbAssign.Location = New System.Drawing.Point(96, 617)
+        Me.sbAssign.Location = New System.Drawing.Point(205, 617)
         Me.sbAssign.Name = "sbAssign"
         Me.sbAssign.Size = New System.Drawing.Size(75, 23)
         Me.sbAssign.TabIndex = 112
@@ -99,13 +100,21 @@ Partial Class frmSelectTool
         Me.vgProcessParameters.OptionsView.ShowButtons = False
         Me.vgProcessParameters.Size = New System.Drawing.Size(466, 103)
         Me.vgProcessParameters.TabIndex = 113
-        Me.vgProcessParameters.Visible = False
+        '
+        'sbChangeTool
+        '
+        Me.sbChangeTool.Location = New System.Drawing.Point(205, 12)
+        Me.sbChangeTool.Name = "sbChangeTool"
+        Me.sbChangeTool.Size = New System.Drawing.Size(75, 23)
+        Me.sbChangeTool.TabIndex = 114
+        Me.sbChangeTool.Text = "Change Tool"
         '
         'frmSelectTool
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(485, 650)
+        Me.Controls.Add(Me.sbChangeTool)
         Me.Controls.Add(Me.vgProcessParameters)
         Me.Controls.Add(Me.sbAssign)
         Me.Controls.Add(Me.sbSetCurrent)
@@ -130,4 +139,5 @@ Partial Class frmSelectTool
     Friend WithEvents sbShowAll As SimpleButton
     Friend WithEvents sbAssign As SimpleButton
     Friend WithEvents vgProcessParameters As DevExpress.XtraVerticalGrid.VGridControl
+    Friend WithEvents sbChangeTool As SimpleButton
 End Class

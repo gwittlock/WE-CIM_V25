@@ -1806,6 +1806,63 @@ Namespace ToolShapes
 
         End Function
 
+        Public Shared Function GetLinearNibbleHitPositions(
+    startPoint As PointF,
+    endPoint As PointF,
+    cuttingLength As Double,
+    overlap As Double) As List(Of PointF)
+
+            Dim hits As New List(Of PointF)
+
+            If cuttingLength <= 0.0 Then
+                Throw New ArgumentOutOfRangeException(
+            NameOf(cuttingLength))
+            End If
+
+            If overlap < 0.0 OrElse overlap >= cuttingLength Then
+                Throw New ArgumentOutOfRangeException(
+            NameOf(overlap))
+            End If
+
+            Dim dx As Double =
+        CDbl(endPoint.X) - CDbl(startPoint.X)
+
+            Dim dy As Double =
+        CDbl(endPoint.Y) - CDbl(startPoint.Y)
+
+            Dim length As Double =
+        Math.Sqrt(dx * dx + dy * dy)
+
+            If length = 0.0 Then
+                hits.Add(startPoint)
+                Return hits
+            End If
+
+            Dim maximumSpacing As Double =
+        cuttingLength - overlap
+
+            Dim intervalCount As Integer =
+        CInt(Math.Ceiling(length / maximumSpacing))
+
+            For i As Integer = 0 To intervalCount
+
+                Dim fraction As Double =
+            CDbl(i) / CDbl(intervalCount)
+
+                hits.Add(
+            New PointF(
+                CSng(startPoint.X + dx * fraction),
+                CSng(startPoint.Y + dy * fraction)))
+
+            Next
+
+            Return hits
+
+        End Function
+
+
+
+
         Public Shared Function IsAngleOnArc(
     angle As Double,
     startAngle As Double,
@@ -1955,73 +2012,137 @@ Namespace ToolShapes
             Return xIntersection > testPoint.X
 
         End Function
-
         Private Shared Function CountRayArcIntersections(
     testPoint As PointF,
     arc As ArcSegment2D) As Integer
 
-            Dim dy As Double =
-                testPoint.Y - arc.Center.Y
-
-            ' A horizontal ray intersects the circle at these X values.
-            Dim value As Double =
-                arc.Radius * arc.Radius -
-                dy * dy
-
-            If value <= 0 Then
+            If arc Is Nothing OrElse arc.Radius <= 0.0 Then
                 Return 0
             End If
 
-            Dim dx As Double =
-                Math.Sqrt(value)
+            Const TwoPi As Double = Math.PI * 2.0
 
-            Dim x1 As Double =
-                arc.Center.X - dx
+            Dim direction As Double =
+        If(arc.IsClockwise, -1.0, 1.0)
 
-            Dim x2 As Double =
-                arc.Center.X + dx
+            Dim sweep As Double =
+        direction * (arc.EndAngle - arc.StartAngle)
+
+            If Math.Abs(arc.EndAngle - arc.StartAngle) >=
+        TwoPi - 0.000001 Then
+
+                sweep = TwoPi
+
+            Else
+
+                sweep = sweep Mod TwoPi
+
+                If sweep < 0.0 Then
+                    sweep += TwoPi
+                End If
+
+            End If
+
+            If sweep = 0.0 Then Return 0
+
+            Dim breaks As New List(Of Double) From {
+        0.0,
+        sweep
+    }
+
+            ' Divide the arc at its Y extrema.
+            Dim extrema() As Double = {
+        Math.PI / 2.0,
+        3.0 * Math.PI / 2.0
+    }
+
+            For Each angle As Double In extrema
+
+                Dim offset As Double =
+            direction * (angle - arc.StartAngle)
+
+                offset = offset Mod TwoPi
+
+                If offset < 0.0 Then
+                    offset += TwoPi
+                End If
+
+                If offset > 0.0 AndAlso offset < sweep Then
+                    breaks.Add(offset)
+                End If
+
+            Next
+
+            breaks.Sort()
 
             Dim count As Integer = 0
 
-            ' Check the first circle intersection.
-            If x1 > testPoint.X Then
+            For i As Integer = 0 To breaks.Count - 2
 
-                Dim angle1 As Double =
-                    Math.Atan2(
-                        testPoint.Y - arc.Center.Y,
-                        x1 - arc.Center.X)
+                Dim a1 As Double =
+            arc.StartAngle + direction * breaks(i)
 
-                If IsAngleOnArc(
-                    angle1,
-                    arc.StartAngle,
-                    arc.EndAngle,
-                    arc.IsClockwise) Then
+                Dim a2 As Double =
+            arc.StartAngle + direction * breaks(i + 1)
 
-                    count += 1
+                Dim p1 As PointF =
+            PointOnCircle(arc.Center, arc.Radius, a1)
+
+                Dim p2 As PointF =
+            PointOnCircle(arc.Center, arc.Radius, a2)
+
+                If i = 0 Then
+                    p1 = arc.StartPoint
+                End If
+
+                If i = breaks.Count - 2 Then
+                    p2 = arc.EndPoint
+                End If
+
+                ' Apply the same endpoint convention
+                ' used by RayIntersectsLine().
+                If testPoint.Y < Math.Min(p1.Y, p2.Y) OrElse
+           testPoint.Y >= Math.Max(p1.Y, p2.Y) Then
+
+                    Continue For
 
                 End If
 
-            End If
+                Dim dy As Double =
+            CDbl(testPoint.Y) - CDbl(arc.Center.Y)
 
-            ' Check the second circle intersection.
-            If x2 > testPoint.X Then
+                Dim value As Double =
+            arc.Radius * arc.Radius - dy * dy
 
-                Dim angle2 As Double =
-                    Math.Atan2(
-                        testPoint.Y - arc.Center.Y,
-                        x2 - arc.Center.X)
+                Dim dx As Double =
+            Math.Sqrt(Math.Max(0.0, value))
 
-                If IsAngleOnArc(
-                    angle2,
-                    arc.StartAngle,
-                    arc.EndAngle,
-                    arc.IsClockwise) Then
+                ' Each monotonic section occupies either
+                ' the left or right half of the circle.
+                Dim middleAngle As Double =
+            (a1 + a2) / 2.0
 
-                    count += 1
+                Dim xIntersection As Double =
+            CDbl(arc.Center.X) +
+            If(Math.Cos(middleAngle) >= 0.0, dx, -dx)
+
+                ' Use the stored endpoint when the ray
+                ' passes through that endpoint.
+                If testPoint.Y = p1.Y Then
+
+                    xIntersection = p1.X
+
+                ElseIf testPoint.Y = p2.Y Then
+
+                    xIntersection = p2.X
 
                 End If
 
-            End If
+                If xIntersection > testPoint.X Then
+                    count += 1
+                End If
+
+            Next
 
             Return count
 
@@ -2062,37 +2183,67 @@ Namespace ToolShapes
     innerPath As IPath2D,
     outerPath As IPath2D) As ProfileContainmentResult
 
-            If innerPath Is Nothing OrElse outerPath Is Nothing Then
-                Return ProfileContainmentResult.Invalid
-            End If
+            Const tolerance As Double = 0.000001
 
-            If Not innerPath.IsClosed OrElse Not outerPath.IsClosed Then
-                Return ProfileContainmentResult.Invalid
-            End If
-
-            If Not innerPath.Segments.Any() OrElse
-               Not outerPath.Segments.Any() Then
+            If innerPath Is Nothing OrElse
+       outerPath Is Nothing Then
 
                 Return ProfileContainmentResult.Invalid
+
             End If
 
+            If Not innerPath.IsClosed OrElse
+       Not outerPath.IsClosed Then
 
-            ' Check for intersections between the two profiles.
-            For Each innerSegment As IPathSegment In innerPath.Segments
+                Return ProfileContainmentResult.Invalid
 
-                If innerSegment.SegmentType <> PathSegmentType.Line Then
-                    Return ProfileContainmentResult.Invalid
-                End If
+            End If
 
-                For Each outerSegment As IPathSegment In outerPath.Segments
+            Dim innerSegments = innerPath.Segments.ToList()
+            Dim outerSegments = outerPath.Segments.ToList()
 
-                    If outerSegment.SegmentType <> PathSegmentType.Line Then
+            If innerSegments.Count = 0 OrElse
+       outerSegments.Count = 0 Then
+
+                Return ProfileContainmentResult.Invalid
+
+            End If
+
+            ' Validate supported segment types.
+            For Each segment As IPathSegment In
+        innerSegments.Concat(outerSegments)
+
+                If TypeOf segment Is LineSegment2D Then
+
+                    Continue For
+
+                ElseIf TypeOf segment Is ArcSegment2D Then
+
+                    Dim arc As ArcSegment2D =
+                DirectCast(segment, ArcSegment2D)
+
+                    If arc.Radius <= 0.0 Then
                         Return ProfileContainmentResult.Invalid
                     End If
 
-                    If LineSegmentsIntersect(
-            DirectCast(innerSegment, LineSegment2D),
-            DirectCast(outerSegment, LineSegment2D)) Then
+                Else
+
+                    Return ProfileContainmentResult.Invalid
+
+                End If
+
+            Next
+
+            ' Check every inner boundary segment against
+            ' every outer boundary segment.
+            For Each innerSegment As IPathSegment In innerSegments
+
+                For Each outerSegment As IPathSegment In outerSegments
+
+                    If SegmentsIntersect(
+                innerSegment,
+                outerSegment,
+                tolerance) Then
 
                         Return ProfileContainmentResult.Intersecting
 
@@ -2101,24 +2252,21 @@ Namespace ToolShapes
                 Next
 
             Next
-            ' No intersections were found.
-            ' Determine whether the inner profile is inside
-            ' or outside the outer profile.
 
+            ' With no boundary intersections, determine
+            ' which side of the outer boundary we occupy.
             Dim testPoint As PointF =
-                innerPath.Segments.First().StartPoint
+        innerSegments(0).StartPoint
 
             If IsPointInsidePath(outerPath, testPoint) Then
 
                 Return ProfileContainmentResult.Inside
 
-            Else
-
-                Return ProfileContainmentResult.Outside
-
             End If
-        End Function
 
+            Return ProfileContainmentResult.Outside
+
+        End Function
 
         Private Shared Function LineSegmentsIntersect(
             a As LineSegment2D,
@@ -2189,6 +2337,915 @@ Namespace ToolShapes
                    u <= 1.0 + tolerance
 
         End Function
+
+        Public Shared Sub TestPointContainment()
+
+            Dim passed As Integer = 0
+            Dim failed As Integer = 0
+
+            Dim check As Action(Of String, IPath2D, PointF, Boolean) =
+                Sub(testName, path, testPoint, expected)
+
+                    Dim actual As Boolean =
+                        IsPointInsidePath(path, testPoint)
+
+                    Dim success As Boolean =
+                        path.IsClosed AndAlso actual = expected
+
+                    If success Then
+                        passed += 1
+                    Else
+                        failed += 1
+                    End If
+
+                    Debug.WriteLine(
+                        If(success, "PASS", "FAIL") &
+                        " | " & testName &
+                        " | Closed=" & path.IsClosed.ToString() &
+                        " | Expected=" & expected.ToString() &
+                        " | Actual=" & actual.ToString())
+
+                End Sub
+
+            '-----------------------------------------
+            ' Rectangle
+            '-----------------------------------------
+            Dim rectangle As New Path2D
+
+            rectangle.Add(New LineSegment2D(
+                New PointF(0, 0), New PointF(10, 0)))
+
+            rectangle.Add(New LineSegment2D(
+                New PointF(10, 0), New PointF(10, 6)))
+
+            rectangle.Add(New LineSegment2D(
+                New PointF(10, 6), New PointF(0, 6)))
+
+            rectangle.Add(New LineSegment2D(
+                New PointF(0, 6), New PointF(0, 0)))
+
+            check("Rectangle - Inside",
+                  rectangle, New PointF(5, 3), True)
+
+            check("Rectangle - Outside",
+                  rectangle, New PointF(12, 3), False)
+
+            '-----------------------------------------
+            ' Full circle - CCW
+            '-----------------------------------------
+            Dim circleCCW As New Path2D
+
+            circleCCW.Add(New ArcSegment2D(
+                New PointF(5, 5),
+                3.0,
+                0.0,
+                Math.PI * 2.0,
+                False))
+
+            check("Circle CCW - Inside",
+                  circleCCW, New PointF(5, 5), True)
+
+            check("Circle CCW - Outside",
+                  circleCCW, New PointF(9, 5), False)
+
+            check("Circle CCW - Two crossings",
+                  circleCCW, New PointF(0, 5), False)
+
+            check("Circle CCW - Upper tangent",
+                  circleCCW, New PointF(0, 8), False)
+
+            check("Circle CCW - Lower tangent",
+                  circleCCW, New PointF(0, 2), False)
+
+            '-----------------------------------------
+            ' Full circle - CW
+            '-----------------------------------------
+            Dim circleCW As New Path2D
+
+            circleCW.Add(New ArcSegment2D(
+                New PointF(5, 5),
+                3.0,
+                Math.PI * 2.0,
+                0.0,
+                True))
+
+            check("Circle CW - Inside",
+                  circleCW, New PointF(5, 5), True)
+
+            check("Circle CW - Outside",
+                  circleCW, New PointF(0, 5), False)
+
+            '-----------------------------------------
+            ' Mixed Line-Arc profile
+            '-----------------------------------------
+            Dim mixed As New Path2D
+
+            mixed.Add(New LineSegment2D(
+                New PointF(0, 0), New PointF(5, 0)))
+
+            mixed.Add(New ArcSegment2D(
+                New PointF(5, 2),
+                2.0,
+                -Math.PI / 2.0,
+                Math.PI / 2.0,
+                False))
+
+            mixed.Add(New LineSegment2D(
+                New PointF(5, 4), New PointF(0, 4)))
+
+            mixed.Add(New LineSegment2D(
+                New PointF(0, 4), New PointF(0, 0)))
+
+            check("Mixed - Inside rectangular portion",
+                  mixed, New PointF(2, 2), True)
+
+            check("Mixed - Inside curved portion",
+                  mixed, New PointF(6, 2), True)
+
+            check("Mixed - Outside",
+                  mixed, New PointF(8, 2), False)
+
+            check("Mixed - Upper tangent",
+                  mixed, New PointF(-1, 4), False)
+
+            check("Mixed - Lower tangent",
+                  mixed, New PointF(-1, 0), False)
+
+            '-----------------------------------------
+            ' Shared Line-Arc endpoints
+            '-----------------------------------------
+            Dim halfCircle As New Path2D
+
+            halfCircle.Add(New LineSegment2D(
+                New PointF(2, 5), New PointF(8, 5)))
+
+            halfCircle.Add(New ArcSegment2D(
+                New PointF(5, 5),
+                3.0,
+                0.0,
+                Math.PI,
+                False))
+
+            check("Half circle - Inside",
+                  halfCircle, New PointF(5, 6), True)
+
+            check("Half circle - Outside",
+                  halfCircle, New PointF(5, 4), False)
+
+            check("Half circle - Shared endpoints",
+                  halfCircle, New PointF(0, 5), False)
+
+            '-----------------------------------------
+            ' Circle constructed from two arcs
+            '-----------------------------------------
+            Dim twoArcs As New Path2D
+
+            twoArcs.Add(New ArcSegment2D(
+                New PointF(5, 5),
+                3.0,
+                0.0,
+                Math.PI,
+                False))
+
+            twoArcs.Add(New ArcSegment2D(
+                New PointF(5, 5),
+                3.0,
+                Math.PI,
+                Math.PI * 2.0,
+                False))
+
+            check("Two arcs - Shared endpoint inside",
+                  twoArcs, New PointF(5, 5), True)
+
+            check("Two arcs - Shared endpoints outside",
+                  twoArcs, New PointF(0, 5), False)
+
+            '-----------------------------------------
+            ' Arc crossing zero degrees
+            '-----------------------------------------
+            Dim wraparound As New Path2D
+
+            wraparound.Add(New ArcSegment2D(
+                New PointF(5, 5),
+                3.0,
+                3.0 * Math.PI / 2.0,
+                Math.PI / 2.0,
+                False))
+
+            wraparound.Add(New LineSegment2D(
+                New PointF(5, 8), New PointF(5, 2)))
+
+            check("Wraparound - Inside",
+                  wraparound, New PointF(6, 5), True)
+
+            check("Wraparound - Outside",
+                  wraparound, New PointF(4, 5), False)
+
+            '-----------------------------------------
+            ' Results
+            '-----------------------------------------
+            Debug.WriteLine(
+                "====================================")
+
+            Debug.WriteLine(
+                "POINT CONTAINMENT TEST RESULTS")
+
+            Debug.WriteLine("Passed: " & passed)
+            Debug.WriteLine("Failed: " & failed)
+
+            Debug.WriteLine(
+                "====================================")
+
+        End Sub
+
+
+        Private Shared Function CoincidentArcsIntersect(
+    arcA As ArcSegment2D,
+    arcB As ArcSegment2D,
+    tolerance As Double) As Boolean
+
+            If arcA Is Nothing OrElse
+               arcB Is Nothing Then
+
+                Return False
+
+            End If
+
+            If arcA.Radius <= 0.0 OrElse
+               arcB.Radius <= 0.0 Then
+
+                Return False
+
+            End If
+
+            Dim dx As Double =
+                CDbl(arcB.Center.X) - CDbl(arcA.Center.X)
+
+            Dim dy As Double =
+                CDbl(arcB.Center.Y) - CDbl(arcA.Center.Y)
+
+            Dim centerDistance As Double =
+                Math.Sqrt((dx * dx) + (dy * dy))
+
+            ' Arcs must share the same supporting circle.
+            If centerDistance > tolerance Then
+                Return False
+            End If
+
+            If Math.Abs(arcA.Radius - arcB.Radius) > tolerance Then
+                Return False
+            End If
+
+            ' Determine whether either arc contains an
+            ' angular endpoint belonging to the other arc.
+            Return IsAngleOnArc(
+                arcB.StartAngle,
+                arcA.StartAngle,
+                arcA.EndAngle,
+                arcA.IsClockwise) OrElse
+                   IsAngleOnArc(
+                arcB.EndAngle,
+                arcA.StartAngle,
+                arcA.EndAngle,
+                arcA.IsClockwise) OrElse
+                   IsAngleOnArc(
+                arcA.StartAngle,
+                arcB.StartAngle,
+                arcB.EndAngle,
+                arcB.IsClockwise) OrElse
+                   IsAngleOnArc(
+                arcA.EndAngle,
+                arcB.StartAngle,
+                arcB.EndAngle,
+                arcB.IsClockwise)
+
+        End Function
+
+        Private Shared Function SegmentsIntersect(
+    segmentA As IPathSegment,
+    segmentB As IPathSegment,
+    tolerance As Double) As Boolean
+
+            If segmentA Is Nothing OrElse
+               segmentB Is Nothing Then
+
+                Return False
+
+            End If
+
+            Dim lineA As LineSegment2D =
+                TryCast(segmentA, LineSegment2D)
+
+            Dim lineB As LineSegment2D =
+                TryCast(segmentB, LineSegment2D)
+
+            Dim arcA As ArcSegment2D =
+                TryCast(segmentA, ArcSegment2D)
+
+            Dim arcB As ArcSegment2D =
+                TryCast(segmentB, ArcSegment2D)
+
+            Dim points As List(Of PointF) = Nothing
+            Dim uA As List(Of Double) = Nothing
+            Dim uB As List(Of Double) = Nothing
+
+            ' Line / Line
+            If lineA IsNot Nothing AndAlso
+               lineB IsNot Nothing Then
+
+                Return LineSegmentsIntersect(lineA, lineB)
+
+            End If
+
+            ' Line / Arc
+            If lineA IsNot Nothing AndAlso
+               arcB IsNot Nothing Then
+
+                Return ConvexHullGeometry.TestIntersectArcLine(
+                    arcB,
+                    lineA,
+                    tolerance,
+                    points,
+                    uB,
+                    uA)
+
+            End If
+
+            ' Arc / Line
+            If arcA IsNot Nothing AndAlso
+               lineB IsNot Nothing Then
+
+                Return ConvexHullGeometry.TestIntersectArcLine(
+                    arcA,
+                    lineB,
+                    tolerance,
+                    points,
+                    uA,
+                    uB)
+
+            End If
+
+            ' Arc / Arc
+            If arcA IsNot Nothing AndAlso
+               arcB IsNot Nothing Then
+
+                If CoincidentArcsIntersect(
+                    arcA,
+                    arcB,
+                    tolerance) Then
+
+                    Return True
+
+                End If
+
+                Return ConvexHullGeometry.TestIntersectArcArc(
+                    arcA,
+                    arcB,
+                    tolerance,
+                    points,
+                    uA,
+                    uB)
+
+            End If
+
+            Return False
+
+        End Function
+
+        Public Shared Sub TestProfileContainment()
+
+            Dim passed As Integer = 0
+            Dim failed As Integer = 0
+
+            Dim check As Action(Of String,
+                                   IPath2D,
+                                   IPath2D,
+                                   ProfileContainmentResult) =
+                Sub(description, inner, outer, expected)
+
+                    Dim actual As ProfileContainmentResult =
+                        ClassifyProfileContainment(inner, outer)
+
+                    Dim success As Boolean =
+                        actual = expected
+
+                    If success Then
+                        passed += 1
+                    Else
+                        failed += 1
+                    End If
+
+                    Debug.WriteLine(
+                        $"{If(success, "PASS", "FAIL")} | " &
+                        $"{description} | " &
+                        $"Expected={expected} | Actual={actual}")
+
+                End Sub
+
+            Dim rectangle As Func(Of Single, Single,
+                                      Single, Single, Path2D) =
+                Function(x, y, width, height)
+
+                    Dim path As New Path2D
+
+                    Dim p1 As New PointF(x, y)
+                    Dim p2 As New PointF(x + width, y)
+                    Dim p3 As New PointF(x + width, y + height)
+                    Dim p4 As New PointF(x, y + height)
+
+                    path.Add(New LineSegment2D(p1, p2))
+                    path.Add(New LineSegment2D(p2, p3))
+                    path.Add(New LineSegment2D(p3, p4))
+                    path.Add(New LineSegment2D(p4, p1))
+
+                    Return path
+
+                End Function
+
+            Dim circle As Func(Of Single, Single,
+                                   Double, Path2D) =
+                Function(x, y, radius)
+
+                    Dim path As New Path2D
+
+                    path.Add(
+                        New ArcSegment2D(
+                            New PointF(x, y),
+                            radius,
+                            0.0,
+                            Math.PI * 2.0,
+                            False))
+
+                    Return path
+
+                End Function
+
+            Dim outerRectangle As Path2D =
+                rectangle(0, 0, 10, 10)
+
+            Dim outerCircle As Path2D =
+                circle(5, 5, 5)
+
+            Debug.WriteLine("")
+            Debug.WriteLine("===== PROFILE CONTAINMENT TEST =====")
+
+            ' --------------------------------------------------
+            ' Rectangle / Rectangle
+            ' --------------------------------------------------
+
+            check("Rectangle inside rectangle",
+                  rectangle(2, 2, 3, 3),
+                  outerRectangle,
+                  ProfileContainmentResult.Inside)
+
+            check("Rectangle outside rectangle",
+                  rectangle(12, 2, 3, 3),
+                  outerRectangle,
+                  ProfileContainmentResult.Outside)
+
+            check("Rectangles crossing",
+                  rectangle(8, 2, 4, 4),
+                  outerRectangle,
+                  ProfileContainmentResult.Intersecting)
+
+            check("Rectangles sharing edge",
+                  rectangle(2, 0, 3, 3),
+                  outerRectangle,
+                  ProfileContainmentResult.Intersecting)
+
+            check("Rectangles sharing corner",
+                  rectangle(10, 10, 2, 2),
+                  outerRectangle,
+                  ProfileContainmentResult.Intersecting)
+
+            check("Identical rectangles",
+                  rectangle(0, 0, 10, 10),
+                  outerRectangle,
+                  ProfileContainmentResult.Intersecting)
+
+            ' --------------------------------------------------
+            ' Circle / Rectangle
+            ' --------------------------------------------------
+
+            check("Circle inside rectangle",
+                  circle(5, 5, 2),
+                  outerRectangle,
+                  ProfileContainmentResult.Inside)
+
+            check("Circle outside rectangle",
+                  circle(15, 5, 2),
+                  outerRectangle,
+                  ProfileContainmentResult.Outside)
+
+            check("Circle crossing rectangle",
+                  circle(9, 5, 2),
+                  outerRectangle,
+                  ProfileContainmentResult.Intersecting)
+
+            check("Circle internally tangent to rectangle",
+                  circle(2, 5, 2),
+                  outerRectangle,
+                  ProfileContainmentResult.Intersecting)
+
+            check("Circle externally tangent to rectangle",
+                  circle(12, 5, 2),
+                  outerRectangle,
+                  ProfileContainmentResult.Intersecting)
+
+            ' --------------------------------------------------
+            ' Rectangle / Circle
+            ' --------------------------------------------------
+
+            check("Rectangle inside circle",
+                  rectangle(4, 4, 2, 2),
+                  outerCircle,
+                  ProfileContainmentResult.Inside)
+
+            check("Rectangle outside circle",
+                  rectangle(12, 12, 2, 2),
+                  outerCircle,
+                  ProfileContainmentResult.Outside)
+
+            check("Rectangle crossing circle",
+                  rectangle(8, 4, 4, 2),
+                  outerCircle,
+                  ProfileContainmentResult.Intersecting)
+
+            ' --------------------------------------------------
+            ' Circle / Circle
+            ' --------------------------------------------------
+
+            check("Concentric smaller circle",
+                  circle(5, 5, 2),
+                  outerCircle,
+                  ProfileContainmentResult.Inside)
+
+            check("Nonconcentric smaller circle",
+                  circle(6, 5, 2),
+                  outerCircle,
+                  ProfileContainmentResult.Inside)
+
+            check("Separated circles",
+                  circle(15, 5, 2),
+                  outerCircle,
+                  ProfileContainmentResult.Outside)
+
+            check("Crossing circles",
+                  circle(9, 5, 3),
+                  outerCircle,
+                  ProfileContainmentResult.Intersecting)
+
+            check("Internally tangent circles",
+                  circle(8, 5, 2),
+                  outerCircle,
+                  ProfileContainmentResult.Intersecting)
+
+            check("Externally tangent circles",
+                  circle(12, 5, 2),
+                  outerCircle,
+                  ProfileContainmentResult.Intersecting)
+
+            check("Coincident circles",
+                  circle(5, 5, 5),
+                  outerCircle,
+                  ProfileContainmentResult.Intersecting)
+
+            check("Inner candidate surrounds outer circle",
+                  circle(5, 5, 8),
+                  outerCircle,
+                  ProfileContainmentResult.Outside)
+
+            ' --------------------------------------------------
+            ' Invalid paths
+            ' --------------------------------------------------
+
+            Dim openPath As New Path2D
+
+            openPath.Add(
+                New LineSegment2D(
+                    New PointF(1, 1),
+                    New PointF(3, 3)))
+
+            check("Open inner path",
+                  openPath,
+                  outerRectangle,
+                  ProfileContainmentResult.Invalid)
+
+            check("Missing inner path",
+                  Nothing,
+                  outerRectangle,
+                  ProfileContainmentResult.Invalid)
+
+            check("Missing outer path",
+                  outerRectangle,
+                  Nothing,
+                  ProfileContainmentResult.Invalid)
+
+
+            ' --------------------------------------------------
+            ' Mixed Line / Arc profiles
+            ' --------------------------------------------------
+
+            Dim mixedPath As New Path2D
+
+            mixedPath.Add(
+    New LineSegment2D(
+        New PointF(0, 0),
+        New PointF(6, 0)))
+
+            mixedPath.Add(
+    New ArcSegment2D(
+        New PointF(6, 4),
+        4.0,
+        -Math.PI / 2.0,
+        Math.PI / 2.0,
+        False))
+
+            mixedPath.Add(
+    New LineSegment2D(
+        New PointF(6, 8),
+        New PointF(0, 8)))
+
+            mixedPath.Add(
+    New LineSegment2D(
+        New PointF(0, 8),
+        New PointF(0, 0)))
+
+            check("Rectangle inside straight portion",
+      rectangle(1, 2, 2, 2),
+      mixedPath,
+      ProfileContainmentResult.Inside)
+
+            check("Rectangle inside curved portion",
+      rectangle(7, 3, 1, 2),
+      mixedPath,
+      ProfileContainmentResult.Inside)
+
+            check("Rectangle outside curved portion",
+      rectangle(11, 0.5, 2, 1.5),
+      mixedPath,
+      ProfileContainmentResult.Outside)
+
+            check("Rectangle crossing curved boundary",
+      rectangle(9, 3.5, 2, 1),
+      mixedPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("Rectangle crossing lower arc quadrant",
+      rectangle(8, 0.5, 2, 2),
+      mixedPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("Rectangle crossing upper arc quadrant",
+      rectangle(8, 5.5, 2, 2),
+      mixedPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("Rectangle tangent to curved boundary",
+      rectangle(10, 3, 2, 2),
+      mixedPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("Circle inside curved portion",
+      circle(7, 4, 1),
+      mixedPath,
+      ProfileContainmentResult.Inside)
+
+            check("Circle crossing curved boundary",
+      circle(9, 4, 2),
+      mixedPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("Circle internally tangent to curved boundary",
+      circle(8, 4, 2),
+      mixedPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("Circle externally tangent to curved boundary",
+      circle(12, 4, 2),
+      mixedPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("Circle outside curved boundary",
+      circle(12, 4, 1),
+      mixedPath,
+      ProfileContainmentResult.Outside)
+
+            check("Circle coincident with partial arc",
+      circle(6, 4, 4),
+      mixedPath,
+      ProfileContainmentResult.Intersecting)
+
+            ' --------------------------------------------------
+            ' Arc direction and angular wraparound
+            ' --------------------------------------------------
+
+            Dim wrapPath As New Path2D
+
+            wrapPath.Add(
+    New LineSegment2D(
+        New PointF(0, 0),
+        New PointF(6, 0)))
+
+            wrapPath.Add(
+    New ArcSegment2D(
+        New PointF(6, 4),
+        4.0,
+        3.0 * Math.PI / 2.0,
+        Math.PI / 2.0,
+        False))
+
+            wrapPath.Add(
+    New LineSegment2D(
+        New PointF(6, 8),
+        New PointF(0, 8)))
+
+            wrapPath.Add(
+    New LineSegment2D(
+        New PointF(0, 8),
+        New PointF(0, 0)))
+
+            check("CCW wraparound - inside",
+      rectangle(7, 3, 1, 2),
+      wrapPath,
+      ProfileContainmentResult.Inside)
+
+            check("CCW wraparound - lower crossing",
+      rectangle(8, 0.5, 2, 2),
+      wrapPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("CCW wraparound - upper crossing",
+      rectangle(8, 5.5, 2, 2),
+      wrapPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("CCW wraparound - outside",
+      circle(12, 4, 1),
+      wrapPath,
+      ProfileContainmentResult.Outside)
+
+            ' --------------------------------------------------
+            ' Same physical profile, reversed clockwise
+            ' --------------------------------------------------
+
+            Dim cwPath As New Path2D
+
+            cwPath.Add(
+    New LineSegment2D(
+        New PointF(0, 0),
+        New PointF(0, 8)))
+
+            cwPath.Add(
+    New LineSegment2D(
+        New PointF(0, 8),
+        New PointF(6, 8)))
+
+            cwPath.Add(
+    New ArcSegment2D(
+        New PointF(6, 4),
+        4.0,
+        Math.PI / 2.0,
+        3.0 * Math.PI / 2.0,
+        True))
+
+            cwPath.Add(
+    New LineSegment2D(
+        New PointF(6, 0),
+        New PointF(0, 0)))
+
+            check("CW wraparound - inside",
+      rectangle(7, 3, 1, 2),
+      cwPath,
+      ProfileContainmentResult.Inside)
+
+            check("CW wraparound - lower crossing",
+      rectangle(8, 0.5, 2, 2),
+      cwPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("CW wraparound - upper crossing",
+      rectangle(8, 5.5, 2, 2),
+      cwPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("CW wraparound - outside",
+      circle(12, 4, 1),
+      cwPath,
+      ProfileContainmentResult.Outside)
+
+            check("CW wraparound - tangent circle",
+      circle(12, 4, 2),
+      cwPath,
+      ProfileContainmentResult.Intersecting)
+
+            check("Identical profiles with reversed direction",
+      cwPath,
+      mixedPath,
+      ProfileContainmentResult.Intersecting)
+
+            ' --------------------------------------------------
+            ' Direct segment intersection tests
+            ' --------------------------------------------------
+
+            Dim checkSegments As Action(Of String,
+                              IPathSegment,
+                              IPathSegment,
+                              Boolean) =
+    Sub(description, segmentA, segmentB, expected)
+
+        Dim actual As Boolean =
+            SegmentsIntersect(
+                segmentA,
+                segmentB,
+                0.000001)
+
+        Dim success As Boolean =
+            actual = expected
+
+        If success Then
+            passed += 1
+        Else
+            failed += 1
+        End If
+
+        Debug.WriteLine(
+            $"{If(success, "PASS", "FAIL")} | " &
+            $"{description} | " &
+            $"Expected={expected} | Actual={actual}")
+
+    End Sub
+
+            Dim makeArc As Func(Of Double, Double,
+                        Double, Boolean, ArcSegment2D) =
+    Function(radius, startDegrees, endDegrees, clockwise)
+
+        Return New ArcSegment2D(
+            New PointF(5, 5),
+            radius,
+            startDegrees * Math.PI / 180.0,
+            endDegrees * Math.PI / 180.0,
+            clockwise)
+
+    End Function
+
+            checkSegments("Coincident partial arcs",
+              makeArc(4, 0, 90, False),
+              makeArc(4, 0, 90, False),
+              True)
+
+            checkSegments("Overlapping partial arcs",
+              makeArc(4, 0, 90, False),
+              makeArc(4, 45, 135, False),
+              True)
+
+            checkSegments("Partial arc contained in another arc",
+              makeArc(4, 0, 180, False),
+              makeArc(4, 45, 90, False),
+              True)
+
+            checkSegments("Partial arcs sharing endpoint",
+              makeArc(4, 0, 90, False),
+              makeArc(4, 90, 180, False),
+              True)
+
+            checkSegments("Disjoint arcs on same circle",
+              makeArc(4, 0, 90, False),
+              makeArc(4, 180, 270, False),
+              False)
+
+            checkSegments("Concentric arcs with different radii",
+              makeArc(4, 0, 90, False),
+              makeArc(3, 0, 90, False),
+              False)
+
+            checkSegments("Overlapping arcs across zero degrees",
+              makeArc(4, 350, 30, False),
+              makeArc(4, 10, 60, False),
+              True)
+
+            checkSegments("Coincident arcs with opposite directions",
+              makeArc(4, 350, 30, False),
+              makeArc(4, 30, 350, True),
+              True)
+
+            checkSegments("Disjoint wraparound arcs",
+              makeArc(4, 350, 30, False),
+              makeArc(4, 90, 180, False),
+              False)
+
+            checkSegments("Arcs sharing zero-degree endpoint",
+              makeArc(4, 270, 360, False),
+              makeArc(4, 0, 90, False),
+              True)
+
+
+            Debug.WriteLine("------------------------------------")
+            Debug.WriteLine($"Passed: {passed}")
+            Debug.WriteLine($"Failed: {failed}")
+            Debug.WriteLine("====================================")
+
+        End Sub
 
 
 

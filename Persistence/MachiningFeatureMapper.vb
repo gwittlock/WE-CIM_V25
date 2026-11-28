@@ -843,6 +843,9 @@
         ' Nothing is meaningful for ToolIndexAngle.
         record.Data("ToolIndexAngle") = feature.ToolIndexAngle
 
+        record.Data("OverLap") = feature.OverLap
+        record.Data("DOff") = feature.DOff
+
         ' Preserve Nothing versus an existing empty path.
         If feature.Path Is Nothing Then
 
@@ -905,6 +908,48 @@
         Else
             contour.ToolIndexAngle = Convert.ToDouble(savedAngle)
         End If
+
+
+        ' Restore process parameters when present.
+        ' Older MM3 files retain the ContourFeature defaults.
+
+        If record.Data.ContainsKey("OverLap") Then
+
+            Dim savedOverlap As Object = record.Data("OverLap")
+
+            If TypeOf savedOverlap Is Newtonsoft.Json.Linq.JValue Then
+                savedOverlap =
+            DirectCast(
+                savedOverlap,
+                Newtonsoft.Json.Linq.JValue
+            ).Value
+            End If
+
+            If savedOverlap IsNot Nothing Then
+                contour.OverLap = Convert.ToDouble(savedOverlap)
+            End If
+
+        End If
+
+        If record.Data.ContainsKey("DOff") Then
+
+            Dim savedDOff As Object = record.Data("DOff")
+
+            If TypeOf savedDOff Is Newtonsoft.Json.Linq.JValue Then
+                savedDOff =
+            DirectCast(
+                savedDOff,
+                Newtonsoft.Json.Linq.JValue
+            ).Value
+            End If
+
+            If savedDOff IsNot Nothing Then
+                contour.DOff = Convert.ToInt32(savedDOff)
+            End If
+
+        End If
+
+
 
         ' Restore Nothing versus an existing path.
         Dim savedPath As Object = record.Data("Path")

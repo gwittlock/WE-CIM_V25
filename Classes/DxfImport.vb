@@ -497,10 +497,6 @@ Public Module DxfImport
     End Sub
 
 
-
-
-
-
     Private Sub DrawCadCircle(
     c As CadCircle,
     g As Graphics,

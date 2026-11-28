@@ -405,9 +405,11 @@
     <Compile Include="Classes\MM3WorkZoneAssignment.vb" />
     <Compile Include="Classes\Part.vb" />
     <Compile Include="Classes\Pattern.vb" />
+    <Compile Include="Classes\PatternGeometry.vb" />
     <Compile Include="Classes\PatternInstance.vb" />
     <Compile Include="Classes\PierceHoleFeature.vb" />
     <Compile Include="Classes\Polyline2D.vb" />
+    <Compile Include="Classes\PreviewBounds.vb" />
     <Compile Include="Classes\Profile.vb" />
     <Compile Include="Classes\ProfileFeature.vb" />
     <Compile Include="Classes\PuncfResult.vb" />

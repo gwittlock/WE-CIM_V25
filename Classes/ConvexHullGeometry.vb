@@ -1410,57 +1410,98 @@ Namespace ToolShapes
             Return delta / total
 
         End Function
-
         Private Function ArcUParam(
     arc As ArcSegment2D,
     point As PointF) As Double
 
-            Dim startAngle As Double
-            Dim endAngle As Double
+            If arc Is Nothing OrElse
+       arc.Radius <= 0.0 Then
 
-            ArcAngles(
-                arc,
-                startAngle,
-                endAngle)
+                Return Double.NaN
 
-            ' Calculate the polar angle of the point relative
-            ' to the arc center, matching CGeoArc::Angle().
+            End If
+
+            Const TwoPi As Double = Math.PI * 2.0
+
+            Dim direction As Double =
+        If(arc.IsClockwise, -1.0, 1.0)
+
+            Dim originalSweep As Double =
+        Math.Abs(arc.EndAngle - arc.StartAngle)
+
+            Dim isFullCircle As Boolean =
+        originalSweep >= TwoPi - 0.000001
+
+            Dim sweep As Double
+
+            If isFullCircle Then
+
+                sweep = TwoPi
+
+            Else
+
+                sweep =
+            direction * (arc.EndAngle - arc.StartAngle)
+
+                sweep = sweep Mod TwoPi
+
+                If sweep < 0.0 Then
+                    sweep += TwoPi
+                End If
+
+            End If
+
+            If sweep <= 0.0 Then
+                Return Double.NaN
+            End If
+
+            ' Calculate the candidate point's polar angle.
             Dim dx As Double =
-                CDbl(point.X) - arc.Center.X
+        CDbl(point.X) - CDbl(arc.Center.X)
 
             Dim dy As Double =
-                CDbl(point.Y) - arc.Center.Y
+        CDbl(point.Y) - CDbl(arc.Center.Y)
+
+            If dx = 0.0 AndAlso dy = 0.0 Then
+                Return Double.NaN
+            End If
 
             Dim pointAngle As Double =
-                Math.Atan2(dy, dx)
+        Math.Atan2(dy, dx)
 
-            If pointAngle < 0.0 Then
-                pointAngle += 2.0 * Math.PI
+            ' Calculate angular travel in the arc direction.
+            Dim offset As Double =
+        direction * (pointAngle - arc.StartAngle)
+
+            offset = offset Mod TwoPi
+
+            If offset < 0.0 Then
+                offset += TwoPi
             End If
 
-            Dim u As Double =
-                ArcAdjust(
-                    startAngle,
-                    endAngle,
-                    pointAngle)
+            ' Account for numerical precision at the endpoints.
+            If PointsWithinTolerance(
+        point,
+        arc.StartPoint,
+        SmallTolerance) Then
 
-            ' CGeoArc::PointClosest() converts U ~= 1 back
-            ' to U = 0 for a full circle.
-            Dim totalAngle As Double =
-                Math.Abs(endAngle - startAngle)
-
-            If Math.Abs(
-                (2.0 * Math.PI) - totalAngle) < SmallTolerance AndAlso
-               Math.Abs(1.0 - u) < SmallTolerance Then
-
-                u = 0.0
+                Return 0.0
 
             End If
 
-            Return u
+            If Not isFullCircle AndAlso
+       PointsWithinTolerance(
+           point,
+           arc.EndPoint,
+           SmallTolerance) Then
+
+                Return 1.0
+
+            End If
+
+            Return offset / sweep
 
         End Function
-
         Private Function LineUParam(
     line As LineSegment2D,
     point As PointF) As Double

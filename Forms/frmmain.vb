@@ -154,6 +154,13 @@ Public Class frmMain
 
     Private _activeCreateOperation As String = ""
     Private _activeAssociation As IGeoAssociation = Nothing
+    Private _activeToolSetupMemberID As Integer = 0
+
+    Private _activeCutSide As String = "Center"
+    Private _activeOverlap As Double = 0.02
+    Private _activeDOff As Integer = 0
+    Private _activeDistance As Double = 0.0
+    Private _activeToolIndexAngle As Double = 0.0
 
 
     Private _holeParameterValues As New Dictionary(Of String, HoleParameterValue)(StringComparer.OrdinalIgnoreCase)
@@ -259,9 +266,16 @@ Public Class frmMain
             dockPanelEntityList.Visible = False
             dockPanelCreateHole.Visible = False
             dockPanelWorkZones.Visible = False
+            'ToolShapes.Geometry2D.TestPointContainment()
+            'ToolShapes.Geometry2D.TestProfileContainment()
+            'PartGeometryBuilder.TestProfileSignedArea()
+            'PartGeometryBuilder.TestProfileBounds()
 
+            'PartGeometryBuilder.TestGeoProfileClassification()
 
+            'PartGeometryBuilder.TestContainmentPath()
 
+            PartGeometryBuilder.TestReliableProfileBounds()
 
             EnableDoubleBuffering(pnlPicmodeler)
 
@@ -4531,7 +4545,12 @@ Public Class frmMain
 
     End Sub
 
-    Private Sub HandleCurrentToolRequested(toolSetupMemberID As Integer)
+    Private Sub HandleCurrentToolRequested(
+    toolSetupMemberID As Integer,
+    cutSide As String,
+    overlap As Double,
+    dOff As Integer,
+    distance As Double)
 
         Dim member As ToolSetupMember =
         AppData.ToolSetupMembers.FirstOrDefault(
@@ -4546,15 +4565,30 @@ Public Class frmMain
 
         If selectedTool Is Nothing Then Return
 
-        ' Set the active association for new geometry.
         _activeAssociation = selectedTool
+        _activeToolSetupMemberID = member.ID
+        _activeToolIndexAngle = member.IndexAngle
 
-        statusActiveLayer.Caption = "Active: Tool - " & selectedTool.Description
+        Debug.WriteLine("Index Angle: " & _activeToolIndexAngle)
 
-        Debug.WriteLine(
-        "Active Tool: " & selectedTool.Description)
+        ' Set the active process parameters.
+        _activeCutSide = cutSide
+        _activeOverlap = overlap
+        _activeDOff = dOff
+        _activeDistance = distance
+
+        statusActiveLayer.Caption =
+        "Active: Tool - " & selectedTool.Description
+
+        Debug.WriteLine("Active Tool: " & selectedTool.Description)
+        Debug.WriteLine("ToolSetupMemberID: " & _activeToolSetupMemberID)
+        Debug.WriteLine("Cut Side: " & _activeCutSide)
+        Debug.WriteLine("OverLap: " & _activeOverlap)
+        Debug.WriteLine("DOff: " & _activeDOff)
+        Debug.WriteLine("Distance: " & _activeDistance)
 
     End Sub
+
 
     Private Sub TestSelectedCircles()
 
@@ -4919,22 +4953,75 @@ Public Class frmMain
 
                     toolPen.DashStyle = Drawing2D.DashStyle.Solid
 
-                    DrawToolCuttingProfile(
+                    Dim indexAngle As Double =
+                        If(contour.ToolIndexAngle.HasValue,
+                           contour.ToolIndexAngle.Value,
+                           toolMember.IndexAngle)
+
+                    Dim hitPositions As New List(Of PointF)
+
+                    If BarShowNibbleHits.Checked Then
+
+                        Dim dx As Double =
+                            CDbl(segment.EndPoint.X) - segment.StartPoint.X
+
+                        Dim dy As Double =
+                            CDbl(segment.EndPoint.Y) - segment.StartPoint.Y
+
+                        Dim lineAngle As Double =
+                            Math.Atan2(dy, dx) * 180.0 / Math.PI
+
+                        Dim bounds As RectangleF =
+                            Geometry2D.ComputeTransformedBoundingBox(
+                                shape.CuttingProfile.Segments,
+                                0.0,
+                                0.0,
+                                indexAngle - lineAngle)
+
+                        Dim cuttingLength As Double = bounds.Width
+
+                        If cuttingLength > 0.0 AndAlso
+                           contour.OverLap >= 0.0 AndAlso
+                           contour.OverLap < cuttingLength Then
+
+                            hitPositions =
+                                Geometry2D.GetLinearNibbleHitPositions(
+                                    segment.StartPoint,
+                                    segment.EndPoint,
+                                    cuttingLength,
+                                    contour.OverLap)
+
+                        Else
+
+                            hitPositions.Add(segment.StartPoint)
+
+                        End If
+
+                    Else
+
+                        hitPositions.Add(segment.StartPoint)
+
+                    End If
+
+                    For Each hit As PointF In hitPositions
+
+                        DrawToolCuttingProfile(
                             g,
                             shape,
-                            CDbl(segment.StartPoint.X),
-                            CDbl(segment.StartPoint.Y),
-                            If(contour.ToolIndexAngle.HasValue,
-                               contour.ToolIndexAngle.Value,
-                               toolMember.IndexAngle),
+                            CDbl(hit.X),
+                            CDbl(hit.Y),
+                            indexAngle,
                             vt,
                             panelHeight,
                             toolPen)
+                    Next
 
                 End Using
+
             Next
 
         End Using
+
 
     End Sub
 
@@ -6965,7 +7052,8 @@ Public Class frmMain
 
             Dim activeLayer As Layer = Nothing
 
-            If Not TryGetActiveLayer(targetSheet.Parts(0), activeLayer) Then
+            If Not TypeOf _activeAssociation Is Tool AndAlso
+                Not TryGetActiveLayer(targetSheet.Parts(0), activeLayer) Then
 
                 MessageBox.Show(
             "Please select a valid active CAD layer.",
@@ -7228,27 +7316,74 @@ Public Class frmMain
 
         Dim targetPart As Part = targetSheet.Parts(0)
 
-        'Create nominal geometry only.
-        Dim creator As New CreateGeo()
+        If TypeOf _activeAssociation Is Tool Then
 
-        Dim newLine As GeoLine =
-    creator.CreateLine(x1, y1, x2, y2)
+            Dim factory As New ManufacturingFeatureFactory()
 
-        If newLine Is Nothing Then
+            Dim activeTool As Tool =
+    DirectCast(_activeAssociation, Tool)
 
-            MessageBox.Show(
-        "The specified parameters do not produce a valid line.",
+            Dim shape As ToolShapes.ToolShape =
+    ToolShapes.ToolShapeFactory.Create(activeTool)
+
+            Dim contour As ContourFeature
+
+            Try
+
+                contour = factory.CreateLinearContour(
+        x1,
+        y1,
+        x2,
+        y2,
+        shape,
+        _activeToolIndexAngle,
+        _activeCutSide,
+        _activeDistance)
+
+            Catch ex As ArgumentException
+
+                MessageBox.Show(
+        ex.Message,
         "Create Line",
         MessageBoxButtons.OK,
         MessageBoxIcon.Warning)
 
-            Return
+                Return
+
+            End Try
+
+            contour.ID = mm.GetNextFeatureID()
+            contour.ToolSetupMemberID = _activeToolSetupMemberID
+            contour.OverLap = _activeOverlap
+            contour.DOff = _activeDOff
+
+            mm.ManufacturingGeometry.Add(contour)
+
+        Else
+
+            'Create nominal PartGeo.
+            Dim creator As New CreateGeo()
+
+            Dim newLine As GeoLine =
+        creator.CreateLine(x1, y1, x2, y2)
+
+            If newLine Is Nothing Then
+
+                MessageBox.Show(
+            "The specified parameters do not produce a valid line.",
+            "Create Line",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning)
+
+                Return
+
+            End If
+
+            newLine.Association = _activeAssociation
+
+            targetPart.Geometry.Add(newLine)
 
         End If
-        'Associate the new line with the active CAD layer or tool.
-        newLine.Association = _activeAssociation
-
-        targetPart.Geometry.Add(newLine)
 
         'Register the new geometry for selection and snapping.
         BuildDrawables()
@@ -9205,30 +9340,17 @@ Public Class frmMain
 
     End Sub
 
-
     Private Function TransformPatternPoint(
     x As Double,
     y As Double,
     instance As PatternInstance) As PointF
 
-        Dim radians As Double =
-            instance.Angle * Math.PI / 180.0
-
-        Dim cosA As Double = Math.Cos(radians)
-        Dim sinA As Double = Math.Sin(radians)
-
-        Dim transformedX As Double =
-            x * cosA - y * sinA + instance.X
-
-        Dim transformedY As Double =
-            x * sinA + y * cosA + instance.Y
-
-        Return New PointF(
-            CSng(transformedX),
-            CSng(transformedY))
+        Return PatternGeometry.TransformPatternPoint(
+        x,
+        y,
+        instance)
 
     End Function
-
     Private Sub DrawPatternInstanceLine(
     line As GeoLine,
     instance As PatternInstance,
@@ -11602,7 +11724,11 @@ Public Class frmMain
                 entity, selection.Entity))
 
     End Function
+    Private Sub BarShowNibbleHits_CheckedChanged(sender As Object, e As DevExpress.XtraBars.ItemClickEventArgs) Handles BarShowNibbleHits.CheckedChanged
 
+        pnlPicmodeler.Invalidate()
+
+    End Sub
 
 End Class
 

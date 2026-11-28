@@ -350,19 +350,45 @@ Public Class DXFFileSelectionDialog
     e As PaintEventArgs) Handles pnlPreview.Paint
 
         e.Graphics.Clear(Color.Black)
-        If _previewGeoEntities Is Nothing OrElse
-   _previewGeoEntities.Count = 0 Then
+
+        '---------------------------------------------
+        ' Calculate nominal Part Geometry extents.
+        '---------------------------------------------
+        Dim partBounds As New PreviewBounds
+
+        IncludePreviewPartBounds(partBounds)
+
+        If partBounds.HasBounds Then
+
+            Dim partRect As RectangleF =
+        partBounds.GetBounds()
+
+            lblPartExtents.Text =
+        $"Model extents: X={partRect.Width:F4}, Y={partRect.Height:F4}"
+
+        Else
 
             lblPartExtents.Text = "Model extents:"
-            Return
 
         End If
 
-        Dim bounds As RectangleF =
-    HelperFunctions.GetGeoBounds(_previewGeoEntities)
+        '---------------------------------------------
+        ' Calculate complete preview drawing bounds.
+        '---------------------------------------------
+        Dim drawingBounds As New PreviewBounds
 
-        lblPartExtents.Text =
-    $"Model extents: X={bounds.Width:F4}, Y={bounds.Height:F4}"
+        If partBounds.HasBounds Then
+
+            drawingBounds.Include(partBounds.GetBounds())
+
+        End If
+
+        IncludePreviewManufacturingBounds(drawingBounds)
+
+        If Not drawingBounds.HasBounds Then Return
+
+        Dim bounds As RectangleF =
+    drawingBounds.GetBounds()
 
         Dim panelWidth As Integer = pnlPreview.ClientSize.Width
         Dim panelHeight As Integer = pnlPreview.ClientSize.Height
@@ -531,18 +557,43 @@ Public Class DXFFileSelectionDialog
                 .OffsetY = offsetY
             }
 
-            For Each feature As MachiningFeature In
-                _previewJobSheet.ManufacturingModel.ManufacturingGeometry
+            For Each feature As MachiningFeature In _previewJobSheet.ManufacturingModel.ManufacturingGeometry
 
                 If TypeOf feature Is HoleFeature Then
 
-                    DrawPreviewHoleFeature(
-                        DirectCast(feature, HoleFeature),
-                        e.Graphics,
-                        vt,
-                        panelHeight)
+                    DrawPreviewHoleFeature(DirectCast(feature, HoleFeature), e.Graphics, vt, panelHeight)
+
+                ElseIf TypeOf feature Is LineOfHolesFeature Then
+
+                    DrawPreviewLineOfHolesFeature(DirectCast(feature, LineOfHolesFeature), e.Graphics, vt, panelHeight)
+
+                ElseIf TypeOf feature Is ContourFeature Then
+
+                    DrawPreviewContourFeature(DirectCast(feature, ContourFeature), e.Graphics, vt, panelHeight)
 
                 End If
+
+            Next
+
+
+            Dim mm As MM3 = _previewJobSheet.ManufacturingModel
+
+            For Each instance As PatternInstance In mm.PatternInstances
+
+                If instance Is Nothing Then Continue For
+
+                Dim pattern As Pattern =
+                    mm.Patterns.FirstOrDefault(
+                        Function(p) p.ID = instance.PatternID)
+
+                If pattern Is Nothing Then Continue For
+
+                DrawPreviewPatternInstance(
+                    pattern,
+                    instance,
+                    e.Graphics,
+                    vt,
+                    panelHeight)
 
             Next
 
@@ -922,6 +973,451 @@ Public Class DXFFileSelectionDialog
         End Using
 
     End Sub
+
+    Private Sub DrawPreviewLineOfHolesFeature(
+        row As LineOfHolesFeature,
+        g As Graphics,
+        vt As ViewTransform,
+        panelHeight As Integer)
+
+        If row Is Nothing OrElse
+           _previewEnvironment Is Nothing OrElse
+           _previewJobSheet Is Nothing Then Return
+
+        Dim tool As Tool = Nothing
+        Dim shape As ToolShape = Nothing
+
+        If Not ToolShapeResolver.TryResolve(
+            row.ToolSetupMemberID,
+            _previewEnvironment.ToolSetupMembers,
+            _previewEnvironment.Tools,
+            tool,
+            shape) Then Return
+
+        Dim drawColor As Color =
+            GetVisibleColor(tool.Color, Color.Black)
+
+        Using pen As New Pen(drawColor, 1.0F)
+
+            pen.DashStyle = DashStyle.Dash
+
+            For Each holeCenter As PointF In
+                HolePatternGeometry.GetLineOfHolesPoints(
+                    row,
+                    _previewJobSheet.Length,
+                    _previewJobSheet.Width)
+
+                ToolProfileRenderer.DrawToolCuttingProfile(
+                    g,
+                    shape,
+                    holeCenter.X,
+                    holeCenter.Y,
+                    0.0,
+                    vt,
+                    panelHeight,
+                    pen)
+
+            Next
+
+        End Using
+
+    End Sub
+
+    Private Sub DrawPreviewContourFeature(
+    contour As ContourFeature,
+    g As Graphics,
+    vt As ViewTransform,
+    panelHeight As Integer)
+
+        If contour Is Nothing OrElse
+           contour.Path Is Nothing OrElse
+           _previewEnvironment Is Nothing Then Return
+
+        Dim tool As Tool = Nothing
+        Dim shape As ToolShape = Nothing
+
+        If Not ToolShapeResolver.TryResolve(
+            contour.ToolSetupMemberID,
+            _previewEnvironment.ToolSetupMembers,
+            _previewEnvironment.Tools,
+            tool,
+            shape) Then Return
+
+        Dim toolMember = _previewEnvironment.ToolSetupMembers.
+            FirstOrDefault(
+                Function(m) m.ID = contour.ToolSetupMemberID)
+
+        If toolMember Is Nothing Then Return
+
+        Dim drawColor As Color =
+            GetVisibleColor(tool.Color, Color.Black)
+
+        Dim toolAngle As Double =
+            If(contour.ToolIndexAngle.HasValue,
+               contour.ToolIndexAngle.Value,
+               toolMember.IndexAngle)
+
+        Using pen As New Pen(drawColor, 1.0F),
+              toolPen As New Pen(drawColor, 1.0F)
+
+            pen.DashStyle = DashStyle.Dash
+            toolPen.DashStyle = DashStyle.Solid
+
+            For Each segment As IPathSegment In contour.Path.Segments
+
+                If segment Is Nothing Then Continue For
+
+                If segment.SegmentType <> PathSegmentType.Line Then
+                    Continue For
+                End If
+
+                Dim p1 As New PointF(
+                    CSng(segment.StartPoint.X * vt.Scale + vt.OffsetX),
+                    CSng(panelHeight -
+                         (segment.StartPoint.Y * vt.Scale + vt.OffsetY)))
+
+                Dim p2 As New PointF(
+                    CSng(segment.EndPoint.X * vt.Scale + vt.OffsetX),
+                    CSng(panelHeight -
+                         (segment.EndPoint.Y * vt.Scale + vt.OffsetY)))
+
+                g.DrawLine(pen, p1, p2)
+
+                ToolProfileRenderer.DrawToolCuttingProfile(
+                    g,
+                    shape,
+                    CDbl(segment.StartPoint.X),
+                    CDbl(segment.StartPoint.Y),
+                    toolAngle,
+                    vt,
+                    panelHeight,
+                    toolPen)
+
+            Next
+
+        End Using
+
+    End Sub
+
+    Private Sub DrawPreviewPatternInstance(
+        pattern As Pattern,
+        instance As PatternInstance,
+        g As Graphics,
+        vt As ViewTransform,
+        panelHeight As Integer)
+
+        If pattern Is Nothing OrElse
+           instance Is Nothing Then Return
+
+        For Each entity As GeoEntity In pattern.Geometry
+
+            If entity Is Nothing Then Continue For
+
+            Dim layer As Layer =
+                TryCast(entity.Association, Layer)
+
+            If Not TypeOf entity Is GeoPoint Then
+                If layer IsNot Nothing AndAlso
+                   Not layer.Visible Then Continue For
+            End If
+
+            Using pen As New Pen(Color.Yellow, 1.0F)
+
+                If TypeOf entity Is GeoLine Then
+
+                    Dim line As GeoLine =
+                        DirectCast(entity, GeoLine)
+
+                    If line.StartPoint Is Nothing OrElse
+                       line.EndPoint Is Nothing Then Continue For
+
+                    Dim worldStart As PointF =
+                        PatternGeometry.TransformPatternPoint(
+                            line.StartPoint.X,
+                            line.StartPoint.Y,
+                            instance)
+
+                    Dim worldEnd As PointF =
+                        PatternGeometry.TransformPatternPoint(
+                            line.EndPoint.X,
+                            line.EndPoint.Y,
+                            instance)
+
+                    Dim p1 As PointF =
+                        PreviewWorldToScreen(
+                            worldStart, vt, panelHeight)
+
+                    Dim p2 As PointF =
+                        PreviewWorldToScreen(
+                            worldEnd, vt, panelHeight)
+
+                    g.DrawLine(pen, p1, p2)
+
+                ElseIf TypeOf entity Is GeoCircle Then
+
+                    Dim c As GeoCircle =
+                        DirectCast(entity, GeoCircle)
+
+                    If c.Center Is Nothing Then Continue For
+
+                    Dim worldCenter As PointF =
+                        PatternGeometry.TransformPatternPoint(
+                            c.Center.X,
+                            c.Center.Y,
+                            instance)
+
+                    Dim center As PointF =
+                        PreviewWorldToScreen(
+                            worldCenter, vt, panelHeight)
+
+                    Dim r As Single =
+                        CSng(Math.Abs(c.Radius * vt.Scale))
+
+                    If r <= 0 Then Continue For
+
+                    g.DrawEllipse(
+                        pen,
+                        center.X - r,
+                        center.Y - r,
+                        r * 2.0F,
+                        r * 2.0F)
+
+                ElseIf TypeOf entity Is GeoArc Then
+
+                    Dim a As GeoArc =
+                        DirectCast(entity, GeoArc)
+
+                    If a.Center Is Nothing Then Continue For
+
+                    Dim worldCenter As PointF =
+                        PatternGeometry.TransformPatternPoint(
+                            a.Center.X,
+                            a.Center.Y,
+                            instance)
+
+                    Dim center As PointF =
+                        PreviewWorldToScreen(
+                            worldCenter, vt, panelHeight)
+
+                    Dim r As Single =
+                        CSng(Math.Abs(a.Radius * vt.Scale))
+
+                    If r <= 0 Then Continue For
+
+                    Dim rect As New RectangleF(
+                        center.X - r,
+                        center.Y - r,
+                        r * 2.0F,
+                        r * 2.0F)
+
+                    Dim sweep As Double
+
+                    If a.IsClockwise Then
+                        sweep = a.StartAngle - a.EndAngle
+                    Else
+                        sweep = a.EndAngle - a.StartAngle
+                    End If
+
+                    If sweep < 0 Then sweep += 360.0
+
+                    Dim startAngle As Single =
+                        CSng(-(a.StartAngle + instance.Angle))
+
+                    Dim sweepAngle As Single =
+                        CSng(If(a.IsClockwise, sweep, -sweep))
+
+                    g.DrawArc(
+                        pen,
+                        rect,
+                        startAngle,
+                        sweepAngle)
+
+                ElseIf TypeOf entity Is GeoPoint Then
+
+                    Dim pt As GeoPoint =
+                        DirectCast(entity, GeoPoint)
+
+                    Dim worldPoint As PointF =
+                        PatternGeometry.TransformPatternPoint(
+                            pt.X,
+                            pt.Y,
+                            instance)
+
+                    Dim screenPoint As PointF =
+                        PreviewWorldToScreen(
+                            worldPoint, vt, panelHeight)
+
+                    g.DrawLine(
+                        pen,
+                        screenPoint.X - 2.0F,
+                        screenPoint.Y,
+                        screenPoint.X + 2.0F,
+                        screenPoint.Y)
+
+                    g.DrawLine(
+                        pen,
+                        screenPoint.X,
+                        screenPoint.Y - 2.0F,
+                        screenPoint.X,
+                        screenPoint.Y + 2.0F)
+
+                End If
+
+            End Using
+
+        Next
+
+    End Sub
+
+    Private Function PreviewWorldToScreen(
+    worldPoint As PointF,
+    vt As ViewTransform,
+    panelHeight As Integer) As PointF
+
+        Return New PointF(
+            CSng(worldPoint.X * vt.Scale + vt.OffsetX),
+            CSng(panelHeight -
+                 (worldPoint.Y * vt.Scale + vt.OffsetY)))
+
+    End Function
+
+    Private Sub IncludePreviewManufacturingBounds(
+        bounds As PreviewBounds)
+
+        If _previewJobSheet Is Nothing OrElse
+           _previewJobSheet.ManufacturingModel Is Nothing OrElse
+           _previewEnvironment Is Nothing Then Return
+
+        For Each feature As MachiningFeature In
+            _previewJobSheet.ManufacturingModel.ManufacturingGeometry
+
+            If feature Is Nothing Then Continue For
+
+            If Not (TypeOf feature Is HoleFeature OrElse
+                    TypeOf feature Is LineOfHolesFeature OrElse
+                    TypeOf feature Is ContourFeature) Then Continue For
+
+            Dim tool As Tool = Nothing
+            Dim shape As ToolShape = Nothing
+
+            If Not ToolShapeResolver.TryResolve(
+                feature.ToolSetupMemberID,
+                _previewEnvironment.ToolSetupMembers,
+                _previewEnvironment.Tools,
+                tool,
+                shape) Then Continue For
+
+            If TypeOf feature Is HoleFeature Then
+
+                Dim hole As HoleFeature =
+                    DirectCast(feature, HoleFeature)
+
+                bounds.IncludeToolProfile(
+                    shape,
+                    hole.X,
+                    hole.Y,
+                    hole.Angle)
+
+            ElseIf TypeOf feature Is LineOfHolesFeature Then
+
+                Dim row As LineOfHolesFeature =
+                    DirectCast(feature, LineOfHolesFeature)
+
+                For Each center As PointF In
+                    HolePatternGeometry.GetLineOfHolesPoints(
+                        row,
+                        _previewJobSheet.Length,
+                        _previewJobSheet.Width)
+
+                    bounds.IncludeToolProfile(
+                        shape,
+                        center.X,
+                        center.Y,
+                        0.0)
+
+                Next
+
+            ElseIf TypeOf feature Is ContourFeature Then
+
+                Dim contour As ContourFeature =
+                    DirectCast(feature, ContourFeature)
+
+                If contour.Path Is Nothing Then Continue For
+
+                Dim toolMember =
+                    _previewEnvironment.ToolSetupMembers.
+                    FirstOrDefault(
+                        Function(m) m.ID = contour.ToolSetupMemberID)
+
+                If toolMember Is Nothing Then Continue For
+
+                Dim toolAngle As Double =
+                    If(contour.ToolIndexAngle.HasValue,
+                       contour.ToolIndexAngle.Value,
+                       toolMember.IndexAngle)
+
+                For Each segment As IPathSegment In
+                    contour.Path.Segments
+
+                    If segment Is Nothing Then Continue For
+
+                    If segment.SegmentType <>
+                       PathSegmentType.Line Then Continue For
+
+                    bounds.Include(segment.StartPoint)
+                    bounds.Include(segment.EndPoint)
+
+                    bounds.IncludeToolProfile(
+                        shape,
+                        segment.StartPoint.X,
+                        segment.StartPoint.Y,
+                        toolAngle)
+
+                Next
+
+            End If
+
+        Next
+
+    End Sub
+
+    Private Sub IncludePreviewPartBounds(
+    bounds As PreviewBounds)
+
+        ' Include independent nominal Part Geometry.
+        For Each entity As GeoEntity In _previewGeoEntities
+
+            bounds.IncludeGeometry(entity)
+
+        Next
+
+        If _previewJobSheet Is Nothing OrElse
+           _previewJobSheet.ManufacturingModel Is Nothing Then Return
+
+        Dim mm As MM3 = _previewJobSheet.ManufacturingModel
+
+        ' Include nominal geometry of placed Pattern Instances.
+        For Each instance As PatternInstance In mm.PatternInstances
+
+            If instance Is Nothing Then Continue For
+
+            Dim pattern As Pattern =
+                mm.Patterns.FirstOrDefault(
+                    Function(p) p.ID = instance.PatternID)
+
+            If pattern Is Nothing Then Continue For
+
+            For Each entity As GeoEntity In pattern.Geometry
+
+                bounds.IncludeGeometry(entity, instance)
+
+            Next
+
+        Next
+
+    End Sub
+
+
 
 
 

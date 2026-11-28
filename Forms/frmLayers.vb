@@ -324,6 +324,9 @@ Public Class frmLayers
 
         RaiseEvent ActiveLayerChanged(selectedLayer)
 
+        Me.Dispose()
+        Me.Close()
+
     End Sub
 
     Private Sub btnAddLayer_Click(sender As Object, e As EventArgs) Handles btnAddLayer.Click

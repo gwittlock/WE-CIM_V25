@@ -3,6 +3,8 @@
 Public Class ContourFeature
     Inherits MachiningFeature
 
+    Public Property OverLap As Double = 0.0
+    Public Property DOff As Integer = 0
     Public Property Path As IPath2D
     ' Required tool orientation for this contour.
     ' Nothing means use the configured ToolSetupMember.IndexAngle.
